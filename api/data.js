@@ -70,18 +70,21 @@ export default async function handler(req, res) {
         return res.json({ punten });
       }
 
-    try {
-  const dagen = tijdperk === '1W' ? 7 : tijdperk === '1M' ? 30 : tijdperk === '1J' ? 365 : tijdperk === 'YTD' ? 365 : tijdperk === '3J' ? 1095 : tijdperk === '5J' ? 1825 : 9999;
-  const fmpRes = await fetch(
-    `https://financialmodelingprep.com/api/v3/historical-price-full/${symbol}?timeseries=${dagen}&apikey=${FMP_KEY}`
+try {
+  const avRes = await fetch(
+    `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=full&apikey=${process.env.ALPHAVANTAGE_API_KEY}`
   );
-  const fmpData = await fmpRes.json();
-  if (fmpData.historical) {
-    const punten = fmpData.historical.slice(0, dagen).reverse().map(d => ({
-      label: new Date(d.date).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }),
-      prijs: d.close
-    }));
-    return res.json({ punten });
+  const avData = await avRes.json();
+  const tijdreeks = avData['Time Series (Daily)'];
+  if (tijdreeks) {
+    const alle = Object.entries(tijdreeks)
+      .map(([datum, waarden]) => ({
+        label: new Date(datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }),
+        prijs: parseFloat(waarden['4. close'])
+      }))
+      .reverse()
+      .slice(0, dagen);
+    return res.json({ punten: alle });
   }
 } catch (e) {}
 
