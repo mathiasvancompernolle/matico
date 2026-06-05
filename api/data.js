@@ -84,7 +84,6 @@ export default async function handler(req, res) {
             });
           }
         } catch (e) {}
-        // Fallback voor Europese producten
         try {
           const r = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSym}&apikey=${AV_KEY}`);
           const d = await r.json();
@@ -109,10 +108,10 @@ export default async function handler(req, res) {
         : tijdperk === '5J' ? 1825
         : 5000;
 
-      // Korte periodes: dagelijkse data
+      // Korte periodes: dagelijkse gecorrigeerde data
       if (dagen <= 100) {
         try {
-          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${avSym}&outputsize=compact&apikey=${AV_KEY}`);
+          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${avSym}&outputsize=compact&apikey=${AV_KEY}`);
           const d = await r.json();
           const tijdreeks = d['Time Series (Daily)'];
           if (tijdreeks) {
@@ -123,19 +122,19 @@ export default async function handler(req, res) {
               .reverse()
               .map(([datum, w]) => ({
                 label: new Date(datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }),
-                prijs: parseFloat(w['4. close'])
+                prijs: parseFloat(w['5. adjusted close'])
               }));
             if (punten.length > 0) return res.json({ punten });
           }
         } catch (e) { console.error('Daily fout:', e); }
       }
 
-      // Lange periodes: wekelijkse data
+      // Lange periodes: wekelijkse gecorrigeerde data
       if (dagen > 100) {
         try {
-          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY&symbol=${avSym}&apikey=${AV_KEY}`);
+          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY_ADJUSTED&symbol=${avSym}&apikey=${AV_KEY}`);
           const d = await r.json();
-          const tijdreeks = d['Weekly Time Series'];
+          const tijdreeks = d['Weekly Adjusted Time Series'];
           if (tijdreeks) {
             const vanafDatum = new Date();
             vanafDatum.setDate(vanafDatum.getDate() - dagen);
@@ -148,7 +147,7 @@ export default async function handler(req, res) {
                   month: 'short',
                   year: dagen > 365 ? 'numeric' : undefined
                 }),
-                prijs: parseFloat(w['4. close'])
+                prijs: parseFloat(w['5. adjusted close'])
               }));
             if (punten.length > 0) return res.json({ punten });
           }
