@@ -27,7 +27,7 @@ function berekendagData(beleggingen, koersen, tijdperk) {
     beleggingen.forEach(b => {
       const koers = koersen[b.symbol];
       const prijs = koers ? koers.c * (1 + (Math.random() - 0.502) * 0.002 * (punten - i)) : b.kostprijs;
-      const factor = getMuntFactor ? getMuntFactor(b.munt || "EUR") : ((b.munt || "EUR") === "USD" ? 0.865 : 1);
+      const factor = (b.munt || "EUR") === "USD" ? 0.865 : 1;
       waarde += prijs * b.aantal * factor;
     });
     data.push({ label, waarde: Math.round(waarde * 100) / 100 });
