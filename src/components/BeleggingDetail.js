@@ -190,7 +190,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
                 { l: 'Hoogste', v: muntSym + (koers.h || 0).toFixed(2) },
                 { l: 'Volume', v: (koers.v || 0) > 1000000 ? ((koers.v || 0) / 1000000).toFixed(1) + ' mln.' : (koers.v || 0).toLocaleString() },
                 metrics?.['peNormalizedAnnual'] ? { l: 'Koers-winstverhouding', v: metrics['peNormalizedAnnual'].toFixed(1) } : null,
-                profiel.marketCapitalization ? { l: 'Beurswaarde', v: '$' + (profiel.marketCapitalization / 1000).toFixed(1) + ' mld.' } : null,
+                profiel?.marketCapitalization ? { l: 'Beurswaarde', v: '$' + (profiel.marketCapitalization / 1000).toFixed(1) + ' mld.' } : null,
               ].filter(Boolean).map(({ l, v }) => (
                 <div key={l}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{l}</div>
