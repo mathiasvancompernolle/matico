@@ -333,10 +333,26 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                   domain={yDomain} width={70}
                 />
                 <Tooltip
-                  formatter={(v) => [weergave === 'waarde' ? '€' + v.toLocaleString('nl-BE', { minimumFractionDigits: 2 }) : v.toFixed(2) + '%', 'Portfolio']}
-                  labelStyle={{ fontSize: 12 }}
-                  contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}
-                />
+  content={({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    const datum = payload[0]?.payload?.datum;
+    const waarde = payload[0]?.value;
+    const aankopenOpDatum = beleggingen.filter(b => b.datum === datum);
+    return (
+      <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
+        <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
+        <div style={{ fontWeight: 600, color: 'var(--accent)', marginBottom: aankopenOpDatum.length > 0 ? 8 : 0 }}>
+          Portfolio : {weergave === 'waarde' ? '€' + (waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2 }) : (waarde || 0).toFixed(2) + '%'}
+        </div>
+        {aankopenOpDatum.map(b => (
+          <div key={b.id} style={{ fontSize: 12, color: 'var(--green)', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
+            🟢 Aankoop {b.naam} — {b.aantal} st. à {b.munt === 'USD' ? '$' : '€'}{b.kostprijs.toFixed(2)}
+          </div>
+        ))}
+      </div>
+    );
+  }}
+/>
                 <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)"
   dot={(props) => {
     const { cx, cy, payload } = props;
