@@ -25,7 +25,6 @@ export default function BeleggingDetail({ belegging, onClose }) {
   const huidigeWaarde = huidigePrijs * belegging.aantal * factor;
   const kostprijsTotaal = belegging.kostprijs * belegging.aantal * factor;
   const winstTotaal = huidigeWaarde - kostprijsTotaal;
-  const winstTotaalPct = kostprijsTotaal > 0 ? (winstTotaal / kostprijsTotaal) * 100 : 0;
   const dagV = koers ? (koers.c - koers.pc) : 0;
   const dagVPct = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
   const dagVEur = dagV * belegging.aantal * factor;
@@ -184,8 +183,8 @@ export default function BeleggingDetail({ belegging, onClose }) {
               { l: 'Open', v: koers ? muntSym + (koers.o || 0).toFixed(2) : '-' },
               { l: 'Laagste', v: koers ? muntSym + (koers.l || 0).toFixed(2) : '-' },
               { l: 'Hoogste', v: koers ? muntSym + (koers.h || 0).toFixed(2) : '-' },
-              { l: 'Gem. volume (10d)', v: metrics?.['10DayAverageTradingVolume'] ? (metrics['10DayAverageTradingVolume'] * 1000000).toLocaleString('nl-BE') : (koers?.v || 0).toLocaleString() },
-              { l: 'Koers-winstverhouding', v: metrics ? (metrics['forwardPE'] ? metrics['forwardPE'].toFixed(1) : metrics['peNormalizedAnnual']?.toFixed(1)) : '-' },
+              { l: 'Volume', v: koers?.v ? (koers.v / 1000000).toFixed(1) + ' mln.' : '-' },
+              { l: 'Koers-winstverhouding', v: metrics?.['peTTM'] ? metrics['peTTM'].toFixed(1) : '-' },
               { l: 'Beurswaarde', v: profiel?.marketCapitalization ? '$' + (profiel.marketCapitalization / 1000).toFixed(1) + ' mld.' : '-' },
             ].filter(i => i.v && i.v !== '-').map(({ l, v }) => (
               <div key={l}>
