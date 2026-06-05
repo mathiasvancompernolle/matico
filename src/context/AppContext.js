@@ -15,6 +15,7 @@ export function AppProvider({ children }) {
 
   const [koersen, setKoersen] = useState({});
   const [activeNav, setActiveNav] = useState('overzicht');
+  const [wisselkoers, setWisselkoers] = useState({ usdEur: 0.865 });
 
   useEffect(() => {
     localStorage.setItem('matico_gebruiker', JSON.stringify(gebruiker));
@@ -23,6 +24,21 @@ export function AppProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('matico_beleggingen', JSON.stringify(beleggingen));
   }, [beleggingen]);
+
+  useEffect(() => {
+    const haalWisselkoers = async () => {
+      try {
+        const res = await fetch('/api/data?endpoint=forex');
+        const data = await res.json();
+        if (data.usdEur) setWisselkoers(data);
+      } catch (e) {
+        console.error('Wisselkoers ophalen mislukt:', e);
+      }
+    };
+    haalWisselkoers();
+    const interval = setInterval(haalWisselkoers, 3600000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchKoers = async (symbol) => {
     try {
@@ -49,19 +65,21 @@ export function AppProvider({ children }) {
     if (beleggingen.length > 0) refreshAlleKoersen();
   }, [beleggingen.length]);
 
-  // Bereken portfolio totaal
+  const getMuntFactor = (munt) => {
+    if (munt === 'USD') return wisselkoers.usdEur;
+    if (munt === 'GBP') return wisselkoers.usdEur * 1.27;
+    return 1;
+  };
+
   const portfolioWaarde = beleggingen.reduce((sum, b) => {
     const koers = koersen[b.symbol];
     const prijs = koers ? koers.c : b.kostprijs;
-    const munt = b.munt || 'EUR';
-    // Eenvoudige conversie: USD naar EUR ~0.92
-    const factor = munt === 'USD' ? 0.92 : 1;
+    const factor = getMuntFactor(b.munt || 'EUR');
     return sum + (prijs * b.aantal * factor);
   }, 0);
 
   const portfolioKostprijs = beleggingen.reduce((sum, b) => {
-    const munt = b.munt || 'EUR';
-    const factor = munt === 'USD' ? 0.92 : 1;
+    const factor = getMuntFactor(b.munt || 'EUR');
     return sum + (b.kostprijs * b.aantal * factor);
   }, 0);
 
@@ -71,8 +89,7 @@ export function AppProvider({ children }) {
   const dagWinst = beleggingen.reduce((sum, b) => {
     const koers = koersen[b.symbol];
     if (!koers) return sum;
-    const munt = b.munt || 'EUR';
-    const factor = munt === 'USD' ? 0.92 : 1;
+    const factor = getMuntFactor(b.munt || 'EUR');
     return sum + ((koers.c - koers.pc) * b.aantal * factor);
   }, 0);
 
@@ -84,6 +101,7 @@ export function AppProvider({ children }) {
       beleggingen, setBeleggingen,
       koersen, fetchKoers, refreshAlleKoersen,
       activeNav, setActiveNav,
+      wisselkoers, getMuntFactor,
       portfolioWaarde, portfolioKostprijs,
       portfolioWinstVerlies, portfolioWinstPct,
       dagWinst, dagWinstPct
