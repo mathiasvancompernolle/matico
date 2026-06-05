@@ -60,27 +60,56 @@ export default async function handler(req, res) {
         } catch (e) { console.error('1D fout:', e); }
       }
 
-      // Alle andere tijdperken: dagelijkse data
-      const dagen = tijdperk === '1W' ? 7 : tijdperk === '1M' ? 30 : tijdperk === '1J' ? 365 : tijdperk === 'YTD' ? Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 1)) / 86400000) : tijdperk === '3J' ? 1095 : tijdperk === '5J' ? 1825 : 5000;
-      const outputsize = dagen <= 100 ? 'compact' : 'full';
+      // Bereken aantal dagen
+      const dagen = tijdperk === '1W' ? 7
+        : tijdperk === '1M' ? 30
+        : tijdperk === '1J' ? 365
+        : tijdperk === 'YTD' ? Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 1)) / 86400000)
+        : tijdperk === '3J' ? 1095
+        : tijdperk === '5J' ? 1825
+        : 5000;
 
-      try {
-        const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=${outputsize}&apikey=${AV_KEY}`);
-        const d = await r.json();
-        const tijdreeks = d['Time Series (Daily)'];
-        if (tijdreeks) {
-          const vanafDatum = new Date();
-          vanafDatum.setDate(vanafDatum.getDate() - dagen);
-          const punten = Object.entries(tijdreeks)
-            .filter(([datum]) => new Date(datum) >= vanafDatum)
-            .reverse()
-            .map(([datum, w]) => ({
-              label: new Date(datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }),
-              prijs: parseFloat(w['4. close'])
-            }));
-          if (punten.length > 0) return res.json({ punten });
-        }
-      } catch (e) { console.error('Daily fout:', e); }
+      // Korte periodes: dagelijkse data
+      if (dagen <= 100) {
+        try {
+          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=compact&apikey=${AV_KEY}`);
+          const d = await r.json();
+          const tijdreeks = d['Time Series (Daily)'];
+          if (tijdreeks) {
+            const vanafDatum = new Date();
+            vanafDatum.setDate(vanafDatum.getDate() - dagen);
+            const punten = Object.entries(tijdreeks)
+              .filter(([datum]) => new Date(datum) >= vanafDatum)
+              .reverse()
+              .map(([datum, w]) => ({
+                label: new Date(datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }),
+                prijs: parseFloat(w['4. close'])
+              }));
+            if (punten.length > 0) return res.json({ punten });
+          }
+        } catch (e) { console.error('Daily fout:', e); }
+      }
+
+      // Lange periodes: wekelijkse data (minder data, sneller)
+      if (dagen > 100) {
+        try {
+          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY&symbol=${symbol}&apikey=${AV_KEY}`);
+          const d = await r.json();
+          const tijdreeks = d['Weekly Time Series'];
+          if (tijdreeks) {
+            const vanafDatum = new Date();
+            vanafDatum.setDate(vanafDatum.getDate() - dagen);
+            const punten = Object.entries(tijdreeks)
+              .filter(([datum]) => new Date(datum) >= vanafDatum)
+              .reverse()
+              .map(([datum, w]) => ({
+                label: new Date(datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: dagen > 365 ? 'numeric' : undefined }),
+                prijs: parseFloat(w['4. close'])
+              }));
+            if (punten.length > 0) return res.json({ punten });
+          }
+        } catch (e) { console.error('Weekly fout:', e); }
+      }
 
       return res.json({ punten: [] });
     }
