@@ -329,7 +329,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                 <YAxis
                   tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
-                  tickFormatter={v => weergave === 'waarde' ? '€' + Math.round(v).toLocaleString('nl-BE') : v.toFixed(1) + '%'}
+                  tickFormatter={v => weergave === 'waarde' ? '€' + v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : v.toFixed(2) + '%'}
                   domain={yDomain} width={70}
                 />
                 <Tooltip
