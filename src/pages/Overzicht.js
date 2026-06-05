@@ -13,8 +13,8 @@ const VERGELIJK_OPTIES = [
   { id: 'bitcoin', label: 'Bitcoin', symbol: 'BINANCE:BTCUSDT', kleur: '#f97316' },
 ];
 
-export default function Overzicht({ onToevoegen }) {
-  const { gebruiker, beleggingen, setBeleggingen, koersen, refreshAlleKoersen, portfolioWaarde, dagWinst, dagWinstPct, getMuntFactor } = useApp();
+export default function Overzicht({ onToevoegen, onImporteren }) {
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, dagWinst, dagWinstPct, getMuntFactor } = useApp();
   const [tijdperk, setTijdperk] = useState('1D');
   const [weergave, setWeergave] = useState('waarde');
   const [grafiekData, setGrafiekData] = useState([]);
@@ -36,7 +36,6 @@ export default function Overzicht({ onToevoegen }) {
     return 'Goede avond';
   };
 
-  // Sluit menu bij klik buiten
   useEffect(() => {
     const handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -47,14 +46,12 @@ export default function Overzicht({ onToevoegen }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Laad portfolio grafiek data
   useEffect(() => {
     const laadGrafiek = async () => {
       if (beleggingen.length === 0) { setGrafiekData([]); return; }
       setGrafiekLoading(true);
 
       if (tijdperk === '1D') {
-        // 1D: gebruik gisteren en nu koers van elk aandeel
         let gisterenWaarde = 0;
         let nuWaarde = 0;
         beleggingen.forEach(b => {
@@ -76,7 +73,6 @@ export default function Overzicht({ onToevoegen }) {
         return;
       }
 
-      // Voor andere tijdperken: haal historische data op per aandeel
       const symbolen = [...new Set(beleggingen.map(b => b.symbol))];
       const historischeData = {};
 
@@ -90,13 +86,11 @@ export default function Overzicht({ onToevoegen }) {
         } catch (e) { console.error('Historische data fout:', e); }
       }
 
-      // Combineer per datum
       if (Object.keys(historischeData).length === 0) {
         setGrafiekLoading(false);
         return;
       }
 
-      // Gebruik de labels van het eerste aandeel als basis
       const eersteSymbol = Object.keys(historischeData)[0];
       const labels = historischeData[eersteSymbol].map(p => p.label);
 
@@ -108,7 +102,6 @@ export default function Overzicht({ onToevoegen }) {
           if (symbolData && symbolData[i]) {
             totaalWaarde += symbolData[i].prijs * b.aantal * factor;
           } else {
-            // Gebruik huidige koers als fallback
             const koers = koersen[b.symbol];
             totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
           }
@@ -142,7 +135,6 @@ export default function Overzicht({ onToevoegen }) {
 
   const displayData = weergave === 'waarde' ? grafiekData : winstData;
   const grafiekKleur = grafiekData.length > 1 && grafiekData[grafiekData.length-1]?.waarde >= grafiekData[0]?.waarde ? '#6366f1' : '#ef4444';
-
   const yDomain = displayData.length > 0 ? [
     Math.min(...displayData.map(d => d.waarde)) * 0.995,
     Math.max(...displayData.map(d => d.waarde)) * 1.005
@@ -150,7 +142,6 @@ export default function Overzicht({ onToevoegen }) {
 
   return (
     <div style={{ padding: '0 0 40px' }}>
-      {/* Header */}
       <div className="page-header" style={{ marginBottom: 24 }}>
         <h1>{begroeting()}, {gebruiker.voornaam}</h1>
         <div style={{ position: 'relative' }} ref={menuRef}>
@@ -186,7 +177,6 @@ export default function Overzicht({ onToevoegen }) {
         </div>
       </div>
 
-      {/* Tijdperk tabs */}
       <div style={{ padding: '0 32px', marginBottom: 24 }}>
         <div className="time-tabs" style={{ display: 'inline-flex' }}>
           {TIJDPERKEN.map(t => (
@@ -197,7 +187,6 @@ export default function Overzicht({ onToevoegen }) {
         </div>
       </div>
 
-      {/* Portfolio kaart */}
       <div style={{ padding: '0 32px' }}>
         <div className="card" style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
@@ -223,7 +212,6 @@ export default function Overzicht({ onToevoegen }) {
             </div>
           </div>
 
-          {/* Grafiek toggle */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, marginBottom: 12 }}>
             {['waarde', 'winst/verlies'].map(w => (
               <button key={w} onClick={() => setWeergave(w)} style={{
@@ -237,7 +225,6 @@ export default function Overzicht({ onToevoegen }) {
             ))}
           </div>
 
-          {/* Grafiek */}
           {beleggingen.length === 0 ? (
             <div className="empty-state" style={{ padding: 40 }}>
               <p>Voeg beleggingen toe om je portfolio te zien</p>
@@ -274,14 +261,11 @@ export default function Overzicht({ onToevoegen }) {
           )}
         </div>
 
-        {/* Beleggingen tabel */}
         {beleggingen.length > 0 && (
           <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>Beleggingen</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Automatisch opgevolgd door Matico</div>
-              </div>
+            <div style={{ marginBottom: 4 }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Beleggingen</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Automatisch opgevolgd door Matico</div>
             </div>
             <div className="tabel-header belegging-grid" style={{ marginTop: 16 }}>
               <span>Naam ↑↓</span>
@@ -343,7 +327,6 @@ export default function Overzicht({ onToevoegen }) {
         )}
       </div>
 
-      {/* Filter panel */}
       {filterOpen && (
         <>
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 49 }} onClick={() => setFilterOpen(false)} />
@@ -391,7 +374,6 @@ export default function Overzicht({ onToevoegen }) {
         </>
       )}
 
-      {/* Vergelijk modal */}
       {vergelijkOpen && (
         <VergelijkModal
           onClose={() => setVergelijkOpen(false)}
@@ -402,18 +384,6 @@ export default function Overzicht({ onToevoegen }) {
         />
       )}
 
-      {/* Import modal */}
-      {importOpen && (
-        <ImportModal
-          onClose={() => setImportOpen(false)}
-          onImport={(nieuweB) => {
-            setBeleggingen(prev => [...prev, ...nieuweB]);
-            setImportOpen(false);
-          }}
-        />
-      )}
-
-      {/* Detail modal */}
       {detailBelegging && (
         <BeleggingDetail belegging={detailBelegging} onClose={() => setDetailBelegging(null)} />
       )}
@@ -509,189 +479,6 @@ function VergelijkSelector({ value, onChange }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function ImportModal({ onClose, onImport }) {
-  const [stap, setStap] = useState('upload'); // upload, preview, mapping
-  const [bestand, setBestand] = useState(null);
-  const [preview, setPreview] = useState([]);
-  const [headers, setHeaders] = useState([]);
-  const [mapping, setMapping] = useState({ naam: '', symbol: '', datum: '', kostprijs: '', aantal: '', munt: '' });
-  const [fout, setFout] = useState('');
-  const fileRef = useRef(null);
-
-  const parseCSV = (tekst) => {
-    const regels = tekst.trim().split('\n');
-    const sep = regels[0].includes(';') ? ';' : ',';
-    const hdrs = regels[0].split(sep).map(h => h.trim().replace(/"/g, ''));
-    const rijen = regels.slice(1).map(r => {
-      const waarden = r.split(sep).map(w => w.trim().replace(/"/g, ''));
-      const obj = {};
-      hdrs.forEach((h, i) => { obj[h] = waarden[i] || ''; });
-      return obj;
-    });
-    return { hdrs, rijen };
-  };
-
-  const verwerkBestand = async (file) => {
-    setBestand(file);
-    setFout('');
-    const naam = file.name.toLowerCase();
-    if (naam.endsWith('.csv')) {
-      const tekst = await file.text();
-      const { hdrs, rijen } = parseCSV(tekst);
-      setHeaders(hdrs);
-      setPreview(rijen.slice(0, 5));
-      // Auto-detecteer kolommen
-      const autoMapping = { naam: '', symbol: '', datum: '', kostprijs: '', aantal: '', munt: '' };
-      hdrs.forEach(h => {
-        const hl = h.toLowerCase();
-        if (hl.includes('naam') || hl.includes('name') || hl.includes('product')) autoMapping.naam = h;
-        if (hl.includes('symbol') || hl.includes('ticker') || hl.includes('isin')) autoMapping.symbol = h;
-        if (hl.includes('datum') || hl.includes('date') || hl.includes('tijd')) autoMapping.datum = h;
-        if (hl.includes('prijs') || hl.includes('price') || hl.includes('koers') || hl.includes('kost')) autoMapping.kostprijs = h;
-        if (hl.includes('aantal') || hl.includes('quantity') || hl.includes('stuks') || hl.includes('shares')) autoMapping.aantal = h;
-        if (hl.includes('munt') || hl.includes('currency') || hl.includes('valuta')) autoMapping.munt = h;
-      });
-      setMapping(autoMapping);
-      setStap('mapping');
-    } else {
-      setFout('Momenteel alleen CSV bestanden ondersteund. XLSX ondersteuning komt binnenkort.');
-    }
-  };
-
-  const importeer = () => {
-    if (!mapping.symbol || !mapping.kostprijs || !mapping.aantal) {
-      setFout('Selecteer minimaal: Symbool, Kostprijs en Aantal');
-      return;
-    }
-    const nieuweBeleggingen = preview.map((r, i) => ({
-      id: Date.now() + i,
-      naam: mapping.naam ? r[mapping.naam] : r[mapping.symbol] || 'Onbekend',
-      symbol: r[mapping.symbol] || '',
-      type: 'aandeel',
-      datum: mapping.datum ? r[mapping.datum] : '',
-      kostprijs: parseFloat(r[mapping.kostprijs]?.replace(',', '.')) || 0,
-      aantal: parseFloat(r[mapping.aantal]?.replace(',', '.')) || 0,
-      munt: mapping.munt ? r[mapping.munt] : 'EUR',
-    })).filter(b => b.symbol && b.kostprijs > 0 && b.aantal > 0);
-
-    if (nieuweBeleggingen.length === 0) {
-      setFout('Geen geldige beleggingen gevonden in het bestand.');
-      return;
-    }
-    onImport(nieuweBeleggingen);
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-panel" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Importeer beleggingen</h2>
-          <button className="modal-close" onClick={onClose}><X size={16} /></button>
-        </div>
-
-        {stap === 'upload' && (
-          <div style={{ padding: 24 }}>
-            <div
-              style={{
-                border: '2px dashed var(--border)', borderRadius: 12, padding: 40,
-                textAlign: 'center', cursor: 'pointer', transition: 'all 0.15s'
-              }}
-              onClick={() => fileRef.current?.click()}
-              onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--accent)'; }}
-              onDragLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
-              onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--border)'; const f = e.dataTransfer.files[0]; if (f) verwerkBestand(f); }}
-            >
-              <Upload size={32} color="var(--text-muted)" style={{ marginBottom: 12 }} />
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Sleep je bestand hierheen</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>of klik om te bladeren</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>CSV, XLSX of XLS van je broker</div>
-            </div>
-            <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }}
-              onChange={e => { if (e.target.files[0]) verwerkBestand(e.target.files[0]); }} />
-            {fout && <div style={{ marginTop: 12, color: 'var(--red)', fontSize: 13 }}>{fout}</div>}
-
-            <div style={{ marginTop: 24, padding: 16, background: 'var(--bg)', borderRadius: 8 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>💡 Tips voor importeren</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                • Export je transacties als CSV vanuit je broker (Bolero, Degiro, Saxo, ...)<br/>
-                • Zorg dat het bestand kolommen heeft voor: symbool, aantal, prijs en datum<br/>
-                • De app detecteert automatisch de kolommen
-              </div>
-            </div>
-          </div>
-        )}
-
-        {stap === 'mapping' && (
-          <div style={{ padding: 24, overflowY: 'auto', maxHeight: 'calc(100vh - 120px)' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Kolommen koppelen</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
-              Bestand: <strong>{bestand?.name}</strong> — {preview.length} rijen gedetecteerd
-            </div>
-
-            {/* Preview tabel */}
-            <div style={{ overflowX: 'auto', marginBottom: 20, border: '1px solid var(--border)', borderRadius: 8 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr style={{ background: 'var(--bg)' }}>
-                    {headers.map(h => (
-                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.slice(0, 3).map((r, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      {headers.map(h => (
-                        <td key={h} style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}>{r[h]}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mapping velden */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              {[
-                { key: 'naam', label: 'Naam', verplicht: false },
-                { key: 'symbol', label: 'Symbool / Ticker', verplicht: true },
-                { key: 'datum', label: 'Aankoopdatum', verplicht: false },
-                { key: 'kostprijs', label: 'Kostprijs per stuk', verplicht: true },
-                { key: 'aantal', label: 'Aantal', verplicht: true },
-                { key: 'munt', label: 'Munt', verplicht: false },
-              ].map(({ key, label, verplicht }) => (
-                <div key={key}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-                    {label} {verplicht && <span style={{ color: 'var(--red)' }}>*</span>}
-                  </label>
-                  <select
-                    className="form-input"
-                    value={mapping[key]}
-                    onChange={e => setMapping(prev => ({ ...prev, [key]: e.target.value }))}
-                    style={{ fontSize: 13 }}
-                  >
-                    <option value="">— Niet gebruiken —</option>
-                    {headers.map(h => <option key={h} value={h}>{h}</option>)}
-                  </select>
-                </div>
-              ))}
-            </div>
-
-            {fout && <div style={{ marginTop: 12, color: 'var(--red)', fontSize: 13 }}>{fout}</div>}
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setStap('upload')}>Terug</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={importeer}>
-                Importeer {preview.length} beleggingen
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
