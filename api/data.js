@@ -54,25 +54,11 @@ export default async function handler(req, res) {
         default: from = now - 86400; resolution = '15';
       }
 
-      const response = await fetch(
-        `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${now}&token=${FINNHUB_KEY}`
-      );
-      const data = await response.json();
-
-      if (data.s === 'ok' && data.t && data.t.length > 1) {
-        const punten = data.t.map((t, i) => ({
-          label: new Date(t * 1000).toLocaleDateString('nl-BE', {
-            day: 'numeric', month: 'short',
-            ...(tijdperk === '1D' ? { hour: '2-digit', minute: '2-digit' } : {})
-          }),
-          prijs: data.c[i]
-        }));
-        return res.json({ punten });
-      }
-
+// Sla Finnhub over voor historische data, gebruik Alpha Vantage direct
+const outputsize = (tijdperk === '1D' || tijdperk === '1W' || tijdperk === '1M') ? 'compact' : 'full';
 try {
   const avRes = await fetch(
-    `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=full&apikey=${process.env.ALPHAVANTAGE_API_KEY}`
+    `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=${outputsize}&apikey=${process.env.ALPHAVANTAGE_API_KEY}`
   );
   const avData = await avRes.json();
   const tijdreeks = avData['Time Series (Daily)'];
@@ -83,10 +69,13 @@ try {
         prijs: parseFloat(waarden['4. close'])
       }))
       .reverse()
-      .slice(0, dagen);
+      .slice(-dagen);
     return res.json({ punten: alle });
   }
-} catch (e) {}
+} catch (e) { console.error('AV fout:', e); }
+
+return res.json({ punten: [] });
+      
 
       return res.json({ punten: [] });
     }
