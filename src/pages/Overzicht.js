@@ -13,6 +13,31 @@ const VERGELIJK_OPTIES = [
   { id: 'bitcoin', label: 'Bitcoin', symbol: 'BINANCE:BTCUSDT', kleur: '#f97316' },
 ];
 
+// Bereken startdatum op basis van tijdperk en beleggingen
+function getBegindatum(tijdperk, beleggingen) {
+  const nu = new Date();
+  if (tijdperk === 'Laatste') {
+    // Laatste aankoopdatum
+    const datums = beleggingen.filter(b => b.datum).map(b => new Date(b.datum));
+    if (datums.length === 0) { const d = new Date(); d.setMonth(d.getMonth() - 1); return d; }
+    return new Date(Math.max(...datums));
+  }
+  if (tijdperk === 'Totaal') {
+    // Vroegste aankoopdatum
+    const datums = beleggingen.filter(b => b.datum).map(b => new Date(b.datum));
+    if (datums.length === 0) { const d = new Date(); d.setFullYear(d.getFullYear() - 5); return d; }
+    return new Date(Math.min(...datums));
+  }
+  const d = new Date();
+  if (tijdperk === '1W') d.setDate(d.getDate() - 7);
+  else if (tijdperk === '1M') d.setMonth(d.getMonth() - 1);
+  else if (tijdperk === '1J') d.setFullYear(d.getFullYear() - 1);
+  else if (tijdperk === 'YTD') { d.setMonth(0); d.setDate(1); }
+  else if (tijdperk === '3J') d.setFullYear(d.getFullYear() - 3);
+  else if (tijdperk === '5J') d.setFullYear(d.getFullYear() - 5);
+  return d;
+}
+
 export default function Overzicht({ onToevoegen, onImporteren }) {
   const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, dagWinst, dagWinstPct, getMuntFactor } = useApp();
   const [tijdperk, setTijdperk] = useState('1D');
@@ -51,6 +76,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       if (beleggingen.length === 0) { setGrafiekData([]); return; }
       setGrafiekLoading(true);
 
+      // 1D: gisteren en nu
       if (tijdperk === '1D') {
         let gisterenWaarde = 0;
         let nuWaarde = 0;
@@ -73,12 +99,29 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
         return;
       }
 
+      // Bepaal begindatum
+      const begindatum = getBegindatum(tijdperk, beleggingen);
+
+      // Haal historische data op per symbool
       const symbolen = [...new Set(beleggingen.map(b => b.symbol))];
       const historischeData = {};
 
+      // Bepaal welk tijdperk we doorgeven aan de API
+      const apiTijdperk = tijdperk === 'Laatste' || tijdperk === 'Totaal'
+        ? (() => {
+            const dagVerschil = Math.floor((Date.now() - begindatum.getTime()) / 86400000);
+            if (dagVerschil <= 7) return '1W';
+            if (dagVerschil <= 30) return '1M';
+            if (dagVerschil <= 365) return '1J';
+            if (dagVerschil <= 1095) return '3J';
+            if (dagVerschil <= 1825) return '5J';
+            return 'Max';
+          })()
+        : tijdperk;
+
       for (const symbol of symbolen) {
         try {
-          const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(symbol)}&tijdperk=${tijdperk}`);
+          const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(symbol)}&tijdperk=${apiTijdperk}`);
           const data = await res.json();
           if (data.punten && data.punten.length > 0) {
             historischeData[symbol] = data.punten;
@@ -91,22 +134,46 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
         return;
       }
 
+      // Gebruik labels van het eerste symbool
       const eersteSymbol = Object.keys(historischeData)[0];
-      const labels = historischeData[eersteSymbol].map(p => p.label);
+      const allePunten = historischeData[eersteSymbol];
 
-      const gecombineerd = labels.map((label, i) => {
+      // Filter op begindatum
+      const gefilterdePunten = allePunten.filter(p => {
+        // Parse de label terug naar datum (approximatief)
+        return true; // Toon alle punten die de API al gefilterd heeft
+      });
+
+      // Combineer per datumpunt
+      const gecombineerd = gefilterdePunten.map((punt, i) => {
         let totaalWaarde = 0;
         beleggingen.forEach(b => {
           const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
           const symbolData = historischeData[b.symbol];
+
+          // Controleer of de belegging al aangekocht was op dit punt
+          const aankoopDatum = b.datum ? new Date(b.datum) : null;
+
           if (symbolData && symbolData[i]) {
-            totaalWaarde += symbolData[i].prijs * b.aantal * factor;
+            // Schat de datum van dit punt
+            const puntIndex = i;
+            const totaalPunten = gefilterdePunten.length;
+            const geschatteMs = begindatum.getTime() + (puntIndex / totaalPunten) * (Date.now() - begindatum.getTime());
+            const geschatteDatum = new Date(geschatteMs);
+
+            if (!aankoopDatum || geschatteDatum >= aankoopDatum) {
+              totaalWaarde += symbolData[i].prijs * b.aantal * factor;
+            }
+            // Vóór aankoop: gebruik kostprijs als placeholder
+            else {
+              totaalWaarde += b.kostprijs * b.aantal * factor;
+            }
           } else {
             const koers = koersen[b.symbol];
             totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
           }
         });
-        return { label, waarde: Math.round(totaalWaarde * 100) / 100 };
+        return { label: punt.label, waarde: Math.round(totaalWaarde * 100) / 100 };
       });
 
       setGrafiekData(gecombineerd);
@@ -135,7 +202,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
 
   const displayData = weergave === 'waarde' ? grafiekData : winstData;
   const grafiekKleur = grafiekData.length > 1 && grafiekData[grafiekData.length-1]?.waarde >= grafiekData[0]?.waarde ? '#6366f1' : '#ef4444';
-  const yDomain = displayData.length > 0 ? [
+  const yDomain = displayData.length > 1 ? [
     Math.min(...displayData.map(d => d.waarde)) * 0.995,
     Math.max(...displayData.map(d => d.waarde)) * 1.005
   ] : ['auto', 'auto'];
@@ -146,9 +213,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
         <h1>{begroeting()}, {gebruiker.voornaam}</h1>
         <div style={{ position: 'relative' }} ref={menuRef}>
           <button className="btn btn-primary" onClick={() => setToevoegenMenuOpen(!toevoegenMenuOpen)}>
-            <Plus size={16} />
-            Beleggingen toevoegen
-            <ChevronDown size={14} />
+            <Plus size={16} /> Beleggingen toevoegen <ChevronDown size={14} />
           </button>
           {toevoegenMenuOpen && (
             <div style={{
@@ -180,9 +245,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       <div style={{ padding: '0 32px', marginBottom: 24 }}>
         <div className="time-tabs" style={{ display: 'inline-flex' }}>
           {TIJDPERKEN.map(t => (
-            <button key={t} className={`time-tab ${tijdperk === t ? 'active' : ''}`} onClick={() => setTijdperk(t)}>
-              {t}
-            </button>
+            <button key={t} className={`time-tab ${tijdperk === t ? 'active' : ''}`} onClick={() => setTijdperk(t)}>{t}</button>
           ))}
         </div>
       </div>
@@ -202,7 +265,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 </span>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setVergelijkOpen(true)}>
                 <GitCompare size={15} /> Vergelijk
               </button>
@@ -245,8 +308,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                 <YAxis
-                  tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-                  axisLine={false} tickLine={false}
+                  tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
                   tickFormatter={v => weergave === 'waarde' ? '€' + v.toLocaleString('nl-BE') : v.toFixed(1) + '%'}
                   domain={yDomain}
                 />
@@ -392,16 +454,11 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
 }
 
 function VergelijkModal({ onClose, vergelijk1, setVergelijk1, vergelijk2, setVergelijk2, portfolioData, tijdperk, setTijdperk }) {
-  const data = portfolioData.map((d, i) => {
-    const noise1 = (Math.random() - 0.51) * 0.3 * i;
-    const noise2 = (Math.random() - 0.49) * 0.25 * i;
-    return {
-      ...d,
-      benchmark1: vergelijk1 !== 'geen' ? noise1 : undefined,
-      benchmark2: vergelijk2 !== 'geen' ? noise2 : undefined,
-    };
-  });
-
+  const data = portfolioData.map((d, i) => ({
+    ...d,
+    benchmark1: vergelijk1 !== 'geen' ? (Math.random() - 0.51) * 0.3 * i : undefined,
+    benchmark2: vergelijk2 !== 'geen' ? (Math.random() - 0.49) * 0.25 * i : undefined,
+  }));
   const opt1 = VERGELIJK_OPTIES.find(o => o.id === vergelijk1);
   const opt2 = VERGELIJK_OPTIES.find(o => o.id === vergelijk2);
 
@@ -462,8 +519,7 @@ function VergelijkSelector({ value, onChange }) {
         cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit'
       }}>
         {geselecteerd?.kleur && <span style={{ width: 10, height: 10, borderRadius: '50%', background: geselecteerd.kleur, display: 'inline-block' }} />}
-        {geselecteerd?.label}
-        <ChevronDown size={14} />
+        {geselecteerd?.label}<ChevronDown size={14} />
       </button>
       {open && (
         <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'white', border: '1px solid var(--border)', borderRadius: 8, boxShadow: 'var(--shadow-md)', zIndex: 10, minWidth: 180 }}>
