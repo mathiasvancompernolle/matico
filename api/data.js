@@ -11,26 +11,36 @@ export default async function handler(req, res) {
   const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
   const FMP_KEY = process.env.FMP_API_KEY;
 
-  // Wissel keys af op basis van het uur — zo verdelen we de 25 calls/dag over beide keys
+  // Yahoo Finance headers
+  const YF_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Accept': 'application/json'
+  };
+
+  // Alpha Vantage met beide keys als fallback
   const uurVanDag = new Date().getHours();
   const AV_KEY = uurVanDag % 2 === 0 ? AV_KEY_1 : AV_KEY_2;
   const AV_KEY_BACKUP = uurVanDag % 2 === 0 ? AV_KEY_2 : AV_KEY_1;
 
-  // Helper: probeer met beide keys
   async function avFetch(url) {
-    // Probeer eerste key
     try {
       const r = await fetch(url.replace('__AV_KEY__', AV_KEY));
       const d = await r.json();
-      if (!d.Information && !d.Note) return d; // geen rate limit melding
+      if (!d.Information && !d.Note) return d;
     } catch (e) {}
-    // Fallback naar tweede key
     try {
       const r = await fetch(url.replace('__AV_KEY__', AV_KEY_BACKUP));
-      const d = await r.json();
-      return d;
+      return await r.json();
     } catch (e) {}
     return {};
+  }
+
+  // Yahoo Finance symbool omzetten
+  function toYahooSymbol(symbol) {
+    return symbol
+      .replace('.DE', '.DE')   // XETRA blijft .DE
+      .replace('.PA', '.PA')   // Paris blijft .PA
+      .replace('VWCE.DE', 'VWCE.DE');
   }
 
   const { endpoint } = req.query;
@@ -38,11 +48,13 @@ export default async function handler(req, res) {
   try {
     if (endpoint === 'quote') {
       const { symbol } = req.query;
+      // Eerst Finnhub
       try {
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
         const d = await r.json();
         if (d.c && d.c > 0) return res.json(d);
       } catch (e) {}
+      // Fallback: Alpha Vantage voor Europese symbolen
       try {
         const avSym = symbol.replace('.DE', '.DEX').replace('.PA', '.PAR').replace('.AS', '.AMS').replace('.BR', '.BRU').replace('.L', '.LON');
         const d = await avFetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSym}&apikey=__AV_KEY__`);
@@ -79,93 +91,81 @@ export default async function handler(req, res) {
 
     if (endpoint === 'candle') {
       const { symbol, tijdperk } = req.query;
-      const avSym = symbol.replace('.DE', '.DEX').replace('.PA', '.PAR').replace('.AS', '.AMS').replace('.BR', '.BRU').replace('.L', '.LON');
 
-      // 1D: lijn van gisteren naar nu
+      // 1D: lijn van gisteren naar nu via Finnhub of AV
       if (tijdperk === '1D') {
         try {
           const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
           const d = await r.json();
           if (d.c && d.c > 0 && d.pc && d.pc > 0) {
-            const gisteren = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-            const vandaag = new Date().toISOString().split('T')[0];
             return res.json({
               punten: [
-                { label: 'Gisteren', datum: gisteren, prijs: d.pc },
-                { label: 'Nu', datum: vandaag, prijs: d.c }
+                { label: 'Gisteren', datum: new Date(Date.now() - 86400000).toISOString().split('T')[0], prijs: d.pc },
+                { label: 'Nu', datum: new Date().toISOString().split('T')[0], prijs: d.c }
               ]
             });
           }
         } catch (e) {}
         try {
+          const avSym = symbol.replace('.DE', '.DEX').replace('.PA', '.PAR').replace('.AS', '.AMS').replace('.BR', '.BRU').replace('.L', '.LON');
           const d = await avFetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSym}&apikey=__AV_KEY__`);
           const q = d['Global Quote'];
           if (q && q['05. price']) {
-            const gisteren = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-            const vandaag = new Date().toISOString().split('T')[0];
             return res.json({
               punten: [
-                { label: 'Gisteren', datum: gisteren, prijs: parseFloat(q['08. previous close']) },
-                { label: 'Nu', datum: vandaag, prijs: parseFloat(q['05. price']) }
+                { label: 'Gisteren', datum: new Date(Date.now() - 86400000).toISOString().split('T')[0], prijs: parseFloat(q['08. previous close']) },
+                { label: 'Nu', datum: new Date().toISOString().split('T')[0], prijs: parseFloat(q['05. price']) }
               ]
             });
           }
         } catch (e) {}
       }
 
-      // Bereken aantal dagen
-      const dagen = tijdperk === '1W' ? 7
-        : tijdperk === '1M' ? 30
-        : tijdperk === '1J' ? 365
-        : tijdperk === 'YTD' ? Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 1)) / 86400000)
-        : tijdperk === '3J' ? 1095
-        : tijdperk === '5J' ? 1825
-        : 5000;
+      // Bereken Yahoo Finance range en interval
+      const yfRange = tijdperk === '1W' ? '5d'
+        : tijdperk === '1M' ? '1mo'
+        : tijdperk === '1J' ? '1y'
+        : tijdperk === 'YTD' ? 'ytd'
+        : tijdperk === '3J' ? '3y'
+        : tijdperk === '5J' ? '5y'
+        : '10y'; // Max
 
-      // Korte periodes: dagelijkse gecorrigeerde data
-      if (dagen <= 100) {
-        try {
-          const d = await avFetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${avSym}&outputsize=compact&apikey=__AV_KEY__`);
-          const tijdreeks = d['Time Series (Daily)'];
-          if (tijdreeks) {
-            const vanafDatum = new Date();
-            vanafDatum.setDate(vanafDatum.getDate() - dagen);
-            const punten = Object.entries(tijdreeks)
-              .filter(([datum]) => new Date(datum) >= vanafDatum)
-              .reverse()
-              .map(([datum, w]) => ({
-                label: new Date(datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }),
-                datum,
-                prijs: parseFloat(w['5. adjusted close'])
-              }));
-            if (punten.length > 1) return res.json({ punten });
-          }
-        } catch (e) { console.error('Daily fout:', e); }
-      }
+      const yfInterval = tijdperk === '1W' ? '1d'
+        : tijdperk === '1M' ? '1d'
+        : tijdperk === '1J' ? '1wk'
+        : tijdperk === 'YTD' ? '1wk'
+        : '1wk'; // 3J, 5J, Max
 
-      // Lange periodes: wekelijkse gecorrigeerde data
-      if (dagen > 100) {
-        try {
-          const d = await avFetch(`https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY_ADJUSTED&symbol=${avSym}&apikey=__AV_KEY__`);
-          const tijdreeks = d['Weekly Adjusted Time Series'];
-          if (tijdreeks) {
-            const vanafDatum = new Date();
-            vanafDatum.setDate(vanafDatum.getDate() - dagen);
-            const punten = Object.entries(tijdreeks)
-              .filter(([datum]) => new Date(datum) >= vanafDatum)
-              .reverse()
-              .map(([datum, w]) => ({
-                label: new Date(datum).toLocaleDateString('nl-BE', {
+      // Yahoo Finance v8 API — gecorrigeerde koersen, gratis!
+      try {
+        const yfSym = toYahooSymbol(symbol);
+        const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=${yfRange}&interval=${yfInterval}&events=div,splits`;
+        const r = await fetch(yfUrl, { headers: YF_HEADERS });
+        const data = await r.json();
+        const result = data?.chart?.result?.[0];
+
+        if (result && result.timestamp) {
+          const timestamps = result.timestamp;
+          const adjClose = result.indicators?.adjclose?.[0]?.adjclose || result.indicators?.quote?.[0]?.close;
+
+          if (adjClose && adjClose.length > 1) {
+            const punten = timestamps.map((t, i) => {
+              if (adjClose[i] === null || adjClose[i] === undefined) return null;
+              const datum = new Date(t * 1000);
+              return {
+                label: datum.toLocaleDateString('nl-BE', {
                   day: 'numeric', month: 'short',
-                  year: dagen > 365 ? 'numeric' : undefined
+                  year: (tijdperk === '3J' || tijdperk === '5J' || tijdperk === 'Max') ? 'numeric' : undefined
                 }),
-                datum,
-                prijs: parseFloat(w['5. adjusted close'])
-              }));
+                datum: datum.toISOString().split('T')[0],
+                prijs: Math.round(adjClose[i] * 100) / 100
+              };
+            }).filter(p => p !== null);
+
             if (punten.length > 1) return res.json({ punten });
           }
-        } catch (e) { console.error('Weekly fout:', e); }
-      }
+        }
+      } catch (e) { console.error('Yahoo Finance fout:', e); }
 
       return res.json({ punten: [] });
     }
