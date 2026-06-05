@@ -1,51 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Loader } from 'lucide-react';
+import { X, Loader, ExternalLink, Copy, Check } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const TIJDPERKEN = ['1D', '1W', '1M', '1J', 'YTD', '3J', '5J', 'Max'];
 
 export default function BeleggingDetail({ belegging, onClose }) {
-  const { koersen } = useApp();
+  const { koersen, getMuntFactor, portfolioWaarde } = useApp();
   const [tijdperk, setTijdperk] = useState('1D');
   const [grafiekData, setGrafiekData] = useState([]);
+  const [grafiekLoading, setGrafiekLoading] = useState(false);
   const [profiel, setProfiel] = useState(null);
   const [metrics, setMetrics] = useState(null);
   const [nieuws, setNieuws] = useState([]);
   const [analyse, setAnalyse] = useState(null);
   const [analyseLoading, setAnalyseLoading] = useState(false);
   const [aktieveTab, setAktieveTab] = useState('sector');
+  const [beschrijvingUitgeklapt, setBeschrijvingUitgeklapt] = useState(false);
+  const [gekopieerd, setGekopieerd] = useState(false);
 
   const koers = koersen[belegging.symbol];
   const huidigePrijs = koers ? koers.c : belegging.kostprijs;
-  const factor = (belegging.munt || 'EUR') === 'USD' ? 0.92 : 1;
+  const factor = getMuntFactor ? getMuntFactor(belegging.munt || 'EUR') : ((belegging.munt || 'EUR') === 'USD' ? 0.865 : 1);
   const huidigeWaarde = huidigePrijs * belegging.aantal * factor;
-  const winstTotaal = huidigeWaarde - belegging.kostprijs * belegging.aantal * factor;
-  const winstTotaalPct = belegging.kostprijs > 0 ? (winstTotaal / (belegging.kostprijs * belegging.aantal * factor)) * 100 : 0;
+  const kostprijsTotaal = belegging.kostprijs * belegging.aantal * factor;
+  const winstTotaal = huidigeWaarde - kostprijsTotaal;
+  const winstTotaalPct = kostprijsTotaal > 0 ? (winstTotaal / kostprijsTotaal) * 100 : 0;
   const dagV = koers ? (koers.c - koers.pc) : 0;
   const dagVPct = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
-
+  const dagVEur = dagV * belegging.aantal * factor;
+  const gewicht = portfolioWaarde > 0 ? (huidigeWaarde / portfolioWaarde) * 100 : 0;
   const muntSym = (belegging.munt || 'EUR') === 'USD' ? '$' : '€';
+  const isBeursgesloten = koers && (koers.c === koers.pc || dagV === 0);
 
-  // Laad grafiek data
+  // Echte historische grafiek data
   useEffect(() => {
-    const punten = tijdperk === '1D' ? 8 : tijdperk === '1W' ? 7 : 30;
-    const now = Date.now();
-    const data = [];
-    for (let i = punten; i >= 0; i--) {
-      const t = new Date(now - i * (tijdperk === '1D' ? 3600000 : 86400000));
-      const ruis = (Math.random() - 0.502) * huidigePrijs * 0.005 * i;
-      data.push({
-        label: tijdperk === '1D'
-          ? t.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' })
-          : t.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }),
-        prijs: Math.max(0, huidigePrijs + ruis)
-      });
-    }
-    setGrafiekData(data);
-  }, [tijdperk, huidigePrijs]);
+    const laadGrafiek = async () => {
+      setGrafiekLoading(true);
+      try {
+        const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(belegging.symbol)}&tijdperk=${tijdperk}`);
+        const data = await res.json();
+        if (data.punten && data.punten.length > 0) {
+          setGrafiekData(data.punten);
+          setGrafiekLoading(false);
+          return;
+        }
+      } catch (e) { console.error('Grafiek fout:', e); }
+      setGrafiekData([{ label: 'Nu', prijs: huidigePrijs }]);
+      setGrafiekLoading(false);
+    };
+    laadGrafiek();
+  }, [tijdperk, belegging.symbol, huidigePrijs]);
 
-  // Laad profiel & nieuws
+  // Profiel, metrics & nieuws
   useEffect(() => {
     const laad = async () => {
       try {
@@ -60,9 +67,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
         if (p.name) setProfiel(p);
         if (m.metric) setMetrics(m.metric);
         if (Array.isArray(n)) setNieuws(n.slice(0, 5));
-      } catch (e) {
-        console.error('Detail data fout:', e);
-      }
+      } catch (e) { console.error('Detail data fout:', e); }
     };
     laad();
   }, [belegging.symbol]);
@@ -73,22 +78,23 @@ export default function BeleggingDetail({ belegging, onClose }) {
       const res = await fetch('/api/data?endpoint=ai-analyse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: belegging.symbol,
-          name: belegging.naam,
-          price: huidigePrijs,
-          change: dagVPct.toFixed(2)
-        })
+        body: JSON.stringify({ symbol: belegging.symbol, name: belegging.naam, price: huidigePrijs, change: dagVPct.toFixed(2) })
       });
       const data = await res.json();
       setAnalyse(data.analyse);
-    } catch (e) {
-      setAnalyse('Analyse momenteel niet beschikbaar.');
-    }
+    } catch (e) { setAnalyse('Analyse momenteel niet beschikbaar.'); }
     setAnalyseLoading(false);
   };
 
-  // Nep ETF verdeling data
+  const kopieerISIN = (isin) => {
+    navigator.clipboard.writeText(isin);
+    setGekopieerd(true);
+    setTimeout(() => setGekopieerd(false), 2000);
+  };
+
+  const grafiekKleur = grafiekData.length > 1 && grafiekData[grafiekData.length-1].prijs >= grafiekData[0].prijs ? '#22c55e' : '#ef4444';
+
+  // ETF sector data
   const etfSectorData = [
     { naam: 'Technologie', pct: 29.01, kleur: '#6366f1' },
     { naam: 'Financiële dienstverlening', pct: 16.10, kleur: '#8b5cf6' },
@@ -105,6 +111,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel" onClick={e => e.stopPropagation()}>
+
         {/* Header */}
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -119,26 +126,28 @@ export default function BeleggingDetail({ belegging, onClose }) {
           <button className="modal-close" onClick={onClose}><X size={16} /></button>
         </div>
 
-        {/* Koers */}
+        {/* Koers + dagverandering */}
         <div className="detail-section">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div className="detail-koers">{muntSym}{huidigePrijs.toFixed(2)}</div>
-            {koers?.t && (
-              <span style={{ fontSize: 12, color: 'var(--text-muted)', background: '#fef9c3', padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div className="detail-koers">{muntSym}{huidigePrijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            {isBeursgesloten && (
+              <span style={{ fontSize: 11, color: '#b45309', background: '#fef3c7', padding: '3px 10px', borderRadius: 6, fontWeight: 600 }}>
                 Beurs gesloten
               </span>
             )}
           </div>
-          <div style={{ fontSize: 13, color: dagVPct >= 0 ? 'var(--green)' : 'var(--red)', marginTop: 4 }}>
-            {dagVPct >= 0 ? '+' : ''}{dagVPct.toFixed(2)}% ({dagV >= 0 ? '+' : ''}{muntSym}{dagV.toFixed(2)})
+          <div style={{ fontSize: 14, color: dagVPct >= 0 ? 'var(--green)' : 'var(--red)', marginTop: 4, fontWeight: 500 }}>
+            {dagVPct >= 0 ? '+' : ''}{dagVPct.toFixed(2)}% ({dagV >= 0 ? '+' : ''}{muntSym}{Math.abs(dagV).toFixed(2)})
           </div>
         </div>
 
         {/* Tijdperk tabs */}
-        <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--border-light)' }}>
+        <div style={{ padding: '10px 24px', borderBottom: '1px solid var(--border-light)' }}>
           <div className="time-tabs" style={{ display: 'flex' }}>
             {TIJDPERKEN.map(t => (
-              <button key={t} className={`time-tab ${tijdperk === t ? 'active' : ''}`} onClick={() => setTijdperk(t)} style={{ flex: 1, padding: '5px 4px', fontSize: 12 }}>
+              <button key={t} className={`time-tab ${tijdperk === t ? 'active' : ''}`}
+                onClick={() => setTijdperk(t)}
+                style={{ flex: 1, padding: '5px 2px', fontSize: 12 }}>
                 {t}
               </button>
             ))}
@@ -147,34 +156,45 @@ export default function BeleggingDetail({ belegging, onClose }) {
 
         {/* Grafiek */}
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-light)' }}>
-          <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={grafiekData}>
-              <defs>
-                <linearGradient id="detailGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => muntSym + v.toFixed(0)} domain={['auto', 'auto']} />
-              <Tooltip formatter={v => [muntSym + v.toFixed(2), 'Koers']} contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }} />
-              <Area type="monotone" dataKey="prijs" stroke="#6366f1" strokeWidth={2} fill="url(#detailGrad)" dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
+          {grafiekLoading ? (
+            <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+              <Loader size={20} style={{ animation: 'spin 1s linear infinite' }} />
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={160}>
+              <AreaChart data={grafiekData}>
+                <defs>
+                  <linearGradient id="detailGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={grafiekKleur} stopOpacity={0.15} />
+                    <stop offset="95%" stopColor={grafiekKleur} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => muntSym + v.toFixed(0)} domain={['auto', 'auto']} width={55} />
+                <Tooltip
+                  formatter={v => [muntSym + v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 'Koers']}
+                  contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }}
+                />
+                <Area type="monotone" dataKey="prijs" stroke={grafiekKleur} strokeWidth={2} fill="url(#detailGrad)" dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
 
-          {/* Open/hoog/laag/volume */}
+          {/* Open/hoog/laag/volume + extra metrics */}
           {koers && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16 }}>
               {[
                 { l: 'Open', v: muntSym + (koers.o || 0).toFixed(2) },
                 { l: 'Laagste', v: muntSym + (koers.l || 0).toFixed(2) },
-                { l: 'Volume', v: (koers.v || 0).toLocaleString() },
                 { l: 'Hoogste', v: muntSym + (koers.h || 0).toFixed(2) },
-              ].map(({ l, v }) => (
+                { l: 'Volume', v: (koers.v || 0) > 1000000 ? ((koers.v || 0) / 1000000).toFixed(1) + ' mln.' : (koers.v || 0).toLocaleString() },
+                metrics?.['peNormalizedAnnual'] ? { l: 'Koers-winstverhouding', v: metrics['peNormalizedAnnual'].toFixed(1) } : null,
+                profiel?.marketCapitalization ? { l: 'Beurswaarde', v: '$' + (profiel.marketCapitalization).toFixed(1) + ' mld.' } : null,
+              ].filter(Boolean).map(({ l, v }) => (
                 <div key={l}>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{l}</div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{v}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{l}</div>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{v}</div>
                 </div>
               ))}
             </div>
@@ -191,7 +211,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
             </div>
             <div>
               <div className="detail-item-label">Gem. prijs</div>
-              <div className="detail-item-value">{muntSym}{belegging.kostprijs.toFixed(2)}</div>
+              <div className="detail-item-value">€{(belegging.kostprijs * factor).toFixed(2)}</div>
             </div>
             <div>
               <div className="detail-item-label">Totale waarde</div>
@@ -199,93 +219,146 @@ export default function BeleggingDetail({ belegging, onClose }) {
             </div>
             <div>
               <div className="detail-item-label">Gewicht</div>
-              <div className="detail-item-value">{((huidigeWaarde / (huidigeWaarde || 1)) * 100).toFixed(1)}%</div>
+              <div className="detail-item-value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {gewicht.toFixed(1)}%
+                <svg width="18" height="18" viewBox="0 0 18 18">
+                  <circle cx="9" cy="9" r="8" fill="none" stroke="var(--border)" strokeWidth="2"/>
+                  <circle cx="9" cy="9" r="8" fill="none" stroke="var(--accent)" strokeWidth="2"
+                    strokeDasharray={`${gewicht / 100 * 50.3} 50.3`} strokeLinecap="round"
+                    transform="rotate(-90 9 9)"/>
+                </svg>
+              </div>
             </div>
             <div>
               <div className="detail-item-label">Winst vandaag</div>
-              <div className="detail-item-value" style={{ color: dagV >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                €{(dagV * belegging.aantal * factor).toFixed(2)}
+              <div className="detail-item-value" style={{ color: dagVEur >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                {dagVEur >= 0 ? '+' : ''}€{Math.abs(dagVEur).toFixed(2)}
               </div>
             </div>
             <div>
               <div className="detail-item-label">Totale winst</div>
               <div className="detail-item-value" style={{ color: winstTotaal >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                €{winstTotaal.toFixed(2)}
+                {winstTotaal >= 0 ? '+' : ''}€{Math.abs(winstTotaal).toFixed(2)}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Profiel info */}
+        {/* Bedrijfsinfo */}
         {profiel && (
           <div className="detail-section">
-            <h3>{belegging.type === 'etf' ? 'ETF info' : 'Bedrijfsinfo'}</h3>
+            <h3>Bedrijfsinfo</h3>
             <div className="detail-grid">
-              {[
-                { l: 'Aanbieder', v: profiel.name },
-                { l: 'Land', v: profiel.country },
-                { l: 'Sector', v: profiel.finnhubIndustry },
-                { l: 'Marktkap.', v: profiel.marketCapitalization ? '€' + (profiel.marketCapitalization / 1000).toFixed(1) + ' mld.' : '-' },
-              ].map(({ l, v }) => v && (
-                <div key={l}>
-                  <div className="detail-item-label">{l}</div>
-                  <div className="detail-item-value" style={{ fontSize: 13 }}>{v}</div>
+              {profiel.finnhubIndustry && (
+                <div>
+                  <div className="detail-item-label">Sector</div>
+                  <div className="detail-item-value" style={{ fontSize: 13 }}>{profiel.finnhubIndustry}</div>
                 </div>
-              ))}
+              )}
+              {profiel.finnhubIndustry && (
+                <div>
+                  <div className="detail-item-label">Industrie</div>
+                  <div className="detail-item-value" style={{ fontSize: 13 }}>{profiel.finnhubIndustry}</div>
+                </div>
+              )}
+              {profiel.employeeTotal && (
+                <div>
+                  <div className="detail-item-label">Werknemers</div>
+                  <div className="detail-item-value" style={{ fontSize: 13 }}>{parseInt(profiel.employeeTotal).toLocaleString()}</div>
+                </div>
+              )}
+              {profiel.ipo && (
+                <div>
+                  <div className="detail-item-label">Beursgang</div>
+                  <div className="detail-item-value" style={{ fontSize: 13 }}>
+                    {new Date(profiel.ipo).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </div>
+                </div>
+              )}
+              {profiel.cusip && (
+                <div>
+                  <div className="detail-item-label">CEO</div>
+                  <div className="detail-item-value" style={{ fontSize: 13 }}>{profiel.name}</div>
+                </div>
+              )}
+              {profiel.isin && (
+                <div>
+                  <div className="detail-item-label">ISIN</div>
+                  <div className="detail-item-value" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {profiel.isin}
+                    <button onClick={() => kopieerISIN(profiel.isin)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}>
+                      {gekopieerd ? <Check size={13} color="var(--green)" /> : <Copy size={13} />}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Beschrijving */}
+            {profiel.description && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Over</div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  {beschrijvingUitgeklapt ? profiel.description : profiel.description.slice(0, 180) + (profiel.description.length > 180 ? '...' : '')}
+                </div>
+                {profiel.description.length > 180 && (
+                  <button onClick={() => setBeschrijvingUitgeklapt(!beschrijvingUitgeklapt)}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 13, cursor: 'pointer', padding: '4px 0', fontWeight: 600 }}>
+                    {beschrijvingUitgeklapt ? 'Minder' : 'Lees meer'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {profiel.weburl && (
+              <a href={profiel.weburl} target="_blank" rel="noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 12, fontSize: 13, color: 'var(--accent)', textDecoration: 'none' }}>
+                <ExternalLink size={13} /> Website bezoeken
+              </a>
+            )}
           </div>
         )}
 
-        {/* ETF Verdeling (voor ETFs) */}
+        {/* ETF Verdeling */}
         {belegging.type === 'etf' && (
           <div className="detail-section">
             <h3>ETF Verdeling</h3>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              {['sector', 'regio', 'effect type'].map(t => (
-                <button
-                  key={t}
-                  onClick={() => setAktieveTab(t)}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+              {['Sector', 'Regio', 'Effect type'].map(t => (
+                <button key={t} onClick={() => setAktieveTab(t.toLowerCase())}
                   style={{
                     padding: '6px 14px', borderRadius: 20, border: '1px solid var(--border)',
-                    background: aktieveTab === t ? 'var(--text-primary)' : 'transparent',
-                    color: aktieveTab === t ? 'white' : 'var(--text-secondary)',
-                    fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500,
-                    textTransform: 'capitalize'
-                  }}
-                >
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                    background: aktieveTab === t.toLowerCase() ? 'var(--text-primary)' : 'transparent',
+                    color: aktieveTab === t.toLowerCase() ? 'white' : 'var(--text-secondary)',
+                    fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500
+                  }}>
+                  {t}
                 </button>
               ))}
             </div>
             <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-              {/* Donut chart */}
-              <svg width="120" height="120" viewBox="0 0 120 120">
-                {etfSectorData.reduce((acc, item, i) => {
+              <svg width="110" height="110" viewBox="0 0 120 120">
+                {etfSectorData.reduce((acc, item) => {
                   const total = etfSectorData.reduce((s, d) => s + d.pct, 0);
-                  const startAngle = acc.angle;
                   const angle = (item.pct / total) * 360;
-                  const endAngle = startAngle + angle;
-                  const r = 50, cx = 60, cy = 60, inner = 30;
+                  const endAngle = acc.angle + angle;
+                  const r = 50, cx = 60, cy = 60, inner = 28;
                   const toRad = a => (a - 90) * Math.PI / 180;
-                  const x1 = cx + r * Math.cos(toRad(startAngle));
-                  const y1 = cy + r * Math.sin(toRad(startAngle));
-                  const x2 = cx + r * Math.cos(toRad(endAngle));
-                  const y2 = cy + r * Math.sin(toRad(endAngle));
-                  const xi1 = cx + inner * Math.cos(toRad(startAngle));
-                  const yi1 = cy + inner * Math.sin(toRad(startAngle));
-                  const xi2 = cx + inner * Math.cos(toRad(endAngle));
-                  const yi2 = cy + inner * Math.sin(toRad(endAngle));
+                  const x1 = cx + r * Math.cos(toRad(acc.angle)), y1 = cy + r * Math.sin(toRad(acc.angle));
+                  const x2 = cx + r * Math.cos(toRad(endAngle)), y2 = cy + r * Math.sin(toRad(endAngle));
+                  const xi1 = cx + inner * Math.cos(toRad(acc.angle)), yi1 = cy + inner * Math.sin(toRad(acc.angle));
+                  const xi2 = cx + inner * Math.cos(toRad(endAngle)), yi2 = cy + inner * Math.sin(toRad(endAngle));
                   const large = angle > 180 ? 1 : 0;
                   const d = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${inner} ${inner} 0 ${large} 0 ${xi1} ${yi1} Z`;
-                  acc.elements.push(<path key={i} d={d} fill={item.kleur} stroke="white" strokeWidth="1" />);
+                  acc.elements.push(<path key={item.naam} d={d} fill={item.kleur} stroke="white" strokeWidth="1.5" />);
                   acc.angle = endAngle;
                   return acc;
                 }, { angle: 0, elements: [] }).elements}
               </svg>
               <div style={{ flex: 1 }}>
-                {etfSectorData.slice(0, 6).map(s => (
-                  <div key={s.naam} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.kleur, flexShrink: 0, display: 'inline-block' }} />
+                {etfSectorData.slice(0, 7).map(s => (
+                  <div key={s.naam} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                    <div style={{ width: 28, height: 4, borderRadius: 2, background: s.kleur, flexShrink: 0 }} />
                     <span style={{ fontSize: 12, flex: 1 }}>{s.naam}</span>
                     <span style={{ fontSize: 12, fontWeight: 600 }}>{s.pct}%</span>
                   </div>
@@ -295,7 +368,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
           </div>
         )}
 
-        {/* Top 10 onderliggende (voor ETFs) */}
+        {/* Top 10 onderliggende (ETF) */}
         {belegging.type === 'etf' && (
           <div className="detail-section">
             <h3>Top 10 onderliggende beleggingen</h3>
@@ -323,35 +396,16 @@ export default function BeleggingDetail({ belegging, onClose }) {
           </div>
         )}
 
-        {/* Metrics */}
-        {metrics && (
-          <div className="detail-section">
-            <h3>Kerncijfers</h3>
-            <div className="detail-grid">
-              {[
-                { l: 'P/E ratio', v: metrics['peNormalizedAnnual']?.toFixed(1) },
-                { l: '52w hoog', v: metrics['52WeekHigh'] ? muntSym + metrics['52WeekHigh']?.toFixed(2) : null },
-                { l: '52w laag', v: metrics['52WeekLow'] ? muntSym + metrics['52WeekLow']?.toFixed(2) : null },
-                { l: 'Beta', v: metrics['beta']?.toFixed(2) },
-              ].filter(i => i.v).map(({ l, v }) => (
-                <div key={l}>
-                  <div className="detail-item-label">{l}</div>
-                  <div className="detail-item-value" style={{ fontSize: 13 }}>{v}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Nieuws */}
         {nieuws.length > 0 && (
           <div className="detail-section">
             <h3>Laatste nieuws</h3>
             {nieuws.map((n, i) => (
-              <a key={i} href={n.url} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '10px 0', borderBottom: '1px solid var(--border-light)', textDecoration: 'none', color: 'inherit' }}>
+              <a key={i} href={n.url} target="_blank" rel="noreferrer"
+                style={{ display: 'block', padding: '12px 0', borderBottom: '1px solid var(--border-light)', textDecoration: 'none', color: 'inherit' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, lineHeight: 1.4 }}>{n.headline}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  {n.source} · {new Date(n.datetime * 1000).toLocaleDateString('nl-BE')}
+                  {n.source} · {new Date(n.datetime * 1000).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
               </a>
             ))}
@@ -381,8 +435,9 @@ export default function BeleggingDetail({ belegging, onClose }) {
             </div>
           )}
         </div>
-      </div>
 
+        <div style={{ height: 32 }} />
+      </div>
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );

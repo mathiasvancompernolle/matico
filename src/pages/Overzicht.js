@@ -27,7 +27,7 @@ function berekendagData(beleggingen, koersen, tijdperk) {
     beleggingen.forEach(b => {
       const koers = koersen[b.symbol];
       const prijs = koers ? koers.c * (1 + (Math.random() - 0.502) * 0.002 * (punten - i)) : b.kostprijs;
-      const factor = (b.munt || 'EUR') === 'USD' ? 0.92 : 1;
+      const factor = getMuntFactor ? getMuntFactor(b.munt || "EUR") : ((b.munt || "EUR") === "USD" ? 0.865 : 1);
       waarde += prijs * b.aantal * factor;
     });
     data.push({ label, waarde: Math.round(waarde * 100) / 100 });
@@ -36,7 +36,7 @@ function berekendagData(beleggingen, koersen, tijdperk) {
 }
 
 export default function Overzicht({ onToevoegen }) {
-  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, dagWinst, dagWinstPct } = useApp();
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, dagWinst, dagWinstPct, getMuntFactor } = useApp();
   const [tijdperk, setTijdperk] = useState('1D');
   const [weergave, setWeergave] = useState('waarde');
   const [grafiekData, setGrafiekData] = useState([]);
@@ -214,7 +214,7 @@ export default function Overzicht({ onToevoegen }) {
             {gefilterdeBeleggingen.map(b => {
               const koers = koersen[b.symbol];
               const huidigePrijs = koers ? koers.c : b.kostprijs;
-              const factor = (b.munt || 'EUR') === 'USD' ? 0.92 : 1;
+              const factor = getMuntFactor ? getMuntFactor(b.munt || "EUR") : ((b.munt || "EUR") === "USD" ? 0.865 : 1);
               const huidigeWaarde = huidigePrijs * b.aantal * factor;
               const kostprijs = b.kostprijs * b.aantal * factor;
               const winstTotaal = huidigeWaarde - kostprijs;
