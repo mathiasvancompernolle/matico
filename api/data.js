@@ -15,13 +15,11 @@ export default async function handler(req, res) {
   try {
     if (endpoint === 'quote') {
       const { symbol } = req.query;
-      // Eerst Finnhub proberen
       try {
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
         const d = await r.json();
         if (d.c && d.c > 0) return res.json(d);
       } catch (e) {}
-      // Fallback: Alpha Vantage voor Europese symbolen
       try {
         const avSym = symbol
           .replace('.DE', '.DEX')
@@ -65,7 +63,6 @@ export default async function handler(req, res) {
     if (endpoint === 'candle') {
       const { symbol, tijdperk } = req.query;
 
-      // Zet Europese symbolen om voor Alpha Vantage
       const avSym = symbol
         .replace('.DE', '.DEX')
         .replace('.PA', '.PAR')
@@ -73,26 +70,34 @@ export default async function handler(req, res) {
         .replace('.BR', '.BRU')
         .replace('.L', '.LON');
 
-      // 1D: intradag data per uur
+      // 1D: lijn van gisteren naar nu
       if (tijdperk === '1D') {
         try {
-          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${avSym}&interval=60min&outputsize=compact&apikey=${AV_KEY}`);
+          const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
           const d = await r.json();
-          const tijdreeks = d['Time Series (60min)'];
-          if (tijdreeks) {
-            const vandaag = new Date().toISOString().split('T')[0];
-            const gisteren = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-            const punten = Object.entries(tijdreeks)
-              .filter(([t]) => t.startsWith(vandaag) || t.startsWith(gisteren))
-              .slice(0, 24)
-              .reverse()
-              .map(([t, w]) => ({
-                label: t.split(' ')[1].slice(0, 5),
-                prijs: parseFloat(w['4. close'])
-              }));
-            if (punten.length > 0) return res.json({ punten });
+          if (d.c && d.c > 0 && d.pc && d.pc > 0) {
+            return res.json({
+              punten: [
+                { label: 'Gisteren', prijs: d.pc },
+                { label: 'Nu', prijs: d.c }
+              ]
+            });
           }
-        } catch (e) { console.error('1D fout:', e); }
+        } catch (e) {}
+        // Fallback voor Europese producten
+        try {
+          const r = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSym}&apikey=${AV_KEY}`);
+          const d = await r.json();
+          const q = d['Global Quote'];
+          if (q && q['05. price']) {
+            return res.json({
+              punten: [
+                { label: 'Gisteren', prijs: parseFloat(q['08. previous close']) },
+                { label: 'Nu', prijs: parseFloat(q['05. price']) }
+              ]
+            });
+          }
+        } catch (e) {}
       }
 
       // Bereken aantal dagen
