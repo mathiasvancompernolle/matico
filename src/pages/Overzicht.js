@@ -337,7 +337,15 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                   labelStyle={{ fontSize: 12 }}
                   contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}
                 />
-                <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)" dot={false} activeDot={{ r: 4, fill: grafiekKleur }} />
+                <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)"
+  dot={(props) => {
+    const { cx, cy, payload } = props;
+    const isAankoop = beleggingen.some(b => b.datum && payload.datum === b.datum);
+    if (!isAankoop) return null;
+    return <circle key={payload.datum} cx={cx} cy={cy} r={5} fill="white" stroke={grafiekKleur} strokeWidth={2} />;
+  }}
+  activeDot={{ r: 4, fill: grafiekKleur }}
+/>
               </AreaChart>
             </ResponsiveContainer>
           )}
