@@ -33,7 +33,6 @@ export default function BeleggingDetail({ belegging, onClose }) {
   const muntSym = (belegging.munt || 'EUR') === 'USD' ? '$' : '€';
   const isBeursgesloten = koers && (koers.c === koers.pc || dagV === 0);
 
-  // Echte historische grafiek data
   useEffect(() => {
     const laadGrafiek = async () => {
       setGrafiekLoading(true);
@@ -52,7 +51,6 @@ export default function BeleggingDetail({ belegging, onClose }) {
     laadGrafiek();
   }, [tijdperk, belegging.symbol, huidigePrijs]);
 
-  // Profiel, metrics & nieuws
   useEffect(() => {
     const laad = async () => {
       try {
@@ -94,7 +92,6 @@ export default function BeleggingDetail({ belegging, onClose }) {
 
   const grafiekKleur = grafiekData.length > 1 && grafiekData[grafiekData.length-1].prijs >= grafiekData[0].prijs ? '#22c55e' : '#ef4444';
 
-  // ETF sector data
   const etfSectorData = [
     { naam: 'Technologie', pct: 29.01, kleur: '#6366f1' },
     { naam: 'Financiële dienstverlening', pct: 16.10, kleur: '#8b5cf6' },
@@ -126,7 +123,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
           <button className="modal-close" onClick={onClose}><X size={16} /></button>
         </div>
 
-        {/* Koers + dagverandering */}
+        {/* Koers */}
         <div className="detail-section">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div className="detail-koers">{muntSym}{huidigePrijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
@@ -181,24 +178,22 @@ export default function BeleggingDetail({ belegging, onClose }) {
             </ResponsiveContainer>
           )}
 
-          {/* Open/hoog/laag/volume + extra metrics */}
-          {koers && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16 }}>
-              {[
-                { l: 'Open', v: muntSym + (koers.o || 0).toFixed(2) },
-                { l: 'Laagste', v: muntSym + (koers.l || 0).toFixed(2) },
-                { l: 'Hoogste', v: muntSym + (koers.h || 0).toFixed(2) },
-                { l: 'Volume', v: (koers.v || 0) > 1000000 ? ((koers.v || 0) / 1000000).toFixed(1) + ' mln.' : (koers.v || 0).toLocaleString() },
-                metrics?.['peNormalizedAnnual'] ? { l: 'Koers-winstverhouding', v: metrics['peNormalizedAnnual'].toFixed(1) } : null,
-                profiel?.marketCapitalization ? { l: 'Beurswaarde', v: '$' + (profiel.marketCapitalization / 1000).toFixed(1) + ' mld.' } : null,
-              ].filter(Boolean).map(({ l, v }) => (
-                <div key={l}>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{l}</div>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{v}</div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Statistieken */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16 }}>
+            {[
+              { l: 'Open', v: koers ? muntSym + (koers.o || 0).toFixed(2) : '-' },
+              { l: 'Laagste', v: koers ? muntSym + (koers.l || 0).toFixed(2) : '-' },
+              { l: 'Hoogste', v: koers ? muntSym + (koers.h || 0).toFixed(2) : '-' },
+              { l: 'Gem. volume (10d)', v: metrics?.['10DayAverageTradingVolume'] ? (metrics['10DayAverageTradingVolume'] * 1000000).toLocaleString('nl-BE') : (koers?.v || 0).toLocaleString() },
+              { l: 'Koers-winstverhouding', v: metrics ? (metrics['forwardPE'] ? metrics['forwardPE'].toFixed(1) : metrics['peNormalizedAnnual']?.toFixed(1)) : '-' },
+              { l: 'Beurswaarde', v: profiel?.marketCapitalization ? '$' + (profiel.marketCapitalization / 1000).toFixed(1) + ' mld.' : '-' },
+            ].filter(i => i.v && i.v !== '-').map(({ l, v }) => (
+              <div key={l}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{l}</div>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{v}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Je belegging */}
@@ -255,10 +250,10 @@ export default function BeleggingDetail({ belegging, onClose }) {
                   <div className="detail-item-value" style={{ fontSize: 13 }}>{profiel.finnhubIndustry}</div>
                 </div>
               )}
-              {profiel.finnhubIndustry && (
+              {profiel.country && (
                 <div>
-                  <div className="detail-item-label">Industrie</div>
-                  <div className="detail-item-value" style={{ fontSize: 13 }}>{profiel.finnhubIndustry}</div>
+                  <div className="detail-item-label">Land</div>
+                  <div className="detail-item-value" style={{ fontSize: 13 }}>{profiel.country}</div>
                 </div>
               )}
               {profiel.employeeTotal && (
@@ -275,10 +270,10 @@ export default function BeleggingDetail({ belegging, onClose }) {
                   </div>
                 </div>
               )}
-              {profiel.cusip && (
+              {profiel.ceo && (
                 <div>
                   <div className="detail-item-label">CEO</div>
-                  <div className="detail-item-value" style={{ fontSize: 13 }}>{profiel.name}</div>
+                  <div className="detail-item-value" style={{ fontSize: 13 }}>{profiel.ceo}</div>
                 </div>
               )}
               {profiel.isin && (
@@ -294,7 +289,6 @@ export default function BeleggingDetail({ belegging, onClose }) {
               )}
             </div>
 
-            {/* Beschrijving */}
             {profiel.description && (
               <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Over</div>
