@@ -8,28 +8,30 @@ import { Dividend } from './pages/Analyse';
 import { Belastingen } from './pages/Analyse';
 import { Instellingen } from './pages/Analyse';
 import BeleggingToevoegen from './pages/BeleggingToevoegen';
+import ImportBeleggingen from './pages/ImportBeleggingen';
 import './App.css';
 
 function AppInner() {
   const { activeNav, setActiveNav, gebruiker } = useApp();
   const [toevoegenOpen, setToevoegenOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Eerste keer: naam instellen
   if (!gebruiker.voornaam) {
     return <NaamInstellen />;
   }
 
   const renderPage = () => {
+    if (importOpen) return <ImportBeleggingen onClose={() => setImportOpen(false)} />;
     if (toevoegenOpen) return <BeleggingToevoegen onClose={() => setToevoegenOpen(false)} />;
     switch (activeNav) {
-      case 'overzicht': return <Overzicht onToevoegen={() => setToevoegenOpen(true)} />;
+      case 'overzicht': return <Overzicht onToevoegen={() => setToevoegenOpen(true)} onImporteren={() => setImportOpen(true)} />;
       case 'beleggingen': return <Beleggingen onToevoegen={() => setToevoegenOpen(true)} />;
       case 'analyse': return <Analyse />;
       case 'dividend': return <Dividend />;
       case 'belastingen': return <Belastingen />;
       case 'instellingen': return <Instellingen />;
-      default: return <Overzicht onToevoegen={() => setToevoegenOpen(true)} />;
+      default: return <Overzicht onToevoegen={() => setToevoegenOpen(true)} onImporteren={() => setImportOpen(true)} />;
     }
   };
 
@@ -38,7 +40,7 @@ function AppInner() {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onHome={() => { setActiveNav('overzicht'); setToevoegenOpen(false); }}
+        onHome={() => { setActiveNav('overzicht'); setToevoegenOpen(false); setImportOpen(false); }}
       />
       <main className="app-main">
         {renderPage()}
@@ -64,24 +66,13 @@ function NaamInstellen() {
         <div className="naam-logo">M</div>
         <h1>Welkom bij Matico</h1>
         <p>Hoe mogen we je noemen?</p>
-        <input
-          type="text"
-          placeholder="Voornaam"
-          value={voornaam}
+        <input type="text" placeholder="Voornaam" value={voornaam}
           onChange={e => setVoornaam(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && opslaan()}
-          autoFocus
-        />
-        <input
-          type="text"
-          placeholder="Achternaam (optioneel)"
-          value={achternaam}
+          onKeyDown={e => e.key === 'Enter' && opslaan()} autoFocus />
+        <input type="text" placeholder="Achternaam (optioneel)" value={achternaam}
           onChange={e => setAchternaam(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && opslaan()}
-        />
-        <button onClick={opslaan} disabled={!voornaam.trim()}>
-          Aan de slag →
-        </button>
+          onKeyDown={e => e.key === 'Enter' && opslaan()} />
+        <button onClick={opslaan} disabled={!voornaam.trim()}>Aan de slag →</button>
       </div>
     </div>
   );

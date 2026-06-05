@@ -27,7 +27,6 @@ export default function Overzicht({ onToevoegen }) {
   const [filterSymbolen, setFilterSymbolen] = useState([]);
   const [detailBelegging, setDetailBelegging] = useState(null);
   const [toevoegenMenuOpen, setToevoegenMenuOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const menuRef = useRef(null);
 
   const begroeting = () => {
@@ -176,7 +175,7 @@ export default function Overzicht({ onToevoegen }) {
               </div>
               <div
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer', fontSize: 14, borderTop: '1px solid var(--border-light)' }}
-                onClick={() => { setToevoegenMenuOpen(false); setImportOpen(true); }}
+                onClick={() => { setToevoegenMenuOpen(false); onImporteren && onImporteren(); }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
