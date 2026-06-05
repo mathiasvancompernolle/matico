@@ -59,7 +59,7 @@ export default async function handler(req, res) {
       );
       const data = await response.json();
 
-      if (data.s === 'ok' && data.t) {
+      if (data.s === 'ok' && data.t && data.t.length > 1) {
         const punten = data.t.map((t, i) => ({
           label: new Date(t * 1000).toLocaleDateString('nl-BE', {
             day: 'numeric', month: 'short',
