@@ -13,12 +13,14 @@ const VERGELIJK_OPTIES = [
   { id: 'bitcoin', label: 'Bitcoin', kleur: '#f97316' },
 ];
 
+// Bereken het juiste API tijdperk op basis van tijdperk en beleggingen
 function getApiTijdperk(tijdperk, beleggingen) {
   if (tijdperk === 'Laatste') {
+    // Meest recente aankoopdatum
     const datums = beleggingen.filter(b => b.datum).map(b => new Date(b.datum));
     if (datums.length === 0) return '1M';
-    const vroegste = new Date(Math.max(...datums));
-    const dagVerschil = Math.floor((Date.now() - vroegste.getTime()) / 86400000);
+    const meestRecent = new Date(Math.max(...datums));
+    const dagVerschil = Math.floor((Date.now() - meestRecent.getTime()) / 86400000);
     if (dagVerschil <= 7) return '1W';
     if (dagVerschil <= 30) return '1M';
     if (dagVerschil <= 365) return '1J';
@@ -26,6 +28,7 @@ function getApiTijdperk(tijdperk, beleggingen) {
     return '5J';
   }
   if (tijdperk === 'Totaal') {
+    // Vroegste aankoopdatum
     const datums = beleggingen.filter(b => b.datum).map(b => new Date(b.datum));
     if (datums.length === 0) return 'Max';
     const vroegste = new Date(Math.min(...datums));
@@ -37,6 +40,21 @@ function getApiTijdperk(tijdperk, beleggingen) {
     return 'Max';
   }
   return tijdperk;
+}
+
+// Bereken begindatum voor "Laatste" filtering
+function getBegindatumVoorTijdperk(tijdperk, beleggingen) {
+  if (tijdperk === 'Laatste') {
+    const datums = beleggingen.filter(b => b.datum).map(b => new Date(b.datum));
+    if (datums.length === 0) return null;
+    return new Date(Math.max(...datums)); // meest recente aankoop
+  }
+  if (tijdperk === 'Totaal') {
+    const datums = beleggingen.filter(b => b.datum).map(b => new Date(b.datum));
+    if (datums.length === 0) return null;
+    return new Date(Math.min(...datums)); // vroegste aankoop
+  }
+  return null; // Voor andere tijdperken filtert de API al correct
 }
 
 export default function Overzicht({ onToevoegen, onImporteren }) {
@@ -98,7 +116,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
         return;
       }
 
-      // Bepaal welk API tijdperk we gebruiken
+      // Bepaal API tijdperk
       const apiTijdperk = getApiTijdperk(tijdperk, beleggingen);
 
       // Haal historische data op per symbool
@@ -109,7 +127,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
         try {
           const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(symbol)}&tijdperk=${apiTijdperk}`);
           const data = await res.json();
-          if (data.punten && data.punten.length > 0) {
+          if (data.punten && data.punten.length > 1) {
             historischeData[symbol] = data.punten;
           }
         } catch (e) { console.error('Historische data fout:', e); }
@@ -120,39 +138,59 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
         return;
       }
 
-      // Gebruik labels van het eerste symbool als tijdsas
-      const eersteSymbol = Object.keys(historischeData)[0];
+      // Gebruik het symbool met de meeste datapunten als tijdsas
+      const eersteSymbol = Object.keys(historischeData).reduce((a, b) =>
+        historischeData[a].length >= historischeData[b].length ? a : b
+      );
       const allePunten = historischeData[eersteSymbol];
 
-      // Combineer per datumpunt — houd rekening met aankoopdatum!
-      const gecombineerd = allePunten.map((punt, i) => {
-        const puntDatum = punt.datum ? new Date(punt.datum) : null;
-        let totaalWaarde = 0;
+      // Bepaal begindatum voor "Laatste" filtering
+      const begindatumFilter = getBegindatumVoorTijdperk(tijdperk, beleggingen);
 
-        beleggingen.forEach(b => {
-          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-          const aankoopDatum = b.datum ? new Date(b.datum) : null;
-
-          // Belegging telt alleen mee als de datum van het punt na de aankoopdatum valt
-          if (puntDatum && aankoopDatum && puntDatum < aankoopDatum) {
-            // Nog niet aangekocht op dit punt → niet meetellen
-            return;
+      // Combineer per datumpunt — houd rekening met aankoopdatum per belegging
+      const gecombineerd = allePunten
+        .filter(punt => {
+          // Filter voor "Laatste": toon alleen vanaf meest recente aankoop
+          if (begindatumFilter && punt.datum) {
+            return new Date(punt.datum) >= begindatumFilter;
           }
+          return true;
+        })
+        .map((punt, i) => {
+          const puntDatum = punt.datum ? new Date(punt.datum) : null;
+          let totaalWaarde = 0;
 
-          const symbolData = historischeData[b.symbol];
-          if (symbolData && symbolData[i]) {
-            totaalWaarde += symbolData[i].prijs * b.aantal * factor;
-          } else if (symbolData && symbolData.length > 0) {
-            // Gebruik dichtstbijzijnde beschikbaar punt
-            totaalWaarde += symbolData[Math.min(i, symbolData.length - 1)].prijs * b.aantal * factor;
-          } else {
-            const koers = koersen[b.symbol];
-            totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
-          }
-        });
+          beleggingen.forEach(b => {
+            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+            const aankoopDatum = b.datum ? new Date(b.datum) : null;
 
-        return { label: punt.label, datum: punt.datum, waarde: Math.round(totaalWaarde * 100) / 100 };
-      }).filter(p => p.waarde > 0); // Verwijder punten zonder waarde
+            // Belegging telt alleen mee als de datum van het punt NA de aankoopdatum valt
+            if (puntDatum && aankoopDatum && puntDatum < aankoopDatum) {
+              return; // Nog niet aangekocht
+            }
+
+            const symbolData = historischeData[b.symbol];
+            // Vind het juiste datapunt voor dit symbool op basis van datum
+            if (symbolData) {
+              let gevondenPunt = null;
+              if (punt.datum) {
+                gevondenPunt = symbolData.find(p => p.datum === punt.datum);
+              }
+              if (!gevondenPunt) {
+                gevondenPunt = symbolData[Math.min(i, symbolData.length - 1)];
+              }
+              if (gevondenPunt) {
+                totaalWaarde += gevondenPunt.prijs * b.aantal * factor;
+              }
+            } else {
+              const koers = koersen[b.symbol];
+              totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
+            }
+          });
+
+          return { label: punt.label, datum: punt.datum, waarde: Math.round(totaalWaarde * 100) / 100 };
+        })
+        .filter(p => p.waarde > 0);
 
       setGrafiekData(gecombineerd);
       setGrafiekLoading(false);
@@ -179,11 +217,15 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   }));
 
   const displayData = weergave === 'waarde' ? grafiekData : winstData;
-  const grafiekKleur = grafiekData.length > 1 && grafiekData[grafiekData.length-1]?.waarde >= grafiekData[0]?.waarde ? '#6366f1' : '#ef4444';
-  const yDomain = displayData.length > 1 ? [
-    Math.min(...displayData.map(d => d.waarde)) * 0.995,
-    Math.max(...displayData.map(d => d.waarde)) * 1.005
-  ] : ['auto', 'auto'];
+  const grafiekKleur = displayData.length > 1 && displayData[displayData.length-1]?.waarde >= displayData[0]?.waarde ? '#6366f1' : '#ef4444';
+
+  // Y-as domein: altijd strak rond de data, nooit vanaf 0
+  const yDomain = displayData.length > 1 ? (() => {
+    const min = Math.min(...displayData.map(d => d.waarde));
+    const max = Math.max(...displayData.map(d => d.waarde));
+    const marge = (max - min) * 0.1 || max * 0.01;
+    return [min - marge, max + marge];
+  })() : ['auto', 'auto'];
 
   return (
     <div style={{ padding: '0 0 40px' }}>
@@ -287,8 +329,8 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                 <YAxis
                   tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
-                  tickFormatter={v => weergave === 'waarde' ? '€' + v.toLocaleString('nl-BE') : v.toFixed(1) + '%'}
-                  domain={yDomain}
+                  tickFormatter={v => weergave === 'waarde' ? '€' + Math.round(v).toLocaleString('nl-BE') : v.toFixed(1) + '%'}
+                  domain={yDomain} width={70}
                 />
                 <Tooltip
                   formatter={(v) => [weergave === 'waarde' ? '€' + v.toLocaleString('nl-BE', { minimumFractionDigits: 2 }) : v.toFixed(2) + '%', 'Portfolio']}
