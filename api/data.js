@@ -5,10 +5,33 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const FINNHUB_KEY = process.env.FINNHUB_API_KEY;
-  const AV_KEY = process.env.ALPHAVANTAGE_API_KEY;
+  const AV_KEY_1 = process.env.ALPHAVANTAGE_API_KEY;
+  const AV_KEY_2 = process.env.ALPHAVANTAGE_API_KEY_2;
   const NEWSAPI_KEY = process.env.NEWSAPI_KEY;
   const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
   const FMP_KEY = process.env.FMP_API_KEY;
+
+  // Wissel keys af op basis van het uur — zo verdelen we de 25 calls/dag over beide keys
+  const uurVanDag = new Date().getHours();
+  const AV_KEY = uurVanDag % 2 === 0 ? AV_KEY_1 : AV_KEY_2;
+  const AV_KEY_BACKUP = uurVanDag % 2 === 0 ? AV_KEY_2 : AV_KEY_1;
+
+  // Helper: probeer met beide keys
+  async function avFetch(url) {
+    // Probeer eerste key
+    try {
+      const r = await fetch(url.replace('__AV_KEY__', AV_KEY));
+      const d = await r.json();
+      if (!d.Information && !d.Note) return d; // geen rate limit melding
+    } catch (e) {}
+    // Fallback naar tweede key
+    try {
+      const r = await fetch(url.replace('__AV_KEY__', AV_KEY_BACKUP));
+      const d = await r.json();
+      return d;
+    } catch (e) {}
+    return {};
+  }
 
   const { endpoint } = req.query;
 
@@ -22,8 +45,7 @@ export default async function handler(req, res) {
       } catch (e) {}
       try {
         const avSym = symbol.replace('.DE', '.DEX').replace('.PA', '.PAR').replace('.AS', '.AMS').replace('.BR', '.BRU').replace('.L', '.LON');
-        const r = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSym}&apikey=${AV_KEY}`);
-        const d = await r.json();
+        const d = await avFetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSym}&apikey=__AV_KEY__`);
         const q = d['Global Quote'];
         if (q && q['05. price']) {
           return res.json({
@@ -76,8 +98,7 @@ export default async function handler(req, res) {
           }
         } catch (e) {}
         try {
-          const r = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSym}&apikey=${AV_KEY}`);
-          const d = await r.json();
+          const d = await avFetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSym}&apikey=__AV_KEY__`);
           const q = d['Global Quote'];
           if (q && q['05. price']) {
             const gisteren = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -104,8 +125,7 @@ export default async function handler(req, res) {
       // Korte periodes: dagelijkse gecorrigeerde data
       if (dagen <= 100) {
         try {
-          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${avSym}&outputsize=compact&apikey=${AV_KEY}`);
-          const d = await r.json();
+          const d = await avFetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${avSym}&outputsize=compact&apikey=__AV_KEY__`);
           const tijdreeks = d['Time Series (Daily)'];
           if (tijdreeks) {
             const vanafDatum = new Date();
@@ -115,10 +135,10 @@ export default async function handler(req, res) {
               .reverse()
               .map(([datum, w]) => ({
                 label: new Date(datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }),
-                datum: datum, // echte datum meesturen!
+                datum,
                 prijs: parseFloat(w['5. adjusted close'])
               }));
-            if (punten.length > 0) return res.json({ punten });
+            if (punten.length > 1) return res.json({ punten });
           }
         } catch (e) { console.error('Daily fout:', e); }
       }
@@ -126,8 +146,7 @@ export default async function handler(req, res) {
       // Lange periodes: wekelijkse gecorrigeerde data
       if (dagen > 100) {
         try {
-          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY_ADJUSTED&symbol=${avSym}&apikey=${AV_KEY}`);
-          const d = await r.json();
+          const d = await avFetch(`https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY_ADJUSTED&symbol=${avSym}&apikey=__AV_KEY__`);
           const tijdreeks = d['Weekly Adjusted Time Series'];
           if (tijdreeks) {
             const vanafDatum = new Date();
@@ -140,10 +159,10 @@ export default async function handler(req, res) {
                   day: 'numeric', month: 'short',
                   year: dagen > 365 ? 'numeric' : undefined
                 }),
-                datum: datum, // echte datum meesturen!
+                datum,
                 prijs: parseFloat(w['5. adjusted close'])
               }));
-            if (punten.length > 0) return res.json({ punten });
+            if (punten.length > 1) return res.json({ punten });
           }
         } catch (e) { console.error('Weekly fout:', e); }
       }
@@ -212,7 +231,7 @@ export default async function handler(req, res) {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'HTTP-Referer': 'https://matico-self.vercel.app', 'X-Title': 'Matico' },
         body: JSON.stringify({
           model: 'anthropic/claude-3-haiku', max_tokens: 500,
-          messages: [{ role: 'user', content: `Geef een korte beleggingsanalyse in het Nederlands voor ${name} (${symbol}). Huidige koers: ${price}, verandering vandaag: ${change}%.${nieuwsContext}\n\nGeef je analyse in maximaal 200 woorden. Wees concreet over risico's en kansen.` }]
+          messages: [{ role: 'user', content: `Geef een korte beleggingsanalyse in het Nederlands voor ${name} (${symbol}). Huidige koers: ${price}, verandering vandaag: ${change}%.${nieuwsContext}\n\nGeef je analyse in maximaal 200 woorden.` }]
         })
       });
       const d = await r.json();
