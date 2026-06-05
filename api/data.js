@@ -37,7 +37,31 @@ export default async function handler(req, res) {
 
     if (endpoint === 'candle') {
       const { symbol, tijdperk } = req.query;
-      const dagen = tijdperk === '1D' ? 5 : tijdperk === '1W' ? 7 : tijdperk === '1M' ? 30 : tijdperk === '1J' ? 365 : tijdperk === 'YTD' ? 365 : tijdperk === '3J' ? 1095 : tijdperk === '5J' ? 1825 : 5000;
+
+      // 1D: intradag data per uur
+      if (tijdperk === '1D') {
+        try {
+          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=60min&outputsize=compact&apikey=${AV_KEY}`);
+          const d = await r.json();
+          const tijdreeks = d['Time Series (60min)'];
+          if (tijdreeks) {
+            const vandaag = new Date().toISOString().split('T')[0];
+            const gisteren = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            const punten = Object.entries(tijdreeks)
+              .filter(([t]) => t.startsWith(vandaag) || t.startsWith(gisteren))
+              .slice(0, 24)
+              .reverse()
+              .map(([t, w]) => ({
+                label: t.split(' ')[1].slice(0, 5),
+                prijs: parseFloat(w['4. close'])
+              }));
+            if (punten.length > 0) return res.json({ punten });
+          }
+        } catch (e) { console.error('1D fout:', e); }
+      }
+
+      // Alle andere tijdperken: dagelijkse data
+      const dagen = tijdperk === '1W' ? 7 : tijdperk === '1M' ? 30 : tijdperk === '1J' ? 365 : tijdperk === 'YTD' ? Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 1)) / 86400000) : tijdperk === '3J' ? 1095 : tijdperk === '5J' ? 1825 : 5000;
       const outputsize = dagen <= 100 ? 'compact' : 'full';
 
       try {
@@ -45,18 +69,18 @@ export default async function handler(req, res) {
         const d = await r.json();
         const tijdreeks = d['Time Series (Daily)'];
         if (tijdreeks) {
+          const vanafDatum = new Date();
+          vanafDatum.setDate(vanafDatum.getDate() - dagen);
           const punten = Object.entries(tijdreeks)
-            .slice(0, dagen)
+            .filter(([datum]) => new Date(datum) >= vanafDatum)
             .reverse()
             .map(([datum, w]) => ({
               label: new Date(datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }),
               prijs: parseFloat(w['4. close'])
             }));
-          return res.json({ punten });
+          if (punten.length > 0) return res.json({ punten });
         }
-      } catch (e) {
-        console.error('AV error:', e);
-      }
+      } catch (e) { console.error('Daily fout:', e); }
 
       return res.json({ punten: [] });
     }
@@ -90,7 +114,12 @@ export default async function handler(req, res) {
           try {
             const r2 = await fetch(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`);
             const d2 = await r2.json();
-            if (d2[0]) { d.ceo = d2[0].ceo; d.description = d2[0].description; d.isin = d2[0].isin; d.employeeTotal = d2[0].fullTimeEmployees; }
+            if (d2[0]) {
+              d.ceo = d2[0].ceo;
+              d.description = d2[0].description;
+              d.isin = d2[0].isin;
+              d.employeeTotal = d2[0].fullTimeEmployees;
+            }
           } catch (e) {}
           return res.json(d);
         }
@@ -115,12 +144,26 @@ export default async function handler(req, res) {
       try {
         const r = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(name || symbol)}&sortBy=publishedAt&pageSize=3&language=en&apiKey=${NEWSAPI_KEY}`);
         const d = await r.json();
-        if (d.articles?.length > 0) nieuwsContext = '\n\nLaatste nieuws:\n' + d.articles.slice(0, 3).map(a => `- ${a.title} (${a.publishedAt?.slice(0, 10)})`).join('\n');
+        if (d.articles?.length > 0) {
+          nieuwsContext = '\n\nLaatste nieuws:\n' + d.articles.slice(0, 3).map(a => `- ${a.title} (${a.publishedAt?.slice(0, 10)})`).join('\n');
+        }
       } catch (e) {}
       const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'HTTP-Referer': 'https://matico-self.vercel.app', 'X-Title': 'Matico' },
-        body: JSON.stringify({ model: 'anthropic/claude-3-haiku', max_tokens: 500, messages: [{ role: 'user', content: `Geef een korte beleggingsanalyse in het Nederlands voor ${name} (${symbol}). Huidige koers: ${price}, verandering vandaag: ${change}%.${nieuwsContext}\n\nGeef je analyse in maximaal 200 woorden.` }] })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENROUTER_KEY}`,
+          'HTTP-Referer': 'https://matico-self.vercel.app',
+          'X-Title': 'Matico'
+        },
+        body: JSON.stringify({
+          model: 'anthropic/claude-3-haiku',
+          max_tokens: 500,
+          messages: [{
+            role: 'user',
+            content: `Geef een korte beleggingsanalyse in het Nederlands voor ${name} (${symbol}). Huidige koers: ${price}, verandering vandaag: ${change}%.${nieuwsContext}\n\nGeef je analyse in maximaal 200 woorden. Wees concreet over risico's en kansen.`
+          }]
+        })
       });
       const d = await r.json();
       return res.json({ analyse: d.choices?.[0]?.message?.content || 'Analyse niet beschikbaar.' });
