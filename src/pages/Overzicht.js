@@ -213,10 +213,13 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
 
   const winstData = grafiekData.map((d, i) => ({
     ...d,
-    waarde: i === 0 ? 0 : ((d.waarde - grafiekData[0].waarde) / (grafiekData[0].waarde || 1)) * 100
+    waarde: i === 0 ? 0 : d.waarde - grafiekData[0].waarde
   }));
 
   const displayData = weergave === 'waarde' ? grafiekData : winstData;
+  const periodeWinst = grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : dagWinst;
+  const periodeWinstPct = grafiekData.length > 1 && grafiekData[0].waarde > 0 ? (periodeWinst / grafiekData[0].waarde) * 100 : dagWinstPct;
+  const periodeTekst = tijdperk === '1D' ? 'Prestatie vandaag' : tijdperk === '1W' ? 'Prestatie deze week' : tijdperk === '1M' ? 'Prestatie deze maand' : tijdperk === '1J' ? 'Prestatie dit jaar' : tijdperk === 'YTD' ? 'Prestatie dit kalenderjaar' : tijdperk === 'Laatste' ? 'Prestatie sinds laatste aankoop' : 'Prestatie sinds eerste aankoop';
   const grafiekKleur = displayData.length > 1 && displayData[displayData.length-1]?.waarde >= displayData[0]?.waarde ? '#6366f1' : '#ef4444';
 
   // Y-as domein: altijd strak rond de data, nooit vanaf 0
@@ -275,13 +278,13 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Portfolio</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Prestatie vandaag</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{periodeTekst}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
                 <div className="portfolio-waarde">
                   €{portfolioWaarde.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-                <span className={`badge ${dagWinstPct >= 0 ? 'badge-green' : 'badge-red'}`}>
-                  {dagWinstPct >= 0 ? '▲' : '▼'} {Math.abs(dagWinstPct).toFixed(2)}% ({dagWinst >= 0 ? '+' : ''}€{Math.abs(dagWinst).toFixed(2)})
+                <span className={`badge ${periodeWinstPct >= 0 ? 'badge-green' : 'badge-red'}`}>
+                  {periodeWinstPct >= 0 ? '▲' : '▼'} {Math.abs(periodeWinstPct).toFixed(2)}% ({periodeWinst >= 0 ? '+' : ''}€{Math.abs(periodeWinst).toFixed(2)})
                 </span>
               </div>
             </div>
@@ -329,39 +332,21 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                 <YAxis
                   tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
-                  tickFormatter={v => weergave === 'waarde' ? '€' + v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : v.toFixed(2) + '%'}
+                  tickFormatter={v => '€' + v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   domain={yDomain} width={70}
                 />
                 <Tooltip
-  content={({ active, payload, label }) => {
-    if (!active || !payload?.length) return null;
-    const datum = payload[0]?.payload?.datum;
-    const waarde = payload[0]?.value;
-    const aankopenOpDatum = beleggingen.filter(b => b.datum === datum);
-    return (
-      <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
-        <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
-        <div style={{ fontWeight: 600, color: 'var(--accent)', marginBottom: aankopenOpDatum.length > 0 ? 8 : 0 }}>
-          Portfolio : {weergave === 'waarde' ? '€' + (waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2 }) : (waarde || 0).toFixed(2) + '%'}
-        </div>
-        {aankopenOpDatum.map(b => (
-          <div key={b.id} style={{ fontSize: 12, color: 'var(--green)', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
-            🟢 Aankoop {b.naam} — {b.aantal} st. à {b.munt === 'USD' ? '$' : '€'}{b.kostprijs.toFixed(2)}
-          </div>
-        ))}
-      </div>
-    );
-  }}
-/>
-                <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)"
-  dot={(props) => {
-    const { cx, cy, payload } = props;
-    const isAankoop = beleggingen.some(b => b.datum && payload.datum === b.datum);
-    if (!isAankoop) return null;
-    return <circle key={payload.datum} cx={cx} cy={cy} r={5} fill="white" stroke={grafiekKleur} strokeWidth={2} />;
-  }}
-  activeDot={{ r: 4, fill: grafiekKleur }}
-/>
+                  formatter={(v) => ['€' + v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 'Portfolio']}
+                  labelStyle={{ fontSize: 12 }}
+                  contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}
+                />
+                <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)" dot={(props) => {
+                    const { cx, cy, payload } = props;
+                    const isAankoop = beleggingen.some(b => b.datum && payload.datum === b.datum);
+                    if (!isAankoop) return null;
+                    return <circle key={payload.datum} cx={cx} cy={cy} r={5} fill="white" stroke={grafiekKleur} strokeWidth={2} />;
+                  }}
+                  activeDot={{ r: 4, fill: grafiekKleur }} />
               </AreaChart>
             </ResponsiveContainer>
           )}
