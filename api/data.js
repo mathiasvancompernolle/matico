@@ -21,12 +21,7 @@ export default async function handler(req, res) {
         if (d.c && d.c > 0) return res.json(d);
       } catch (e) {}
       try {
-        const avSym = symbol
-          .replace('.DE', '.DEX')
-          .replace('.PA', '.PAR')
-          .replace('.AS', '.AMS')
-          .replace('.BR', '.BRU')
-          .replace('.L', '.LON');
+        const avSym = symbol.replace('.DE', '.DEX').replace('.PA', '.PAR').replace('.AS', '.AMS').replace('.BR', '.BRU').replace('.L', '.LON');
         const r = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSym}&apikey=${AV_KEY}`);
         const d = await r.json();
         const q = d['Global Quote'];
@@ -62,13 +57,7 @@ export default async function handler(req, res) {
 
     if (endpoint === 'candle') {
       const { symbol, tijdperk } = req.query;
-
-      const avSym = symbol
-        .replace('.DE', '.DEX')
-        .replace('.PA', '.PAR')
-        .replace('.AS', '.AMS')
-        .replace('.BR', '.BRU')
-        .replace('.L', '.LON');
+      const avSym = symbol.replace('.DE', '.DEX').replace('.PA', '.PAR').replace('.AS', '.AMS').replace('.BR', '.BRU').replace('.L', '.LON');
 
       // 1D: lijn van gisteren naar nu
       if (tijdperk === '1D') {
@@ -76,10 +65,12 @@ export default async function handler(req, res) {
           const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
           const d = await r.json();
           if (d.c && d.c > 0 && d.pc && d.pc > 0) {
+            const gisteren = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            const vandaag = new Date().toISOString().split('T')[0];
             return res.json({
               punten: [
-                { label: 'Gisteren', prijs: d.pc },
-                { label: 'Nu', prijs: d.c }
+                { label: 'Gisteren', datum: gisteren, prijs: d.pc },
+                { label: 'Nu', datum: vandaag, prijs: d.c }
               ]
             });
           }
@@ -89,10 +80,12 @@ export default async function handler(req, res) {
           const d = await r.json();
           const q = d['Global Quote'];
           if (q && q['05. price']) {
+            const gisteren = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            const vandaag = new Date().toISOString().split('T')[0];
             return res.json({
               punten: [
-                { label: 'Gisteren', prijs: parseFloat(q['08. previous close']) },
-                { label: 'Nu', prijs: parseFloat(q['05. price']) }
+                { label: 'Gisteren', datum: gisteren, prijs: parseFloat(q['08. previous close']) },
+                { label: 'Nu', datum: vandaag, prijs: parseFloat(q['05. price']) }
               ]
             });
           }
@@ -122,6 +115,7 @@ export default async function handler(req, res) {
               .reverse()
               .map(([datum, w]) => ({
                 label: new Date(datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }),
+                datum: datum, // echte datum meesturen!
                 prijs: parseFloat(w['5. adjusted close'])
               }));
             if (punten.length > 0) return res.json({ punten });
@@ -143,10 +137,10 @@ export default async function handler(req, res) {
               .reverse()
               .map(([datum, w]) => ({
                 label: new Date(datum).toLocaleDateString('nl-BE', {
-                  day: 'numeric',
-                  month: 'short',
+                  day: 'numeric', month: 'short',
                   year: dagen > 365 ? 'numeric' : undefined
                 }),
+                datum: datum, // echte datum meesturen!
                 prijs: parseFloat(w['5. adjusted close'])
               }));
             if (punten.length > 0) return res.json({ punten });
@@ -186,12 +180,7 @@ export default async function handler(req, res) {
           try {
             const r2 = await fetch(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`);
             const d2 = await r2.json();
-            if (d2[0]) {
-              d.ceo = d2[0].ceo;
-              d.description = d2[0].description;
-              d.isin = d2[0].isin;
-              d.employeeTotal = d2[0].fullTimeEmployees;
-            }
+            if (d2[0]) { d.ceo = d2[0].ceo; d.description = d2[0].description; d.isin = d2[0].isin; d.employeeTotal = d2[0].fullTimeEmployees; }
           } catch (e) {}
           return res.json(d);
         }
@@ -216,25 +205,14 @@ export default async function handler(req, res) {
       try {
         const r = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(name || symbol)}&sortBy=publishedAt&pageSize=3&language=en&apiKey=${NEWSAPI_KEY}`);
         const d = await r.json();
-        if (d.articles?.length > 0) {
-          nieuwsContext = '\n\nLaatste nieuws:\n' + d.articles.slice(0, 3).map(a => `- ${a.title} (${a.publishedAt?.slice(0, 10)})`).join('\n');
-        }
+        if (d.articles?.length > 0) nieuwsContext = '\n\nLaatste nieuws:\n' + d.articles.slice(0, 3).map(a => `- ${a.title} (${a.publishedAt?.slice(0, 10)})`).join('\n');
       } catch (e) {}
       const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENROUTER_KEY}`,
-          'HTTP-Referer': 'https://matico-self.vercel.app',
-          'X-Title': 'Matico'
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'HTTP-Referer': 'https://matico-self.vercel.app', 'X-Title': 'Matico' },
         body: JSON.stringify({
-          model: 'anthropic/claude-3-haiku',
-          max_tokens: 500,
-          messages: [{
-            role: 'user',
-            content: `Geef een korte beleggingsanalyse in het Nederlands voor ${name} (${symbol}). Huidige koers: ${price}, verandering vandaag: ${change}%.${nieuwsContext}\n\nGeef je analyse in maximaal 200 woorden. Wees concreet over risico's en kansen.`
-          }]
+          model: 'anthropic/claude-3-haiku', max_tokens: 500,
+          messages: [{ role: 'user', content: `Geef een korte beleggingsanalyse in het Nederlands voor ${name} (${symbol}). Huidige koers: ${price}, verandering vandaag: ${change}%.${nieuwsContext}\n\nGeef je analyse in maximaal 200 woorden. Wees concreet over risico's en kansen.` }]
         })
       });
       const d = await r.json();
