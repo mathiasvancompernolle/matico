@@ -15,8 +15,35 @@ export default async function handler(req, res) {
   try {
     if (endpoint === 'quote') {
       const { symbol } = req.query;
-      const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
-      return res.json(await r.json());
+      // Eerst Finnhub proberen
+      try {
+        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
+        const d = await r.json();
+        if (d.c && d.c > 0) return res.json(d);
+      } catch (e) {}
+      // Fallback: Alpha Vantage voor Europese symbolen
+      try {
+        const avSym = symbol
+          .replace('.DE', '.DEX')
+          .replace('.PA', '.PAR')
+          .replace('.AS', '.AMS')
+          .replace('.BR', '.BRU')
+          .replace('.L', '.LON');
+        const r = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSym}&apikey=${AV_KEY}`);
+        const d = await r.json();
+        const q = d['Global Quote'];
+        if (q && q['05. price']) {
+          return res.json({
+            c: parseFloat(q['05. price']),
+            pc: parseFloat(q['08. previous close']),
+            o: parseFloat(q['02. open']),
+            h: parseFloat(q['03. high']),
+            l: parseFloat(q['04. low']),
+            v: parseInt(q['06. volume'])
+          });
+        }
+      } catch (e) {}
+      return res.json({ c: 0, pc: 0, o: 0, h: 0, l: 0, v: 0 });
     }
 
     if (endpoint === 'search') {
@@ -38,10 +65,18 @@ export default async function handler(req, res) {
     if (endpoint === 'candle') {
       const { symbol, tijdperk } = req.query;
 
+      // Zet Europese symbolen om voor Alpha Vantage
+      const avSym = symbol
+        .replace('.DE', '.DEX')
+        .replace('.PA', '.PAR')
+        .replace('.AS', '.AMS')
+        .replace('.BR', '.BRU')
+        .replace('.L', '.LON');
+
       // 1D: intradag data per uur
       if (tijdperk === '1D') {
         try {
-          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=60min&outputsize=compact&apikey=${AV_KEY}`);
+          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${avSym}&interval=60min&outputsize=compact&apikey=${AV_KEY}`);
           const d = await r.json();
           const tijdreeks = d['Time Series (60min)'];
           if (tijdreeks) {
@@ -72,7 +107,7 @@ export default async function handler(req, res) {
       // Korte periodes: dagelijkse data
       if (dagen <= 100) {
         try {
-          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=compact&apikey=${AV_KEY}`);
+          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${avSym}&outputsize=compact&apikey=${AV_KEY}`);
           const d = await r.json();
           const tijdreeks = d['Time Series (Daily)'];
           if (tijdreeks) {
@@ -90,10 +125,10 @@ export default async function handler(req, res) {
         } catch (e) { console.error('Daily fout:', e); }
       }
 
-      // Lange periodes: wekelijkse data (minder data, sneller)
+      // Lange periodes: wekelijkse data
       if (dagen > 100) {
         try {
-          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY&symbol=${symbol}&apikey=${AV_KEY}`);
+          const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY&symbol=${avSym}&apikey=${AV_KEY}`);
           const d = await r.json();
           const tijdreeks = d['Weekly Time Series'];
           if (tijdreeks) {
@@ -103,7 +138,11 @@ export default async function handler(req, res) {
               .filter(([datum]) => new Date(datum) >= vanafDatum)
               .reverse()
               .map(([datum, w]) => ({
-                label: new Date(datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: dagen > 365 ? 'numeric' : undefined }),
+                label: new Date(datum).toLocaleDateString('nl-BE', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: dagen > 365 ? 'numeric' : undefined
+                }),
                 prijs: parseFloat(w['4. close'])
               }));
             if (punten.length > 0) return res.json({ punten });
