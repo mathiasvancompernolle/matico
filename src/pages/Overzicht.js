@@ -7,35 +7,36 @@ import BeleggingDetail from '../components/BeleggingDetail';
 const TIJDPERKEN = ['1D', '1W', '1M', '1J', 'YTD', 'Laatste', 'Totaal'];
 const VERGELIJK_OPTIES = [
   { id: 'geen', label: 'Geen vergelijking' },
-  { id: 'msci', label: 'MSCI World', symbol: 'ACWI', kleur: '#22c55e' },
-  { id: 'sp500', label: 'S&P 500', symbol: 'SPY', kleur: '#f59e0b' },
-  { id: 'bel20', label: 'BEL 20', symbol: 'BEL20.BR', kleur: '#8b5cf6' },
-  { id: 'bitcoin', label: 'Bitcoin', symbol: 'BINANCE:BTCUSDT', kleur: '#f97316' },
+  { id: 'msci', label: 'MSCI World', kleur: '#22c55e' },
+  { id: 'sp500', label: 'S&P 500', kleur: '#f59e0b' },
+  { id: 'bel20', label: 'BEL 20', kleur: '#8b5cf6' },
+  { id: 'bitcoin', label: 'Bitcoin', kleur: '#f97316' },
 ];
 
-// Bereken startdatum op basis van tijdperk en beleggingen
-function getBegindatum(tijdperk, beleggingen) {
-  const nu = new Date();
+function getApiTijdperk(tijdperk, beleggingen) {
   if (tijdperk === 'Laatste') {
-    // Laatste aankoopdatum
     const datums = beleggingen.filter(b => b.datum).map(b => new Date(b.datum));
-    if (datums.length === 0) { const d = new Date(); d.setMonth(d.getMonth() - 1); return d; }
-    return new Date(Math.max(...datums));
+    if (datums.length === 0) return '1M';
+    const vroegste = new Date(Math.max(...datums));
+    const dagVerschil = Math.floor((Date.now() - vroegste.getTime()) / 86400000);
+    if (dagVerschil <= 7) return '1W';
+    if (dagVerschil <= 30) return '1M';
+    if (dagVerschil <= 365) return '1J';
+    if (dagVerschil <= 1095) return '3J';
+    return '5J';
   }
   if (tijdperk === 'Totaal') {
-    // Vroegste aankoopdatum
     const datums = beleggingen.filter(b => b.datum).map(b => new Date(b.datum));
-    if (datums.length === 0) { const d = new Date(); d.setFullYear(d.getFullYear() - 5); return d; }
-    return new Date(Math.min(...datums));
+    if (datums.length === 0) return 'Max';
+    const vroegste = new Date(Math.min(...datums));
+    const dagVerschil = Math.floor((Date.now() - vroegste.getTime()) / 86400000);
+    if (dagVerschil <= 30) return '1M';
+    if (dagVerschil <= 365) return '1J';
+    if (dagVerschil <= 1095) return '3J';
+    if (dagVerschil <= 1825) return '5J';
+    return 'Max';
   }
-  const d = new Date();
-  if (tijdperk === '1W') d.setDate(d.getDate() - 7);
-  else if (tijdperk === '1M') d.setMonth(d.getMonth() - 1);
-  else if (tijdperk === '1J') d.setFullYear(d.getFullYear() - 1);
-  else if (tijdperk === 'YTD') { d.setMonth(0); d.setDate(1); }
-  else if (tijdperk === '3J') d.setFullYear(d.getFullYear() - 3);
-  else if (tijdperk === '5J') d.setFullYear(d.getFullYear() - 5);
-  return d;
+  return tijdperk;
 }
 
 export default function Overzicht({ onToevoegen, onImporteren }) {
@@ -63,9 +64,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
 
   useEffect(() => {
     const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setToevoegenMenuOpen(false);
-      }
+      if (menuRef.current && !menuRef.current.contains(e.target)) setToevoegenMenuOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -99,25 +98,12 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
         return;
       }
 
-      // Bepaal begindatum
-      const begindatum = getBegindatum(tijdperk, beleggingen);
+      // Bepaal welk API tijdperk we gebruiken
+      const apiTijdperk = getApiTijdperk(tijdperk, beleggingen);
 
       // Haal historische data op per symbool
       const symbolen = [...new Set(beleggingen.map(b => b.symbol))];
       const historischeData = {};
-
-      // Bepaal welk tijdperk we doorgeven aan de API
-      const apiTijdperk = tijdperk === 'Laatste' || tijdperk === 'Totaal'
-        ? (() => {
-            const dagVerschil = Math.floor((Date.now() - begindatum.getTime()) / 86400000);
-            if (dagVerschil <= 7) return '1W';
-            if (dagVerschil <= 30) return '1M';
-            if (dagVerschil <= 365) return '1J';
-            if (dagVerschil <= 1095) return '3J';
-            if (dagVerschil <= 1825) return '5J';
-            return 'Max';
-          })()
-        : tijdperk;
 
       for (const symbol of symbolen) {
         try {
@@ -134,47 +120,39 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
         return;
       }
 
-      // Gebruik labels van het eerste symbool
+      // Gebruik labels van het eerste symbool als tijdsas
       const eersteSymbol = Object.keys(historischeData)[0];
       const allePunten = historischeData[eersteSymbol];
 
-      // Filter op begindatum
-      const gefilterdePunten = allePunten.filter(p => {
-        // Parse de label terug naar datum (approximatief)
-        return true; // Toon alle punten die de API al gefilterd heeft
-      });
-
-      // Combineer per datumpunt
-      const gecombineerd = gefilterdePunten.map((punt, i) => {
+      // Combineer per datumpunt — houd rekening met aankoopdatum!
+      const gecombineerd = allePunten.map((punt, i) => {
+        const puntDatum = punt.datum ? new Date(punt.datum) : null;
         let totaalWaarde = 0;
+
         beleggingen.forEach(b => {
           const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-          const symbolData = historischeData[b.symbol];
-
-          // Controleer of de belegging al aangekocht was op dit punt
           const aankoopDatum = b.datum ? new Date(b.datum) : null;
 
-          if (symbolData && symbolData[i]) {
-            // Schat de datum van dit punt
-            const puntIndex = i;
-            const totaalPunten = gefilterdePunten.length;
-            const geschatteMs = begindatum.getTime() + (puntIndex / totaalPunten) * (Date.now() - begindatum.getTime());
-            const geschatteDatum = new Date(geschatteMs);
+          // Belegging telt alleen mee als de datum van het punt na de aankoopdatum valt
+          if (puntDatum && aankoopDatum && puntDatum < aankoopDatum) {
+            // Nog niet aangekocht op dit punt → niet meetellen
+            return;
+          }
 
-            if (!aankoopDatum || geschatteDatum >= aankoopDatum) {
-              totaalWaarde += symbolData[i].prijs * b.aantal * factor;
-            }
-            // Vóór aankoop: gebruik kostprijs als placeholder
-            else {
-              totaalWaarde += b.kostprijs * b.aantal * factor;
-            }
+          const symbolData = historischeData[b.symbol];
+          if (symbolData && symbolData[i]) {
+            totaalWaarde += symbolData[i].prijs * b.aantal * factor;
+          } else if (symbolData && symbolData.length > 0) {
+            // Gebruik dichtstbijzijnde beschikbaar punt
+            totaalWaarde += symbolData[Math.min(i, symbolData.length - 1)].prijs * b.aantal * factor;
           } else {
             const koers = koersen[b.symbol];
             totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
           }
         });
-        return { label: punt.label, waarde: Math.round(totaalWaarde * 100) / 100 };
-      });
+
+        return { label: punt.label, datum: punt.datum, waarde: Math.round(totaalWaarde * 100) / 100 };
+      }).filter(p => p.waarde > 0); // Verwijder punten zonder waarde
 
       setGrafiekData(gecombineerd);
       setGrafiekLoading(false);
@@ -330,12 +308,8 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Automatisch opgevolgd door Matico</div>
             </div>
             <div className="tabel-header belegging-grid" style={{ marginTop: 16 }}>
-              <span>Naam ↑↓</span>
-              <span>Koers ↑↓</span>
-              <span>Huidige waarde ↑↓</span>
-              <span>Winst/verlies vandaag ↑↓</span>
-              <span>Winst/verlies totaal ↑↓</span>
-              <span>Gewicht ↑↓</span>
+              <span>Naam ↑↓</span><span>Koers ↑↓</span><span>Huidige waarde ↑↓</span>
+              <span>Winst/verlies vandaag ↑↓</span><span>Winst/verlies totaal ↑↓</span><span>Gewicht ↑↓</span>
             </div>
             {gefilterdeBeleggingen.map(b => {
               const koers = koersen[b.symbol];
@@ -348,8 +322,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
               const dagV = koers ? (koers.c - koers.pc) * b.aantal * factor : 0;
               const dagVPct = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
               const portfolioTotaal = beleggingen.reduce((s, bb) => {
-                const k = koersen[bb.symbol];
-                const p = k ? k.c : bb.kostprijs;
+                const k = koersen[bb.symbol]; const p = k ? k.c : bb.kostprijs;
                 const f = getMuntFactor ? getMuntFactor(bb.munt || 'EUR') : ((bb.munt || 'EUR') === 'USD' ? 0.865 : 1);
                 return s + p * bb.aantal * f;
               }, 0);
@@ -369,15 +342,13 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                   <div className="koers-display">€{huidigeWaarde.toFixed(2)}</div>
                   <div>
                     <span className={dagVPct >= 0 ? 'pct-pos' : 'pct-neg'}>{dagV >= 0 ? '+' : ''}€{Math.abs(dagV).toFixed(2)}</span>
-                    {' '}
-                    <span className={`badge ${dagVPct >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 11, padding: '2px 6px' }}>
+                    {' '}<span className={`badge ${dagVPct >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 11, padding: '2px 6px' }}>
                       {dagVPct >= 0 ? '+' : ''}{dagVPct.toFixed(2)}%
                     </span>
                   </div>
                   <div>
                     <span className={winstTotaal >= 0 ? 'pct-pos' : 'pct-neg'}>{winstTotaal >= 0 ? '+' : ''}€{Math.abs(winstTotaal).toFixed(2)}</span>
-                    {' '}
-                    <span className={`badge ${winstTotaalPct >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 11, padding: '2px 6px' }}>
+                    {' '}<span className={`badge ${winstTotaalPct >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 11, padding: '2px 6px' }}>
                       {winstTotaalPct >= 0 ? '+' : ''}{winstTotaalPct.toFixed(2)}%
                     </span>
                   </div>
@@ -400,9 +371,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
             <div style={{ flex: 1, overflow: 'auto' }}>
               <div className="filter-section">
                 <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--accent)' }}
-                  onClick={() => { setFilterType('alle'); setFilterSymbolen([]); }}>
-                  Wis alle filters
-                </button>
+                  onClick={() => { setFilterType('alle'); setFilterSymbolen([]); }}>Wis alle filters</button>
               </div>
               <div className="filter-section">
                 <h3>Type belegging</h3>
@@ -441,8 +410,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
           onClose={() => setVergelijkOpen(false)}
           vergelijk1={vergelijk1} setVergelijk1={setVergelijk1}
           vergelijk2={vergelijk2} setVergelijk2={setVergelijk2}
-          portfolioData={winstData}
-          tijdperk={tijdperk} setTijdperk={setTijdperk}
+          portfolioData={winstData} tijdperk={tijdperk} setTijdperk={setTijdperk}
         />
       )}
 
