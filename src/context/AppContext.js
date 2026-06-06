@@ -13,9 +13,14 @@ export function AppProvider({ children }) {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [verkochteBeleggingen, setVerkochteBeleggingen] = useState(() => {
+    const saved = localStorage.getItem('matico_verkocht');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [koersen, setKoersen] = useState({});
   const [activeNav, setActiveNav] = useState('overzicht');
-  const [wisselkoers, setWisselkoers] = useState({ usdEur: 0.865 });
+  const [wisselkoers, setWisselkoers] = useState({ usdEur: 0.865 }); // live bijgewerkt
 
   useEffect(() => {
     localStorage.setItem('matico_gebruiker', JSON.stringify(gebruiker));
@@ -25,6 +30,11 @@ export function AppProvider({ children }) {
     localStorage.setItem('matico_beleggingen', JSON.stringify(beleggingen));
   }, [beleggingen]);
 
+  useEffect(() => {
+    localStorage.setItem('matico_verkocht', JSON.stringify(verkochteBeleggingen));
+  }, [verkochteBeleggingen]);
+
+  // Haal live wisselkoers op
   useEffect(() => {
     const haalWisselkoers = async () => {
       try {
@@ -36,7 +46,7 @@ export function AppProvider({ children }) {
       }
     };
     haalWisselkoers();
-    const interval = setInterval(haalWisselkoers, 3600000);
+    const interval = setInterval(haalWisselkoers, 3600000); // elk uur
     return () => clearInterval(interval);
   }, []);
 
@@ -67,10 +77,11 @@ export function AppProvider({ children }) {
 
   const getMuntFactor = (munt) => {
     if (munt === 'USD') return wisselkoers.usdEur;
-    if (munt === 'GBP') return wisselkoers.usdEur * 1.27;
+    if (munt === 'GBP') return wisselkoers.usdEur * 1.27; // GBP/EUR benadering
     return 1;
   };
 
+  // Bereken portfolio totaal met live wisselkoers
   const portfolioWaarde = beleggingen.reduce((sum, b) => {
     const koers = koersen[b.symbol];
     const prijs = koers ? koers.c : b.kostprijs;
@@ -99,6 +110,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       gebruiker, setGebruiker,
       beleggingen, setBeleggingen,
+      verkochteBeleggingen, setVerkochteBeleggingen,
       koersen, fetchKoers, refreshAlleKoersen,
       activeNav, setActiveNav,
       wisselkoers, getMuntFactor,
