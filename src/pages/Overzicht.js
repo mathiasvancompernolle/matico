@@ -405,7 +405,16 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const puntD = datum ? new Date(datum) : null;
                     const beginPeriodeT = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
 
-                    const aankopenOpDatum = beleggingVoorGrafiek.filter(b => {
+                    // Aankopen: zowel actieve als verkochte beleggingen
+                    const alleAankopen = [
+                      ...beleggingVoorGrafiek,
+                      ...(verkochteBeleggingen || []).filter(b => {
+                        if (filterType !== 'alle' && b.type !== filterType) return false;
+                        if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
+                        return true;
+                      }).map(b => ({ ...b, aantal: b.aantalVerkocht }))
+                    ];
+                    const aankopenOpDatum = alleAankopen.filter(b => {
                       if (!b.datum || !puntD) return false;
                       const aankoopD = new Date(b.datum);
                       if (beginPeriodeT && aankoopD < beginPeriodeT) return false;
@@ -442,8 +451,8 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                         <div style={{ fontWeight: 600, color: 'var(--accent)', marginBottom: heeftEvents ? 8 : 0 }}>
                           Portfolio : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
-                        {aankopenOpDatum.map(b => (
-                          <div key={b.id} style={{ fontSize: 12, color: 'var(--green)', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
+                        {aankopenOpDatum.map((b, i) => (
+                          <div key={b.id + i} style={{ fontSize: 12, color: 'var(--green)', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
                             🟢 Aankoop {b.naam} — {b.aantal} st. à {b.munt === 'USD' ? '$' : '€'}{b.kostprijs.toFixed(2)}
                           </div>
                         ))}
@@ -470,8 +479,16 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const puntDatum = new Date(payload.datum);
                     const beginPeriode = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
 
-                    // Check aankoop dot
-                    const isAankoop = beleggingVoorGrafiek.some(b => {
+                    // Check aankoop dot — zowel actieve als verkochte beleggingen
+                    const alleAankoopDots = [
+                      ...beleggingVoorGrafiek,
+                      ...(verkochteBeleggingen || []).filter(b => {
+                        if (filterType !== 'alle' && b.type !== filterType) return false;
+                        if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
+                        return true;
+                      })
+                    ];
+                    const isAankoop = alleAankoopDots.some(b => {
                       if (!b.datum) return false;
                       const aankoopD = new Date(b.datum);
                       if (beginPeriode && aankoopD < beginPeriode) return false;
