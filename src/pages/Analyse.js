@@ -690,7 +690,7 @@ export function Analyse() {
             <div style={{ position: 'sticky', top: 0, height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} dataKey="pct" cx="50%" cy="50%" innerRadius={65} outerRadius={110} paddingAngle={2}>
+                  <Pie data={pieData} dataKey="pct" nameKey="label" cx="50%" cy="50%" innerRadius={65} outerRadius={110} paddingAngle={2}>
                     {pieData.map((_, i) => <Cell key={i} fill={PIE_KLEUREN[i % PIE_KLEUREN.length]} />)}
                   </Pie>
                   <Tooltip content={({ active, payload }) => {
