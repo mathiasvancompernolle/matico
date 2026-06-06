@@ -88,16 +88,23 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Gefilterde beleggingen ook voor grafiek gebruiken
+  const beleggingVoorGrafiek = beleggingen.filter(b => {
+    if (filterType !== 'alle' && b.type !== filterType) return false;
+    if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
+    return true;
+  });
+
   useEffect(() => {
     const laadGrafiek = async () => {
-      if (beleggingen.length === 0) { setGrafiekData([]); return; }
+      if (beleggingVoorGrafiek.length === 0) { setGrafiekData([]); return; }
       setGrafiekLoading(true);
 
       // 1D: gisteren en nu
       if (tijdperk === '1D') {
         let gisterenWaarde = 0;
         let nuWaarde = 0;
-        beleggingen.forEach(b => {
+        beleggingVoorGrafiek.forEach(b => {
           const koers = koersen[b.symbol];
           const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
           if (koers && koers.c > 0) {
@@ -117,10 +124,10 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       }
 
       // Bepaal API tijdperk
-      const apiTijdperk = getApiTijdperk(tijdperk, beleggingen);
+      const apiTijdperk = getApiTijdperk(tijdperk, beleggingVoorGrafiek);
 
       // Haal historische data op per symbool
-      const symbolen = [...new Set(beleggingen.map(b => b.symbol))];
+      const symbolen = [...new Set(beleggingVoorGrafiek.map(b => b.symbol))];
       const historischeData = {};
 
       for (const symbol of symbolen) {
@@ -145,7 +152,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       const allePunten = historischeData[eersteSymbol];
 
       // Bepaal begindatum voor "Laatste" filtering
-      const begindatumFilter = getBegindatumVoorTijdperk(tijdperk, beleggingen);
+      const begindatumFilter = getBegindatumVoorTijdperk(tijdperk, beleggingVoorGrafiek);
 
       // Combineer per datumpunt — houd rekening met aankoopdatum per belegging
       const gecombineerd = allePunten
@@ -160,7 +167,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
           const puntDatum = punt.datum ? new Date(punt.datum) : null;
           let totaalWaarde = 0;
 
-          beleggingen.forEach(b => {
+          beleggingVoorGrafiek.forEach(b => {
             const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
             const aankoopDatum = b.datum ? new Date(b.datum) : null;
 
@@ -197,7 +204,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     };
 
     laadGrafiek();
-  }, [beleggingen, koersen, tijdperk]);
+  }, [beleggingVoorGrafiek.length, koersen, tijdperk, filterType, filterSymbolen]);
 
   useEffect(() => {
     refreshAlleKoersen();
@@ -215,7 +222,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   const winstData = grafiekData.map((d) => {
     const puntDatum = d.datum ? new Date(d.datum) : null;
     let aankoopwaarde = 0;
-    beleggingen.forEach(b => {
+    beleggingVoorGrafiek.forEach(b => {
       const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
       const aankoopDatum = b.datum ? new Date(b.datum) : null;
       if (!puntDatum || !aankoopDatum || puntDatum >= aankoopDatum) {
@@ -351,7 +358,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const waarde = payload[0]?.value;
                     const puntD = datum ? new Date(datum) : null;
                     const beginPeriodeT = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
-                    const aankopenOpDatum = beleggingen.filter(b => {
+                    const aankopenOpDatum = beleggingVoorGrafiek.filter(b => {
                       if (!b.datum || !puntD) return false;
                       const aankoopD = new Date(b.datum);
                       if (beginPeriodeT && aankoopD < beginPeriodeT) return false;
@@ -385,7 +392,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     // Begindatum van de getoonde periode
                     const beginPeriode = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
                     // Per aankoop: check of aankoop BINNEN de periode valt EN dit het dichtstbijzijnde punt is
-                    const isAankoop = beleggingen.some(b => {
+                    const isAankoop = beleggingVoorGrafiek.some(b => {
                       if (!b.datum) return false;
                       const aankoopD = new Date(b.datum);
                       // Aankoop moet binnen de getoonde periode vallen
