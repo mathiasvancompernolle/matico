@@ -1,95 +1,502 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Loader, TrendingUp, TrendingDown } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { ChevronDown, X } from 'lucide-react';
 
-export function Analyse() {
-  const { beleggingen, koersen } = useApp();
-  const [analyses, setAnalyses] = useState({});
-  const [loading, setLoading] = useState({});
+// ── Helpers ──────────────────────────────────────────────────────
+const fmt = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const ACCENT = '#6366f1';
+const PIE_KLEUREN = ['#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff', '#4f46e5', '#3730a3'];
 
-  const laadAnalyse = async (b) => {
-    setLoading(prev => ({ ...prev, [b.symbol]: true }));
-    const koers = koersen[b.symbol];
-    const huidigePrijs = koers ? koers.c : b.kostprijs;
-    const dagVPct = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
-    try {
-      const res = await fetch('/api/data?endpoint=ai-analyse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol: b.symbol, name: b.naam, price: huidigePrijs, change: dagVPct.toFixed(2) })
-      });
-      const data = await res.json();
-      setAnalyses(prev => ({ ...prev, [b.symbol]: data.analyse }));
-    } catch { setAnalyses(prev => ({ ...prev, [b.symbol]: 'Analyse niet beschikbaar.' })); }
-    setLoading(prev => ({ ...prev, [b.symbol]: false }));
-  };
+// Sector mapping op basis van type/symbol
+const SECTOR_MAP = {
+  NKE: 'Consumenten', NIKE: 'Consumenten',
+  NVDA: 'Technologie', AMD: 'Technologie', AAPL: 'Technologie', MSFT: 'Technologie',
+  GOOGL: 'Technologie', META: 'Technologie', AMZN: 'Technologie',
+  TSLA: 'Consumenten', BRK: 'Financiën', JPM: 'Financiën', BAC: 'Financiën',
+  SOFI: 'Financiën', V: 'Financiën', MA: 'Financiën',
+  JNJ: 'Gezondheidszorg', PFE: 'Gezondheidszorg', UNH: 'Gezondheidszorg',
+  XOM: 'Energie', CVX: 'Energie',
+  ETF: 'ETF',
+};
+const REGIO_MAP = {
+  NKE: 'VS', NVDA: 'VS', AAPL: 'VS', MSFT: 'VS', GOOGL: 'VS', META: 'VS',
+  AMZN: 'VS', TSLA: 'VS', SOFI: 'VS', V: 'VS', MA: 'VS',
+  'VWCE.XETRA': 'Wereldwijd', VWCE: 'Wereldwijd',
+};
 
+function getSector(b) {
+  const sym = b.symbol.toUpperCase().split('.')[0];
+  if (b.type === 'etf') return 'ETF';
+  if (b.type === 'crypto') return 'Crypto';
+  return SECTOR_MAP[sym] || 'Overige';
+}
+function getRegio(b) {
+  return REGIO_MAP[b.symbol] || REGIO_MAP[b.symbol.split('.')[0]] || 'Overige';
+}
+
+// ── Staaf component ───────────────────────────────────────────────
+function Staaf({ label, waarde, pct, kleur }) {
   return (
-    <div style={{ padding: '0 0 40px' }}>
-      <div className="page-header" style={{ marginBottom: 24 }}>
-        <h1>Analyse</h1>
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: kleur, display: 'inline-block', flexShrink: 0 }} />
+          <span style={{ fontSize: 14, fontWeight: 500 }}>{label}</span>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <span style={{ fontSize: 14, fontWeight: 600, marginRight: 8 }}>€{fmt(waarde)}</span>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{pct.toFixed(2)}%</span>
+        </div>
       </div>
-      <div style={{ padding: '0 32px' }}>
-        {beleggingen.length === 0 ? (
-          <div className="empty-state card"><TrendingUp size={40} /><h3>Nog geen beleggingen</h3><p>Voeg beleggingen toe om analyses te bekijken</p></div>
-        ) : (
-          beleggingen.map(b => {
-            const koers = koersen[b.symbol];
-            const dagVPct = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
-            return (
-              <div key={b.symbol} className="card" style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div className="belegging-avatar">{b.symbol.slice(0, 2)}</div>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{b.naam}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.symbol}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span className={`badge ${dagVPct >= 0 ? 'badge-green' : 'badge-red'}`}>
-                      {dagVPct >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                      {dagVPct >= 0 ? '+' : ''}{dagVPct.toFixed(2)}%
-                    </span>
-                    {!analyses[b.symbol] && (
-                      <button className="btn btn-secondary" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => laadAnalyse(b)}>
-                        {loading[b.symbol] ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'AI Analyse'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {analyses[b.symbol] && (
-                  <div className="analyse-ai-box">
-                    <h4>🤖 Matico AI Analyse</h4>
-                    <p>{analyses[b.symbol]}</p>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
+      <div style={{ height: 6, background: 'var(--border-light)', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: kleur, borderRadius: 4, transition: 'width 0.4s ease' }} />
       </div>
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
 
-export function Dividend() {
-  const { beleggingen } = useApp();
-  const totaalDividend = 0;
+// ── Hoofd Analyse component ───────────────────────────────────────
+export function Analyse() {
+  const { beleggingen, koersen, getMuntFactor, verkochteBeleggingen } = useApp();
+  const [winstFilter, setWinstFilter] = useState('exclusief'); // 'exclusief' | 'inclusief'
+  const [winstDropdown, setWinstDropdown] = useState(false);
+  const [spreidingTab, setSpreidingTab] = useState('Type');
+  const [spreidingAlles, setSpreidingAlles] = useState(true);
+
+  const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+
+  // ── Totale winst/verlies berekening ──
+  const { kostprijs, huidigeWaarde, winst, winstPct, maxBar } = useMemo(() => {
+    const actief = beleggingen;
+    const verkocht = winstFilter === 'inclusief' ? (verkochteBeleggingen || []) : [];
+
+    const kp = actief.reduce((s, b) => s + b.kostprijs * b.aantal * factor(b), 0)
+      + verkocht.reduce((s, b) => s + b.kostprijs * b.aantalVerkocht * factor(b), 0);
+
+    const hw = actief.reduce((s, b) => {
+      const k = koersen[b.symbol];
+      return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+    }, 0) + verkocht.reduce((s, b) => s + b.verkoopkoers * b.aantalVerkocht * factor(b), 0);
+
+    const w = hw - kp;
+    const wp = kp > 0 ? (w / kp) * 100 : 0;
+    return { kostprijs: kp, huidigeWaarde: hw, winst: w, winstPct: wp, maxBar: Math.max(kp, hw) };
+  }, [beleggingen, koersen, winstFilter, verkochteBeleggingen]);
+
+  // ── Risicoprofiel (bèta benadering) ──
+  const BETA_MAP = { NVDA: 1.96, NKE: 0.85, SOFI: 1.72, MSFT: 0.90, AAPL: 1.20, AMZN: 1.15, TSLA: 2.10 };
+  const { beta, risicoLabel, risicoKleur, aantalBolletjes } = useMemo(() => {
+    const totaal = beleggingen.reduce((s, b) => {
+      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+    }, 0) || 1;
+    const gewogenBeta = beleggingen.reduce((s, b) => {
+      const k = koersen[b.symbol];
+      const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b) / totaal;
+      const sym = b.symbol.split('.')[0];
+      return s + (BETA_MAP[sym] || 1.0) * w;
+    }, 0);
+    const label = gewogenBeta < 0.8 ? 'Defensief' : gewogenBeta < 1.2 ? 'Gematigd' : gewogenBeta < 1.6 ? 'Neutraal' : 'Offensief';
+    const kleur = gewogenBeta < 0.8 ? 'var(--green)' : gewogenBeta < 1.2 ? '#f59e0b' : gewogenBeta < 1.6 ? '#f97316' : 'var(--red)';
+    const bolletjes = gewogenBeta < 0.8 ? 1 : gewogenBeta < 1.2 ? 2 : gewogenBeta < 1.6 ? 3 : 4;
+    return { beta: gewogenBeta, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: bolletjes };
+  }, [beleggingen, koersen]);
+
+  // ── Spreiding berekening ──
+  const { spreidingData, pieData } = useMemo(() => {
+    const totaal = beleggingen.reduce((s, b) => {
+      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+    }, 0) || 1;
+
+    const groepeer = (fn) => {
+      const map = {};
+      beleggingen.forEach(b => {
+        const k = koersen[b.symbol];
+        const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+        const label = fn(b);
+        map[label] = (map[label] || 0) + w;
+      });
+      return Object.entries(map).map(([label, w]) => ({ label, waarde: w, pct: (w / totaal) * 100 }))
+        .sort((a, b) => b.waarde - a.waarde);
+    };
+
+    const data = spreidingTab === 'Type' ? groepeer(b => b.type === 'etf' ? 'ETFs' : b.type === 'crypto' ? 'Crypto' : 'Aandelen')
+      : spreidingTab === 'Sectoren' ? groepeer(getSector)
+      : groepeer(getRegio);
+
+    return { spreidingData: data, pieData: data };
+  }, [beleggingen, koersen, spreidingTab]);
+
+  // ── Concentratierisico ──
+  const { grootstePct, grootsteSym, topSector, topSectorPct, topRegio, topRegioPct } = useMemo(() => {
+    const totaal = beleggingen.reduce((s, b) => {
+      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+    }, 0) || 1;
+    const posities = beleggingen.map(b => {
+      const k = koersen[b.symbol];
+      return { sym: b.symbol, pct: ((k ? k.c : b.kostprijs) * b.aantal * factor(b) / totaal) * 100 };
+    }).sort((a, b) => b.pct - a.pct);
+    const sectorMap = {}; const regioMap = {};
+    beleggingen.forEach(b => {
+      const k = koersen[b.symbol];
+      const w = ((k ? k.c : b.kostprijs) * b.aantal * factor(b) / totaal) * 100;
+      const s = getSector(b); const r = getRegio(b);
+      sectorMap[s] = (sectorMap[s] || 0) + w;
+      regioMap[r] = (regioMap[r] || 0) + w;
+    });
+    const topS = Object.entries(sectorMap).sort((a, b) => b[1] - a[1])[0] || ['—', 0];
+    const topR = Object.entries(regioMap).sort((a, b) => b[1] - a[1])[0] || ['—', 0];
+    return {
+      grootstePct: posities[0]?.pct || 0, grootsteSym: posities[0]?.sym || '—',
+      topSector: topS[0], topSectorPct: topS[1],
+      topRegio: topR[0], topRegioPct: topR[1],
+    };
+  }, [beleggingen, koersen]);
+
+  // ── ETF X-ray (simulatie met top holdings) ──
+  const etfs = beleggingen.filter(b => b.type === 'etf');
+  const ETF_HOLDINGS = {
+    'VWCE.XETRA': [
+      { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 1.82 },
+      { sym: 'AAPL.US', naam: 'Apple Inc', pct: 1.53 },
+      { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 1.18 },
+      { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 0.99 },
+      { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 0.87 },
+      { sym: 'AVGO.US', naam: 'Broadcom Inc', pct: 0.75 },
+      { sym: 'GOOG.US', naam: 'Alphabet Inc Class C', pct: 0.71 },
+      { sym: '2330.TW', naam: 'Taiwan Semiconductor Manufacturing Co. Ltd.', pct: 0.64 },
+      { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 0.52 },
+      { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 0.43 },
+    ],
+  };
+
+  if (beleggingen.length === 0) {
+    return (
+      <div style={{ padding: '0 0 40px' }}>
+        <div className="page-header" style={{ marginBottom: 24 }}><h1>Analyse</h1></div>
+        <div style={{ padding: '0 32px' }}>
+          <div className="empty-state card"><h3>Nog geen beleggingen</h3><p>Voeg beleggingen toe om je portfolio te analyseren</p></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: '0 0 40px' }}>
-      <div className="page-header" style={{ marginBottom: 24 }}>
-        <h1>Dividend</h1>
+    <div style={{ padding: '0 0 60px' }}>
+      <div className="page-header" style={{ marginBottom: 24 }}><h1>Analyse</h1></div>
+      <div style={{ padding: '0 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* ── Rij 1: Totale winst/verlies + Risicoprofiel ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+          {/* Totale winst/verlies */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>Totale winst/verlies</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Van je portfolio</div>
+              </div>
+              {/* Dropdown filter */}
+              <div style={{ position: 'relative' }}>
+                <button onClick={() => setWinstDropdown(o => !o)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+                  border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)',
+                  cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit'
+                }}>
+                  {winstFilter === 'exclusief' ? 'Exclusief verkochte beleggingen' : 'Inclusief verkochte beleggingen'}
+                  <ChevronDown size={13} />
+                </button>
+                {winstDropdown && (
+                  <div style={{
+                    position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'white',
+                    border: '1px solid var(--border)', borderRadius: 10, boxShadow: 'var(--shadow-md)',
+                    zIndex: 20, minWidth: 240, overflow: 'hidden'
+                  }}>
+                    {['exclusief', 'inclusief'].map(opt => (
+                      <div key={opt} onClick={() => { setWinstFilter(opt); setWinstDropdown(false); }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px',
+                          cursor: 'pointer', fontSize: 13, fontWeight: winstFilter === opt ? 600 : 400,
+                          background: winstFilter === opt ? 'var(--accent-bg)' : 'transparent',
+                          color: winstFilter === opt ? 'var(--accent)' : 'var(--text-primary)'
+                        }}
+                        onMouseEnter={e => { if (winstFilter !== opt) e.currentTarget.style.background = 'var(--bg)'; }}
+                        onMouseLeave={e => { if (winstFilter !== opt) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        {winstFilter === opt && <span style={{ fontSize: 14 }}>✓</span>}
+                        {opt === 'exclusief' ? 'Exclusief verkochte beleggingen' : 'Inclusief verkochte beleggingen'}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Staven */}
+            <div style={{ marginBottom: 20 }}>
+              {[
+                { label: 'Kostprijs', waarde: kostprijs, kleur: 'var(--text-muted)' },
+                { label: 'Huidige waarde', waarde: huidigeWaarde, kleur: ACCENT },
+              ].map(({ label, waarde, kleur }) => (
+                <div key={label} style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)', marginBottom: 5 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: kleur, display: 'inline-block' }} />
+                      {label}
+                    </span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>€{fmt(waarde)}</span>
+                  </div>
+                  <div style={{ height: 10, background: 'var(--border-light)', borderRadius: 5, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${(waarde / maxBar) * 100}%`, background: kleur, borderRadius: 5, transition: 'width 0.4s ease' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Winst/verlies totaal</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16, fontWeight: 700, color: winst >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                  {winst >= 0 ? '+' : ''}€{fmt(Math.abs(winst))}
+                </span>
+                <span style={{
+                  padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                  background: winst >= 0 ? 'var(--green-bg)' : 'var(--red-bg)',
+                  color: winst >= 0 ? 'var(--green)' : 'var(--red)'
+                }}>
+                  {winst >= 0 ? '+' : ''}{winstPct.toFixed(2)}%
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Risicoprofiel */}
+          <div className="card">
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Risicoprofiel</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Van je portfolio</div>
+
+            <div style={{
+              padding: '12px 16px', background: 'var(--accent-bg)',
+              border: '1px solid var(--accent-light)', borderRadius: 10, marginBottom: 24, fontSize: 13,
+              color: 'var(--accent)', display: 'flex', alignItems: 'flex-start', gap: 8
+            }}>
+              <span>💡</span>
+              <span>Bij een marktdaling van 10%, daalt jouw portfolio gemiddeld {(beta * 10).toFixed(1)}%.</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Marktinvloed (Bèta)</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }}>{beta.toFixed(2)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Risiconiveau</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} style={{
+                        width: 18, height: 18, borderRadius: '50%',
+                        background: i <= aantalBolletjes ? risicoKleur : 'var(--border)'
+                      }} />
+                    ))}
+                  </div>
+                  <span style={{
+                    padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                    background: `${risicoKleur}20`, color: risicoKleur
+                  }}>{risicoLabel}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Spreiding ── */}
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Spreiding</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Van je portfolio</div>
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {['Type', 'Sectoren', 'Regio'].map(t => (
+                <button key={t} onClick={() => setSpreidingTab(t)} style={{
+                  padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)',
+                  background: spreidingTab === t ? 'var(--text-primary)' : 'transparent',
+                  color: spreidingTab === t ? 'white' : 'var(--text-secondary)',
+                  fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit'
+                }}>{t}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, alignItems: 'center' }}>
+            {/* Donut */}
+            <div style={{ height: 220 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} dataKey="pct" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2}>
+                    {pieData.map((_, i) => <Cell key={i} fill={PIE_KLEUREN[i % PIE_KLEUREN.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(v) => `${v.toFixed(2)}%`} contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Legenda */}
+            <div>
+              {spreidingData.map((item, i) => (
+                <Staaf key={item.label} label={item.label} waarde={item.waarde} pct={item.pct} kleur={PIE_KLEUREN[i % PIE_KLEUREN.length]} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Rij 3: Concentratierisico + Valutablootstelling ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+          {/* Concentratierisico */}
+          <div className="card">
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>Concentratierisico</div>
+            {grootstePct > 40 && (
+              <div style={{
+                padding: '12px 16px', background: 'var(--accent-bg)', border: '1px solid var(--accent-light)',
+                borderRadius: 10, marginBottom: 20, fontSize: 13, color: 'var(--accent)',
+                display: 'flex', alignItems: 'flex-start', gap: 8
+              }}>
+                <span>💡</span>
+                <span>{grootsteSym} maakt {grootstePct.toFixed(0)}% uit van je portfolio. Overweeg diversificatie.</span>
+              </div>
+            )}
+            {[
+              { label: 'Grootste positie', waarde: grootsteSym, pct: grootstePct },
+              { label: 'Top sector', waarde: topSector, pct: topSectorPct },
+              { label: 'Top regio', waarde: topRegio, pct: topRegioPct },
+            ].map(({ label, waarde, pct }) => (
+              <div key={label} style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>{waarde} <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{pct.toFixed(0)}%</span></div>
+                <div style={{ height: 6, background: 'var(--border-light)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: ACCENT, borderRadius: 4, transition: 'width 0.4s ease' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Valutablootstelling */}
+          <div className="card">
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Valutablootstelling</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Van je portfolio, gebaseerd op munt van belegging</div>
+            {(() => {
+              const totaal = beleggingen.reduce((s, b) => {
+                const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+              }, 0) || 1;
+              const valutaMap = {};
+              beleggingen.forEach(b => {
+                const k = koersen[b.symbol];
+                const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+                const munt = b.munt || 'EUR';
+                valutaMap[munt] = (valutaMap[munt] || 0) + w;
+              });
+              const valutaData = Object.entries(valutaMap).map(([munt, w]) => ({ munt, waarde: w, pct: (w / totaal) * 100 }))
+                .sort((a, b) => b.waarde - a.waarde);
+              const VALUTA_KLEUREN = { EUR: ACCENT, USD: '#22c55e', GBP: '#f59e0b', GBP: '#8b5cf6', CHF: '#f97316' };
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'center' }}>
+                  <div style={{ height: 180 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={valutaData} dataKey="pct" nameKey="munt" cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={2}>
+                          {valutaData.map((_, i) => <Cell key={i} fill={PIE_KLEUREN[i % PIE_KLEUREN.length]} />)}
+                        </Pie>
+                        <Tooltip formatter={(v) => `${v.toFixed(2)}%`} contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div>
+                    {valutaData.map((v, i) => (
+                      <div key={v.munt} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: PIE_KLEUREN[i % PIE_KLEUREN.length], display: 'inline-block' }} />
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>{v.munt}</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, marginRight: 6 }}>€{fmt(v.waarde)}</span>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{v.pct.toFixed(2)}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* ── ETF X-ray ── */}
+        {etfs.length > 0 && (
+          <div className="card">
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>ETF X-ray</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Top holdings van je ETFs</div>
+
+            {/* Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 24 }}>
+              {[
+                { label: 'Aantal ETFs', waarde: etfs.length },
+                { label: 'Aantal bedrijven', waarde: etfs.reduce((s, b) => s + (ETF_HOLDINGS[b.symbol]?.length || 0), 0) },
+                { label: 'Gemiddelde kostenratio', waarde: '0,00%' },
+              ].map(({ label, waarde }) => (
+                <div key={label}>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontSize: 28, fontWeight: 700 }}>{waarde}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Holdings tabel */}
+            <div style={{ borderTop: '1px solid var(--border-light)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 200px', padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                <span>Naam</span><span style={{ textAlign: 'right' }}>Gewicht in portfolio</span><span style={{ textAlign: 'right' }}>Via</span>
+              </div>
+              {etfs.flatMap(etf => (ETF_HOLDINGS[etf.symbol] || []).map(h => ({
+                ...h, etfSym: etf.symbol
+              }))).sort((a, b) => b.pct - a.pct).map((h, i) => (
+                <div key={i} style={{
+                  display: 'grid', gridTemplateColumns: '1fr 160px 200px',
+                  padding: '12px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)',
+                      color: 'var(--accent)', fontWeight: 700, fontSize: 11,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                    }}>
+                      {h.sym.split('.')[0].slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{h.naam}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{h.sym}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', fontWeight: 600, fontSize: 14 }}>{h.pct.toFixed(2)}%</div>
+                  <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>{h.etfSym} {h.pct.toFixed(2)}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
       </div>
+    </div>
+  );
+}
+
+// ── Overige exports ongewijzigd ───────────────────────────────────
+export function Dividend() {
+  const { beleggingen } = useApp();
+  return (
+    <div style={{ padding: '0 0 40px' }}>
+      <div className="page-header" style={{ marginBottom: 24 }}><h1>Dividend</h1></div>
       <div style={{ padding: '0 32px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
-          {[
-            { label: 'Verwacht dit jaar', value: '€0,00' },
-            { label: 'Ontvangen dit jaar', value: '€0,00' },
-            { label: 'Totaal ontvangen', value: '€0,00' },
-          ].map(({ label, value }) => (
+          {[{ label: 'Verwacht dit jaar', value: '€0,00' }, { label: 'Ontvangen dit jaar', value: '€0,00' }, { label: 'Totaal ontvangen', value: '€0,00' }].map(({ label, value }) => (
             <div key={label} className="card">
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{label}</div>
               <div style={{ fontSize: 24, fontWeight: 700 }}>{value}</div>
@@ -98,22 +505,16 @@ export function Dividend() {
         </div>
         <div className="card">
           <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Dividend per belegging</h3>
-          {beleggingen.length === 0 ? (
-            <div className="empty-state"><p>Voeg beleggingen toe die dividend uitkeren</p></div>
-          ) : (
-            beleggingen.map(b => (
+          {beleggingen.length === 0 ? <div className="empty-state"><p>Voeg beleggingen toe die dividend uitkeren</p></div>
+            : beleggingen.map(b => (
               <div key={b.symbol} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border-light)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div className="belegging-avatar">{b.symbol.slice(0, 2)}</div>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{b.naam}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.symbol}</div>
-                  </div>
+                  <div><div style={{ fontWeight: 600 }}>{b.naam}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.symbol}</div></div>
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Geen dividenddata beschikbaar</div>
               </div>
-            ))
-          )}
+            ))}
         </div>
       </div>
     </div>
@@ -122,20 +523,14 @@ export function Dividend() {
 
 export function Belastingen() {
   const { beleggingen, koersen } = useApp();
-
   const totaalMeerwaarde = beleggingen.reduce((sum, b) => {
-    const koers = koersen[b.symbol];
-    const huidigePrijs = koers ? koers.c : b.kostprijs;
+    const koers = koersen[b.symbol]; const huidigePrijs = koers ? koers.c : b.kostprijs;
     const factor = (b.munt || 'EUR') === 'USD' ? 0.92 : 1;
-    const winst = (huidigePrijs - b.kostprijs) * b.aantal * factor;
-    return sum + winst;
+    return sum + (huidigePrijs - b.kostprijs) * b.aantal * factor;
   }, 0);
-
   return (
     <div style={{ padding: '0 0 40px' }}>
-      <div className="page-header" style={{ marginBottom: 24 }}>
-        <h1>Belastingen</h1>
-      </div>
+      <div className="page-header" style={{ marginBottom: 24 }}><h1>Belastingen</h1></div>
       <div style={{ padding: '0 32px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>
           <div className="card">
@@ -146,32 +541,24 @@ export function Belastingen() {
           </div>
           <div className="card">
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>Meerwaardebelasting (10%)</div>
-            <div style={{ fontSize: 24, fontWeight: 700 }}>
-              €{Math.max(0, totaalMeerwaarde * 0.10).toFixed(2)}
-            </div>
+            <div style={{ fontSize: 24, fontWeight: 700 }}>€{Math.max(0, totaalMeerwaarde * 0.10).toFixed(2)}</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Indicatief — raadpleeg een belastingadviseur</div>
           </div>
         </div>
         <div className="card">
           <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Overzicht per belegging</h3>
           {beleggingen.map(b => {
-            const koers = koersen[b.symbol];
-            const huidigePrijs = koers ? koers.c : b.kostprijs;
+            const koers = koersen[b.symbol]; const huidigePrijs = koers ? koers.c : b.kostprijs;
             const factor = (b.munt || 'EUR') === 'USD' ? 0.92 : 1;
             const winst = (huidigePrijs - b.kostprijs) * b.aantal * factor;
             return (
               <div key={b.symbol} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border-light)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div className="belegging-avatar">{b.symbol.slice(0, 2)}</div>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{b.naam}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.symbol}</div>
-                  </div>
+                  <div><div style={{ fontWeight: 600 }}>{b.naam}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.symbol}</div></div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 600, color: winst >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                    {winst >= 0 ? '+' : ''}€{winst.toFixed(2)}
-                  </div>
+                  <div style={{ fontWeight: 600, color: winst >= 0 ? 'var(--green)' : 'var(--red)' }}>{winst >= 0 ? '+' : ''}€{winst.toFixed(2)}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Meerwaarde</div>
                 </div>
               </div>
@@ -188,43 +575,21 @@ export function Instellingen() {
   const [voornaam, setVoornaam] = useState(gebruiker.voornaam);
   const [achternaam, setAchternaam] = useState(gebruiker.achternaam);
   const [opgeslagen, setOpgeslagen] = useState(false);
-
-  const opslaan = () => {
-    setGebruiker({ voornaam, achternaam });
-    setOpgeslagen(true);
-    setTimeout(() => setOpgeslagen(false), 2000);
-  };
-
+  const opslaan = () => { setGebruiker({ voornaam, achternaam }); setOpgeslagen(true); setTimeout(() => setOpgeslagen(false), 2000); };
   return (
     <div style={{ padding: '0 0 40px' }}>
-      <div className="page-header" style={{ marginBottom: 24 }}>
-        <h1>Instellingen</h1>
-      </div>
+      <div className="page-header" style={{ marginBottom: 24 }}><h1>Instellingen</h1></div>
       <div style={{ padding: '0 32px' }}>
         <div className="card" style={{ maxWidth: 500 }}>
           <h3 style={{ marginBottom: 20, fontSize: 16, fontWeight: 700 }}>Persoonlijke gegevens</h3>
-          <div className="form-group">
-            <label className="form-label">Voornaam</label>
-            <input type="text" className="form-input" value={voornaam} onChange={e => setVoornaam(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Achternaam</label>
-            <input type="text" className="form-input" value={achternaam} onChange={e => setAchternaam(e.target.value)} />
-          </div>
-          <button className="btn btn-primary" onClick={opslaan} style={{ marginTop: 8 }}>
-            {opgeslagen ? '✓ Opgeslagen!' : 'Opslaan'}
-          </button>
+          <div className="form-group"><label className="form-label">Voornaam</label><input type="text" className="form-input" value={voornaam} onChange={e => setVoornaam(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Achternaam</label><input type="text" className="form-input" value={achternaam} onChange={e => setAchternaam(e.target.value)} /></div>
+          <button className="btn btn-primary" onClick={opslaan} style={{ marginTop: 8 }}>{opgeslagen ? '✓ Opgeslagen!' : 'Opslaan'}</button>
         </div>
-
         <div className="card" style={{ maxWidth: 500, marginTop: 16 }}>
           <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Over Matico</h3>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            Matico is je persoonlijke portfolio tracker. Real-time koersen via Finnhub.io,
-            AI-analyses via Claude (Anthropic). Alle data wordt lokaal in je browser opgeslagen.
-          </p>
-          <div style={{ marginTop: 16, padding: 12, background: 'var(--bg)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-            Versie 1.0.0 · © 2026 Matico
-          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>Matico is je persoonlijke portfolio tracker. Real-time koersen via Finnhub.io, AI-analyses via Claude (Anthropic). Alle data wordt lokaal in je browser opgeslagen.</p>
+          <div style={{ marginTop: 16, padding: 12, background: 'var(--bg)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted)' }}>Versie 1.0.0 · © 2026 Matico</div>
         </div>
       </div>
     </div>
