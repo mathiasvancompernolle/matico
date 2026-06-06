@@ -377,13 +377,13 @@ export function Analyse() {
   }, [beleggingen, koersen, spreidingTab, spreidingSubFilter]);
 
   // ── Concentratierisico ──
-  const { grootstePct, grootsteSym, topSector, topSectorPct, topRegio, topRegioPct } = useMemo(() => {
+  const { grootstePct, grootsteSym, topSector, topSectorPct, topRegio, topRegioPct, concentratieTips } = useMemo(() => {
     const totaal = beleggingen.reduce((s, b) => {
       const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
     }, 0) || 1;
     const posities = beleggingen.map(b => {
       const k = koersen[b.symbol];
-      return { sym: b.symbol, pct: ((k ? k.c : b.kostprijs) * b.aantal * factor(b) / totaal) * 100 };
+      return { sym: b.symbol, naam: b.naam, pct: ((k ? k.c : b.kostprijs) * b.aantal * factor(b) / totaal) * 100, type: b.type };
     }).sort((a, b) => b.pct - a.pct);
     const sectorMap = {}; const regioMap = {};
     beleggingen.forEach(b => {
@@ -395,10 +395,63 @@ export function Analyse() {
     });
     const topS = Object.entries(sectorMap).sort((a, b) => b[1] - a[1])[0] || ['—', 0];
     const topR = Object.entries(regioMap).sort((a, b) => b[1] - a[1])[0] || ['—', 0];
+    const top2S = Object.entries(sectorMap).sort((a, b) => b[1] - a[1]).slice(0, 2);
+    const top2R = Object.entries(regioMap).sort((a, b) => b[1] - a[1]).slice(0, 2);
+    const aantalPosities = posities.length;
+    const aandelenPct = posities.filter(p => p.type !== 'etf' && p.type !== 'crypto').reduce((s, p) => s + p.pct, 0);
+    const top2Pct = posities.slice(0, 2).reduce((s, p) => s + p.pct, 0);
+
+    // Slimme tips genereren op basis van de werkelijke cijfers
+    const tips = [];
+
+    // 1. Eén positie domineert
+    if (posities[0]?.pct > 50) {
+      tips.push(`${posities[0].sym} maakt ${posities[0].pct.toFixed(0)}% van je portfolio uit. Dat is een erg hoge concentratie — bij een koersdaling van 10% daalt je portfolio al met ${(posities[0].pct * 0.1).toFixed(1)}%.`);
+    } else if (posities[0]?.pct > 30) {
+      tips.push(`${posities[0].sym} is je grootste positie met ${posities[0].pct.toFixed(0)}%. Overweeg of dit gewicht past bij je risicoprofiel.`);
+    }
+
+    // 2. Top 2 posities nemen te veel in
+    if (aantalPosities >= 3 && top2Pct > 70) {
+      tips.push(`Je twee grootste posities (${posities[0]?.sym} en ${posities[1]?.sym}) maken samen ${top2Pct.toFixed(0)}% uit. Grotere spreiding verlaagt je risico.`);
+    }
+
+    // 3. Sector concentratie
+    if (topS[1] > 60) {
+      tips.push(`${topS[1].toFixed(0)}% van je portfolio zit in ${topS[0]}. Een sectorcrisis zou een grote impact hebben.`);
+    } else if (topS[1] > 40 && top2S.length > 1) {
+      tips.push(`${topS[1].toFixed(0)}% zit indirect in ${topS[0]}, na doorrekening van je ETF-posities. ${top2S[1] ? top2S[1][1].toFixed(0) + '% in ' + top2S[1][0] + '.' : ''}`);
+    }
+
+    // 4. Regio concentratie
+    if (topR[1] > 80) {
+      tips.push(`${topR[1].toFixed(0)}% is indirect blootgesteld aan ${topR[0]}. Geografische spreiding naar andere regio's kan het risico verlagen.`);
+    } else if (topR[1] > 60) {
+      tips.push(`${topR[1].toFixed(0)}% is indirect blootgesteld aan ${topR[0]}.`);
+    }
+
+    // 5. Te weinig posities
+    if (aantalPosities === 1) {
+      tips.push(`Je hebt slechts 1 positie. Voeg meer beleggingen toe voor betere spreiding.`);
+    } else if (aantalPosities === 2 && aandelenPct > 50) {
+      tips.push(`Met slechts 2 posities is je portfolio weinig gespreid. Overweeg een breed ETF toe te voegen.`);
+    }
+
+    // 6. Geen ETF in portfolio
+    if (!beleggingen.some(b => b.type === 'etf') && aantalPosities < 5) {
+      tips.push(`Je portfolio bestaat enkel uit individuele aandelen. Een breed ETF zoals VWCE kan eenvoudig voor extra spreiding zorgen.`);
+    }
+
+    // 7. Alles goed — positieve tip
+    if (tips.length === 0) {
+      tips.push(`Je portfolio is goed gespreid over ${aantalPosities} posities, ${Object.keys(sectorMap).length} sectoren en ${Object.keys(regioMap).length} regio's.`);
+    }
+
     return {
       grootstePct: posities[0]?.pct || 0, grootsteSym: posities[0]?.sym || '—',
       topSector: topS[0], topSectorPct: topS[1],
       topRegio: topR[0], topRegioPct: topR[1],
+      concentratieTips: tips,
     };
   }, [beleggingen, koersen]);
 
@@ -725,17 +778,17 @@ export function Analyse() {
 
           {/* Concentratierisico */}
           <div className="card">
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>Concentratierisico</div>
-            {grootstePct > 40 && (
-              <div style={{
-                padding: '12px 16px', background: 'var(--accent-bg)', border: '1px solid var(--accent-light)',
-                borderRadius: 10, marginBottom: 20, fontSize: 13, color: 'var(--accent)',
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Concentratierisico</div>
+            {concentratieTips.map((tip, i) => (
+              <div key={i} style={{
+                padding: '11px 14px', background: 'var(--accent-bg)', border: '1px solid var(--accent-light)',
+                borderRadius: 10, marginBottom: 12, fontSize: 13, color: 'var(--accent)',
                 display: 'flex', alignItems: 'flex-start', gap: 8
               }}>
-                <span>💡</span>
-                <span>{grootsteSym} maakt {grootstePct.toFixed(0)}% uit van je portfolio. Overweeg diversificatie.</span>
+                <span style={{ flexShrink: 0 }}>💡</span>
+                <span style={{ lineHeight: 1.5 }}>{tip}</span>
               </div>
-            )}
+            ))}
             {[
               { label: 'Grootste positie', waarde: grootsteSym, pct: grootstePct },
               { label: 'Top sector', waarde: topSector, pct: topSectorPct },
