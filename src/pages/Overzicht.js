@@ -211,10 +211,19 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     return true;
   });
 
-  const winstData = grafiekData.map((d, i) => ({
-    ...d,
-    waarde: i === 0 ? 0 : d.waarde - grafiekData[0].waarde
-  }));
+  // Winst/verlies = huidige waarde - aankoopwaarde van alle beleggingen die je al bezat op die datum
+  const winstData = grafiekData.map((d) => {
+    const puntDatum = d.datum ? new Date(d.datum) : null;
+    let aankoopwaarde = 0;
+    beleggingen.forEach(b => {
+      const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+      const aankoopDatum = b.datum ? new Date(b.datum) : null;
+      if (!puntDatum || !aankoopDatum || puntDatum >= aankoopDatum) {
+        aankoopwaarde += b.kostprijs * b.aantal * factor;
+      }
+    });
+    return { ...d, waarde: Math.round((d.waarde - aankoopwaarde) * 100) / 100 };
+  });
 
   const displayData = weergave === 'waarde' ? grafiekData : winstData;
   const periodeWinst = grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : dagWinst;
@@ -336,17 +345,34 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                   domain={yDomain} width={70}
                 />
                 <Tooltip
-                  formatter={(v) => ['€' + v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 'Portfolio']}
-                  labelStyle={{ fontSize: 12 }}
-                  contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    const datum = payload[0]?.payload?.datum;
+                    const waarde = payload[0]?.value;
+                    const aankopenOpDatum = beleggingen.filter(b => b.datum === datum);
+                    return (
+                      <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
+                        <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{label}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--accent)', marginBottom: aankopenOpDatum.length > 0 ? 8 : 0 }}>
+                          Portfolio : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                        {aankopenOpDatum.map(b => (
+                          <div key={b.id} style={{ fontSize: 12, color: 'var(--green)', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
+                            🟢 Aankoop {b.naam} — {b.aantal} st. à {b.munt === 'USD' ? '$' : '€'}{b.kostprijs.toFixed(2)}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }}
                 />
                 <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)" dot={(props) => {
-                    const { cx, cy, payload } = props;
-                    const isAankoop = beleggingen.some(b => b.datum && payload.datum === b.datum);
-                    if (!isAankoop) return null;
-                    return <circle key={payload.datum} cx={cx} cy={cy} r={5} fill="white" stroke={grafiekKleur} strokeWidth={2} />;
+                    const { cx, cy, payload, index } = props;
+                    if (!payload || !payload.datum) return <g key={index}></g>;
+                    const isAankoop = beleggingen.some(b => b.datum && b.datum === payload.datum);
+                    if (!isAankoop) return <g key={index}></g>;
+                    return <circle key={`dot-${index}`} cx={cx} cy={cy} r={6} fill="white" stroke={grafiekKleur} strokeWidth={2.5} />;
                   }}
-                  activeDot={{ r: 4, fill: grafiekKleur }} />
+                  activeDot={{ r: 5, fill: grafiekKleur }} />
               </AreaChart>
             </ResponsiveContainer>
           )}
