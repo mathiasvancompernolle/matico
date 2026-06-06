@@ -418,7 +418,9 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const aankopenOpDatum = alleAankopen.filter(b => {
                       if (!b.datum || !puntD) return false;
                       const aankoopD = new Date(b.datum);
-                      if (beginPeriodeT && aankoopD < beginPeriodeT) return false;
+                      // Bij Totaal/Laatste: beginPeriode IS de aankoopdatum, dus niet filteren
+                      const filterOpBegin = tijdperk !== 'Totaal' && tijdperk !== 'Laatste';
+                      if (filterOpBegin && beginPeriodeT && aankoopD < beginPeriodeT) return false;
                       const verschilDit = Math.abs(puntD - aankoopD);
                       const dichtstbij = displayData.reduce((best, p) => {
                         if (!p.datum) return best;
@@ -492,7 +494,9 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const isAankoop = alleAankoopDots.some(b => {
                       if (!b.datum) return false;
                       const aankoopD = new Date(b.datum);
-                      if (beginPeriode && aankoopD < beginPeriode) return false;
+                      // Bij Totaal/Laatste: beginPeriode IS de aankoopdatum, dus niet filteren
+                      const filterOpBP = tijdperk !== 'Totaal' && tijdperk !== 'Laatste';
+                      if (filterOpBP && beginPeriode && aankoopD < beginPeriode) return false;
                       const verschilDit = Math.abs(puntDatum - aankoopD);
                       const dichtstbij = displayData.reduce((best, p) => {
                         if (!p.datum) return best;
