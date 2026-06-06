@@ -286,12 +286,33 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   const grafiekKleur = displayData.length > 1 && displayData[displayData.length-1]?.waarde >= displayData[0]?.waarde ? '#6366f1' : '#ef4444';
 
   // Y-as domein: altijd strak rond de data, nooit vanaf 0
-  const yDomain = displayData.length > 1 ? (() => {
+  // Y-as: nette gehele getallen, vaste stapgrootte, Totaal start bij 0
+  const { yDomain, yTicks } = (() => {
+    if (displayData.length < 2) return { yDomain: ['auto', 'auto'], yTicks: undefined };
     const min = Math.min(...displayData.map(d => d.waarde));
     const max = Math.max(...displayData.map(d => d.waarde));
-    const marge = (max - min) * 0.1 || max * 0.01;
-    return [min - marge, max + marge];
-  })() : ['auto', 'auto'];
+    const bodem = tijdperk === 'Totaal' ? 0 : min;
+    const bereik = max - bodem;
+    if (bereik === 0) return { yDomain: [0, max * 1.2], yTicks: undefined };
+    // Kies een nette stapgrootte: 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, ...
+    const doelTicks = 5;
+    const ruwStap = bereik / doelTicks;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(ruwStap)));
+    const genormaliseerd = ruwStap / magnitude;
+    const niceStap = genormaliseerd < 1.5 ? 1 * magnitude
+      : genormaliseerd < 3.5 ? 2 * magnitude
+      : genormaliseerd < 7.5 ? 5 * magnitude
+      : 10 * magnitude;
+    // Snap min/max naar veelvouden van de stapgrootte
+    const axisMin = tijdperk === 'Totaal' ? 0 : Math.floor(bodem / niceStap) * niceStap;
+    const axisMax = Math.ceil(max / niceStap) * niceStap;
+    // Genereer tick-waarden
+    const ticks = [];
+    for (let t = axisMin; t <= axisMax + niceStap * 0.01; t += niceStap) {
+      ticks.push(Math.round(t));
+    }
+    return { yDomain: [axisMin, axisMax], yTicks: ticks };
+  })();
 
   return (
     <div style={{ padding: '0 0 40px' }}>
@@ -395,8 +416,8 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                 <YAxis
                   tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
-                  tickFormatter={v => '€' + v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  domain={yDomain} width={70}
+                  tickFormatter={v => '€' + Math.round(v).toLocaleString('nl-BE')}
+                  domain={yDomain} ticks={yTicks} width={70}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
