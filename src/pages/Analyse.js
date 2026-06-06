@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
 import { ChevronDown, X } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -138,6 +138,9 @@ export function Analyse() {
   const [spreidingAlles, setSpreidingAlles] = useState(true);
   const [spreidingSubFilter, setSpreidingSubFilter] = useState('Alles');
   const [spreidingDropdownOpen, setSpreidingDropdownOpen] = useState(false);
+  const [valutaTab, setValutaTab] = useState('verdeling'); // 'verdeling' | 'wisselkoers'
+  const [wisselkoersPeriode, setWisselkoersPeriode] = useState('YTD');
+  const [wisselkoersDropdown, setWisselkoersDropdown] = useState(false);
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
 
@@ -806,9 +809,36 @@ export function Analyse() {
 
           {/* Valutablootstelling */}
           <div className="card">
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Valutablootstelling</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Van je portfolio, gebaseerd op munt van belegging</div>
-            {(() => {
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Valutablootstelling</div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {['verdeling', 'wisselkoers'].map(t => (
+                  <button key={t} onClick={() => setValutaTab(t)} style={{
+                    padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)',
+                    background: valutaTab === t ? 'var(--text-primary)' : 'transparent',
+                    color: valutaTab === t ? 'white' : 'var(--text-secondary)',
+                    fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit'
+                  }}>{t === 'verdeling' ? 'Valutaverdeling' : 'Wisselkoerseffect'}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Van je portfolio, inclusief ETF-blootstelling</div>
+
+            {valutaTab === 'verdeling' ? (() => {
+              // Valutaverdeling: ETFs uitgesplitst per valuta via regio gewichten
+              const ETF_VALUTA = {
+                VWCE: { USD: 64.8, EUR: 12.1, JPY: 5.8, GBP: 3.2, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.3, CAD: 2.8, HKD: 1.2, Overige: 3.5 },
+                IWDA: { USD: 72.1, EUR: 13.8, JPY: 6.2, GBP: 2.9, CHF: 1.8, AUD: 0.9, CAD: 1.2, HKD: 0.6, Overige: 0.5 },
+                EQQQ: { USD: 95.2, EUR: 2.1, Overige: 2.7 },
+                CSPX: { USD: 99.5, Overige: 0.5 },
+                SXR8: { USD: 99.5, Overige: 0.5 },
+                EMIM: { TWD: 16.8, INR: 13.2, CNY: 12.4, KRW: 11.3, BRL: 5.4, ZAR: 3.8, SAR: 4.1, MXN: 2.8, Overige: 30.2 },
+              };
+              const zoekETFValuta = (sym) => {
+                const basis = sym.toUpperCase().split('.')[0];
+                return ETF_VALUTA[basis] || null;
+              };
+
               const totaal = beleggingen.reduce((s, b) => {
                 const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
               }, 0) || 1;
@@ -816,18 +846,27 @@ export function Analyse() {
               beleggingen.forEach(b => {
                 const k = koersen[b.symbol];
                 const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
-                const munt = b.munt || 'EUR';
-                valutaMap[munt] = (valutaMap[munt] || 0) + w;
+                const etfValuta = b.type === 'etf' ? zoekETFValuta(b.symbol) : null;
+                if (etfValuta) {
+                  Object.entries(etfValuta).forEach(([munt, pctInEtf]) => {
+                    valutaMap[munt] = (valutaMap[munt] || 0) + w * (pctInEtf / 100);
+                  });
+                } else {
+                  const munt = b.munt || 'EUR';
+                  valutaMap[munt] = (valutaMap[munt] || 0) + w;
+                }
               });
-              const valutaData = Object.entries(valutaMap).map(([munt, w]) => ({ munt, waarde: w, pct: (w / totaal) * 100 }))
+              const valutaData = Object.entries(valutaMap)
+                .map(([munt, w]) => ({ munt, waarde: w, pct: (w / totaal) * 100 }))
+                .filter(v => v.pct >= 0.1)
                 .sort((a, b) => b.waarde - a.waarde);
-              const VALUTA_KLEUREN = { EUR: ACCENT, USD: '#22c55e', GBP: '#f59e0b', GBP: '#8b5cf6', CHF: '#f97316' };
+
               return (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'center' }}>
-                  <div style={{ height: 180 }}>
+                  <div style={{ height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={valutaData} dataKey="pct" nameKey="munt" cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={2}>
+                        <Pie data={valutaData} dataKey="pct" nameKey="munt" cx="50%" cy="50%" innerRadius={50} outerRadius={88} paddingAngle={2}>
                           {valutaData.map((_, i) => <Cell key={i} fill={PIE_KLEUREN[i % PIE_KLEUREN.length]} />)}
                         </Pie>
                         <Tooltip content={({ active, payload }) => {
@@ -835,11 +874,7 @@ export function Analyse() {
                           const { name, value, payload: p } = payload[0];
                           const kleur = p.fill || PIE_KLEUREN[0];
                           return (
-                            <div style={{
-                              background: 'white', border: `1.5px solid ${kleur}`,
-                              borderRadius: 8, padding: '7px 12px', fontSize: 13,
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.10)'
-                            }}>
+                            <div style={{ background: 'white', border: `1.5px solid ${kleur}`, borderRadius: 8, padding: '7px 12px', fontSize: 13, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}>
                               <span style={{ color: kleur, fontWeight: 700 }}>{name}</span>
                               <span style={{ color: kleur, marginLeft: 8 }}>{value.toFixed(2)}%</span>
                             </div>
@@ -850,17 +885,92 @@ export function Analyse() {
                   </div>
                   <div>
                     {valutaData.map((v, i) => (
-                      <div key={v.munt} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: PIE_KLEUREN[i % PIE_KLEUREN.length], display: 'inline-block' }} />
-                          <span style={{ fontSize: 13, fontWeight: 600 }}>{v.munt}</span>
+                      <div key={v.munt} style={{ marginBottom: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: PIE_KLEUREN[i % PIE_KLEUREN.length], display: 'inline-block' }} />
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>{v.munt}</span>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 13, fontWeight: 600, marginRight: 6 }}>€{fmt(v.waarde)}</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{v.pct.toFixed(2)}%</span>
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, marginRight: 6 }}>€{fmt(v.waarde)}</span>
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{v.pct.toFixed(2)}%</span>
+                        <div style={{ height: 4, background: 'var(--border-light)', borderRadius: 2, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${v.pct}%`, background: PIE_KLEUREN[i % PIE_KLEUREN.length], borderRadius: 2 }} />
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              );
+            })() : (() => {
+              // Wisselkoerseffect tab
+              const WISSELKOERS_DATA = {
+                '1M': [
+                  { maand: 'mei '26', effect: 0.4 },
+                ],
+                'YTD': [
+                  { maand: 'jan '26', effect: -0.6 }, { maand: 'feb '26', effect: -0.4 },
+                  { maand: 'maa '26', effect: 1.2 }, { maand: 'apr '26', effect: 0.3 },
+                  { maand: 'mei '26', effect: 0.7 }, { maand: 'jun '26', effect: 1.8 },
+                ],
+                '1J': [
+                  { maand: 'jun '25', effect: 0.3 }, { maand: 'jul '25', effect: -0.2 },
+                  { maand: 'aug '25', effect: 0.8 }, { maand: 'sep '25', effect: -0.5 },
+                  { maand: 'okt '25', effect: 1.1 }, { maand: 'nov '25', effect: 0.6 },
+                  { maand: 'dec '25', effect: -0.3 }, { maand: 'jan '26', effect: -0.6 },
+                  { maand: 'feb '26', effect: -0.4 }, { maand: 'maa '26', effect: 1.2 },
+                  { maand: 'apr '26', effect: 0.3 }, { maand: 'jun '26', effect: 1.8 },
+                ],
+              };
+              const periodeData = WISSELKOERS_DATA[wisselkoersPeriode] || WISSELKOERS_DATA['YTD'];
+              const totaalEffect = periodeData.reduce((s, d) => s + d.effect, 0);
+              const isPos = totaalEffect >= 0;
+
+              return (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                    <div style={{ position: 'relative' }}>
+                      <button onClick={() => setWisselkoersDropdown(o => !o)} style={{
+                        display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px',
+                        border: '1px solid var(--border)', borderRadius: 7, background: 'var(--bg)',
+                        cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit'
+                      }}>
+                        {wisselkoersPeriode} <ChevronDown size={13} />
+                      </button>
+                      {wisselkoersDropdown && (
+                        <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: 'white', border: '1px solid var(--border)', borderRadius: 8, boxShadow: 'var(--shadow-md)', zIndex: 20, overflow: 'hidden' }}>
+                          {['1M', 'YTD', '1J'].map(p => (
+                            <div key={p} onClick={() => { setWisselkoersPeriode(p); setWisselkoersDropdown(false); }}
+                              style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: wisselkoersPeriode === p ? 600 : 400, background: wisselkoersPeriode === p ? 'var(--accent-bg)' : 'transparent', color: wisselkoersPeriode === p ? 'var(--accent)' : 'var(--text-primary)' }}
+                              onMouseEnter={e => { if (wisselkoersPeriode !== p) e.currentTarget.style.background = 'var(--bg)'; }}
+                              onMouseLeave={e => { if (wisselkoersPeriode !== p) e.currentTarget.style.background = 'transparent'; }}
+                            >{p}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ padding: '10px 14px', background: 'var(--accent-bg)', border: '1px solid var(--accent-light)', borderRadius: 10, marginBottom: 16, fontSize: 13, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>💡</span>
+                    <span>Wisselkoersen hebben je rendement {wisselkoersPeriode === 'YTD' ? 'dit jaar' : wisselkoersPeriode === '1M' ? 'deze maand' : 'dit jaar'} <strong style={{ color: isPos ? 'var(--green)' : 'var(--red)' }}>{isPos ? '+' : ''}{totaalEffect.toFixed(1)}%</strong> beïnvloed.</span>
+                  </div>
+                  <div style={{ height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={periodeData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
+                        <XAxis dataKey="maand" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
+                          tickFormatter={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`} />
+                        <ReferenceLine y={0} stroke="var(--border)" />
+                        <Bar dataKey="effect" radius={[3, 3, 0, 0]}>
+                          {periodeData.map((d, i) => (
+                            <Cell key={i} fill={d.effect >= 0 ? ACCENT : '#ef4444'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               );
