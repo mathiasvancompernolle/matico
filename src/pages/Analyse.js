@@ -141,6 +141,8 @@ export function Analyse() {
   const [valutaTab, setValutaTab] = useState('verdeling'); // 'verdeling' | 'wisselkoers'
   const [wisselkoersPeriode, setWisselkoersPeriode] = useState('YTD');
   const [wisselkoersDropdown, setWisselkoersDropdown] = useState(false);
+  const [liveEtfData, setLiveEtfData] = useState({}); // { VWCE: { holdings, sectoren, landen, kostenratio, geladen } }
+  const [etfDataLoading, setEtfDataLoading] = useState(false);
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
 
@@ -380,7 +382,49 @@ export function Analyse() {
   }, [beleggingen, koersen, spreidingTab, spreidingSubFilter]);
 
   // ── Concentratierisico ──
-  const { grootstePct, grootsteSym, topSector, topSectorPct, topRegio, topRegioPct, concentratieTips } = useMemo(() => {
+  // ── Live ETF data laden via FMP + localStorage cache (1 maand) ──
+  useEffect(() => {
+    const etfSymbolen = [...new Set(beleggingen.filter(b => b.type === 'etf').map(b => b.symbol.toUpperCase().split('.')[0]))];
+    if (etfSymbolen.length === 0) return;
+
+    const CACHE_DUUR_MS = 30 * 24 * 60 * 60 * 1000; // 30 dagen
+    const nieuweData = {};
+
+    const laadEtf = async (basis) => {
+      // Check localStorage cache
+      const cacheKey = `matico_etf_${basis}`;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_DUUR_MS) {
+            return { basis, data };
+          }
+        }
+      } catch (e) {}
+
+      // Haal live data op via FMP
+      try {
+        const res = await fetch(`/api/data?endpoint=etf-holdings&symbol=${basis}`);
+        const data = await res.json();
+        if (data && (data.holdings?.length > 0 || data.sectoren?.length > 0)) {
+          localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
+          return { basis, data };
+        }
+      } catch (e) { console.error('ETF data fout:', e); }
+      return null;
+    };
+
+    setEtfDataLoading(true);
+    Promise.all(etfSymbolen.map(laadEtf)).then(results => {
+      const nieuw = {};
+      results.forEach(r => { if (r) nieuw[r.basis] = r.data; });
+      setLiveEtfData(prev => ({ ...prev, ...nieuw }));
+      setEtfDataLoading(false);
+    });
+  }, [beleggingen.filter(b => b.type === 'etf').map(b => b.symbol).join(',')]);
+
+    const { grootstePct, grootsteSym, topSector, topSectorPct, topRegio, topRegioPct, concentratieTips } = useMemo(() => {
     const totaal = beleggingen.reduce((s, b) => {
       const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
     }, 0) || 1;
@@ -661,9 +705,21 @@ export function Analyse() {
     },
   };
 
-  // Zoek ETF op basis van symboolprefix
+  // Zoek ETF data: eerst live FMP data, dan hardcoded fallback
   const zoekXray = (symbol) => {
     const basis = symbol.toUpperCase().split('.')[0];
+    const live = liveEtfData[basis];
+    if (live?.holdings?.length > 0) {
+      // Converteer FMP formaat naar intern formaat
+      return {
+        kostenratio: live.expenseRatio || ETF_DB_XRAY[basis]?.kostenratio || 0,
+        holdings: live.holdings.slice(0, 10).map(h => ({
+          sym: h.asset || h.symbol || h.ticker || '?',
+          naam: h.name || h.companyName || h.asset || '?',
+          pct: parseFloat(h.weightPercentage || h.weight || h.pct || 0)
+        })).filter(h => h.pct > 0)
+      };
+    }
     return ETF_DB_XRAY[basis] || null;
   };
 
@@ -1246,8 +1302,30 @@ export function Analyse() {
         {/* ── ETF X-ray ── */}
         {etfs.length > 0 && (
           <div className="card">
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>ETF X-ray</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Top holdings van je ETFs</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>ETF X-ray</div>
+              {etfDataLoading ? (
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '3px 8px', background: 'var(--bg)', borderRadius: 6 }}>
+                  ⟳ Data laden...
+                </span>
+              ) : (() => {
+                const cacheKey = `matico_etf_${etfs[0]?.symbol?.toUpperCase().split('.')[0]}`;
+                try {
+                  const cached = localStorage.getItem(cacheKey);
+                  if (cached) {
+                    const { timestamp } = JSON.parse(cached);
+                    const datum = new Date(timestamp).toLocaleDateString('nl-BE');
+                    return (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '3px 8px', background: 'var(--bg)', borderRadius: 6 }}>
+                        ✓ Bijgewerkt op {datum}
+                      </span>
+                    );
+                  }
+                } catch (e) {}
+                return null;
+              })()}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Top holdings van je ETFs — automatisch bijgewerkt</div>
 
             {/* Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 24 }}>
