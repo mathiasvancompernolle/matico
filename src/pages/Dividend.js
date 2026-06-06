@@ -39,8 +39,37 @@ const DIVIDEND_DB = {
   WEBG: { jaarlijks: 0, frequentie: 0, ex_maanden: [], accumulating: true },
 };
 
-const getDividendData = (symbol) => {
+// Historische jaarlijkse dividenden per aandeel (USD) voor nauwkeurige berekening
+const DIVIDEND_HISTORIEK = {
+  NVDA: {
+    2022: { jaarlijks: 0.016, frequentie: 4, ex_maanden: [3, 6, 9, 12] },
+    2023: { jaarlijks: 0.016, frequentie: 4, ex_maanden: [3, 6, 9, 12] },
+    2024: { jaarlijks: 0.04, frequentie: 4, ex_maanden: [3, 6, 9, 12] },
+    2025: { jaarlijks: 0.04, frequentie: 4, ex_maanden: [3, 6, 9, 12] },  // 4x$0.01
+    2026: { jaarlijks: 1.00, frequentie: 4, ex_maanden: [3, 6, 9, 12] },  // verhoogd naar $0.25/kwartaal
+  },
+  NKE: {
+    2022: { jaarlijks: 1.36, frequentie: 4, ex_maanden: [1, 4, 7, 10] },
+    2023: { jaarlijks: 1.48, frequentie: 4, ex_maanden: [1, 4, 7, 10] },
+    2024: { jaarlijks: 1.54, frequentie: 4, ex_maanden: [1, 4, 7, 10] },
+    2025: { jaarlijks: 1.57, frequentie: 4, ex_maanden: [1, 4, 7, 10] },  // jan$0.37 + apr/jul/okt$0.40
+    2026: { jaarlijks: 1.64, frequentie: 4, ex_maanden: [1, 4, 7, 10] },  // 4x$0.41
+  },
+  MSFT: {
+    2022: { jaarlijks: 2.48, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
+    2023: { jaarlijks: 2.72, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
+    2024: { jaarlijks: 3.00, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
+    2025: { jaarlijks: 3.16, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
+    2026: { jaarlijks: 3.32, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
+  },
+};
+
+const getDividendData = (symbol, jaar) => {
   const basis = symbol.toUpperCase().split('.')[0];
+  // Gebruik jaar-specifieke data als beschikbaar
+  if (jaar && DIVIDEND_HISTORIEK[basis]?.[jaar]) {
+    return DIVIDEND_HISTORIEK[basis][jaar];
+  }
   return DIVIDEND_DB[basis] || null;
 };
 
@@ -60,18 +89,32 @@ export default function Dividend() {
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
 
-  // Haal live dividenddata op via Finnhub
+  // Haal live dividenddata op via Finnhub — per symbool én per jaar
+  // Sleutel: "NVDA_2025", "NKE_2024", ... zodat historische data bewaard blijft
   useEffect(() => {
-    const symbolen = beleggingen.map(b => b.symbol);
+    const alleBeleggingen = [
+      ...beleggingen,
+      ...(verkochteBeleggingen || [])
+    ];
+    const symbolen = [...new Set(alleBeleggingen.map(b => b.symbol))];
+
     symbolen.forEach(async (sym) => {
       const basis = sym.toUpperCase().split('.')[0];
-      const cacheKey = `matico_div_${basis}_${jaar}`;
+      const sleutel = `${basis}_${jaar}`;
+      const cacheKey = `matico_div_${sleutel}`;
+
+      // Check cache — historische jaren cachen langer (1 jaar), huidig jaar 7 dagen
+      const huidigJaar = new Date().getFullYear();
+      const cacheDuur = jaar < huidigJaar
+        ? 365 * 24 * 60 * 60 * 1000  // historisch: 1 jaar
+        : 7 * 24 * 60 * 60 * 1000;   // huidig jaar: 7 dagen
+
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < 7 * 24 * 60 * 60 * 1000) {
-            setLiveDividend(prev => ({ ...prev, [basis]: data }));
+          if (Date.now() - timestamp < cacheDuur) {
+            setLiveDividend(prev => ({ ...prev, [sleutel]: data }));
             return;
           }
         }
@@ -82,13 +125,16 @@ export default function Dividend() {
         const tot = `${jaar}-12-31`;
         const res = await fetch(`/api/data?endpoint=dividend&symbol=${sym}&van=${van}&tot=${tot}`);
         const data = await res.json();
-        if (data && data.length > 0) {
+        if (data && Array.isArray(data) && data.length > 0) {
           localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
-          setLiveDividend(prev => ({ ...prev, [basis]: data }));
+          setLiveDividend(prev => ({ ...prev, [sleutel]: data }));
+        } else {
+          // Geen data van Finnhub — markeer als gecontroleerd zodat we niet blijven proberen
+          localStorage.setItem(cacheKey, JSON.stringify({ data: [], timestamp: Date.now() }));
         }
       } catch (e) {}
     });
-  }, [beleggingen.map(b => b.symbol).join(','), jaar]);
+  }, [beleggingen.map(b => b.symbol).join(','), (verkochteBeleggingen || []).map(b => b.symbol).join(','), jaar]);
 
   // ── Bereken dividenddata per belegging ──
   // Gebruikt live Finnhub data als beschikbaar, anders hardcoded database
@@ -115,7 +161,7 @@ export default function Dividend() {
       const huidigePrijs = k ? k.c : b.kostprijs;
 
       // ── Probeer live Finnhub data ──
-      const liveData = liveDividend[basis];
+      const liveData = liveDividend[`${basis}_${jaar}`];
       if (liveData && Array.isArray(liveData) && liveData.length > 0) {
         // Filter op het gevraagde jaar
         const uitkeringenDitJaar = liveData.filter(d => {
@@ -176,7 +222,7 @@ export default function Dividend() {
       }
 
       // ── Fallback: hardcoded database ──
-      const db = getDividendData(b.symbol);
+      const db = getDividendData(b.symbol, jaar);
       if (!db || db.jaarlijks === 0) {
         if (!db?.accumulating) zonderDataLijst.push(b.naam || b.symbol);
         return;
@@ -235,15 +281,18 @@ export default function Dividend() {
 
   const beschikbareJaren = useMemo(() => {
     const huidig = new Date().getFullYear();
-    const vroegste = beleggingen.reduce((min, b) => {
-      if (!b.datum) return min;
-      const j = new Date(b.datum).getFullYear();
+    const alleDatums = [
+      ...beleggingen.map(b => b.datum),
+      ...(verkochteBeleggingen || []).map(b => b.datum)
+    ].filter(Boolean);
+    const vroegste = alleDatums.reduce((min, datum) => {
+      const j = new Date(datum).getFullYear();
       return j < min ? j : min;
     }, huidig);
     const jaren = [];
     for (let j = huidig; j >= vroegste; j--) jaren.push(j);
     return jaren;
-  }, [beleggingen]);
+  }, [beleggingen, verkochteBeleggingen]);
 
   if (beleggingen.length === 0) {
     return (
