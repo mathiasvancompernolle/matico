@@ -126,11 +126,30 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       // Bepaal API tijdperk
       const apiTijdperk = getApiTijdperk(tijdperk, beleggingVoorGrafiek);
 
-      // Haal historische data op per symbool
-      const symbolen = [...new Set(beleggingVoorGrafiek.map(b => b.symbol))];
+      // Helper: parse dd/mm/yyyy of yyyy-mm-dd naar Date
+      const parseDatum = (str) => {
+        if (!str) return null;
+        const d = str.split('/');
+        if (d.length === 3) return new Date(`${d[2]}-${d[1]}-${d[0]}`);
+        return new Date(str);
+      };
+
+      // Gefilterde verkochte beleggingen (ook op filterType/filterSymbolen)
+      const verkochtVoorGrafiek = (verkochteBeleggingen || []).filter(b => {
+        if (filterType !== 'alle' && b.type !== filterType) return false;
+        if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
+        return true;
+      });
+
+      // Alle symbolen: actief + verkocht (deduped)
+      const alleSymbolen = [...new Set([
+        ...beleggingVoorGrafiek.map(b => b.symbol),
+        ...verkochtVoorGrafiek.map(b => b.symbol)
+      ])];
+
       const historischeData = {};
 
-      for (const symbol of symbolen) {
+      for (const symbol of alleSymbolen) {
         try {
           const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(symbol)}&tijdperk=${apiTijdperk}`);
           const data = await res.json();
@@ -154,10 +173,9 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       // Bepaal begindatum voor "Laatste" filtering
       const begindatumFilter = getBegindatumVoorTijdperk(tijdperk, beleggingVoorGrafiek);
 
-      // Combineer per datumpunt — houd rekening met aankoopdatum per belegging
+      // Combineer per datumpunt — actieve + verkochte beleggingen, elk met hun tijdvenster
       const gecombineerd = allePunten
         .filter(punt => {
-          // Filter voor "Laatste": toon alleen vanaf meest recente aankoop
           if (begindatumFilter && punt.datum) {
             return new Date(punt.datum) >= begindatumFilter;
           }
@@ -167,31 +185,41 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
           const puntDatum = punt.datum ? new Date(punt.datum) : null;
           let totaalWaarde = 0;
 
+          // ── Actieve beleggingen: tellen mee vanaf aankoopdatum ──
           beleggingVoorGrafiek.forEach(b => {
             const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
             const aankoopDatum = b.datum ? new Date(b.datum) : null;
-
-            // Belegging telt alleen mee als de datum van het punt NA de aankoopdatum valt
-            if (puntDatum && aankoopDatum && puntDatum < aankoopDatum) {
-              return; // Nog niet aangekocht
-            }
+            if (puntDatum && aankoopDatum && puntDatum < aankoopDatum) return;
 
             const symbolData = historischeData[b.symbol];
-            // Vind het juiste datapunt voor dit symbool op basis van datum
             if (symbolData) {
-              let gevondenPunt = null;
-              if (punt.datum) {
-                gevondenPunt = symbolData.find(p => p.datum === punt.datum);
-              }
-              if (!gevondenPunt) {
-                gevondenPunt = symbolData[Math.min(i, symbolData.length - 1)];
-              }
-              if (gevondenPunt) {
-                totaalWaarde += gevondenPunt.prijs * b.aantal * factor;
-              }
+              let gevondenPunt = punt.datum ? symbolData.find(p => p.datum === punt.datum) : null;
+              if (!gevondenPunt) gevondenPunt = symbolData[Math.min(i, symbolData.length - 1)];
+              if (gevondenPunt) totaalWaarde += gevondenPunt.prijs * b.aantal * factor;
             } else {
               const koers = koersen[b.symbol];
               totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
+            }
+          });
+
+          // ── Verkochte beleggingen: tellen mee tussen aankoop- en verkoopdatum ──
+          verkochtVoorGrafiek.forEach(b => {
+            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+            const aankoopDatum = b.datum ? new Date(b.datum) : null;
+            const verkoopDatum = parseDatum(b.verkoopdatum);
+
+            // Punt valt buiten het venster van deze positie → niet meetellen
+            if (puntDatum && aankoopDatum && puntDatum < aankoopDatum) return;
+            if (puntDatum && verkoopDatum && puntDatum > verkoopDatum) return;
+
+            const symbolData = historischeData[b.symbol];
+            if (symbolData) {
+              let gevondenPunt = punt.datum ? symbolData.find(p => p.datum === punt.datum) : null;
+              if (!gevondenPunt) gevondenPunt = symbolData[Math.min(i, symbolData.length - 1)];
+              if (gevondenPunt) totaalWaarde += gevondenPunt.prijs * b.aantalVerkocht * factor;
+            } else {
+              // Geen historische data: gebruik verkoopkoers als benadering
+              totaalWaarde += (b.verkoopkoers || b.kostprijs) * b.aantalVerkocht * factor;
             }
           });
 
@@ -204,7 +232,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     };
 
     laadGrafiek();
-  }, [beleggingVoorGrafiek.length, koersen, tijdperk, filterType, filterSymbolen]);
+  }, [beleggingVoorGrafiek.length, koersen, tijdperk, filterType, filterSymbolen, (verkochteBeleggingen || []).length]);
 
   useEffect(() => {
     refreshAlleKoersen();
@@ -218,16 +246,34 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     return true;
   });
 
-  // Winst/verlies = huidige waarde - aankoopwaarde van alle beleggingen die je al bezat op die datum
+  // Winst/verlies = huidige waarde - aankoopwaarde van alle posities actief op die datum
   const winstData = grafiekData.map((d) => {
     const puntDatum = d.datum ? new Date(d.datum) : null;
+    const parseDatum = (str) => {
+      if (!str) return null;
+      const delen = str.split('/');
+      if (delen.length === 3) return new Date(`${delen[2]}-${delen[1]}-${delen[0]}`);
+      return new Date(str);
+    };
     let aankoopwaarde = 0;
+    // Actieve beleggingen
     beleggingVoorGrafiek.forEach(b => {
       const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
       const aankoopDatum = b.datum ? new Date(b.datum) : null;
       if (!puntDatum || !aankoopDatum || puntDatum >= aankoopDatum) {
         aankoopwaarde += b.kostprijs * b.aantal * factor;
       }
+    });
+    // Verkochte beleggingen: kostprijs telt alleen mee terwijl de positie open was
+    (verkochteBeleggingen || []).forEach(b => {
+      if (filterType !== 'alle' && b.type !== filterType) return;
+      if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return;
+      const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+      const aankoopDatum = b.datum ? new Date(b.datum) : null;
+      const verkoopDatum = parseDatum(b.verkoopdatum);
+      if (puntDatum && aankoopDatum && puntDatum < aankoopDatum) return;
+      if (puntDatum && verkoopDatum && puntDatum > verkoopDatum) return;
+      aankoopwaarde += b.kostprijs * b.aantalVerkocht * factor;
     });
     return { ...d, waarde: Math.round((d.waarde - aankoopwaarde) * 100) / 100 };
   });
