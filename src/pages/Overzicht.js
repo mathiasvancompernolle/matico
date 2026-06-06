@@ -58,7 +58,7 @@ function getBegindatumVoorTijdperk(tijdperk, beleggingen) {
 }
 
 export default function Overzicht({ onToevoegen, onImporteren }) {
-  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, dagWinst, dagWinstPct, getMuntFactor } = useApp();
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen } = useApp();
   const [tijdperk, setTijdperk] = useState('1D');
   const [weergave, setWeergave] = useState('waarde');
   const [grafiekData, setGrafiekData] = useState([]);
@@ -358,6 +358,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const waarde = payload[0]?.value;
                     const puntD = datum ? new Date(datum) : null;
                     const beginPeriodeT = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
+
                     const aankopenOpDatum = beleggingVoorGrafiek.filter(b => {
                       if (!b.datum || !puntD) return false;
                       const aankoopD = new Date(b.datum);
@@ -370,10 +371,29 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                       }, Infinity);
                       return verschilDit === dichtstbij;
                     });
+
+                    const verkopenOpDatum = (verkochteBeleggingen || []).filter(b => {
+                      if (!b.verkoopdatum || !puntD) return false;
+                      const delen = b.verkoopdatum.split('/');
+                      const verkoopD = delen.length === 3
+                        ? new Date(`${delen[2]}-${delen[1]}-${delen[0]}`)
+                        : new Date(b.verkoopdatum);
+                      if (isNaN(verkoopD)) return false;
+                      if (beginPeriodeT && verkoopD < beginPeriodeT) return false;
+                      const verschilDit = Math.abs(puntD - verkoopD);
+                      const dichtstbij = displayData.reduce((best, p) => {
+                        if (!p.datum) return best;
+                        const v = Math.abs(new Date(p.datum) - verkoopD);
+                        return v < best ? v : best;
+                      }, Infinity);
+                      return verschilDit === dichtstbij;
+                    });
+
+                    const heeftEvents = aankopenOpDatum.length > 0 || verkopenOpDatum.length > 0;
                     return (
                       <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
                         <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{label}</div>
-                        <div style={{ fontWeight: 600, color: 'var(--accent)', marginBottom: aankopenOpDatum.length > 0 ? 8 : 0 }}>
+                        <div style={{ fontWeight: 600, color: 'var(--accent)', marginBottom: heeftEvents ? 8 : 0 }}>
                           Portfolio : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         {aankopenOpDatum.map(b => (
@@ -381,6 +401,19 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                             🟢 Aankoop {b.naam} — {b.aantal} st. à {b.munt === 'USD' ? '$' : '€'}{b.kostprijs.toFixed(2)}
                           </div>
                         ))}
+                        {verkopenOpDatum.map((b, i) => {
+                          const ms = (b.verkoopMunt || b.munt || 'EUR') === 'USD' ? '$' : '€';
+                          const wv = b.winstverlies || 0;
+                          return (
+                            <div key={b.id + i} style={{ fontSize: 12, color: '#ef4444', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
+                              🔴 Verkoop {b.naam} — {b.aantalVerkocht} st. à {ms}{b.verkoopkoers?.toFixed(2)}
+                              {' '}
+                              <span style={{ color: wv >= 0 ? 'var(--green)' : '#ef4444', fontWeight: 600 }}>
+                                ({wv >= 0 ? '+' : ''}{ms}{Math.abs(wv).toFixed(2)})
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   }}
@@ -389,13 +422,12 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const { cx, cy, payload, index } = props;
                     if (!payload || !payload.datum) return <g key={index}></g>;
                     const puntDatum = new Date(payload.datum);
-                    // Begindatum van de getoonde periode
                     const beginPeriode = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
-                    // Per aankoop: check of aankoop BINNEN de periode valt EN dit het dichtstbijzijnde punt is
+
+                    // Check aankoop dot
                     const isAankoop = beleggingVoorGrafiek.some(b => {
                       if (!b.datum) return false;
                       const aankoopD = new Date(b.datum);
-                      // Aankoop moet binnen de getoonde periode vallen
                       if (beginPeriode && aankoopD < beginPeriode) return false;
                       const verschilDit = Math.abs(puntDatum - aankoopD);
                       const dichtstbij = displayData.reduce((best, p) => {
@@ -405,8 +437,33 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                       }, Infinity);
                       return verschilDit === dichtstbij;
                     });
-                    if (!isAankoop) return <g key={index}></g>;
-                    return <circle key={`dot-${index}`} cx={cx} cy={cy} r={6} fill="white" stroke={grafiekKleur} strokeWidth={2.5} />;
+
+                    // Check verkoop dot
+                    const isVerkoop = (verkochteBeleggingen || []).some(b => {
+                      if (!b.verkoopdatum) return false;
+                      // Converteer dd/mm/yyyy naar datum
+                      const delen = b.verkoopdatum.split('/');
+                      const verkoopD = delen.length === 3
+                        ? new Date(`${delen[2]}-${delen[1]}-${delen[0]}`)
+                        : new Date(b.verkoopdatum);
+                      if (isNaN(verkoopD)) return false;
+                      if (beginPeriode && verkoopD < beginPeriode) return false;
+                      const verschilDit = Math.abs(puntDatum - verkoopD);
+                      const dichtstbij = displayData.reduce((best, p) => {
+                        if (!p.datum) return best;
+                        const v = Math.abs(new Date(p.datum) - verkoopD);
+                        return v < best ? v : best;
+                      }, Infinity);
+                      return verschilDit === dichtstbij;
+                    });
+
+                    if (isVerkoop) {
+                      return <circle key={`dot-${index}`} cx={cx} cy={cy} r={6} fill="white" stroke="#ef4444" strokeWidth={2.5} />;
+                    }
+                    if (isAankoop) {
+                      return <circle key={`dot-${index}`} cx={cx} cy={cy} r={6} fill="white" stroke={grafiekKleur} strokeWidth={2.5} />;
+                    }
+                    return <g key={index}></g>;
                   }}
                   activeDot={{ r: 5, fill: grafiekKleur }} />
               </AreaChart>
