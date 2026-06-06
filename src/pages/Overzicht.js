@@ -69,6 +69,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   const [vergelijk2, setVergelijk2] = useState('geen');
   const [filterType, setFilterType] = useState('alle');
   const [filterSymbolen, setFilterSymbolen] = useState([]);
+  const [filterBezit, setFilterBezit] = useState('alles'); // 'alles' | 'inbezit'
   const [detailBelegging, setDetailBelegging] = useState(null);
   const [toevoegenMenuOpen, setToevoegenMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -134,8 +135,8 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
         return new Date(str);
       };
 
-      // Gefilterde verkochte beleggingen (ook op filterType/filterSymbolen)
-      const verkochtVoorGrafiek = (verkochteBeleggingen || []).filter(b => {
+      // Gefilterde verkochte beleggingen (ook op filterType/filterSymbolen/filterBezit)
+      const verkochtVoorGrafiek = filterBezit === 'inbezit' ? [] : (verkochteBeleggingen || []).filter(b => {
         if (filterType !== 'alle' && b.type !== filterType) return false;
         if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
         return true;
@@ -232,7 +233,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     };
 
     laadGrafiek();
-  }, [beleggingVoorGrafiek.length, koersen, tijdperk, filterType, filterSymbolen, (verkochteBeleggingen || []).length]);
+  }, [beleggingVoorGrafiek.length, koersen, tijdperk, filterType, filterSymbolen, filterBezit, (verkochteBeleggingen || []).length]);
 
   useEffect(() => {
     refreshAlleKoersen();
@@ -264,8 +265,8 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
         aankoopwaarde += b.kostprijs * b.aantal * factor;
       }
     });
-    // Verkochte beleggingen: kostprijs telt alleen mee terwijl de positie open was
-    (verkochteBeleggingen || []).forEach(b => {
+    // Verkochte beleggingen: kostprijs telt alleen mee terwijl de positie open was (niet bij inbezit-filter)
+    (filterBezit === 'inbezit' ? [] : (verkochteBeleggingen || [])).forEach(b => {
       if (filterType !== 'alle' && b.type !== filterType) return;
       if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return;
       const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
@@ -405,14 +406,14 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const puntD = datum ? new Date(datum) : null;
                     const beginPeriodeT = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
 
-                    // Aankopen: zowel actieve als verkochte beleggingen
+                    // Aankopen: actieve + (als niet inbezit-filter) verkochte beleggingen
                     const alleAankopen = [
                       ...beleggingVoorGrafiek,
-                      ...(verkochteBeleggingen || []).filter(b => {
+                      ...(filterBezit === 'inbezit' ? [] : (verkochteBeleggingen || []).filter(b => {
                         if (filterType !== 'alle' && b.type !== filterType) return false;
                         if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
                         return true;
-                      }).map(b => ({ ...b, aantal: b.aantalVerkocht }))
+                      }).map(b => ({ ...b, aantal: b.aantalVerkocht })))
                     ];
                     const aankopenOpDatum = alleAankopen.filter(b => {
                       if (!b.datum || !puntD) return false;
@@ -479,14 +480,14 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const puntDatum = new Date(payload.datum);
                     const beginPeriode = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
 
-                    // Check aankoop dot — zowel actieve als verkochte beleggingen
+                    // Check aankoop dot — actieve + (als niet inbezit-filter) verkochte beleggingen
                     const alleAankoopDots = [
                       ...beleggingVoorGrafiek,
-                      ...(verkochteBeleggingen || []).filter(b => {
+                      ...(filterBezit === 'inbezit' ? [] : (verkochteBeleggingen || []).filter(b => {
                         if (filterType !== 'alle' && b.type !== filterType) return false;
                         if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
                         return true;
-                      })
+                      }))
                     ];
                     const isAankoop = alleAankoopDots.some(b => {
                       if (!b.datum) return false;
@@ -501,8 +502,8 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                       return verschilDit === dichtstbij;
                     });
 
-                    // Check verkoop dot
-                    const isVerkoop = (verkochteBeleggingen || []).some(b => {
+                    // Check verkoop dot (niet tonen bij inbezit-filter)
+                    const isVerkoop = filterBezit !== 'inbezit' && (verkochteBeleggingen || []).some(b => {
                       if (!b.verkoopdatum) return false;
                       // Converteer dd/mm/yyyy naar datum
                       const delen = b.verkoopdatum.split('/');
@@ -677,7 +678,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
             <div style={{ flex: 1, overflow: 'auto' }}>
               <div className="filter-section">
                 <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--accent)' }}
-                  onClick={() => { setFilterType('alle'); setFilterSymbolen([]); }}>Wis alle filters</button>
+                  onClick={() => { setFilterType('alle'); setFilterSymbolen([]); setFilterBezit('alles'); }}>Wis alle filters</button>
               </div>
               <div className="filter-section">
                 <h3>Type belegging</h3>
@@ -701,6 +702,17 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     {b.symbol}
                   </label>
                 ))}
+              </div>
+              <div className="filter-section" style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16 }}>
+                <h3>Weergave</h3>
+                <label className="filter-option">
+                  <input type="radio" checked={filterBezit === 'alles'} onChange={() => setFilterBezit('alles')} />
+                  Alles (incl. verkochte effecten)
+                </label>
+                <label className="filter-option">
+                  <input type="radio" checked={filterBezit === 'inbezit'} onChange={() => setFilterBezit('inbezit')} />
+                  Enkel effecten in bezit
+                </label>
               </div>
             </div>
             <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
