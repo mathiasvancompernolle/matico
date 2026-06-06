@@ -141,7 +141,8 @@ export function Analyse() {
   const [valutaTab, setValutaTab] = useState('verdeling'); // 'verdeling' | 'wisselkoers'
   const [wisselkoersPeriode, setWisselkoersPeriode] = useState('YTD');
   const [wisselkoersDropdown, setWisselkoersDropdown] = useState(false);
-  const [liveEtfData, setLiveEtfData] = useState({}); // { VWCE: { holdings, sectoren, landen, kostenratio, geladen } }
+  const [liveEtfData, setLiveEtfData] = useState({});
+  const [liveBetas, setLiveBetas] = useState({}); // { VWCE: { holdings, sectoren, landen, kostenratio, geladen } }
   const [etfDataLoading, setEtfDataLoading] = useState(false);
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
@@ -165,7 +166,19 @@ export function Analyse() {
   }, [beleggingen, koersen, winstFilter, verkochteBeleggingen]);
 
   // ── Risicoprofiel (bèta benadering) ──
-  const BETA_MAP = { NVDA: 1.96, NKE: 0.85, SOFI: 1.72, MSFT: 0.90, AAPL: 1.20, AMZN: 1.15, TSLA: 2.10 };
+  // Live bèta state — wordt gevuld via Finnhub metrics API
+  // Fallback BETA_MAP met actuele waarden (bijgewerkt juni 2026)
+  const BETA_MAP_FALLBACK = {
+    NVDA: 2.20, NKE: 1.28, SOFI: 1.85, MSFT: 0.90, AAPL: 1.18,
+    AMZN: 1.15, TSLA: 2.10, GOOGL: 1.05, META: 1.22, AVGO: 1.48,
+    JPM: 1.12, V: 0.98, MA: 1.02, AMD: 2.15, INTC: 0.92,
+    COST: 0.72, JNJ: 0.62, UNH: 0.78, XOM: 0.98, CVX: 0.95,
+    // ETFs hebben lage bèta door spreiding
+    VWCE: 0.98, VWRL: 0.98, IWDA: 0.95, SWRD: 0.95,
+    EMIM: 0.88, EQQQ: 1.12, CSPX: 1.00, SXR8: 1.00,
+    XDWD: 0.95, LCWD: 0.95, WEBG: 0.97,
+  };
+  const BETA_MAP = { ...BETA_MAP_FALLBACK, ...liveBetas };
   const [risicoInfoOpen, setRisicoInfoOpen] = useState(false);
   const { beta, risicoLabel, risicoKleur, aantalBolletjes, onbekendeBetas } = useMemo(() => {
     const totaal = beleggingen.reduce((s, b) => {
@@ -382,6 +395,45 @@ export function Analyse() {
   }, [beleggingen, koersen, spreidingTab, spreidingSubFilter]);
 
   // ── Concentratierisico ──
+  // ── Live bèta ophalen via Finnhub metrics API ──
+  useEffect(() => {
+    const aandelen = beleggingen.filter(b => b.type !== 'etf' && b.type !== 'crypto');
+    if (aandelen.length === 0) return;
+
+    const CACHE_DUUR_BETA = 7 * 24 * 60 * 60 * 1000; // 7 dagen
+
+    const laadBeta = async (b) => {
+      const sym = b.symbol.toUpperCase().split('.')[0];
+      const cacheKey = `matico_beta_${sym}`;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const { beta, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_DUUR_BETA) {
+            return { sym, beta };
+          }
+        }
+      } catch (e) {}
+
+      try {
+        const res = await fetch(`/api/data?endpoint=metrics&symbol=${b.symbol}`);
+        const data = await res.json();
+        const beta = data?.metric?.beta;
+        if (beta && beta > 0) {
+          localStorage.setItem(cacheKey, JSON.stringify({ beta, timestamp: Date.now() }));
+          return { sym, beta };
+        }
+      } catch (e) {}
+      return null;
+    };
+
+    Promise.all(aandelen.map(laadBeta)).then(results => {
+      const nieuw = {};
+      results.forEach(r => { if (r) nieuw[r.sym] = r.beta; });
+      if (Object.keys(nieuw).length > 0) setLiveBetas(prev => ({ ...prev, ...nieuw }));
+    });
+  }, [beleggingen.map(b => b.symbol).join(',')]);
+
   // ── Live ETF data laden via FMP + localStorage cache (1 maand) ──
   useEffect(() => {
     const etfSymbolen = [...new Set(beleggingen.filter(b => b.type === 'etf').map(b => b.symbol.toUpperCase().split('.')[0]))];
