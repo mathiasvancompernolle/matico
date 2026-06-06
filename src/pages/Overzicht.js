@@ -349,7 +349,12 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     if (!active || !payload?.length) return null;
                     const datum = payload[0]?.payload?.datum;
                     const waarde = payload[0]?.value;
-                    const aankopenOpDatum = beleggingen.filter(b => b.datum === datum);
+                    const puntD = datum ? new Date(datum) : null;
+                    const aankopenOpDatum = beleggingen.filter(b => {
+                      if (!b.datum || !puntD) return false;
+                      const aankoopD = new Date(b.datum);
+                      return Math.abs((puntD - aankoopD) / 86400000) <= 7;
+                    });
                     return (
                       <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
                         <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{label}</div>
@@ -368,7 +373,14 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)" dot={(props) => {
                     const { cx, cy, payload, index } = props;
                     if (!payload || !payload.datum) return <g key={index}></g>;
-                    const isAankoop = beleggingen.some(b => b.datum && b.datum === payload.datum);
+                    const puntDatum = new Date(payload.datum);
+                    // Check exacte datum OF binnen 7 dagen (voor wekelijkse data)
+                    const isAankoop = beleggingen.some(b => {
+                      if (!b.datum) return false;
+                      const aankoopD = new Date(b.datum);
+                      const verschilDagen = Math.abs((puntDatum - aankoopD) / 86400000);
+                      return verschilDagen <= 7;
+                    });
                     if (!isAankoop) return <g key={index}></g>;
                     return <circle key={`dot-${index}`} cx={cx} cy={cy} r={6} fill="white" stroke={grafiekKleur} strokeWidth={2.5} />;
                   }}
