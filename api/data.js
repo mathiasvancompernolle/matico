@@ -238,6 +238,64 @@ export default async function handler(req, res) {
       return res.json({ analyse: d.choices?.[0]?.message?.content || 'Analyse niet beschikbaar.' });
     }
 
+    if (endpoint === 'dividend') {
+      const { symbol, van, tot } = req.query;
+      try {
+        const r = await fetch(`https://finnhub.io/api/v1/stock/dividend2?symbol=${symbol}&from=${van}&to=${tot}&token=${FINNHUB_KEY}`);
+        const d = await r.json();
+        if (Array.isArray(d) && d.length > 0) return res.json(d);
+      } catch (e) {}
+      // Fallback: FMP dividend history
+      try {
+        const basis = symbol.split('.')[0];
+        const r = await fetch(`https://financialmodelingprep.com/api/v3/historical/stock_dividend/${basis}?limit=8&apikey=${FMP_KEY}`);
+        const d = await r.json();
+        const hist = d?.historical || [];
+        if (hist.length > 0) return res.json(hist.map(h => ({
+          symbol: basis, date: h.date, amount: h.dividend
+        })));
+      } catch (e) {}
+      return res.json([]);
+    }
+
+    if (endpoint === 'etf-holdings') {
+      const { symbol } = req.query;
+      // Normaliseer symbool voor FMP (verwijder exchange suffix)
+      const fmpSym = symbol.split('.')[0];
+      try {
+        // FMP ETF sector gewichten
+        const [sectorRes, holdingsRes, countryRes] = await Promise.all([
+          fetch(`https://financialmodelingprep.com/api/v3/etf-sector-weightings/${fmpSym}?apikey=${FMP_KEY}`),
+          fetch(`https://financialmodelingprep.com/api/v3/etf-holder/${fmpSym}?apikey=${FMP_KEY}`),
+          fetch(`https://financialmodelingprep.com/api/v3/etf-country-weightings/${fmpSym}?apikey=${FMP_KEY}`)
+        ]);
+        const sectoren = await sectorRes.json();
+        const holdings = await holdingsRes.json();
+        const landen = await countryRes.json();
+
+        // Sector data verwerken
+        const sectorData = Array.isArray(sectoren) ? sectoren.map(s => ({
+          label: s.sector || s.weightPercentage,
+          pct: parseFloat(s.weightPercentage) || 0
+        })).filter(s => s.pct > 0) : [];
+
+        // Land/regio data verwerken
+        const landData = Array.isArray(landen) ? landen.map(l => ({
+          label: l.country,
+          pct: parseFloat(l.weightPercentage) || 0
+        })).filter(l => l.pct > 0) : [];
+
+        return res.json({
+          sectoren: sectorData,
+          landen: landData,
+          holdings: Array.isArray(holdings) ? holdings.slice(0, 20) : []
+        });
+      } catch (e) {
+        console.error('ETF holdings fout:', e);
+        return res.json({ sectoren: [], landen: [], holdings: [] });
+      }
+    }
+
     return res.status(400).json({ error: 'Onbekend endpoint' });
   } catch (err) {
     console.error(err);
