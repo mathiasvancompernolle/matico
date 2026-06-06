@@ -192,9 +192,10 @@ export function Analyse() {
       if (!BETA_MAP[sym]) onbekend.push(b.symbol);
       return s + (BETA_MAP[sym] || 1.0) * w;
     }, 0);
-    const label = gewogenBeta < 0.8 ? 'Defensief' : gewogenBeta < 1.2 ? 'Gematigd' : gewogenBeta < 1.6 ? 'Neutraal' : 'Offensief';
-    const kleur = gewogenBeta < 0.8 ? 'var(--green)' : gewogenBeta < 1.2 ? '#f59e0b' : gewogenBeta < 1.6 ? '#f97316' : 'var(--red)';
-    const bolletjes = gewogenBeta < 0.8 ? 1 : gewogenBeta < 1.2 ? 2 : gewogenBeta < 1.6 ? 3 : 4;
+    // Grenzen conform info-modal: Defensief <1.0, Neutraal 1.0-1.5, Offensief 1.5-2.5, Speculatief >2.5
+    const label = gewogenBeta < 1.0 ? 'Defensief' : gewogenBeta < 1.5 ? 'Neutraal' : gewogenBeta < 2.5 ? 'Offensief' : 'Speculatief';
+    const kleur = gewogenBeta < 1.0 ? 'var(--green)' : gewogenBeta < 1.5 ? '#6366f1' : gewogenBeta < 2.5 ? '#f97316' : 'var(--red)';
+    const bolletjes = gewogenBeta < 1.0 ? 1 : gewogenBeta < 1.5 ? 2 : gewogenBeta < 2.5 ? 3 : 4;
     return { beta: gewogenBeta, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: bolletjes, onbekendeBetas: [...new Set(onbekend)] };
   }, [beleggingen, koersen]);
 
