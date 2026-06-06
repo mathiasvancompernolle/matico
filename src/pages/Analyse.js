@@ -86,20 +86,23 @@ export function Analyse() {
 
   // ── Risicoprofiel (bèta benadering) ──
   const BETA_MAP = { NVDA: 1.96, NKE: 0.85, SOFI: 1.72, MSFT: 0.90, AAPL: 1.20, AMZN: 1.15, TSLA: 2.10 };
-  const { beta, risicoLabel, risicoKleur, aantalBolletjes } = useMemo(() => {
+  const [risicoInfoOpen, setRisicoInfoOpen] = useState(false);
+  const { beta, risicoLabel, risicoKleur, aantalBolletjes, onbekendeBetas } = useMemo(() => {
     const totaal = beleggingen.reduce((s, b) => {
       const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
     }, 0) || 1;
+    const onbekend = [];
     const gewogenBeta = beleggingen.reduce((s, b) => {
       const k = koersen[b.symbol];
       const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b) / totaal;
       const sym = b.symbol.split('.')[0];
+      if (!BETA_MAP[sym]) onbekend.push(b.symbol);
       return s + (BETA_MAP[sym] || 1.0) * w;
     }, 0);
     const label = gewogenBeta < 0.8 ? 'Defensief' : gewogenBeta < 1.2 ? 'Gematigd' : gewogenBeta < 1.6 ? 'Neutraal' : 'Offensief';
     const kleur = gewogenBeta < 0.8 ? 'var(--green)' : gewogenBeta < 1.2 ? '#f59e0b' : gewogenBeta < 1.6 ? '#f97316' : 'var(--red)';
     const bolletjes = gewogenBeta < 0.8 ? 1 : gewogenBeta < 1.2 ? 2 : gewogenBeta < 1.6 ? 3 : 4;
-    return { beta: gewogenBeta, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: bolletjes };
+    return { beta: gewogenBeta, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: bolletjes, onbekendeBetas: [...new Set(onbekend)] };
   }, [beleggingen, koersen]);
 
   // ── Spreiding berekening ──
@@ -272,7 +275,18 @@ export function Analyse() {
 
           {/* Risicoprofiel */}
           <div className="card">
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Risicoprofiel</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Risicoprofiel</div>
+              <button onClick={() => setRisicoInfoOpen(true)} style={{
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', padding: 2, display: 'flex', alignItems: 'center',
+                borderRadius: '50%', transition: 'color 0.15s'
+              }} title="Meer info over risicoprofiel">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+              </button>
+            </div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Van je portfolio</div>
 
             <div style={{
@@ -307,7 +321,79 @@ export function Analyse() {
                 </div>
               </div>
             </div>
+
+            {onbekendeBetas.length > 0 && (
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
+                  Niet meegenomen in berekening
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+                  Voor deze aandelen of ETF's was er geen marktinvloed beschikbaar in onze databron:
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {onbekendeBetas.map(sym => (
+                    <li key={sym} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{sym}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
+
+          {/* Risico info modal */}
+          {risicoInfoOpen && (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+            }} onClick={() => setRisicoInfoOpen(false)}>
+              <div style={{
+                background: 'var(--bg-white)', borderRadius: 16, padding: '32px',
+                width: 520, maxWidth: '90vw', maxHeight: '85vh', overflowY: 'auto',
+                boxShadow: 'var(--shadow-lg)', position: 'relative'
+              }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 700 }}>Wat is het risicoprofiel?</h2>
+                  <button onClick={() => setRisicoInfoOpen(false)} style={{
+                    background: 'transparent', border: '1px solid var(--border)', cursor: 'pointer',
+                    borderRadius: 8, padding: '4px 8px', color: 'var(--text-muted)', fontSize: 14
+                  }}>✕</button>
+                </div>
+                <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: 24 }}>
+                  Het risicoprofiel is gebaseerd op de marktinvloed van je totale portfolio, oftewel de bèta in beursjargon.
+                  Het meet hoe sterk je beleggingen reageren op marktbewegingen. Een marktinvloed van 1,0 betekent dat
+                  je portfolio gemiddeld evenveel beweegt als de markt.
+                </p>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>De vier risiconiveaus die Matico gebruikt</div>
+                {[
+                  { label: 'Defensief', kleur: 'var(--green)', beschrijving: 'Bèta lager dan 1,0. Bij een marktdaling van 10% daalt je portfolio gemiddeld minder dan 10%.' },
+                  { label: 'Neutraal', kleur: '#6366f1', beschrijving: 'Bèta van 1,0 tot 1,5. Je portfolio beweegt grofweg mee met de markt, met iets hogere uitslagen.' },
+                  { label: 'Offensief', kleur: '#f97316', beschrijving: 'Bèta van 1,5 tot 2,5. Je portfolio reageert duidelijk sterker op marktbewegingen.' },
+                  { label: 'Speculatief', kleur: 'var(--red)', beschrijving: 'Bèta vanaf 2,5. Zeer hoge gevoeligheid voor schommelingen, met grotere op- en neerwaartse bewegingen.' },
+                ].map(({ label, kleur, beschrijving }) => (
+                  <div key={label} style={{
+                    border: `1px solid var(--border)`, borderLeft: `4px solid ${kleur}`,
+                    borderRadius: 10, padding: '14px 16px', marginBottom: 12
+                  }}>
+                    <span style={{
+                      display: 'inline-block', padding: '2px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                      background: `${kleur}18`, color: kleur, marginBottom: 8
+                    }}>{label}</span>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>{beschrijving}</p>
+                  </div>
+                ))}
+                {onbekendeBetas.length > 0 && (
+                  <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border-light)' }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Niet meegenomen in berekening</div>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
+                      Voor deze aandelen of ETF's was er geen marktinvloed beschikbaar in onze databron:
+                    </p>
+                    <ul style={{ margin: 0, paddingLeft: 20 }}>
+                      {onbekendeBetas.map(sym => <li key={sym} style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{sym}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Spreiding ── */}
