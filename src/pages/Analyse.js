@@ -6,14 +6,14 @@ import { ChevronDown, X } from 'lucide-react';
 // ── Helpers ──────────────────────────────────────────────────────
 const fmt = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const ACCENT = '#6366f1';
-const PIE_KLEUREN = ['#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff', '#4f46e5', '#3730a3'];
+const PIE_KLEUREN = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#f97316', '#06b6d4', '#84cc16', '#ec4899', '#14b8a6', '#a855f7', '#eab308'];
 
 // Sector mapping op basis van type/symbol
 const SECTOR_MAP = {
-  NKE: 'Consumenten', NIKE: 'Consumenten',
+  NKE: 'Cyclische consumptiegoederen', NIKE: 'Cyclische consumptiegoederen',
   NVDA: 'Technologie', AMD: 'Technologie', AAPL: 'Technologie', MSFT: 'Technologie',
   GOOGL: 'Technologie', META: 'Technologie', AMZN: 'Technologie',
-  TSLA: 'Consumenten', BRK: 'Financiën', JPM: 'Financiën', BAC: 'Financiën',
+  TSLA: 'Cyclische consumptiegoederen', BRK: 'Financiën', JPM: 'Financiën', BAC: 'Financiën',
   SOFI: 'Financiën', V: 'Financiën', MA: 'Financiën',
   JNJ: 'Gezondheidszorg', PFE: 'Gezondheidszorg', UNH: 'Gezondheidszorg',
   XOM: 'Energie', CVX: 'Energie',
@@ -685,20 +685,20 @@ export function Analyse() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, alignItems: 'center' }}>
-            {/* Donut */}
-            <div style={{ height: 220 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 32, alignItems: 'flex-start' }}>
+            {/* Donut — sticky naast de legenda */}
+            <div style={{ position: 'sticky', top: 0, height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} dataKey="pct" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2}>
+                  <Pie data={pieData} dataKey="pct" cx="50%" cy="50%" innerRadius={65} outerRadius={110} paddingAngle={2}>
                     {pieData.map((_, i) => <Cell key={i} fill={PIE_KLEUREN[i % PIE_KLEUREN.length]} />)}
                   </Pie>
                   <Tooltip formatter={(v) => `${v.toFixed(2)}%`} contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            {/* Legenda */}
-            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+            {/* Legenda — volledig uitklappen, geen scroll */}
+            <div>
               {spreidingData.map((item, i) => (
                 <Staaf key={item.label} label={item.label} waarde={item.waarde} pct={item.pct} kleur={PIE_KLEUREN[i % PIE_KLEUREN.length]} />
               ))}
