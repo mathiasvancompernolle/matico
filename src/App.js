@@ -4,7 +4,7 @@ import Sidebar from './components/Sidebar';
 import Overzicht from './pages/Overzicht';
 import Beleggingen from './pages/Beleggingen';
 import { Analyse } from './pages/Analyse';
-import { Dividend } from './pages/Analyse';
+import Dividend from './pages/Dividend';
 import { Belastingen } from './pages/Analyse';
 import { Instellingen } from './pages/Analyse';
 import BeleggingToevoegen from './pages/BeleggingToevoegen';
