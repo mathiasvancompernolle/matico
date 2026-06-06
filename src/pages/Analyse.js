@@ -938,20 +938,20 @@ export function Analyse() {
               // Wisselkoerseffect tab
               const WISSELKOERS_DATA = {
                 '1M': [
-                  { maand: 'mei '26', effect: 0.4 },
+                  { maand: \"mei '26\", effect: 0.4 },
                 ],
                 'YTD': [
-                  { maand: 'jan '26', effect: -0.6 }, { maand: 'feb '26', effect: -0.4 },
-                  { maand: 'maa '26', effect: 1.2 }, { maand: 'apr '26', effect: 0.3 },
-                  { maand: 'mei '26', effect: 0.7 }, { maand: 'jun '26', effect: 1.8 },
+                  { maand: \"jan '26\", effect: -0.6 }, { maand: \"feb '26\", effect: -0.4 },
+                  { maand: \"maa '26\", effect: 1.2 }, { maand: \"apr '26\", effect: 0.3 },
+                  { maand: \"mei '26\", effect: 0.7 }, { maand: \"jun '26\", effect: 1.8 },
                 ],
                 '1J': [
-                  { maand: 'jun '25', effect: 0.3 }, { maand: 'jul '25', effect: -0.2 },
-                  { maand: 'aug '25', effect: 0.8 }, { maand: 'sep '25', effect: -0.5 },
-                  { maand: 'okt '25', effect: 1.1 }, { maand: 'nov '25', effect: 0.6 },
-                  { maand: 'dec '25', effect: -0.3 }, { maand: 'jan '26', effect: -0.6 },
-                  { maand: 'feb '26', effect: -0.4 }, { maand: 'maa '26', effect: 1.2 },
-                  { maand: 'apr '26', effect: 0.3 }, { maand: 'jun '26', effect: 1.8 },
+                  { maand: \"jun '25\", effect: 0.3 }, { maand: \"jul '25\", effect: -0.2 },
+                  { maand: \"aug '25\", effect: 0.8 }, { maand: \"sep '25\", effect: -0.5 },
+                  { maand: \"okt '25\", effect: 1.1 }, { maand: \"nov '25\", effect: 0.6 },
+                  { maand: \"dec '25\", effect: -0.3 }, { maand: \"jan '26\", effect: -0.6 },
+                  { maand: \"feb '26\", effect: -0.4 }, { maand: \"maa '26\", effect: 1.2 },
+                  { maand: \"apr '26\", effect: 0.3 }, { maand: \"jun '26\", effect: 1.8 },
                 ],
               };
               const periodeData = WISSELKOERS_DATA[wisselkoersPeriode] || WISSELKOERS_DATA['YTD'];
