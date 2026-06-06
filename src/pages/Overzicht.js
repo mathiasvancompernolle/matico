@@ -350,9 +350,11 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const datum = payload[0]?.payload?.datum;
                     const waarde = payload[0]?.value;
                     const puntD = datum ? new Date(datum) : null;
+                    const beginPeriodeT = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
                     const aankopenOpDatum = beleggingen.filter(b => {
                       if (!b.datum || !puntD) return false;
                       const aankoopD = new Date(b.datum);
+                      if (beginPeriodeT && aankoopD < beginPeriodeT) return false;
                       const verschilDit = Math.abs(puntD - aankoopD);
                       const dichtstbij = displayData.reduce((best, p) => {
                         if (!p.datum) return best;
@@ -380,12 +382,15 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const { cx, cy, payload, index } = props;
                     if (!payload || !payload.datum) return <g key={index}></g>;
                     const puntDatum = new Date(payload.datum);
-                    // Per aankoop: check of dit punt het DICHTSTBIJZIJNDE punt is
+                    // Begindatum van de getoonde periode
+                    const beginPeriode = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
+                    // Per aankoop: check of aankoop BINNEN de periode valt EN dit het dichtstbijzijnde punt is
                     const isAankoop = beleggingen.some(b => {
                       if (!b.datum) return false;
                       const aankoopD = new Date(b.datum);
+                      // Aankoop moet binnen de getoonde periode vallen
+                      if (beginPeriode && aankoopD < beginPeriode) return false;
                       const verschilDit = Math.abs(puntDatum - aankoopD);
-                      // Check of er geen ander datapunt dichter bij is
                       const dichtstbij = displayData.reduce((best, p) => {
                         if (!p.datum) return best;
                         const v = Math.abs(new Date(p.datum) - aankoopD);
