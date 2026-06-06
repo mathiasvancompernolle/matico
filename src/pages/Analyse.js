@@ -63,6 +63,8 @@ export function Analyse() {
   const [winstDropdown, setWinstDropdown] = useState(false);
   const [spreidingTab, setSpreidingTab] = useState('Type');
   const [spreidingAlles, setSpreidingAlles] = useState(true);
+  const [spreidingSubFilter, setSpreidingSubFilter] = useState('Alles');
+  const [spreidingDropdownOpen, setSpreidingDropdownOpen] = useState(false);
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
 
@@ -105,30 +107,82 @@ export function Analyse() {
     return { beta: gewogenBeta, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: bolletjes, onbekendeBetas: [...new Set(onbekend)] };
   }, [beleggingen, koersen]);
 
+  // ── ETF regio gewichten (VWCE werkelijke allocatie) ──
+  const ETF_REGIO_GEWICHTEN = {
+    'VWCE.XETRA': {
+      'Noord-Amerika': 64.45, 'Europa - Ontwikkeld': 10.92, 'Azië - Ontwikkeld': 6.13,
+      'Japan': 5.83, 'Azië - Opkomend': 5.15, 'Verenigd Koninkrijk': 3.19,
+      'Australazië': 1.67, 'Afrika/Midden-Oosten': 1.34, 'Latijns-Amerika': 1.03,
+      'Europa - Opkomend': 0.29
+    }
+  };
+  const ETF_SECTOR_GEWICHTEN = {
+    'VWCE.XETRA': {
+      'Technologie': 24.8, 'Financiën': 16.2, 'Gezondheidszorg': 11.4,
+      'Consumenten': 10.9, 'Industrie': 10.1, 'Energie': 5.8,
+      'Grondstoffen': 5.2, 'Nutsbedrijven': 3.8, 'Vastgoed': 3.6, 'Overige': 8.2
+    }
+  };
+
   // ── Spreiding berekening ──
   const { spreidingData, pieData } = useMemo(() => {
-    const totaal = beleggingen.reduce((s, b) => {
+    // Filter beleggingen op subfilter
+    const gefilterd = spreidingTab === 'Type' ? beleggingen : beleggingen.filter(b => {
+      if (spreidingSubFilter === 'Alles') return true;
+      if (spreidingSubFilter === 'Aandelen') return b.type !== 'etf' && b.type !== 'crypto';
+      if (spreidingSubFilter === 'ETFs') return b.type === 'etf';
+      return true;
+    });
+
+    const totaalPortfolio = beleggingen.reduce((s, b) => {
+      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+    }, 0) || 1;
+    const totaalGefilterd = gefilterd.reduce((s, b) => {
       const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
     }, 0) || 1;
 
     const groepeer = (fn) => {
       const map = {};
-      beleggingen.forEach(b => {
+      gefilterd.forEach(b => {
         const k = koersen[b.symbol];
         const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
         const label = fn(b);
         map[label] = (map[label] || 0) + w;
       });
-      return Object.entries(map).map(([label, w]) => ({ label, waarde: w, pct: (w / totaal) * 100 }))
+      return Object.entries(map).map(([label, w]) => ({ label, waarde: w, pct: (w / totaalPortfolio) * 100 }))
         .sort((a, b) => b.waarde - a.waarde);
     };
 
-    const data = spreidingTab === 'Type' ? groepeer(b => b.type === 'etf' ? 'ETFs' : b.type === 'crypto' ? 'Crypto' : 'Aandelen')
-      : spreidingTab === 'Sectoren' ? groepeer(getSector)
-      : groepeer(getRegio);
+    const groepeerMetETF = (etfGewichtenMap) => {
+      const map = {};
+      gefilterd.forEach(b => {
+        const k = koersen[b.symbol];
+        const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+        if (b.type === 'etf' && etfGewichtenMap[b.symbol]) {
+          // Verdeel ETF waarde over categorieën op basis van werkelijke gewichten
+          Object.entries(etfGewichtenMap[b.symbol]).forEach(([cat, pctInEtf]) => {
+            map[cat] = (map[cat] || 0) + w * (pctInEtf / 100);
+          });
+        } else if (b.type !== 'etf') {
+          const label = etfGewichtenMap === ETF_REGIO_GEWICHTEN ? getRegio(b) : getSector(b);
+          map[label] = (map[label] || 0) + w;
+        }
+      });
+      return Object.entries(map).map(([label, w]) => ({ label, waarde: w, pct: (w / totaalPortfolio) * 100 }))
+        .sort((a, b) => b.waarde - a.waarde);
+    };
+
+    let data;
+    if (spreidingTab === 'Type') {
+      data = groepeer(b => b.type === 'etf' ? 'ETFs' : b.type === 'crypto' ? 'Crypto' : 'Aandelen');
+    } else if (spreidingTab === 'Sectoren') {
+      data = groepeerMetETF(ETF_SECTOR_GEWICHTEN);
+    } else {
+      data = groepeerMetETF(ETF_REGIO_GEWICHTEN);
+    }
 
     return { spreidingData: data, pieData: data };
-  }, [beleggingen, koersen, spreidingTab]);
+  }, [beleggingen, koersen, spreidingTab, spreidingSubFilter]);
 
   // ── Concentratierisico ──
   const { grootstePct, grootsteSym, topSector, topSectorPct, topRegio, topRegioPct } = useMemo(() => {
@@ -322,21 +376,6 @@ export function Analyse() {
               </div>
             </div>
 
-            {onbekendeBetas.length > 0 && (
-              <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-light)' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
-                  Niet meegenomen in berekening
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
-                  Voor deze aandelen of ETF's was er geen marktinvloed beschikbaar in onze databron:
-                </div>
-                <ul style={{ margin: 0, paddingLeft: 18 }}>
-                  {onbekendeBetas.map(sym => (
-                    <li key={sym} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{sym}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
 
           {/* Risico info modal */}
@@ -405,7 +444,7 @@ export function Analyse() {
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
               {['Type', 'Sectoren', 'Regio'].map(t => (
-                <button key={t} onClick={() => setSpreidingTab(t)} style={{
+                <button key={t} onClick={() => { setSpreidingTab(t); setSpreidingSubFilter('Alles'); setSpreidingDropdownOpen(false); }} style={{
                   padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)',
                   background: spreidingTab === t ? 'var(--text-primary)' : 'transparent',
                   color: spreidingTab === t ? 'white' : 'var(--text-secondary)',
@@ -414,6 +453,46 @@ export function Analyse() {
               ))}
             </div>
           </div>
+
+          {/* Subfilter dropdown (niet bij Type) */}
+          {spreidingTab !== 'Type' && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+              <div style={{ position: 'relative' }}>
+                <button onClick={() => setSpreidingDropdownOpen(o => !o)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px',
+                  border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)',
+                  cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit'
+                }}>
+                  {spreidingSubFilter} <ChevronDown size={13} />
+                </button>
+                {spreidingDropdownOpen && (
+                  <div style={{
+                    position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'white',
+                    border: '1px solid var(--border)', borderRadius: 10, boxShadow: 'var(--shadow-md)',
+                    zIndex: 20, minWidth: 130, overflow: 'hidden'
+                  }}>
+                    {['Alles', 'Aandelen', 'ETFs'].map(opt => (
+                      <div key={opt} onClick={() => { setSpreidingSubFilter(opt); setSpreidingDropdownOpen(false); }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px',
+                          cursor: 'pointer', fontSize: 13,
+                          fontWeight: spreidingSubFilter === opt ? 600 : 400,
+                          background: spreidingSubFilter === opt ? 'var(--accent-bg)' : 'transparent',
+                          color: spreidingSubFilter === opt ? 'var(--accent)' : 'var(--text-primary)'
+                        }}
+                        onMouseEnter={e => { if (spreidingSubFilter !== opt) e.currentTarget.style.background = 'var(--bg)'; }}
+                        onMouseLeave={e => { if (spreidingSubFilter !== opt) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        {spreidingSubFilter === opt && <span style={{ fontSize: 12 }}>✓</span>}
+                        {opt}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, alignItems: 'center' }}>
             {/* Donut */}
             <div style={{ height: 220 }}>
@@ -427,7 +506,7 @@ export function Analyse() {
               </ResponsiveContainer>
             </div>
             {/* Legenda */}
-            <div>
+            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
               {spreidingData.map((item, i) => (
                 <Staaf key={item.label} label={item.label} waarde={item.waarde} pct={item.pct} kleur={PIE_KLEUREN[i % PIE_KLEUREN.length]} />
               ))}
