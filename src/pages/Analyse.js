@@ -108,39 +108,27 @@ export function Analyse() {
   }, [beleggingen, koersen]);
 
   // ── ETF regio gewichten (VWCE werkelijke allocatie) ──
-  const ETF_REGIO_GEWICHTEN = {
-    'VWCE.XETRA': {
+
+
+  // ── Spreiding berekening ──
+  const { spreidingData, pieData } = useMemo(() => {
+    // VWCE werkelijke gewichten — matcht op elk symboolvariant (VWCE.XETRA, VWCE.DE, VWCE, ...)
+    const VWCE_REGIO = {
       'Noord-Amerika': 64.45, 'Europa - Ontwikkeld': 10.92, 'Azië - Ontwikkeld': 6.13,
       'Japan': 5.83, 'Azië - Opkomend': 5.15, 'Verenigd Koninkrijk': 3.19,
       'Australazië': 1.67, 'Afrika/Midden-Oosten': 1.34, 'Latijns-Amerika': 1.03,
       'Europa - Opkomend': 0.29
-    }
-  };
-  const ETF_SECTOR_GEWICHTEN = {
-    'VWCE.XETRA': {
-      'Technologie': 24.8, 'Financiën': 16.2, 'Gezondheidszorg': 11.4,
-      'Consumenten': 10.9, 'Industrie': 10.1, 'Energie': 5.8,
-      'Grondstoffen': 5.2, 'Nutsbedrijven': 3.8, 'Vastgoed': 3.6, 'Overige': 8.2
-    }
-  };
+    };
+    const VWCE_SECTOR = {
+      'Technologie': 29.0, 'Financiële dienstverlening': 16.1, 'Industrie': 11.0,
+      'Cyclische consumptiegoederen': 9.4, 'Communicatiediensten': 8.8, 'Gezondheidszorg': 8.0,
+      'Defensieve consumptiegoederen': 4.9, 'Energie': 4.2, 'Basismaterialen': 3.8,
+      'Nutsbedrijven': 2.7, 'Vastgoed': 1.9
+    };
+    const isVWCE = (sym) => sym && (sym.toUpperCase().startsWith('VWCE') || sym.toUpperCase().includes('VWCE'));
 
-  // ── Spreiding berekening ──
-  const { spreidingData, pieData } = useMemo(() => {
-    const etfRegioGewichten = {
-      'VWCE.XETRA': {
-        'Noord-Amerika': 64.45, 'Europa - Ontwikkeld': 10.92, 'Azië - Ontwikkeld': 6.13,
-        'Japan': 5.83, 'Azië - Opkomend': 5.15, 'Verenigd Koninkrijk': 3.19,
-        'Australazië': 1.67, 'Afrika/Midden-Oosten': 1.34, 'Latijns-Amerika': 1.03,
-        'Europa - Opkomend': 0.29
-      }
-    };
-    const etfSectorGewichten = {
-      'VWCE.XETRA': {
-        'Technologie': 24.8, 'Financiën': 16.2, 'Gezondheidszorg': 11.4,
-        'Consumenten': 10.9, 'Industrie': 10.1, 'Energie': 5.8,
-        'Grondstoffen': 5.2, 'Nutsbedrijven': 3.8, 'Vastgoed': 3.6, 'Overige': 8.2
-      }
-    };
+    const etfRegioGewichten = { lookup: (sym) => isVWCE(sym) ? VWCE_REGIO : null };
+    const etfSectorGewichten = { lookup: (sym) => isVWCE(sym) ? VWCE_SECTOR : null };
 
     // Totaal portfolio waarde (altijd op basis van alle beleggingen voor % berekening)
     const totaal = beleggingen.reduce((s, b) => {
@@ -181,7 +169,7 @@ export function Analyse() {
       const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
 
       if (b.type === 'etf') {
-        const gewichten = gewichtenMap[b.symbol];
+        const gewichten = gewichtenMap.lookup ? gewichtenMap.lookup(b.symbol) : gewichtenMap[b.symbol];
         if (gewichten) {
           // Verdeel ETF waarde proportioneel over regio's/sectoren
           Object.entries(gewichten).forEach(([cat, pctInEtf]) => {
