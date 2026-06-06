@@ -458,22 +458,251 @@ export function Analyse() {
     };
   }, [beleggingen, koersen]);
 
-  // ── ETF X-ray (simulatie met top holdings) ──
+  // ── ETF X-ray database ──
   const etfs = beleggingen.filter(b => b.type === 'etf');
-  const ETF_HOLDINGS = {
-    'VWCE.XETRA': [
-      { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 1.82 },
-      { sym: 'AAPL.US', naam: 'Apple Inc', pct: 1.53 },
-      { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 1.18 },
-      { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 0.99 },
-      { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 0.87 },
-      { sym: 'AVGO.US', naam: 'Broadcom Inc', pct: 0.75 },
-      { sym: 'GOOG.US', naam: 'Alphabet Inc Class C', pct: 0.71 },
-      { sym: '2330.TW', naam: 'Taiwan Semiconductor Manufacturing Co. Ltd.', pct: 0.64 },
-      { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 0.52 },
-      { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 0.43 },
-    ],
+  const ETF_DB_XRAY = {
+    VWCE: {
+      kostenratio: 0.22,
+      holdings: [
+        { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 1.82 },
+        { sym: 'AAPL.US', naam: 'Apple Inc', pct: 1.53 },
+        { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 1.18 },
+        { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 0.99 },
+        { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 0.87 },
+        { sym: 'AVGO.US', naam: 'Broadcom Inc', pct: 0.75 },
+        { sym: 'GOOG.US', naam: 'Alphabet Inc Class C', pct: 0.71 },
+        { sym: '2330.TW', naam: 'Taiwan Semiconductor Manufacturing Co. Ltd.', pct: 0.64 },
+        { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 0.52 },
+        { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 0.43 },
+      ],
+    },
+    VWRL: {
+      kostenratio: 0.22,
+      holdings: [
+        { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 1.82 },
+        { sym: 'AAPL.US', naam: 'Apple Inc', pct: 1.53 },
+        { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 1.18 },
+        { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 0.99 },
+        { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 0.87 },
+        { sym: 'AVGO.US', naam: 'Broadcom Inc', pct: 0.75 },
+        { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 0.52 },
+        { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 0.43 },
+      ],
+    },
+    IWDA: {
+      kostenratio: 0.20,
+      holdings: [
+        { sym: 'AAPL.US', naam: 'Apple Inc', pct: 4.98 },
+        { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 4.52 },
+        { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 3.87 },
+        { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 3.21 },
+        { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 2.14 },
+        { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 2.01 },
+        { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 1.68 },
+        { sym: 'AVGO.US', naam: 'Broadcom Inc', pct: 1.54 },
+        { sym: 'GOOG.US', naam: 'Alphabet Inc Class C', pct: 1.48 },
+        { sym: 'JPM.US', naam: 'JPMorgan Chase & Co.', pct: 1.32 },
+      ],
+    },
+    SWRD: {
+      kostenratio: 0.12,
+      holdings: [
+        { sym: 'AAPL.US', naam: 'Apple Inc', pct: 4.98 },
+        { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 4.52 },
+        { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 3.87 },
+        { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 3.21 },
+        { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 2.14 },
+        { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 2.01 },
+        { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 1.68 },
+        { sym: 'AVGO.US', naam: 'Broadcom Inc', pct: 1.54 },
+      ],
+    },
+    EMIM: {
+      kostenratio: 0.18,
+      holdings: [
+        { sym: '2330.TW', naam: 'Taiwan Semiconductor Manufacturing Co. Ltd.', pct: 4.62 },
+        { sym: 'SMSN.IL', naam: 'Samsung Electronics Co. Ltd.', pct: 3.24 },
+        { sym: 'RELIANCE.NS', naam: 'Reliance Industries Ltd.', pct: 1.89 },
+        { sym: 'TCS.NS', naam: 'Tata Consultancy Services Ltd.', pct: 1.42 },
+        { sym: '700.HK', naam: 'Tencent Holdings Ltd.', pct: 3.18 },
+        { sym: 'BABA.US', naam: 'Alibaba Group Holding Ltd.', pct: 1.24 },
+        { sym: 'ICICIBANK.NS', naam: 'ICICI Bank Ltd.', pct: 0.98 },
+        { sym: '9988.HK', naam: 'Alibaba Group Holding Ltd.', pct: 1.12 },
+        { sym: 'MELI.US', naam: 'MercadoLibre Inc.', pct: 0.87 },
+        { sym: 'INFY.NS', naam: 'Infosys Ltd.', pct: 0.76 },
+      ],
+    },
+    EQQQ: {
+      kostenratio: 0.20,
+      holdings: [
+        { sym: 'AAPL.US', naam: 'Apple Inc', pct: 8.72 },
+        { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 8.14 },
+        { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 7.98 },
+        { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 5.62 },
+        { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 4.88 },
+        { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 4.12 },
+        { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 3.94 },
+        { sym: 'GOOG.US', naam: 'Alphabet Inc Class C', pct: 3.76 },
+        { sym: 'AVGO.US', naam: 'Broadcom Inc', pct: 3.42 },
+        { sym: 'COST.US', naam: 'Costco Wholesale Corp.', pct: 2.87 },
+      ],
+    },
+    CNDX: {
+      kostenratio: 0.20,
+      holdings: [
+        { sym: 'AAPL.US', naam: 'Apple Inc', pct: 8.72 },
+        { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 8.14 },
+        { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 7.98 },
+        { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 5.62 },
+        { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 4.88 },
+        { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 4.12 },
+        { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 3.94 },
+      ],
+    },
+    CSPX: {
+      kostenratio: 0.07,
+      holdings: [
+        { sym: 'AAPL.US', naam: 'Apple Inc', pct: 6.84 },
+        { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 6.32 },
+        { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 5.98 },
+        { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 4.21 },
+        { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 2.87 },
+        { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 2.41 },
+        { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 1.98 },
+        { sym: 'AVGO.US', naam: 'Broadcom Inc', pct: 1.87 },
+        { sym: 'GOOG.US', naam: 'Alphabet Inc Class C', pct: 1.82 },
+        { sym: 'JPM.US', naam: 'JPMorgan Chase & Co.', pct: 1.54 },
+      ],
+    },
+    SXR8: {
+      kostenratio: 0.07,
+      holdings: [
+        { sym: 'AAPL.US', naam: 'Apple Inc', pct: 6.84 },
+        { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 6.32 },
+        { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 5.98 },
+        { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 4.21 },
+        { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 2.87 },
+        { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 2.41 },
+        { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 1.98 },
+        { sym: 'AVGO.US', naam: 'Broadcom Inc', pct: 1.87 },
+      ],
+    },
+    XDWD: {
+      kostenratio: 0.19,
+      holdings: [
+        { sym: 'AAPL.US', naam: 'Apple Inc', pct: 4.92 },
+        { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 4.48 },
+        { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 3.82 },
+        { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 3.18 },
+        { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 2.11 },
+        { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 1.98 },
+        { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 1.64 },
+        { sym: 'AVGO.US', naam: 'Broadcom Inc', pct: 1.52 },
+      ],
+    },
+    LCWD: {
+      kostenratio: 0.14,
+      holdings: [
+        { sym: 'AAPL.US', naam: 'Apple Inc', pct: 4.95 },
+        { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 4.50 },
+        { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 3.84 },
+        { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 3.20 },
+        { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 2.12 },
+        { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 1.99 },
+      ],
+    },
+    WEBG: {
+      kostenratio: 0.07,
+      holdings: [
+        { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 1.78 },
+        { sym: 'AAPL.US', naam: 'Apple Inc', pct: 1.51 },
+        { sym: 'MSFT.US', naam: 'Microsoft Corporation', pct: 1.16 },
+        { sym: 'AMZN.US', naam: 'Amazon.com Inc', pct: 0.97 },
+        { sym: 'GOOGL.US', naam: 'Alphabet Inc Class A', pct: 0.85 },
+        { sym: 'META.US', naam: 'Meta Platforms Inc.', pct: 0.51 },
+        { sym: 'TSLA.US', naam: 'Tesla Inc', pct: 0.42 },
+      ],
+    },
+    CSX5: {
+      kostenratio: 0.10,
+      holdings: [
+        { sym: 'ASML.AS', naam: 'ASML Holding NV', pct: 7.42 },
+        { sym: 'SAP.DE', naam: 'SAP SE', pct: 5.18 },
+        { sym: 'LVMH.PA', naam: 'LVMH Moet Hennessy Louis Vuitton SE', pct: 4.87 },
+        { sym: 'SIE.DE', naam: 'Siemens AG', pct: 4.12 },
+        { sym: 'TTE.PA', naam: 'TotalEnergies SE', pct: 3.98 },
+        { sym: 'AIR.PA', naam: 'Airbus SE', pct: 3.76 },
+        { sym: 'SAN.PA', naam: 'Sanofi SA', pct: 3.54 },
+        { sym: 'BNP.PA', naam: 'BNP Paribas SA', pct: 3.21 },
+        { sym: 'ALV.DE', naam: 'Allianz SE', pct: 3.08 },
+        { sym: 'IBE.MC', naam: 'Iberdrola SA', pct: 2.87 },
+      ],
+    },
+    SMEA: {
+      kostenratio: 0.12,
+      holdings: [
+        { sym: 'ASML.AS', naam: 'ASML Holding NV', pct: 3.84 },
+        { sym: 'NOVN.SW', naam: 'Novartis AG', pct: 2.98 },
+        { sym: 'ROG.SW', naam: 'Roche Holding AG', pct: 2.76 },
+        { sym: 'NESN.SW', naam: 'Nestle SA', pct: 2.54 },
+        { sym: 'AZN.L', naam: 'AstraZeneca PLC', pct: 2.41 },
+        { sym: 'HSBA.L', naam: 'HSBC Holdings PLC', pct: 2.18 },
+        { sym: 'SHEL.L', naam: 'Shell PLC', pct: 2.04 },
+        { sym: 'SAP.DE', naam: 'SAP SE', pct: 1.98 },
+        { sym: 'NOVO-B.CO', naam: 'Novo Nordisk A/S', pct: 1.87 },
+        { sym: 'ULVR.L', naam: 'Unilever PLC', pct: 1.76 },
+      ],
+    },
   };
+
+  // Zoek ETF op basis van symboolprefix
+  const zoekXray = (symbol) => {
+    const basis = symbol.toUpperCase().split('.')[0];
+    return ETF_DB_XRAY[basis] || null;
+  };
+
+  // Bereken gecombineerde holdings over alle ETFs
+  const alleHoldings = (() => {
+    const totaalPortfolio = beleggingen.reduce((s, b) => {
+      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * (getMuntFactor ? getMuntFactor(b.munt || 'EUR') : 1);
+    }, 0) || 1;
+
+    const holdingMap = {}; // sym → { naam, gewichtInPortfolio, viaEtfs }
+    etfs.forEach(etf => {
+      const data = zoekXray(etf.symbol);
+      if (!data) return;
+      const k = koersen[etf.symbol];
+      const etfWaarde = (k ? k.c : etf.kostprijs) * etf.aantal * (getMuntFactor ? getMuntFactor(etf.munt || 'EUR') : 1);
+      const etfGewicht = (etfWaarde / totaalPortfolio) * 100;
+
+      data.holdings.forEach(h => {
+        const gewichtInPortfolio = etfGewicht * (h.pct / 100);
+        if (!holdingMap[h.sym]) {
+          holdingMap[h.sym] = { sym: h.sym, naam: h.naam, gewicht: 0, viaEtfs: [] };
+        }
+        holdingMap[h.sym].gewicht += gewichtInPortfolio;
+        if (!holdingMap[h.sym].viaEtfs.find(v => v.sym === etf.symbol)) {
+          holdingMap[h.sym].viaEtfs.push({ sym: etf.symbol, pct: h.pct });
+        }
+      });
+    });
+
+    return Object.values(holdingMap).sort((a, b) => b.gewicht - a.gewicht);
+  })();
+
+  // Gemiddelde kostenratio gewogen op ETF-waarde
+  const gemiddeldeKostenratio = (() => {
+    const totaalEtfWaarde = etfs.reduce((s, b) => {
+      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * (getMuntFactor ? getMuntFactor(b.munt || 'EUR') : 1);
+    }, 0) || 1;
+    const gewogen = etfs.reduce((s, b) => {
+      const k = koersen[b.symbol];
+      const w = (k ? k.c : b.kostprijs) * b.aantal * (getMuntFactor ? getMuntFactor(b.munt || 'EUR') : 1);
+      const data = zoekXray(b.symbol);
+      return s + (data?.kostenratio || 0) * (w / totaalEtfWaarde);
+    }, 0);
+    return gewogen;
+  })();
 
   if (beleggingen.length === 0) {
     return (
@@ -1016,35 +1245,41 @@ export function Analyse() {
 
             {/* Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 24 }}>
-              {[
-                { label: 'Aantal ETFs', waarde: etfs.length },
-                { label: 'Aantal bedrijven', waarde: etfs.reduce((s, b) => s + (ETF_HOLDINGS[b.symbol]?.length || 0), 0) },
-                { label: 'Gemiddelde kostenratio', waarde: '0,00%' },
-              ].map(({ label, waarde }) => (
-                <div key={label}>
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
-                  <div style={{ fontSize: 28, fontWeight: 700 }}>{waarde}</div>
-                </div>
-              ))}
+              <div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Aantal ETFs</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }}>{etfs.length}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Aantal bedrijven</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }}>{alleHoldings.length}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Gemiddelde kostenratio</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }}>{gemiddeldeKostenratio.toFixed(2).replace('.', ',')}%</div>
+              </div>
             </div>
 
             {/* Holdings tabel */}
             <div style={{ borderTop: '1px solid var(--border-light)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 200px', padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
-                <span>Naam</span><span style={{ textAlign: 'right' }}>Gewicht in portfolio</span><span style={{ textAlign: 'right' }}>Via</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 1fr', padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                <span>Naam</span>
+                <span style={{ textAlign: 'right' }}>Gewicht in portfolio</span>
+                <span style={{ textAlign: 'right' }}>Via</span>
               </div>
-              {etfs.flatMap(etf => (ETF_HOLDINGS[etf.symbol] || []).map(h => ({
-                ...h, etfSym: etf.symbol
-              }))).sort((a, b) => b.pct - a.pct).map((h, i) => (
-                <div key={i} style={{
-                  display: 'grid', gridTemplateColumns: '1fr 160px 200px',
-                  padding: '12px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center'
-                }}>
+              {alleHoldings.map((h, i) => (
+                <div key={h.sym} style={{
+                  display: 'grid', gridTemplateColumns: '1fr 160px 1fr',
+                  padding: '11px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center'
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  {/* Naam + symbool */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
                       width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)',
-                      color: 'var(--accent)', fontWeight: 700, fontSize: 11,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                      color: 'var(--accent)', fontWeight: 700, fontSize: 11, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
                       {h.sym.split('.')[0].slice(0, 2).toUpperCase()}
                     </div>
@@ -1053,8 +1288,16 @@ export function Analyse() {
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{h.sym}</div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', fontWeight: 600, fontSize: 14 }}>{h.pct.toFixed(2)}%</div>
-                  <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>{h.etfSym} {h.pct.toFixed(2)}%</div>
+                  {/* Gewicht */}
+                  <div style={{ textAlign: 'right', fontWeight: 600, fontSize: 14 }}>
+                    {h.gewicht.toFixed(2)}%
+                  </div>
+                  {/* Via ETFs */}
+                  <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                    {h.viaEtfs.map(v => (
+                      <div key={v.sym}>{v.sym} <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{v.pct.toFixed(2)}%</span></div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
