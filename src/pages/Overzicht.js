@@ -350,11 +350,16 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const datum = payload[0]?.payload?.datum;
                     const waarde = payload[0]?.value;
                     const puntD = datum ? new Date(datum) : null;
-                    const margeTooltip = (tijdperk === '1W' || tijdperk === '1M') ? 1 : 4;
                     const aankopenOpDatum = beleggingen.filter(b => {
                       if (!b.datum || !puntD) return false;
                       const aankoopD = new Date(b.datum);
-                      return Math.abs((puntD - aankoopD) / 86400000) <= margeTooltip;
+                      const verschilDit = Math.abs(puntD - aankoopD);
+                      const dichtstbij = displayData.reduce((best, p) => {
+                        if (!p.datum) return best;
+                        const v = Math.abs(new Date(p.datum) - aankoopD);
+                        return v < best ? v : best;
+                      }, Infinity);
+                      return verschilDit === dichtstbij;
                     });
                     return (
                       <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
@@ -375,13 +380,18 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     const { cx, cy, payload, index } = props;
                     if (!payload || !payload.datum) return <g key={index}></g>;
                     const puntDatum = new Date(payload.datum);
-                    // Bepaal marge op basis van tijdperk: dagelijks=1dag, wekelijks=4dagen
-                    const margeD = (tijdperk === '1W' || tijdperk === '1M') ? 1 : 4;
+                    // Per aankoop: check of dit punt het DICHTSTBIJZIJNDE punt is
                     const isAankoop = beleggingen.some(b => {
                       if (!b.datum) return false;
                       const aankoopD = new Date(b.datum);
-                      const verschilDagen = Math.abs((puntDatum - aankoopD) / 86400000);
-                      return verschilDagen <= margeD;
+                      const verschilDit = Math.abs(puntDatum - aankoopD);
+                      // Check of er geen ander datapunt dichter bij is
+                      const dichtstbij = displayData.reduce((best, p) => {
+                        if (!p.datum) return best;
+                        const v = Math.abs(new Date(p.datum) - aankoopD);
+                        return v < best ? v : best;
+                      }, Infinity);
+                      return verschilDit === dichtstbij;
                     });
                     if (!isAankoop) return <g key={index}></g>;
                     return <circle key={`dot-${index}`} cx={cx} cy={cy} r={6} fill="white" stroke={grafiekKleur} strokeWidth={2.5} />;
