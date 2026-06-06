@@ -826,13 +826,43 @@ export function Analyse() {
 
             {valutaTab === 'verdeling' ? (() => {
               // Valutaverdeling: ETFs uitgesplitst per valuta via regio gewichten
+              // Valuta per ETF — uitgesplitst op basis van werkelijke blootstelling
+              // Dezelfde prefix-matching als de spreiding-database (VWCE.DE → VWCE, IWDA.AS → IWDA)
               const ETF_VALUTA = {
+                // Vanguard FTSE All-World (VWCE / VWRL) — wereldwijd gespreide valutamix
                 VWCE: { USD: 64.8, EUR: 12.1, JPY: 5.8, GBP: 3.2, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.3, CAD: 2.8, HKD: 1.2, Overige: 3.5 },
+                VWRL: { USD: 64.8, EUR: 12.1, JPY: 5.8, GBP: 3.2, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.3, CAD: 2.8, HKD: 1.2, Overige: 3.5 },
+                // iShares Core MSCI World (IWDA / SWRD) — ontwikkelde markten, geen EM
                 IWDA: { USD: 72.1, EUR: 13.8, JPY: 6.2, GBP: 2.9, CHF: 1.8, AUD: 0.9, CAD: 1.2, HKD: 0.6, Overige: 0.5 },
-                EQQQ: { USD: 95.2, EUR: 2.1, Overige: 2.7 },
+                SWRD: { USD: 72.1, EUR: 13.8, JPY: 6.2, GBP: 2.9, CHF: 1.8, AUD: 0.9, CAD: 1.2, HKD: 0.6, Overige: 0.5 },
+                // iShares Emerging Markets (EMIM / IEMA / EEM) — opkomende markten
+                EMIM: { TWD: 16.8, INR: 13.2, CNY: 12.4, KRW: 11.3, BRL: 5.4, ZAR: 3.8, SAR: 4.1, MXN: 2.8, HKD: 4.2, USD: 8.6, Overige: 17.4 },
+                IEMA: { TWD: 16.8, INR: 13.2, CNY: 12.4, KRW: 11.3, BRL: 5.4, ZAR: 3.8, SAR: 4.1, MXN: 2.8, HKD: 4.2, USD: 8.6, Overige: 17.4 },
+                EEM:  { TWD: 16.8, INR: 13.2, CNY: 12.4, KRW: 11.3, BRL: 5.4, ZAR: 3.8, SAR: 4.1, MXN: 2.8, HKD: 4.2, USD: 8.6, Overige: 17.4 },
+                // Invesco NASDAQ-100 (EQQQ / CNDX / QQQ) — bijna volledig USD
+                EQQQ: { USD: 95.2, EUR: 2.1, TWD: 1.2, Overige: 1.5 },
+                CNDX: { USD: 95.2, EUR: 2.1, TWD: 1.2, Overige: 1.5 },
+                QQQ:  { USD: 95.2, EUR: 2.1, TWD: 1.2, Overige: 1.5 },
+                // iShares S&P 500 (CSPX / SXR8 / IUSA / IVV / SPY) — 100% USD
                 CSPX: { USD: 99.5, Overige: 0.5 },
                 SXR8: { USD: 99.5, Overige: 0.5 },
-                EMIM: { TWD: 16.8, INR: 13.2, CNY: 12.4, KRW: 11.3, BRL: 5.4, ZAR: 3.8, SAR: 4.1, MXN: 2.8, Overige: 30.2 },
+                IUSA: { USD: 99.5, Overige: 0.5 },
+                IVV:  { USD: 99.5, Overige: 0.5 },
+                SPY:  { USD: 99.5, Overige: 0.5 },
+                // Xtrackers MSCI World (XDWD / XWLD)
+                XDWD: { USD: 71.8, EUR: 14.2, JPY: 6.4, GBP: 2.8, CHF: 1.9, AUD: 0.9, CAD: 1.2, HKD: 0.5, Overige: 0.3 },
+                XWLD: { USD: 71.8, EUR: 14.2, JPY: 6.4, GBP: 2.8, CHF: 1.9, AUD: 0.9, CAD: 1.2, HKD: 0.5, Overige: 0.3 },
+                // Amundi MSCI World / Prime All Country (LCWD / WEBG / PRAW)
+                LCWD: { USD: 71.5, EUR: 14.0, JPY: 6.3, GBP: 3.1, CHF: 1.8, AUD: 0.9, CAD: 1.2, HKD: 0.6, Overige: 0.6 },
+                WEBG: { USD: 64.2, EUR: 12.8, JPY: 5.9, GBP: 3.1, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.1, CAD: 2.6, HKD: 1.2, Overige: 3.8 },
+                PRAW: { USD: 64.2, EUR: 12.8, JPY: 5.9, GBP: 3.1, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.1, CAD: 2.6, HKD: 1.2, Overige: 3.8 },
+                // iShares Core EURO STOXX 50 (CSX5) — volledig EUR
+                CSX5: { EUR: 100.0 },
+                // iShares Core MSCI Europe (SMEA / IMEU) — mix Europese valuta
+                SMEA: { GBP: 22.4, EUR: 58.6, CHF: 14.8, SEK: 2.1, DKK: 1.2, NOK: 0.9 },
+                IMEU: { GBP: 22.4, EUR: 58.6, CHF: 14.8, SEK: 2.1, DKK: 1.2, NOK: 0.9 },
+                // SPDR (GWL)
+                GWL:  { USD: 99.5, Overige: 0.5 },
               };
               const zoekETFValuta = (sym) => {
                 const basis = sym.toUpperCase().split('.')[0];
