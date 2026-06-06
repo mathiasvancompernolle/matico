@@ -10,20 +10,21 @@ const fmt2 = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximu
 // Bron: meest recente uitkering × frequentie
 const DIVIDEND_DB = {
   // Aandelen
-  NVDA: { jaarlijks: 0.04, frequentie: 4, ex_maanden: [2, 5, 8, 11] },      // $0.01/kwartaal
+  // Bijgewerkt juni 2026 op basis van actuele uitkeringen
+  NVDA: { jaarlijks: 1.00, frequentie: 4, ex_maanden: [3, 6, 9, 12] },      // $0.25/kwartaal (verhoogd in 2026)
   MSFT: { jaarlijks: 3.32, frequentie: 4, ex_maanden: [2, 5, 8, 11] },      // $0.83/kwartaal
-  AAPL: { jaarlijks: 1.00, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
+  AAPL: { jaarlijks: 1.00, frequentie: 4, ex_maanden: [2, 5, 8, 11] },      // $0.25/kwartaal
   AMZN: { jaarlijks: 0, frequentie: 0, ex_maanden: [] },
-  GOOGL: { jaarlijks: 0.80, frequentie: 4, ex_maanden: [3, 6, 9, 12] },
-  META: { jaarlijks: 2.00, frequentie: 4, ex_maanden: [3, 6, 9, 12] },
+  GOOGL: { jaarlijks: 0.80, frequentie: 4, ex_maanden: [3, 6, 9, 12] },     // $0.20/kwartaal
+  META: { jaarlijks: 2.00, frequentie: 4, ex_maanden: [3, 6, 9, 12] },      // $0.50/kwartaal
   TSLA: { jaarlijks: 0, frequentie: 0, ex_maanden: [] },
-  JPM: { jaarlijks: 4.60, frequentie: 4, ex_maanden: [1, 4, 7, 10] },
-  V: { jaarlijks: 2.08, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
-  MA: { jaarlijks: 2.64, frequentie: 4, ex_maanden: [1, 4, 7, 10] },
-  JNJ: { jaarlijks: 4.96, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
-  NKE: { jaarlijks: 1.60, frequentie: 4, ex_maanden: [3, 6, 9, 12] },
+  JPM: { jaarlijks: 4.60, frequentie: 4, ex_maanden: [1, 4, 7, 10] },       // $1.15/kwartaal
+  V: { jaarlijks: 2.08, frequentie: 4, ex_maanden: [2, 5, 8, 11] },         // $0.52/kwartaal
+  MA: { jaarlijks: 2.64, frequentie: 4, ex_maanden: [1, 4, 7, 10] },        // $0.66/kwartaal
+  JNJ: { jaarlijks: 4.96, frequentie: 4, ex_maanden: [2, 5, 8, 11] },       // $1.24/kwartaal
+  NKE: { jaarlijks: 1.64, frequentie: 4, ex_maanden: [3, 6, 9, 12] },       // $0.41/kwartaal (bijgewerkt jun 2026)
   SOFI: { jaarlijks: 0, frequentie: 0, ex_maanden: [] },
-  AVGO: { jaarlijks: 21.00, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
+  AVGO: { jaarlijks: 21.00, frequentie: 4, ex_maanden: [2, 5, 8, 11] },     // $5.25/kwartaal
   // ETFs — accumulerend (geen dividend)
   VWCE: { jaarlijks: 0, frequentie: 0, ex_maanden: [], accumulating: true },
   VWRL: { jaarlijks: 1.20, frequentie: 4, ex_maanden: [3, 6, 9, 12] },
@@ -90,8 +91,9 @@ export default function Dividend() {
   }, [beleggingen.map(b => b.symbol).join(','), jaar]);
 
   // ── Bereken dividenddata per belegging ──
+  // Gebruikt live Finnhub data als beschikbaar, anders hardcoded database
   const { perBelegging, ontvangen, verwacht, dividendRendement, rendementOpAankoop, maandData, zonderData } = useMemo(() => {
-    const huidigMaand = new Date().getMonth() + 1; // 1-12
+    const huidigMaand = new Date().getMonth() + 1;
     const huidigJaar = new Date().getFullYear();
     const isHuidigJaar = jaar === huidigJaar;
 
@@ -101,7 +103,6 @@ export default function Dividend() {
     const maandTotalen = Array(12).fill(0);
     const zonderDataLijst = [];
 
-    // Alle beleggingen (actief + verkocht voor historisch jaar)
     const alleBel = [
       ...beleggingen,
       ...(jaar < huidigJaar ? (verkochteBeleggingen || []).map(b => ({ ...b, aantal: b.aantalVerkocht })) : [])
@@ -109,11 +110,73 @@ export default function Dividend() {
 
     alleBel.forEach(b => {
       const basis = b.symbol.toUpperCase().split('.')[0];
-      const db = getDividendData(b.symbol);
       const f = factor(b);
       const k = koersen[b.symbol];
       const huidigePrijs = k ? k.c : b.kostprijs;
 
+      // ── Probeer live Finnhub data ──
+      const liveData = liveDividend[basis];
+      if (liveData && Array.isArray(liveData) && liveData.length > 0) {
+        // Filter op het gevraagde jaar
+        const uitkeringenDitJaar = liveData.filter(d => {
+          const datum = new Date(d.date || d.paymentDate || d.exDate || '');
+          return datum.getFullYear() === jaar;
+        });
+
+        if (uitkeringenDitJaar.length > 0) {
+          // Som van alle uitkeringen dit jaar
+          const totaalUitgekeerdUSD = uitkeringenDitJaar.reduce((s, d) =>
+            s + parseFloat(d.amount || d.adjDividend || d.dividend || 0), 0
+          );
+
+          // Schat jaarlijks dividend op basis van recentste uitkering × frequentie
+          const recentsteUitkering = parseFloat(uitkeringenDitJaar[0]?.amount || uitkeringenDitJaar[0]?.adjDividend || 0);
+          const frequentie = uitkeringenDitJaar.length <= 1 ? 4 : uitkeringenDitJaar.length; // aanname kwartaal als maar 1 datapunt
+          const jaarlijksUSD = recentsteUitkering * frequentie;
+          const jaarlijksBruto = jaarlijksUSD * b.aantal * f;
+          const jaarlijksNetto = jaarlijksBruto * (1 - BELASTING);
+
+          // Ontvangen = alle uitkeringen die al betaald zijn dit jaar
+          const ontvangenUSD = uitkeringenDitJaar
+            .filter(d => {
+              const betaalDatum = new Date(d.paymentDate || d.date || '');
+              return !isHuidigJaar || betaalDatum <= new Date();
+            })
+            .reduce((s, d) => s + parseFloat(d.amount || d.adjDividend || 0), 0);
+
+          const ontvangenBruto = ontvangenUSD * b.aantal * f;
+          const ontvangenNetto = ontvangenBruto * (1 - BELASTING);
+
+          // Maanddata
+          uitkeringenDitJaar.forEach(d => {
+            const betaalDatum = new Date(d.paymentDate || d.date || '');
+            const maandIdx = betaalDatum.getMonth();
+            if (!isHuidigJaar || betaalDatum <= new Date()) {
+              const bedrag = parseFloat(d.amount || d.adjDividend || 0) * b.aantal * f;
+              maandTotalen[maandIdx] += modus === 'netto' ? bedrag * (1 - BELASTING) : bedrag;
+            }
+          });
+
+          const rendement = huidigePrijs > 0 ? (jaarlijksUSD / huidigePrijs) * 100 : 0;
+          const rendementAankoop = b.kostprijs > 0 ? (jaarlijksUSD / b.kostprijs) * 100 : 0;
+
+          totaalOntvangen += modus === 'netto' ? ontvangenNetto : ontvangenBruto;
+          totaalVerwacht += modus === 'netto' ? jaarlijksNetto : jaarlijksBruto;
+
+          perBel.push({
+            id: b.id || b.symbol, naam: b.naam, symbol: b.symbol, logo: b.logo,
+            aantal: b.aantal, liveData: true,
+            verkocht: !beleggingen.find(bb => bb.symbol === b.symbol),
+            rendement, rendementAankoop,
+            verwachtJaarlijks: modus === 'netto' ? jaarlijksNetto : jaarlijksBruto,
+            ontvangen: modus === 'netto' ? ontvangenNetto : ontvangenBruto,
+          });
+          return; // Live data verwerkt, skip hardcoded
+        }
+      }
+
+      // ── Fallback: hardcoded database ──
+      const db = getDividendData(b.symbol);
       if (!db || db.jaarlijks === 0) {
         if (!db?.accumulating) zonderDataLijst.push(b.naam || b.symbol);
         return;
@@ -121,25 +184,20 @@ export default function Dividend() {
 
       const jaarlijksBruto = db.jaarlijks * b.aantal * f;
       const jaarlijksNetto = jaarlijksBruto * (1 - BELASTING);
-
-      // Ontvangen: uitkeringen in maanden <= nu (voor huidig jaar)
       let ontvangenBruto = 0;
-      let ontvangenNetto = 0;
       const uitkeringPerKeer = (db.jaarlijks / (db.frequentie || 1)) * b.aantal * f;
 
       db.ex_maanden.forEach(m => {
-        const betaalMaand = m + 1 > 12 ? 1 : m + 1; // betaling ~1 maand na ex-datum
-        const valtBinnenJaar = true;
         const isOntvangen = !isHuidigJaar || m <= huidigMaand;
-
         if (isOntvangen) {
           ontvangenBruto += uitkeringPerKeer;
-          ontvangenNetto += uitkeringPerKeer * (1 - BELASTING);
           const maandIdx = Math.min(m, 12) - 1;
-          if (maandIdx >= 0) maandTotalen[maandIdx] += modus === 'netto' ? uitkeringPerKeer * (1 - BELASTING) : uitkeringPerKeer;
+          if (maandIdx >= 0) maandTotalen[maandIdx] += modus === 'netto'
+            ? uitkeringPerKeer * (1 - BELASTING) : uitkeringPerKeer;
         }
       });
 
+      const ontvangenNetto = ontvangenBruto * (1 - BELASTING);
       const rendement = huidigePrijs > 0 ? (db.jaarlijks / huidigePrijs) * 100 : 0;
       const rendementAankoop = b.kostprijs > 0 ? (db.jaarlijks / b.kostprijs) * 100 : 0;
 
@@ -147,9 +205,8 @@ export default function Dividend() {
       totaalVerwacht += modus === 'netto' ? jaarlijksNetto : jaarlijksBruto;
 
       perBel.push({
-        id: b.id || b.symbol,
-        naam: b.naam, symbol: b.symbol, logo: b.logo,
-        aantal: b.aantal,
+        id: b.id || b.symbol, naam: b.naam, symbol: b.symbol, logo: b.logo,
+        aantal: b.aantal, liveData: false,
         verkocht: !beleggingen.find(bb => bb.symbol === b.symbol),
         rendement, rendementAankoop,
         verwachtJaarlijks: modus === 'netto' ? jaarlijksNetto : jaarlijksBruto,
@@ -372,6 +429,9 @@ export default function Dividend() {
                     <span style={{ fontWeight: 600, fontSize: 14 }}>{b.naam}</span>
                     {b.verkocht && (
                       <span style={{ fontSize: 10, padding: '1px 6px', background: 'var(--border-light)', borderRadius: 4, color: 'var(--text-muted)', fontWeight: 600 }}>Verkocht</span>
+                    )}
+                    {b.liveData && (
+                      <span title="Live data via Finnhub" style={{ fontSize: 9, padding: '1px 5px', background: '#dcfce7', borderRadius: 4, color: '#16a34a', fontWeight: 700 }}>LIVE</span>
                     )}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.symbol}</div>
