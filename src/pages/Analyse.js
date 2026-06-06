@@ -19,10 +19,68 @@ const SECTOR_MAP = {
   XOM: 'Energie', CVX: 'Energie',
   ETF: 'ETF',
 };
-const REGIO_MAP = {
-  NKE: 'VS', NVDA: 'VS', AAPL: 'VS', MSFT: 'VS', GOOGL: 'VS', META: 'VS',
-  AMZN: 'VS', TSLA: 'VS', SOFI: 'VS', V: 'VS', MA: 'VS',
-  'VWCE.XETRA': 'Wereldwijd', VWCE: 'Wereldwijd',
+// Regio op basis van beursextensie (.AS, .DE, .L, enz.)
+const EXTENSIE_REGIO = {
+  // Euronext Amsterdam
+  AS: 'Europa - Ontwikkeld',
+  // Duitsland (Xetra / Frankfurt)
+  DE: 'Europa - Ontwikkeld', F: 'Europa - Ontwikkeld', XETRA: 'Europa - Ontwikkeld',
+  // Parijs
+  PA: 'Europa - Ontwikkeld',
+  // Brussel
+  BR: 'Europa - Ontwikkeld',
+  // Londen
+  L: 'Verenigd Koninkrijk',
+  // Zwitserland
+  SW: 'Europa - Ontwikkeld', VX: 'Europa - Ontwikkeld',
+  // Stockholm / Scandinavië
+  ST: 'Europa - Ontwikkeld', HE: 'Europa - Ontwikkeld', CO: 'Europa - Ontwikkeld', OL: 'Europa - Ontwikkeld',
+  // Madrid
+  MC: 'Europa - Ontwikkeld',
+  // Milaan
+  MI: 'Europa - Ontwikkeld',
+  // Lissabon
+  LS: 'Europa - Ontwikkeld',
+  // Wenen
+  VI: 'Europa - Ontwikkeld',
+  // Warschau
+  WA: 'Europa - Opkomend',
+  // Tokyo
+  T: 'Japan', TYO: 'Japan',
+  // Hong Kong
+  HK: 'Azië - Ontwikkeld',
+  // Singapore
+  SI: 'Azië - Ontwikkeld',
+  // Australië
+  AX: 'Australazië',
+  // Canada
+  TO: 'Noord-Amerika', V: 'Noord-Amerika', CN: 'Noord-Amerika',
+  // Brazilië
+  SA: 'Latijns-Amerika',
+  // Korea
+  KS: 'Azië - Ontwikkeld', KQ: 'Azië - Ontwikkeld',
+  // Taiwan
+  TW: 'Azië - Ontwikkeld',
+  // India
+  NS: 'Azië - Opkomend', BO: 'Azië - Opkomend',
+  // China
+  SS: 'Azië - Opkomend', SZ: 'Azië - Opkomend',
+  // VS (geen extensie of US extensie)
+  US: 'Noord-Amerika', NYSE: 'Noord-Amerika', NASDAQ: 'Noord-Amerika',
+};
+
+// Bekende symbolen zonder extensie (vooral grote VS-aandelen)
+const SYMBOOL_REGIO = {
+  NKE: 'Noord-Amerika', NVDA: 'Noord-Amerika', AAPL: 'Noord-Amerika', MSFT: 'Noord-Amerika',
+  GOOGL: 'Noord-Amerika', GOOG: 'Noord-Amerika', META: 'Noord-Amerika', AMZN: 'Noord-Amerika',
+  TSLA: 'Noord-Amerika', SOFI: 'Noord-Amerika', V: 'Noord-Amerika', MA: 'Noord-Amerika',
+  JPM: 'Noord-Amerika', BAC: 'Noord-Amerika', WMT: 'Noord-Amerika', JNJ: 'Noord-Amerika',
+  PG: 'Noord-Amerika', XOM: 'Noord-Amerika', CVX: 'Noord-Amerika', HD: 'Noord-Amerika',
+  AVGO: 'Noord-Amerika', LLY: 'Noord-Amerika', UNH: 'Noord-Amerika', COST: 'Noord-Amerika',
+  AMD: 'Noord-Amerika', INTC: 'Noord-Amerika', NFLX: 'Noord-Amerika', PYPL: 'Noord-Amerika',
+  // Bekende Europese zonder extensie
+  ASML: 'Europa - Ontwikkeld', SHELL: 'Verenigd Koninkrijk', SAP: 'Europa - Ontwikkeld',
+  NOVO: 'Europa - Ontwikkeld', NESN: 'Europa - Ontwikkeld', ROG: 'Europa - Ontwikkeld',
 };
 
 function getSector(b) {
@@ -31,8 +89,23 @@ function getSector(b) {
   if (b.type === 'crypto') return 'Crypto';
   return SECTOR_MAP[sym] || 'Overige';
 }
+
 function getRegio(b) {
-  return REGIO_MAP[b.symbol] || REGIO_MAP[b.symbol.split('.')[0]] || 'Overige';
+  const sym = b.symbol.toUpperCase();
+  const delen = sym.split('.');
+  const basis = delen[0];
+  const extensie = delen.length > 1 ? delen[delen.length - 1] : null;
+
+  // 1. Exacte symboolmatch (bijv. NVDA, ASML)
+  if (SYMBOOL_REGIO[basis]) return SYMBOOL_REGIO[basis];
+
+  // 2. Beursextensie (bijv. .AS → Amsterdam, .DE → Duitsland)
+  if (extensie && EXTENSIE_REGIO[extensie]) return EXTENSIE_REGIO[extensie];
+
+  // 3. Geen extensie en niet bekend → vermoedelijk VS (NYSE/NASDAQ)
+  if (delen.length === 1) return 'Noord-Amerika';
+
+  return 'Overige';
 }
 
 // ── Staaf component ───────────────────────────────────────────────
