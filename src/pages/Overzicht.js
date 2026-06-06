@@ -279,6 +279,14 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     return { ...d, waarde: Math.round((d.waarde - aankoopwaarde) * 100) / 100 };
   });
 
+  // Huidige waarde van enkel de gefilterde beleggingen
+  const gefilterdeTotaalWaarde = beleggingVoorGrafiek.reduce((s, b) => {
+    const k = koersen[b.symbol];
+    const prijs = k ? k.c : b.kostprijs;
+    const f = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+    return s + prijs * b.aantal * f;
+  }, 0);
+
   const displayData = weergave === 'waarde' ? grafiekData : winstData;
   const periodeWinst = grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : dagWinst;
   const periodeWinstPct = grafiekData.length > 1 && grafiekData[0].waarde > 0 ? (periodeWinst / grafiekData[0].waarde) * 100 : dagWinstPct;
@@ -365,7 +373,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{periodeTekst}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
                 <div className="portfolio-waarde">
-                  €{portfolioWaarde.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  €{gefilterdeTotaalWaarde.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <span className={`badge ${periodeWinstPct >= 0 ? 'badge-green' : 'badge-red'}`}>
                   {periodeWinstPct >= 0 ? '▲' : '▼'} {Math.abs(periodeWinstPct).toFixed(2)}% ({periodeWinst >= 0 ? '+' : ''}€{Math.abs(periodeWinst).toFixed(2)})
