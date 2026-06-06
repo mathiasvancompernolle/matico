@@ -17,7 +17,7 @@ export default function BeleggingToevoegen({ onClose }) {
   const [zoekResultaten, setZoekResultaten] = useState([]);
   const [zoekLoading, setZoekLoading] = useState(false);
   const [geselecteerd, setGeselecteerd] = useState(null);
-  const [form, setForm] = useState({ datum: '', kostprijs: '', aantal: '', munt: 'EUR' });
+  const [form, setForm] = useState({ datum: '', kostprijs: '', aantal: '', munt: 'EUR', transactiekosten: '' });
 
   useEffect(() => {
     if (zoekterm.length < 2) { setZoekResultaten([]); return; }
@@ -51,19 +51,33 @@ export default function BeleggingToevoegen({ onClose }) {
 
   const opslaan = () => {
     if (!geselecteerd || !form.datum || !form.kostprijs || !form.aantal) return;
+    const kostprijsPerStuk = parseFloat(form.kostprijs);
+    const aantalStuks = parseFloat(form.aantal);
+    const transactiekosten = parseFloat(form.transactiekosten) || 0;
+    // Kostprijs per stuk inclusief transactiekosten (verdeeld over alle stuks)
+    const kostprijsInclKosten = kostprijsPerStuk + (transactiekosten / aantalStuks);
+
     const nieuw = {
       id: Date.now(),
       symbol: geselecteerd.symbol,
       naam: geselecteerd.description,
       type,
       datum: form.datum,
-      kostprijs: parseFloat(form.kostprijs),
-      aantal: parseFloat(form.aantal),
+      kostprijs: kostprijsInclKosten,
+      kostprijsExclKosten: kostprijsPerStuk,
+      transactiekosten,
+      aantal: aantalStuks,
       munt: form.munt,
     };
     setBeleggingen(prev => [...prev, nieuw]);
     onClose();
   };
+
+  // Berekening voor preview
+  const kostprijsPerStuk = parseFloat(form.kostprijs) || 0;
+  const aantalStuks = parseFloat(form.aantal) || 0;
+  const transactiekosten = parseFloat(form.transactiekosten) || 0;
+  const totaalKostprijs = kostprijsPerStuk * aantalStuks + transactiekosten;
 
   return (
     <div style={{ minHeight: '100vh' }}>
@@ -110,26 +124,16 @@ export default function BeleggingToevoegen({ onClose }) {
           </div>
           <div style={{ position: 'relative', marginBottom: 8 }}>
             <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              className="zoek-input"
-              placeholder={`Zoek op naam of symbool...`}
-              value={zoekterm}
-              onChange={e => setZoekterm(e.target.value)}
-              autoFocus
-            />
+            <input type="text" className="zoek-input" placeholder="Zoek op naam of symbool..."
+              value={zoekterm} onChange={e => setZoekterm(e.target.value)} autoFocus />
             {zoekLoading && <Loader size={16} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', animation: 'spin 1s linear infinite' }} />}
           </div>
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             {zoekResultaten.length === 0 && zoekterm.length >= 2 && !zoekLoading && (
-              <div className="empty-state" style={{ padding: 30 }}>
-                <p>Geen resultaten gevonden voor "{zoekterm}"</p>
-              </div>
+              <div className="empty-state" style={{ padding: 30 }}><p>Geen resultaten gevonden voor "{zoekterm}"</p></div>
             )}
             {zoekResultaten.length === 0 && zoekterm.length < 2 && (
-              <div className="empty-state" style={{ padding: 30 }}>
-                <p>Typ minimaal 2 tekens om te zoeken</p>
-              </div>
+              <div className="empty-state" style={{ padding: 30 }}><p>Typ minimaal 2 tekens om te zoeken</p></div>
             )}
             {zoekResultaten.map(r => (
               <div key={r.symbol} className="zoek-resultaat" onClick={() => kiesAandeel(r)}>
@@ -152,67 +156,71 @@ export default function BeleggingToevoegen({ onClose }) {
               Automatisch opgevolgd door Matico
             </div>
             <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16 }}>
+
+              {/* Rij 1: Naam, datum, kostprijs */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, padding: '8px 0', fontWeight: 600, fontSize: 12, color: 'var(--text-muted)' }}>
                 <span>Naam</span>
                 <span>Aankoopdatum</span>
-                <span>Kostprijs per stuk</span>
+                <span>Koers per stuk</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{geselecteerd.description}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{geselecteerd.symbol}</div>
                 </div>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={form.datum}
-                  onChange={e => setForm(f => ({ ...f, datum: e.target.value }))}
-                />
+                <input type="date" className="form-input" value={form.datum}
+                  onChange={e => setForm(f => ({ ...f, datum: e.target.value }))} />
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <input
-                    type="number"
-                    className="form-input"
-                    placeholder="0.00"
-                    value={form.kostprijs}
-                    onChange={e => setForm(f => ({ ...f, kostprijs: e.target.value }))}
-                    step="0.01"
-                    min="0"
-                  />
-                  <select
-                    className="form-input"
-                    style={{ width: 80 }}
-                    value={form.munt}
-                    onChange={e => setForm(f => ({ ...f, munt: e.target.value }))}
-                  >
+                  <input type="number" className="form-input" placeholder="0.00" value={form.kostprijs}
+                    onChange={e => setForm(f => ({ ...f, kostprijs: e.target.value }))} step="0.01" min="0" />
+                  <select className="form-input" style={{ width: 80 }} value={form.munt}
+                    onChange={e => setForm(f => ({ ...f, munt: e.target.value }))}>
                     <option value="EUR">EUR</option>
                     <option value="USD">USD</option>
                     <option value="GBP">GBP</option>
                   </select>
                 </div>
               </div>
+
+              {/* Rij 2: Aantal */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
                 <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Aantal aandelen/eenheden</div>
                 <div />
-                <input
-                  type="number"
-                  className="form-input"
-                  placeholder="1"
-                  value={form.aantal}
-                  onChange={e => setForm(f => ({ ...f, aantal: e.target.value }))}
-                  min="0"
-                  step="0.001"
-                />
+                <input type="number" className="form-input" placeholder="1" value={form.aantal}
+                  onChange={e => setForm(f => ({ ...f, aantal: e.target.value }))} min="0" step="0.001" />
               </div>
+
+              {/* Rij 3: Transactiekosten */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Transactiekosten</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Totale kosten voor deze aankoop</div>
+                </div>
+                <div />
+                <input type="number" className="form-input" placeholder="0.00" value={form.transactiekosten}
+                  onChange={e => setForm(f => ({ ...f, transactiekosten: e.target.value }))} step="0.01" min="0" />
+              </div>
+
+              {/* Preview totale kostprijs */}
+              {(kostprijsPerStuk > 0 && aantalStuks > 0) && (
+                <div style={{ marginTop: 16, padding: '12px 16px', background: 'var(--bg)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                    Totale kostprijs
+                    {transactiekosten > 0 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> (incl. €{transactiekosten.toFixed(2)} kosten)</span>}
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>
+                    €{totaalKostprijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <button className="btn btn-secondary" onClick={() => setStap('zoek')}>Annuleren</button>
-            <button
-              className="btn btn-primary"
-              onClick={opslaan}
+            <button className="btn btn-primary" onClick={opslaan}
               disabled={!form.datum || !form.kostprijs || !form.aantal}
-              style={{ opacity: (!form.datum || !form.kostprijs || !form.aantal) ? 0.5 : 1 }}
-            >
+              style={{ opacity: (!form.datum || !form.kostprijs || !form.aantal) ? 0.5 : 1 }}>
               Opslaan
             </button>
           </div>
