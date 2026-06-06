@@ -126,60 +126,83 @@ export function Analyse() {
 
   // ── Spreiding berekening ──
   const { spreidingData, pieData } = useMemo(() => {
-    // Filter beleggingen op subfilter
-    const gefilterd = spreidingTab === 'Type' ? beleggingen : beleggingen.filter(b => {
+    const etfRegioGewichten = {
+      'VWCE.XETRA': {
+        'Noord-Amerika': 64.45, 'Europa - Ontwikkeld': 10.92, 'Azië - Ontwikkeld': 6.13,
+        'Japan': 5.83, 'Azië - Opkomend': 5.15, 'Verenigd Koninkrijk': 3.19,
+        'Australazië': 1.67, 'Afrika/Midden-Oosten': 1.34, 'Latijns-Amerika': 1.03,
+        'Europa - Opkomend': 0.29
+      }
+    };
+    const etfSectorGewichten = {
+      'VWCE.XETRA': {
+        'Technologie': 24.8, 'Financiën': 16.2, 'Gezondheidszorg': 11.4,
+        'Consumenten': 10.9, 'Industrie': 10.1, 'Energie': 5.8,
+        'Grondstoffen': 5.2, 'Nutsbedrijven': 3.8, 'Vastgoed': 3.6, 'Overige': 8.2
+      }
+    };
+
+    // Totaal portfolio waarde (altijd op basis van alle beleggingen voor % berekening)
+    const totaal = beleggingen.reduce((s, b) => {
+      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+    }, 0) || 1;
+
+    // Welke beleggingen tonen op basis van subfilter
+    const gefilterd = beleggingen.filter(b => {
+      if (spreidingTab === 'Type') return true;
       if (spreidingSubFilter === 'Alles') return true;
       if (spreidingSubFilter === 'Aandelen') return b.type !== 'etf' && b.type !== 'crypto';
       if (spreidingSubFilter === 'ETFs') return b.type === 'etf';
       return true;
     });
 
-    const totaalPortfolio = beleggingen.reduce((s, b) => {
-      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
-    }, 0) || 1;
-    const totaalGefilterd = gefilterd.reduce((s, b) => {
-      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
-    }, 0) || 1;
-
-    const groepeer = (fn) => {
+    // Type tab: simpele groepering
+    if (spreidingTab === 'Type') {
       const map = {};
-      gefilterd.forEach(b => {
+      beleggingen.forEach(b => {
         const k = koersen[b.symbol];
         const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
-        const label = fn(b);
+        const label = b.type === 'etf' ? 'ETFs' : b.type === 'crypto' ? 'Crypto' : 'Aandelen';
         map[label] = (map[label] || 0) + w;
       });
-      return Object.entries(map).map(([label, w]) => ({ label, waarde: w, pct: (w / totaalPortfolio) * 100 }))
+      const data = Object.entries(map)
+        .map(([label, w]) => ({ label, waarde: w, pct: (w / totaal) * 100 }))
         .sort((a, b) => b.waarde - a.waarde);
-    };
+      return { spreidingData: data, pieData: data };
+    }
 
-    const groepeerMetETF = (etfGewichtenMap) => {
-      const map = {};
-      gefilterd.forEach(b => {
-        const k = koersen[b.symbol];
-        const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
-        if (b.type === 'etf' && etfGewichtenMap[b.symbol]) {
-          // Verdeel ETF waarde over categorieën op basis van werkelijke gewichten
-          Object.entries(etfGewichtenMap[b.symbol]).forEach(([cat, pctInEtf]) => {
+    // Sectoren of Regio: ETFs uitgesplitst op basis van interne gewichten
+    const isRegio = spreidingTab === 'Regio';
+    const gewichtenMap = isRegio ? etfRegioGewichten : etfSectorGewichten;
+    const map = {};
+
+    gefilterd.forEach(b => {
+      const k = koersen[b.symbol];
+      const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+
+      if (b.type === 'etf') {
+        const gewichten = gewichtenMap[b.symbol];
+        if (gewichten) {
+          // Verdeel ETF waarde proportioneel over regio's/sectoren
+          Object.entries(gewichten).forEach(([cat, pctInEtf]) => {
             map[cat] = (map[cat] || 0) + w * (pctInEtf / 100);
           });
-        } else if (b.type !== 'etf') {
-          const label = etfGewichtenMap === ETF_REGIO_GEWICHTEN ? getRegio(b) : getSector(b);
-          map[label] = (map[label] || 0) + w;
+        } else {
+          // Geen data: toon als "Wereldwijd" of "Overige"
+          const fallback = isRegio ? 'Wereldwijd' : 'Overige';
+          map[fallback] = (map[fallback] || 0) + w;
         }
-      });
-      return Object.entries(map).map(([label, w]) => ({ label, waarde: w, pct: (w / totaalPortfolio) * 100 }))
-        .sort((a, b) => b.waarde - a.waarde);
-    };
+      } else {
+        // Directe aandelen: gebruik sector/regio mapping
+        const label = isRegio ? getRegio(b) : getSector(b);
+        map[label] = (map[label] || 0) + w;
+      }
+    });
 
-    let data;
-    if (spreidingTab === 'Type') {
-      data = groepeer(b => b.type === 'etf' ? 'ETFs' : b.type === 'crypto' ? 'Crypto' : 'Aandelen');
-    } else if (spreidingTab === 'Sectoren') {
-      data = groepeerMetETF(ETF_SECTOR_GEWICHTEN);
-    } else {
-      data = groepeerMetETF(ETF_REGIO_GEWICHTEN);
-    }
+    const data = Object.entries(map)
+      .map(([label, w]) => ({ label, waarde: w, pct: (w / totaal) * 100 }))
+      .filter(d => d.waarde > 0)
+      .sort((a, b) => b.waarde - a.waarde);
 
     return { spreidingData: data, pieData: data };
   }, [beleggingen, koersen, spreidingTab, spreidingSubFilter]);
