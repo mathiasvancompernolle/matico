@@ -69,7 +69,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   const [vergelijk2, setVergelijk2] = useState('geen');
   const [filterType, setFilterType] = useState('alle');
   const [filterSymbolen, setFilterSymbolen] = useState([]);
-  const [filterBezit, setFilterBezit] = useState('alles'); // 'alles' | 'inbezit'
+  const [filterBezit, setFilterBezit] = useState('inbezit'); // 'alles' | 'inbezit'
   const [detailBelegging, setDetailBelegging] = useState(null);
   const [toevoegenMenuOpen, setToevoegenMenuOpen] = useState(false);
   const menuRef = useRef(null);
