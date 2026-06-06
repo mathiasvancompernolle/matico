@@ -693,7 +693,21 @@ export function Analyse() {
                   <Pie data={pieData} dataKey="pct" cx="50%" cy="50%" innerRadius={65} outerRadius={110} paddingAngle={2}>
                     {pieData.map((_, i) => <Cell key={i} fill={PIE_KLEUREN[i % PIE_KLEUREN.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v) => `${v.toFixed(2)}%`} contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }} />
+                  <Tooltip content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const { name, value, payload: p } = payload[0];
+                    const kleur = p.fill || PIE_KLEUREN[0];
+                    return (
+                      <div style={{
+                        background: 'white', border: `1.5px solid ${kleur}`,
+                        borderRadius: 8, padding: '7px 12px', fontSize: 13,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.10)'
+                      }}>
+                        <span style={{ color: kleur, fontWeight: 700 }}>{name}</span>
+                        <span style={{ color: kleur, marginLeft: 8 }}>{value.toFixed(2)}%</span>
+                      </div>
+                    );
+                  }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -763,7 +777,21 @@ export function Analyse() {
                         <Pie data={valutaData} dataKey="pct" nameKey="munt" cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={2}>
                           {valutaData.map((_, i) => <Cell key={i} fill={PIE_KLEUREN[i % PIE_KLEUREN.length]} />)}
                         </Pie>
-                        <Tooltip formatter={(v) => `${v.toFixed(2)}%`} contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }} />
+                        <Tooltip content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const { name, value, payload: p } = payload[0];
+                          const kleur = p.fill || PIE_KLEUREN[0];
+                          return (
+                            <div style={{
+                              background: 'white', border: `1.5px solid ${kleur}`,
+                              borderRadius: 8, padding: '7px 12px', fontSize: 13,
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.10)'
+                            }}>
+                              <span style={{ color: kleur, fontWeight: 700 }}>{name}</span>
+                              <span style={{ color: kleur, marginLeft: 8 }}>{value.toFixed(2)}%</span>
+                            </div>
+                          );
+                        }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
