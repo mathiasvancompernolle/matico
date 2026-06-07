@@ -240,21 +240,39 @@ export default async function handler(req, res) {
 
     if (endpoint === 'dividend') {
       const { symbol, van, tot } = req.query;
+      
+      // Probeer Finnhub dividend2 (geeft exDate, amount, paymentDate)
       try {
         const r = await fetch(`https://finnhub.io/api/v1/stock/dividend2?symbol=${symbol}&from=${van}&to=${tot}&token=${FINNHUB_KEY}`);
         const d = await r.json();
-        if (Array.isArray(d) && d.length > 0) return res.json(d);
+        if (Array.isArray(d) && d.length > 0) {
+          // Normaliseer naar consistent formaat
+          return res.json(d.map(item => ({
+            exDate: item.exDate || item.date || '',
+            paymentDate: item.paymentDate || item.date || '',
+            amount: parseFloat(item.amount || item.adjDividend || 0),
+            symbol: item.symbol || symbol,
+          })));
+        }
       } catch (e) {}
-      // Fallback: FMP dividend history
+
+      // Fallback: FMP dividend history — normaliseer ook dit formaat
       try {
         const basis = symbol.split('.')[0];
-        const r = await fetch(`https://financialmodelingprep.com/api/v3/historical/stock_dividend/${basis}?limit=8&apikey=${FMP_KEY}`);
+        const r = await fetch(`https://financialmodelingprep.com/api/v3/historical/stock_dividend/${basis}?limit=20&apikey=${FMP_KEY}`);
         const d = await r.json();
-        const hist = d?.historical || [];
+        const hist = (d?.historical || []).filter(h => {
+          const exD = new Date(h.date || '');
+          return exD >= new Date(van) && exD <= new Date(tot);
+        });
         if (hist.length > 0) return res.json(hist.map(h => ({
-          symbol: basis, date: h.date, amount: h.dividend
+          exDate: h.date,
+          paymentDate: h.paymentDate || h.date,
+          amount: parseFloat(h.dividend || h.adjDividend || 0),
+          symbol: basis,
         })));
       } catch (e) {}
+
       return res.json([]);
     }
 

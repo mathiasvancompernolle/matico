@@ -59,8 +59,8 @@ const DIVIDEND_HISTORIEK = {
     2022: { jaarlijks: 2.48, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
     2023: { jaarlijks: 2.72, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
     2024: { jaarlijks: 3.00, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
-    2025: { jaarlijks: 3.16, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
-    2026: { jaarlijks: 3.32, frequentie: 4, ex_maanden: [2, 5, 8, 11] },
+    2025: { jaarlijks: 3.32, frequentie: 4, ex_maanden: [2, 5, 8, 11] },  // $0.83/kwartaal heel 2025
+    2026: { jaarlijks: 3.64, frequentie: 4, ex_maanden: [2, 5, 8, 11] },  // $0.91/kwartaal
   },
 };
 
@@ -88,6 +88,20 @@ export default function Dividend() {
   const [liveDividend, setLiveDividend] = useState({}); // { NVDA: { jaarlijks, ontvangen } }
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+
+  // Verwijder oude cache met verkeerd formaat bij eerste load
+  useEffect(() => {
+    const sleutels = Object.keys(localStorage).filter(k => k.startsWith('matico_div_'));
+    sleutels.forEach(k => {
+      try {
+        const cached = JSON.parse(localStorage.getItem(k));
+        // Oude cache had geen genormaliseerd formaat (geen exDate veld)
+        if (cached?.data?.[0] && !cached.data[0].exDate && cached.data[0].date) {
+          localStorage.removeItem(k); // Verwijder verouderd formaat
+        }
+      } catch (e) {}
+    });
+  }, []);
 
   // Haal live dividenddata op via Finnhub — per symbool én per jaar
   // Sleutel: "NVDA_2025", "NKE_2024", ... zodat historische data bewaard blijft
@@ -149,9 +163,25 @@ export default function Dividend() {
     const maandTotalen = Array(12).fill(0);
     const zonderDataLijst = [];
 
+    const parseNLDatumHelper = (str) => {
+      if (!str) return null;
+      const d = str.split('/');
+      return d.length === 3 ? new Date(`${d[2]}-${d[1]}-${d[0]}`) : new Date(str);
+    };
+
+    // Voeg verkochte beleggingen toe als ze in het gevraagde jaar nog bezit waren
+    // (aankoop vóór eind van het jaar EN verkoop op/na begin van het jaar)
+    const verkochtInOfNaJaar = (verkochteBeleggingen || []).filter(b => {
+      const aankoopJ = b.datum ? new Date(b.datum).getFullYear() : 9999;
+      const verkoopD = parseNLDatumHelper(b.verkoopdatum);
+      const verkoopJ = verkoopD ? verkoopD.getFullYear() : 0;
+      // Bezit overlapt met het gevraagde jaar als: aankoop <= eind jaar EN verkoop >= begin jaar
+      return aankoopJ <= jaar && verkoopJ >= jaar;
+    }).map(b => ({ ...b, aantal: b.aantalVerkocht }));
+
     const alleBel = [
       ...beleggingen,
-      ...(jaar < huidigJaar ? (verkochteBeleggingen || []).map(b => ({ ...b, aantal: b.aantalVerkocht })) : [])
+      ...verkochtInOfNaJaar
     ];
 
     alleBel.forEach(b => {
@@ -185,16 +215,17 @@ export default function Dividend() {
       if (liveData && Array.isArray(liveData) && liveData.length > 0) {
         // Filter op het gevraagde jaar én op bezitperiode
         const uitkeringenDitJaar = liveData.filter(d => {
-          const exDatumStr = d.exDate || d.date || '';
+          const exDatumStr = d.exDate || d.date || d.ex_dividend_date || '';
           const exDatum = new Date(exDatumStr);
-          if (exDatum.getFullYear() !== jaar) return false;
+          if (isNaN(exDatum.getTime()) || exDatum.getFullYear() !== jaar) return false;
           return heeftRecht(exDatumStr);
         });
 
         // Alle uitkeringen dit jaar (voor rendementberekening, ook toekomstige)
         const alleUitkeringenJaar = liveData.filter(d => {
-          const exDatum = new Date(d.exDate || d.date || '');
-          return exDatum.getFullYear() === jaar;
+          const exDatumStr = d.exDate || d.date || d.ex_dividend_date || '';
+          const exDatum = new Date(exDatumStr);
+          return !isNaN(exDatum.getTime()) && exDatum.getFullYear() === jaar;
         });
 
         if (alleUitkeringenJaar.length > 0) {
@@ -205,7 +236,7 @@ export default function Dividend() {
 
           // Verwacht voor bezitperiode: enkel uitkeringen waarvoor je recht hebt
           const verwachtUSD = uitkeringenDitJaar.reduce((s, d) =>
-            s + parseFloat(d.amount || d.adjDividend || 0), 0);
+            s + parseFloat(d.amount || d.adjDividend || d.adj_dividend || 0), 0);
           // Als er nog toekomstige uitkeringen zijn waarvoor je recht zult hebben, tel ook mee
           const toekomstigeUSD = liveData.filter(d => {
             const exDatum = new Date(d.exDate || d.date || '');
@@ -218,8 +249,9 @@ export default function Dividend() {
           // Ontvangen = uitkeringen waarvoor je recht had én al betaald
           const ontvangenUSD = uitkeringenDitJaar
             .filter(d => {
-              const betaalDatum = new Date(d.paymentDate || d.date || '');
-              return !isHuidigJaar || betaalDatum <= new Date();
+              const betaalDatumStr = d.paymentDate || d.payment_date || d.date || '';
+              const betaalDatum = new Date(betaalDatumStr);
+              return !isHuidigJaar || (!isNaN(betaalDatum.getTime()) && betaalDatum <= new Date());
             })
             .reduce((s, d) => s + parseFloat(d.amount || d.adjDividend || 0), 0);
 
