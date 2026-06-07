@@ -560,6 +560,7 @@ export function Analyse() {
   const ETF_DB_XRAY = {
     VWCE: {
       kostenratio: 0.19,
+      totaalHoldings: 3768,
       holdings: [
         { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 4.66 },
         { sym: 'AAPL.US', naam: 'Apple Inc', pct: 3.90 },
@@ -575,6 +576,7 @@ export function Analyse() {
     },
     VWRL: {
       kostenratio: 0.19,
+      totaalHoldings: 3768,
       holdings: [
         { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 4.66 },
         { sym: 'AAPL.US', naam: 'Apple Inc', pct: 3.90 },
@@ -590,6 +592,7 @@ export function Analyse() {
     },
     IWDA: {
       kostenratio: 0.20,
+      totaalHoldings: 1397,
       holdings: [
         { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 5.62 },
         { sym: 'AAPL.US', naam: 'Apple Inc', pct: 4.53 },
@@ -605,6 +608,7 @@ export function Analyse() {
     },
     SWRD: {
       kostenratio: 0.12,
+      totaalHoldings: 1397,
       holdings: [
         { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 5.62 },
         { sym: 'AAPL.US', naam: 'Apple Inc', pct: 4.53 },
@@ -620,6 +624,7 @@ export function Analyse() {
     },
     EMIM: {
       kostenratio: 0.18,
+      totaalHoldings: 2793,
       holdings: [
         { sym: '2330.TW', naam: 'Taiwan Semiconductor Manufacturing Co. Ltd.', pct: 12.45 },
         { sym: 'SMSN.IL', naam: 'Samsung Electronics Co. Ltd.', pct: 6.45 },
@@ -635,6 +640,7 @@ export function Analyse() {
     },
     EQQQ: {
       kostenratio: 0.30,
+      totaalHoldings: 101,
       holdings: [
         { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 8.60 },
         { sym: 'AAPL.US', naam: 'Apple Inc', pct: 7.09 },
@@ -650,6 +656,7 @@ export function Analyse() {
     },
     CNDX: {
       kostenratio: 0.20,
+      totaalHoldings: 101,
       holdings: [
         { sym: 'AAPL.US', naam: 'Apple Inc', pct: 8.72 },
         { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 8.14 },
@@ -662,6 +669,7 @@ export function Analyse() {
     },
     CSPX: {
       kostenratio: 0.07,
+      totaalHoldings: 503,
       holdings: [
         { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 7.62 },
         { sym: 'AAPL.US', naam: 'Apple Inc', pct: 6.84 },
@@ -677,6 +685,7 @@ export function Analyse() {
     },
     SXR8: {
       kostenratio: 0.07,
+      totaalHoldings: 503,
       holdings: [
         { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 7.62 },
         { sym: 'AAPL.US', naam: 'Apple Inc', pct: 6.84 },
@@ -692,6 +701,7 @@ export function Analyse() {
     },
     XDWD: {
       kostenratio: 0.19,
+      totaalHoldings: 1397,
       holdings: [
         { sym: 'AAPL.US', naam: 'Apple Inc', pct: 4.92 },
         { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 4.48 },
@@ -705,6 +715,7 @@ export function Analyse() {
     },
     LCWD: {
       kostenratio: 0.14,
+      totaalHoldings: 1397,
       holdings: [
         { sym: 'AAPL.US', naam: 'Apple Inc', pct: 4.95 },
         { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 4.50 },
@@ -716,6 +727,7 @@ export function Analyse() {
     },
     WEBG: {
       kostenratio: 0.07,
+      totaalHoldings: 3768,
       holdings: [
         { sym: 'NVDA.US', naam: 'NVIDIA Corporation', pct: 1.78 },
         { sym: 'AAPL.US', naam: 'Apple Inc', pct: 1.51 },
@@ -728,6 +740,7 @@ export function Analyse() {
     },
     CSX5: {
       kostenratio: 0.10,
+      totaalHoldings: 50,
       holdings: [
         { sym: 'ASML.AS', naam: 'ASML Holding NV', pct: 7.42 },
         { sym: 'SAP.DE', naam: 'SAP SE', pct: 5.18 },
@@ -743,6 +756,7 @@ export function Analyse() {
     },
     SMEA: {
       kostenratio: 0.12,
+      totaalHoldings: 434,
       holdings: [
         { sym: 'ASML.AS', naam: 'ASML Holding NV', pct: 3.84 },
         { sym: 'NOVN.SW', naam: 'Novartis AG', pct: 2.98 },
@@ -777,18 +791,26 @@ export function Analyse() {
   };
 
   // Bereken gecombineerde holdings over alle ETFs
-  const alleHoldings = (() => {
+  const { alleHoldings, totaalUniekeBedrijven } = (() => {
     const totaalPortfolio = beleggingen.reduce((s, b) => {
       const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * (getMuntFactor ? getMuntFactor(b.munt || 'EUR') : 1);
     }, 0) || 1;
 
     const holdingMap = {}; // sym → { naam, gewichtInPortfolio, viaEtfs }
+    let totaalBedrijvenPerEtf = 0;
+
     etfs.forEach(etf => {
       const data = zoekXray(etf.symbol);
       if (!data) return;
       const k = koersen[etf.symbol];
       const etfWaarde = (k ? k.c : etf.kostprijs) * etf.aantal * (getMuntFactor ? getMuntFactor(etf.munt || 'EUR') : 1);
       const etfGewicht = (etfWaarde / totaalPortfolio) * 100;
+
+      // Tel het totaal aantal bedrijven in de ETF (uit database of live data)
+      const basis = etf.symbol.toUpperCase().split('.')[0];
+      const dbData = ETF_DB_XRAY[basis];
+      const etfTotaalBedrijven = dbData?.totaalHoldings || (data.holdings.length * 10); // schatting als niet known
+      totaalBedrijvenPerEtf += etfTotaalBedrijven;
 
       data.holdings.forEach(h => {
         const gewichtInPortfolio = etfGewicht * (h.pct / 100);
@@ -802,7 +824,10 @@ export function Analyse() {
       });
     });
 
-    return Object.values(holdingMap).sort((a, b) => b.gewicht - a.gewicht);
+    return {
+      alleHoldings: Object.values(holdingMap).sort((a, b) => b.gewicht - a.gewicht),
+      totaalUniekeBedrijven: totaalBedrijvenPerEtf,
+    };
   })();
 
   // Gemiddelde kostenratio gewogen op ETF-waarde
@@ -1388,7 +1413,7 @@ export function Analyse() {
               </div>
               <div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Aantal bedrijven</div>
-                <div style={{ fontSize: 28, fontWeight: 700 }}>{alleHoldings.length}</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }}>{totaalUniekeBedrijven.toLocaleString('nl-BE')}</div>
               </div>
               <div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Gemiddelde kostenratio</div>
@@ -1398,12 +1423,16 @@ export function Analyse() {
 
             {/* Holdings tabel */}
             <div style={{ borderTop: '1px solid var(--border-light)' }}>
+              {/* Sectietitel */}
+              <div style={{ padding: '10px 0 6px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>
+                Top 10 bedrijven met het grootste gewicht (over alle ETFs samen)
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 1fr', padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
                 <span>Naam</span>
                 <span style={{ textAlign: 'right' }}>Gewicht in portfolio</span>
                 <span style={{ textAlign: 'right' }}>Via</span>
               </div>
-              {alleHoldings.map((h, i) => (
+              {alleHoldings.slice(0, 10).map((h, i) => (
                 <div key={h.sym} style={{
                   display: 'grid', gridTemplateColumns: '1fr 160px 1fr',
                   padding: '11px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center'
