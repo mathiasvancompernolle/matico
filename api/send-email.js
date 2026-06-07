@@ -2,7 +2,7 @@
 // Verstuurt portfolio update e-mails via Resend
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = 'Matico <updates@matico-self.vercel.app>';
+const FROM_EMAIL = 'Matico <onboarding@resend.dev>';
 
 // Genereer HTML e-mail
 function genereerEmailHTML({ gebruiker, beleggingen, totaalWaarde, dagWinst, dagPct, datum }) {
