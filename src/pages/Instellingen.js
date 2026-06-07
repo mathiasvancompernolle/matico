@@ -116,11 +116,13 @@ export default function Instellingen() {
   };
 
   const stuurTestmail = async () => {
-    if (!emailInstellingen.email.includes('@')) {
+    console.log('Testmail gestart naar:', emailInstellingen.email);
+    if (!emailInstellingen.email || !emailInstellingen.email.includes('@')) {
       setEmailFout('Vul eerst een geldig e-mailadres in.');
       return;
     }
     setEmailFout('');
+    console.log('Payload:', bouwEmailPayload(true));
     try {
       const res = await fetch('/api/send-email', {
         method: 'POST',
@@ -345,7 +347,8 @@ export default function Instellingen() {
                 width: '100%', padding: '10px', background: 'transparent', color: 'var(--text-primary)',
                 border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer',
                 fontFamily: 'inherit', fontSize: 14, fontWeight: 500,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                opacity: 1, pointerEvents: 'all'
               }}>
                 {testVerstuurd ? '✓ Testmail verstuurd!' : '✈ Testmail versturen'}
               </button>
