@@ -399,7 +399,7 @@ export default function Belastingen() {
         }} onClick={() => { setSimulatieOpen(false); setSimBelegging(null); setSimAantal(''); }}>
           <div style={{
             background: 'white', borderRadius: 16, padding: 32, width: 520,
-            maxWidth: '90vw', boxShadow: 'var(--shadow-lg)'
+            maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)'
           }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700 }}>🧮 Verkoopsimulatie</h2>
