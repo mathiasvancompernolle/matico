@@ -84,7 +84,7 @@ function genereerEmailHTML({ gebruiker, beleggingen, totaalWaarde, dagWinst, dag
 </html>`;
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { naar, gebruiker, beleggingen, totaalWaarde, dagWinst, dagPct, datum, testmail } = req.body;
