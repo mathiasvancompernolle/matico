@@ -5,20 +5,22 @@ import BeleggingDetail from '../components/BeleggingDetail';
 
 // ── kleine hulpfuncties ──────────────────────────────────────────
 function Avatar({ symbol, logo }) {
-  if (logo) {
+  const [imgFout, setImgFout] = React.useState(false);
+  const initials = symbol.split('.')[0].slice(0, 2).toUpperCase();
+
+  if (logo && !imgFout) {
     return (
       <div style={{
         width: 36, height: 36, borderRadius: 10, overflow: 'hidden',
         border: '1px solid var(--border)', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'var(--bg-white)'
+        background: 'white'
       }}>
-        <img src={logo} alt={symbol} style={{ width: 28, height: 28, objectFit: 'contain' }}
-          onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
-        <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center',
-          background: 'var(--accent-bg)', color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}>
-          {symbol.slice(0, 2).toUpperCase()}
-        </div>
+        <img
+          src={logo} alt={symbol}
+          style={{ width: 30, height: 30, objectFit: 'contain' }}
+          onError={() => setImgFout(true)}
+        />
       </div>
     );
   }
@@ -28,7 +30,7 @@ function Avatar({ symbol, logo }) {
       color: 'var(--accent)', fontWeight: 700, fontSize: 13, flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
-      {symbol.slice(0, 2).toUpperCase()}
+      {initials}
     </div>
   );
 }
@@ -265,6 +267,21 @@ const inputStyle = {
 // ── Hoofd component ──────────────────────────────────────────────
 export default function Beleggingen({ onToevoegen }) {
   const { beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen } = useApp();
+
+  // Haal logo's op voor beleggingen die nog geen logo hebben
+  React.useEffect(() => {
+    const zonderLogo = beleggingen.filter(b => !b.logo);
+    zonderLogo.forEach(async (b) => {
+      try {
+        const res = await fetch(`/api/data?endpoint=profile&symbol=${encodeURIComponent(b.symbol)}`);
+        const data = await res.json();
+        const logo = data.logo || data.image || '';
+        if (logo) {
+          setBeleggingen(prev => prev.map(pb => pb.id === b.id ? { ...pb, logo } : pb));
+        }
+      } catch (e) {}
+    });
+  }, [beleggingen.filter(b => !b.logo).map(b => b.symbol).join(',')]);
   const [tab, setTab] = useState('actief');
   const [detailBelegging, setDetailBelegging] = useState(null);
   const [verkoopModal, setVerkoopModal] = useState(false);

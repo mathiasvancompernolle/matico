@@ -43,7 +43,18 @@ export default function BeleggingToevoegen({ onClose }) {
   const kiesAandeel = async (r) => {
     setGeselecteerd(r);
     setStap('invoer');
-    const koers = await fetchKoers(r.symbol);
+    // Haal koers en logo tegelijk op
+    const [koers] = await Promise.all([
+      fetchKoers(r.symbol),
+      // Haal logo op via profile endpoint
+      fetch(`/api/data?endpoint=profile&symbol=${encodeURIComponent(r.symbol)}`)
+        .then(res => res.json())
+        .then(data => {
+          const logo = data.logo || data.image || '';
+          if (logo) setGeselecteerd(prev => ({ ...prev, logo }));
+        })
+        .catch(() => {})
+    ]);
     if (koers?.c) {
       setForm(f => ({ ...f, kostprijs: koers.c.toFixed(2) }));
     }
@@ -61,6 +72,7 @@ export default function BeleggingToevoegen({ onClose }) {
       id: Date.now(),
       symbol: geselecteerd.symbol,
       naam: geselecteerd.description,
+      logo: geselecteerd.logo || '',
       type,
       datum: form.datum,
       kostprijs: kostprijsInclKosten,
