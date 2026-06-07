@@ -330,11 +330,6 @@ export function Analyse() {
       return null;
     };
 
-    // Totaal portfolio waarde (altijd op basis van alle beleggingen voor % berekening)
-    const totaal = beleggingen.reduce((s, b) => {
-      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
-    }, 0) || 1;
-
     // Welke beleggingen tonen op basis van subfilter
     const gefilterd = beleggingen.filter(b => {
       if (spreidingTab === 'Type') return true;
@@ -343,6 +338,11 @@ export function Analyse() {
       if (spreidingSubFilter === 'ETFs') return b.type === 'etf';
       return true;
     });
+
+    // Totaal = enkel de gefilterde beleggingen zodat % klopt per subfilter
+    const totaal = gefilterd.reduce((s, b) => {
+      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+    }, 0) || 1;
 
     // Type tab: simpele groepering
     if (spreidingTab === 'Type') {
