@@ -396,14 +396,14 @@ export default function Belastingen() {
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }} onClick={() => setSimulatieOpen(false)}>
+        }} onClick={() => { setSimulatieOpen(false); setSimBelegging(null); setSimAantal(''); }}>
           <div style={{
             background: 'white', borderRadius: 16, padding: 32, width: 520,
             maxWidth: '90vw', boxShadow: 'var(--shadow-lg)'
           }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700 }}>🧮 Verkoopsimulatie</h2>
-              <button onClick={() => setSimulatieOpen(false)} style={{
+              <button onClick={() => { setSimulatieOpen(false); setSimBelegging(null); setSimAantal(''); }} style={{
                 background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-muted)'
               }}>✕</button>
             </div>
@@ -478,15 +478,24 @@ export default function Belastingen() {
                     <span style={{ fontWeight: bold ? 700 : 600, color: kleur || 'var(--text-primary)' }}>{waarde}</span>
                   </div>
                 ))}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', fontSize: 13,
+                  padding: '8px 0', marginTop: 4, borderTop: '2px solid var(--border)'
+                }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Nieuwe resterende vrijstelling</span>
+                  <span style={{ fontWeight: 700, color: Math.max(simResultaat.restVrij - Math.max(simResultaat.meerwaarde, 0), 0) > 0 ? 'var(--green)' : 'var(--red)' }}>
+                    €{fmt(Math.max(simResultaat.restVrij - Math.max(simResultaat.meerwaarde, 0), 0))}
+                  </span>
+                </div>
                 {simResultaat.restVrij > 0 && simResultaat.extraBelasting === 0 && (
-                  <div style={{ marginTop: 10, fontSize: 12, color: 'var(--green)', fontWeight: 600 }}>
+                  <div style={{ marginTop: 8, fontSize: 12, color: 'var(--green)', fontWeight: 600 }}>
                     ✓ Volledig binnen vrijstelling — geen belasting verschuldigd
                   </div>
                 )}
               </div>
             )}
 
-            <button onClick={() => setSimulatieOpen(false)} style={{
+            <button onClick={() => { setSimulatieOpen(false); setSimBelegging(null); setSimAantal(''); }} style={{
               width: '100%', padding: '11px', background: ACCENT, color: 'white',
               border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
               fontSize: 14, fontWeight: 600
