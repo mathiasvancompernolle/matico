@@ -288,6 +288,80 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   }, 0);
 
   const displayData = weergave === 'waarde' ? grafiekData : winstData;
+
+  // ── Slimme X-as: meet werkelijk datumbereik, kies dan de beste interval ──
+  const { xTicks, xTickFormatter } = (() => {
+    const maandKort = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    const data = displayData;
+    if (data.length < 2) return { xTicks: undefined, xTickFormatter: v => v };
+
+    const eersteD = data.find(d => d.datum)?.datum ? new Date(data.find(d => d.datum).datum) : null;
+    const laatsteD = [...data].reverse().find(d => d.datum)?.datum ? new Date([...data].reverse().find(d => d.datum).datum) : null;
+    if (!eersteD || !laatsteD) return { xTicks: undefined, xTickFormatter: v => v };
+
+    const dagen = (laatsteD - eersteD) / (1000 * 60 * 60 * 24);
+
+    // Kies groeperingsstrategie op basis van werkelijk bereik
+    let groepeerFn, formatFn;
+
+    if (dagen <= 2) {
+      // Enkele dag(en): per uur
+      const stap = Math.max(1, Math.floor(data.length / 6));
+      const ticks = data.filter((_, i) => i % stap === 0 || i === data.length - 1).map(d => d.label);
+      return { xTicks: ticks, xTickFormatter: v => v };
+    }
+
+    if (dagen <= 14) {
+      // Tot 2 weken: elke dag
+      groepeerFn = d => new Date(d.datum).toDateString();
+      formatFn = d => { const dt = new Date(d.datum); return `${dt.getDate()} ${maandKort[dt.getMonth()]}`; };
+    } else if (dagen <= 60) {
+      // Tot 2 maanden: elke week
+      groepeerFn = d => { const dt = new Date(d.datum); return `${dt.getFullYear()}-${Math.ceil(dt.getDate()/7)}-${dt.getMonth()}`; };
+      formatFn = d => { const dt = new Date(d.datum); return `${dt.getDate()} ${maandKort[dt.getMonth()]}`; };
+    } else if (dagen <= 400) {
+      // Tot ~1 jaar: elke maand
+      groepeerFn = d => { const dt = new Date(d.datum); return `${dt.getFullYear()}-${dt.getMonth()}`; };
+      formatFn = d => {
+        const dt = new Date(d.datum);
+        // Bij jaarwisseling jaar erbij
+        if (dt.getMonth() === 0 || dt === eersteD) return `jan '${String(dt.getFullYear()).slice(2)}`;
+        return maandKort[dt.getMonth()];
+      };
+    } else if (dagen <= 900) {
+      // Tot ~2.5 jaar: elk kwartaal
+      groepeerFn = d => { const dt = new Date(d.datum); return `${dt.getFullYear()}-Q${Math.floor(dt.getMonth()/3)}`; };
+      formatFn = d => {
+        const dt = new Date(d.datum);
+        const kwartaalMaand = Math.floor(dt.getMonth()/3) * 3;
+        if (kwartaalMaand === 0) return `${dt.getFullYear()}`;
+        return maandKort[kwartaalMaand];
+      };
+    } else {
+      // Meer dan 2.5 jaar: elk jaar
+      groepeerFn = d => new Date(d.datum).getFullYear();
+      formatFn = d => String(new Date(d.datum).getFullYear());
+    }
+
+    // Filter data tot 1 tick per groep
+    const gezien = new Set();
+    const ticks = data.filter(d => {
+      if (!d.datum) return false;
+      const sleutel = groepeerFn(d);
+      if (gezien.has(sleutel)) return false;
+      gezien.add(sleutel);
+      return true;
+    }).map(d => d.label);
+
+    // Formatter zoekt het datapunt terug op label
+    const formatter = (label) => {
+      const punt = data.find(d => d.label === label);
+      if (!punt?.datum) return label;
+      return formatFn(punt);
+    };
+
+    return { xTicks: ticks, xTickFormatter: formatter };
+  })();
   const periodeWinst = grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : dagWinst;
   const periodeWinstPct = grafiekData.length > 1 && grafiekData[0].waarde > 0 ? (periodeWinst / grafiekData[0].waarde) * 100 : dagWinstPct;
   const periodeTekst = tijdperk === '1D' ? 'Prestatie vandaag' : tijdperk === '1W' ? 'Prestatie deze week' : tijdperk === '1M' ? 'Prestatie deze maand' : tijdperk === '1J' ? 'Prestatie dit jaar' : tijdperk === 'YTD' ? 'Prestatie dit kalenderjaar' : tijdperk === 'Laatste' ? 'Prestatie sinds laatste aankoop' : 'Prestatie sinds eerste aankoop';
@@ -421,7 +495,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} ticks={xTicks} tickFormatter={xTickFormatter} interval={0} />
                 <YAxis
                   tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
                   tickFormatter={v => '€' + Math.round(v).toLocaleString('nl-BE')}

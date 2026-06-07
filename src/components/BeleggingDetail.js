@@ -94,6 +94,66 @@ export default function BeleggingDetail({ belegging, onClose }) {
 
   const grafiekKleur = grafiekData.length > 1 && grafiekData[grafiekData.length-1].prijs >= grafiekData[0].prijs ? '#22c55e' : '#ef4444';
 
+  // ── Slimme X-as: meet werkelijk datumbereik ──
+  const { detailXTicks, detailXFormatter } = (() => {
+    const maandKort = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    const data = grafiekData;
+    if (data.length < 2) return { detailXTicks: undefined, detailXFormatter: v => v };
+
+    const eersteD = data.find(d => d.datum)?.datum ? new Date(data.find(d => d.datum).datum) : null;
+    const laatsteD = [...data].reverse().find(d => d.datum)?.datum ? new Date([...data].reverse().find(d => d.datum).datum) : null;
+    if (!eersteD || !laatsteD) return { detailXTicks: undefined, detailXFormatter: v => v };
+
+    const dagen = (laatsteD - eersteD) / (1000 * 60 * 60 * 24);
+
+    let groepeerFn, formatFn;
+
+    if (dagen <= 2) {
+      const stap = Math.max(1, Math.floor(data.length / 6));
+      const ticks = data.filter((_, i) => i % stap === 0 || i === data.length - 1).map(d => d.label);
+      return { detailXTicks: ticks, detailXFormatter: v => v };
+    } else if (dagen <= 14) {
+      groepeerFn = d => new Date(d.datum).toDateString();
+      formatFn = d => { const dt = new Date(d.datum); return `${dt.getDate()} ${maandKort[dt.getMonth()]}`; };
+    } else if (dagen <= 60) {
+      groepeerFn = d => { const dt = new Date(d.datum); return `${dt.getFullYear()}-${Math.ceil(dt.getDate()/7)}-${dt.getMonth()}`; };
+      formatFn = d => { const dt = new Date(d.datum); return `${dt.getDate()} ${maandKort[dt.getMonth()]}`; };
+    } else if (dagen <= 400) {
+      groepeerFn = d => { const dt = new Date(d.datum); return `${dt.getFullYear()}-${dt.getMonth()}`; };
+      formatFn = d => {
+        const dt = new Date(d.datum);
+        if (dt.getMonth() === 0) return `jan '${String(dt.getFullYear()).slice(2)}`;
+        return maandKort[dt.getMonth()];
+      };
+    } else if (dagen <= 900) {
+      groepeerFn = d => { const dt = new Date(d.datum); return `${dt.getFullYear()}-Q${Math.floor(dt.getMonth()/3)}`; };
+      formatFn = d => {
+        const dt = new Date(d.datum);
+        const kwartaalMaand = Math.floor(dt.getMonth()/3) * 3;
+        return kwartaalMaand === 0 ? `${dt.getFullYear()}` : maandKort[kwartaalMaand];
+      };
+    } else {
+      groepeerFn = d => new Date(d.datum).getFullYear();
+      formatFn = d => String(new Date(d.datum).getFullYear());
+    }
+
+    const gezien = new Set();
+    const ticks = data.filter(d => {
+      if (!d.datum) return false;
+      const sleutel = groepeerFn(d);
+      if (gezien.has(sleutel)) return false;
+      gezien.add(sleutel); return true;
+    }).map(d => d.label);
+
+    const formatter = (label) => {
+      const punt = data.find(d => d.label === label);
+      if (!punt?.datum) return label;
+      return formatFn(punt);
+    };
+
+    return { detailXTicks: ticks, detailXFormatter: formatter };
+  })();
+
   // ETF sector data
   const etfSectorData = [
     { naam: 'Technologie', pct: 29.01, kleur: '#6366f1' },
@@ -175,7 +235,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} ticks={detailXTicks} tickFormatter={detailXFormatter} interval={0} />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => muntSym + v.toFixed(0)} domain={['auto', 'auto']} width={55} />
                 <Tooltip
                   formatter={v => [muntSym + v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 'Koers']}
