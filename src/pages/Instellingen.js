@@ -94,16 +94,83 @@ export default function Instellingen() {
     setTimeout(() => setEmailOpgeslagen(false), 2000);
   };
 
-  const stuurTestmail = () => {
+  const bouwEmailPayload = (testmail = false) => {
+    const f = (b) => (b.munt || 'EUR') === 'USD' ? 0.865 : 1;
+    return {
+      naar: emailInstellingen.email,
+      gebruiker,
+      testmail,
+      datum: new Date().toISOString(),
+      totaalWaarde,
+      dagWinst: dagWinstTotaal,
+      dagPct,
+      beleggingen: beleggingen.map(b => {
+        const k = koersen[b.symbol];
+        const factor = f(b);
+        const waarde = (k ? k.c : b.kostprijs) * b.aantal * factor;
+        const dagV = k ? (k.c - k.pc) * b.aantal * factor : 0;
+        const dagVPct = k && k.pc > 0 ? ((k.c - k.pc) / k.pc) * 100 : 0;
+        return { symbol: b.symbol, naam: b.naam, logo: b.logo || '', waarde, dagWinst: dagV, dagPct: dagVPct };
+      }),
+    };
+  };
+
+  const stuurTestmail = async () => {
     if (!emailInstellingen.email.includes('@')) {
       setEmailFout('Vul eerst een geldig e-mailadres in.');
       return;
     }
     setEmailFout('');
-    setTestVerstuurd(true);
-    setTimeout(() => setTestVerstuurd(false), 3000);
-    // In productie: fetch('/api/send-email', { method: 'POST', body: JSON.stringify({...}) })
+    try {
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bouwEmailPayload(true)),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestVerstuurd(true);
+        setTimeout(() => setTestVerstuurd(false), 3000);
+      } else {
+        setEmailFout(data.error || 'Versturen mislukt. Controleer je RESEND_API_KEY.');
+      }
+    } catch (e) {
+      setEmailFout('Verbindingsfout. Probeer opnieuw.');
+    }
   };
+
+  // Automatisch versturen op het ingestelde tijdstip
+  useEffect(() => {
+    if (!emailInstellingen.actief || !emailInstellingen.email.includes('@')) return;
+
+    const checkTijdstip = () => {
+      const nu = new Date();
+      const dag = nu.getDay(); // 0=zo, 6=za
+      const isWeekend = dag === 0 || dag === 6;
+      if (isWeekend && !emailInstellingen.weekend) return;
+
+      const [uur, min] = emailInstellingen.tijdstip.split(':').map(Number);
+      const nuUur = nu.getHours();
+      const nuMin = nu.getMinutes();
+
+      // Stuur als het tijdstip net gepasseerd is (binnen 1 minuut)
+      if (nuUur === uur && nuMin === min) {
+        // Check of we vandaag al verstuurd hebben
+        const cacheKey = `matico_email_verstuurd_${nu.toDateString()}`;
+        if (!localStorage.getItem(cacheKey)) {
+          localStorage.setItem(cacheKey, '1');
+          fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bouwEmailPayload(false)),
+          }).catch(console.error);
+        }
+      }
+    };
+
+    const interval = setInterval(checkTijdstip, 60000); // elke minuut checken
+    return () => clearInterval(interval);
+  }, [emailInstellingen, beleggingen, koersen]);
 
   // Voorbeeld e-mail preview data
   const nu = new Date();
