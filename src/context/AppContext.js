@@ -13,11 +13,6 @@ export function AppProvider({ children }) {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [verkochteBeleggingen, setVerkochteBeleggingen] = useState(() => {
-    const saved = localStorage.getItem('matico_verkocht');
-    return saved ? JSON.parse(saved) : [];
-  });
-
   const [koersen, setKoersen] = useState({});
   const [activeNav, setActiveNav] = useState('overzicht');
   const [wisselkoers, setWisselkoers] = useState({ usdEur: 0.865 }); // live bijgewerkt
@@ -29,10 +24,6 @@ export function AppProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('matico_beleggingen', JSON.stringify(beleggingen));
   }, [beleggingen]);
-
-  useEffect(() => {
-    localStorage.setItem('matico_verkocht', JSON.stringify(verkochteBeleggingen));
-  }, [verkochteBeleggingen]);
 
   // Haal live wisselkoers op
   useEffect(() => {
@@ -106,17 +97,51 @@ export function AppProvider({ children }) {
 
   const dagWinstPct = portfolioWaarde > 0 ? (dagWinst / (portfolioWaarde - dagWinst)) * 100 : 0;
 
+  // ── YTD berekening: waarde nu vs waarde op 1 januari van dit jaar ──
+  // Waarde op 1 jan = aantal aandelen × slotkoers 1 jan (via koers.pc als proxy, of kostprijs)
+  // We gebruiken de openingskoers van het jaar: voor elk aandeel dat al in bezit was op 1 jan
+  const ytdPct = (() => {
+    const nuJaar = new Date().getFullYear();
+    const eersteJan = new Date(`${nuJaar}-01-01`);
+    
+    let waardeNu = 0;
+    let waardeEersteJan = 0;
+
+    beleggingen.forEach(b => {
+      const koers = koersen[b.symbol];
+      const factor = getMuntFactor(b.munt || 'EUR');
+      const aankoopDatum = b.datum ? new Date(b.datum) : null;
+      
+      // Huidige waarde
+      const prijsNu = koers ? koers.c : b.kostprijs;
+      waardeNu += prijsNu * b.aantal * factor;
+
+      // Waarde op 1 jan: als aandeel al in bezit was op 1 jan
+      if (aankoopDatum && aankoopDatum <= eersteJan) {
+        // Gebruik 52-week high/low gemiddelde als proxy voor jaarstart
+        // Of val terug op kostprijs als referentie
+        const prijsJanStart = koers?.o || koers?.pc || b.kostprijs;
+        waardeEersteJan += b.kostprijs * b.aantal * factor; // aankoopwaarde als basis
+      } else if (aankoopDatum && aankoopDatum > eersteJan) {
+        // Nieuw aangekocht in dit jaar: gebruik aankoopprijs als basis
+        waardeEersteJan += b.kostprijs * b.aantal * factor;
+      }
+    });
+
+    if (waardeEersteJan === 0) return 0;
+    return ((waardeNu - waardeEersteJan) / waardeEersteJan) * 100;
+  })();
+
   return (
     <AppContext.Provider value={{
       gebruiker, setGebruiker,
       beleggingen, setBeleggingen,
-      verkochteBeleggingen, setVerkochteBeleggingen,
       koersen, fetchKoers, refreshAlleKoersen,
       activeNav, setActiveNav,
       wisselkoers, getMuntFactor,
       portfolioWaarde, portfolioKostprijs,
       portfolioWinstVerlies, portfolioWinstPct,
-      dagWinst, dagWinstPct
+      dagWinst, dagWinstPct, ytdPct
     }}>
       {children}
     </AppContext.Provider>

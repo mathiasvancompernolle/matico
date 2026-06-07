@@ -15,7 +15,7 @@ const navItems = [
 ];
 
 export default function Sidebar({ collapsed, onToggle, onHome }) {
-  const { activeNav, setActiveNav, gebruiker, portfolioWaarde, dagWinstPct } = useApp();
+  const { activeNav, setActiveNav, gebruiker, portfolioWaarde, dagWinstPct, ytdPct } = useApp();
 
   const formatBedrag = (n) => '€' + n.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -40,8 +40,8 @@ export default function Sidebar({ collapsed, onToggle, onHome }) {
           </div>
           <div className="sidebar-stat">
             <div className="sidebar-stat-label">YTD</div>
-            <div className="sidebar-stat-value" style={{ color: dagWinstPct >= 0 ? 'var(--green)' : 'var(--red)' }}>
-              {dagWinstPct >= 0 ? '+' : ''}{dagWinstPct.toFixed(2)}%
+            <div className="sidebar-stat-value" style={{ color: ytdPct >= 0 ? 'var(--green)' : 'var(--red)' }}>
+              {ytdPct >= 0 ? '+' : ''}{ytdPct.toFixed(2)}%
             </div>
           </div>
         </div>
