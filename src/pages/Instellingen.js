@@ -130,12 +130,19 @@ export default function Instellingen() {
       const data = await res.json();
       if (data.success) {
         setTestVerstuurd(true);
-        setTimeout(() => setTestVerstuurd(false), 3000);
+        setTimeout(() => setTestVerstuurd(false), 4000);
       } else {
-        setEmailFout(data.error || 'Versturen mislukt. Controleer je RESEND_API_KEY.');
+        // Geef duidelijke foutmelding
+        if (data.error?.includes('not verified') || data.error?.includes('domain')) {
+          setEmailFout('Fout: je e-mailadres moet hetzelfde zijn als je Resend-account e-mail. Met onboarding@resend.dev kan Resend alleen naar je eigen account-adres sturen.');
+        } else if (data.error?.includes('API key') || data.error?.includes('key')) {
+          setEmailFout('Fout: RESEND_API_KEY niet gevonden. Voeg deze toe in Vercel → Settings → Environment Variables en herstart de deployment.');
+        } else {
+          setEmailFout(`Fout: ${data.error || 'Onbekende fout'}`);
+        }
       }
     } catch (e) {
-      setEmailFout('Verbindingsfout. Probeer opnieuw.');
+      setEmailFout('Verbindingsfout — controleer of de app correct gedeployd is en RESEND_API_KEY aanwezig is in Vercel.');
     }
   };
 
