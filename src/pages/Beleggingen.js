@@ -268,9 +268,12 @@ const inputStyle = {
 export default function Beleggingen({ onToevoegen }) {
   const { beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen } = useApp();
 
-  // Haal logo's op voor beleggingen die nog geen logo hebben
+  // Haal logo's op voor actieve én verkochte beleggingen zonder logo
   React.useEffect(() => {
-    const zonderLogo = beleggingen.filter(b => !b.logo);
+    const zonderLogo = [
+      ...beleggingen.filter(b => !b.logo),
+      ...(verkochteBeleggingen || []).filter(b => !b.logo)
+    ];
     zonderLogo.forEach(async (b) => {
       try {
         const res = await fetch(`/api/data?endpoint=profile&symbol=${encodeURIComponent(b.symbol)}`);
@@ -278,6 +281,7 @@ export default function Beleggingen({ onToevoegen }) {
         const logo = data.logo || data.image || '';
         if (logo) {
           setBeleggingen(prev => prev.map(pb => pb.id === b.id ? { ...pb, logo } : pb));
+          setVerkochteBeleggingen(prev => (prev || []).map(pb => pb.id === b.id ? { ...pb, logo } : pb));
         }
       } catch (e) {}
     });

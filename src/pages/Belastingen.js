@@ -322,7 +322,8 @@ export default function Belastingen() {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {b.logo ? (
-                      <img src={b.logo} alt={b.symbol} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain', border: '1px solid var(--border)' }} />
+                      <img src={b.logo} alt={b.symbol} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain', border: '1px solid var(--border)', background: 'white', padding: 2 }}
+                        onError={e => { e.target.onerror=null; e.target.parentNode.innerHTML=`<div style="width:32px;height:32px;border-radius:8px;background:var(--accent-bg);color:var(--accent);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">${b.symbol.split('.')[0].slice(0,2).toUpperCase()}</div>`; }} />
                     ) : (
                       <div style={{
                         width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)',

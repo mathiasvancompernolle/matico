@@ -1414,11 +1414,21 @@ export function Analyse() {
                   {/* Naam + symbool */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
-                      width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)',
-                      color: 'var(--accent)', fontWeight: 700, fontSize: 11, flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      width: 32, height: 32, borderRadius: 8, overflow: 'hidden',
+                      border: '1px solid var(--border)', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'white'
                     }}>
-                      {h.sym.split('.')[0].slice(0, 2).toUpperCase()}
+                      <img
+                        src={`https://assets.parqet.com/logos/symbol/${h.sym.split('.')[0]}?format=png`}
+                        alt={h.sym}
+                        style={{ width: 26, height: 26, objectFit: 'contain' }}
+                        onError={e => {
+                          e.target.style.display = 'none';
+                          e.target.parentNode.style.background = 'var(--accent-bg)';
+                          e.target.parentNode.innerHTML = `<span style="color:var(--accent);font-weight:700;font-size:11px">${h.sym.split('.')[0].slice(0,2).toUpperCase()}</span>`;
+                        }}
+                      />
                     </div>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{h.naam}</div>

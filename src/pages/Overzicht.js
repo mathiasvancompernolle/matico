@@ -599,7 +599,10 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
               return (
                 <div key={b.id} className="tabel-rij belegging-grid" onClick={() => setDetailBelegging(b)}>
                   <div className="belegging-naam">
-                    <div className="belegging-avatar">{b.symbol.slice(0, 2).toUpperCase()}</div>
+                    {b.logo
+                      ? <img src={b.logo} alt={b.symbol} style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', border: '1px solid var(--border)', background: 'white', padding: 2 }} onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                      : null}
+                    <div className="belegging-avatar" style={{ display: b.logo ? 'none' : 'flex' }}>{b.symbol.slice(0, 2).toUpperCase()}</div>
                     <div>
                       <div className="belegging-naam-text">{b.naam}</div>
                       <div className="belegging-symbol">{b.symbol} · {b.aantal} st.</div>
