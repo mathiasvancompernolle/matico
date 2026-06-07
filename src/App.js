@@ -6,7 +6,7 @@ import Beleggingen from './pages/Beleggingen';
 import { Analyse } from './pages/Analyse';
 import Dividend from './pages/Dividend';
 import Belastingen from './pages/Belastingen';
-import { Instellingen } from './pages/Analyse';
+import Instellingen from './pages/Instellingen';
 import BeleggingToevoegen from './pages/BeleggingToevoegen';
 import ImportBeleggingen from './pages/ImportBeleggingen';
 import './App.css';
