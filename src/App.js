@@ -5,7 +5,7 @@ import Overzicht from './pages/Overzicht';
 import Beleggingen from './pages/Beleggingen';
 import { Analyse } from './pages/Analyse';
 import Dividend from './pages/Dividend';
-import { Belastingen } from './pages/Analyse';
+import Belastingen from './pages/Belastingen';
 import { Instellingen } from './pages/Analyse';
 import BeleggingToevoegen from './pages/BeleggingToevoegen';
 import ImportBeleggingen from './pages/ImportBeleggingen';
