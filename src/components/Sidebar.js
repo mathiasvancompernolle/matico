@@ -16,6 +16,7 @@ const navItems = [
 
 export default function Sidebar({ collapsed, onToggle, onHome }) {
   const { activeNav, setActiveNav, gebruiker, portfolioWaarde, dagWinstPct, ytdPct } = useApp();
+  const isMobile = window.innerWidth <= 768;
 
   const formatBedrag = (n) => '€' + n.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

@@ -651,12 +651,195 @@ body {
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 20; }
-  .app-main { margin-left: var(--sidebar-collapsed); }
-  .sidebar { width: var(--sidebar-collapsed); }
-  .sidebar-logo-text, .sidebar-section-label, .nav-item span, .sidebar-user-info, .sidebar-portfolio { display: none; }
-  .page-header { padding: 20px 20px 0; }
-  .page-header h1 { font-size: 20px; }
-  .belegging-grid { grid-template-columns: 1fr 90px 110px; }
-  .modal-panel { width: 100vw; }
+
+  /* ── Layout ── */
+  .app-layout {
+    flex-direction: column;
+  }
+
+  /* ── Sidebar → bottom navigation bar ── */
+  .sidebar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0; top: auto;
+    width: 100% !important;
+    height: 64px;
+    flex-direction: row;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    z-index: 100;
+    padding: 0;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  }
+
+  /* Verberg sidebar elementen die niet in bottom nav passen */
+  .sidebar-logo,
+  .sidebar-portfolio,
+  .sidebar-section-label,
+  .sidebar-bottom,
+  .sidebar-user-info,
+  .sidebar-collapse-btn {
+    display: none !important;
+  }
+
+  /* Nav items horizontaal in bottom bar */
+  .sidebar-nav {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    padding: 0;
+    gap: 0;
+    overflow-x: auto;
+    align-items: center;
+    justify-content: space-around;
+  }
+
+  .nav-item {
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 4px;
+    min-width: 52px;
+    border-radius: 0;
+    font-size: 10px;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+  }
+
+  .nav-item span {
+    display: block !important;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .nav-item svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* ── Main content ── */
+  .app-main {
+    margin-left: 0 !important;
+    padding-bottom: 72px; /* ruimte voor bottom nav */
+    width: 100%;
+  }
+
+  /* ── Page header ── */
+  .page-header {
+    padding: 16px 16px 0;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .page-header h1 {
+    font-size: 20px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  /* ── Beleggingen grid ── */
+  .belegging-grid {
+    grid-template-columns: 1fr 80px 100px;
+  }
+
+  /* ── Modal ── */
+  .modal-panel {
+    width: 100vw;
+    max-width: 100vw;
+    border-radius: 16px 16px 0 0;
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    height: auto;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* ── Grafieken ── */
+  .recharts-wrapper {
+    font-size: 11px;
+  }
+
+  /* ── Overzicht stats ── */
+  .overview-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* ── Analyse grids ── */
+  .analyse-spread-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Inline grids in pagina's */
+  [style*="gridTemplateColumns: '1fr 1fr'"],
+  [style*='gridTemplateColumns: "1fr 1fr"'] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Extra klein (< 400px) */
+@media (max-width: 400px) {
+  .nav-item span {
+    display: none !important;
+  }
+  .nav-item {
+    padding: 10px 4px;
+  }
+}
+
+/* ===== MOBILE INLINE STYLE OVERRIDES ===== */
+/* Fixes voor inline styles in React componenten */
+@media (max-width: 768px) {
+
+  /* Overzicht portfolio grafiek */
+  .app-main > div > div {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Twee-koloms grids → één kolom */
+  .card > div[style*="grid-template-columns: 1fr 1fr"],
+  .card > div[style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Beleggingen tabel kolommen verbergen op mobile */
+  .belegging-grid > *:nth-child(n+5) {
+    display: none;
+  }
+
+  /* Pagina padding aanpassen */
+  div[style*="padding: '0 32px'"] {
+    padding: 0 16px !important;
+  }
+
+  /* Grafiek hoogte verkleinen */
+  .recharts-responsive-container {
+    min-height: 180px !important;
+  }
+
+  /* Sidebar bottom nav iconen */
+  .sidebar .nav-item.active {
+    color: var(--accent);
+    background: var(--accent-bg);
+    border-radius: 8px;
+  }
+
+  /* Detail panel mobile */
+  .detail-panel {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 64px !important;
+    left: 0 !important;
+    width: 100% !important;
+    border-left: none !important;
+    border-radius: 0 !important;
+    z-index: 50;
+  }
 }
