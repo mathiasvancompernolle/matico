@@ -97,39 +97,63 @@ export function AppProvider({ children }) {
 
   const dagWinstPct = portfolioWaarde > 0 ? (dagWinst / (portfolioWaarde - dagWinst)) * 100 : 0;
 
-  // ── YTD berekening: waarde nu vs waarde op 1 januari van dit jaar ──
-  // Waarde op 1 jan = aantal aandelen × slotkoers 1 jan (via koers.pc als proxy, of kostprijs)
-  // We gebruiken de openingskoers van het jaar: voor elk aandeel dat al in bezit was op 1 jan
+  // ── Echte YTD: laad historische koers op 1 jan via Finnhub ──
+  const [ytdKoersen, setYtdKoersen] = React.useState({});
+
+  React.useEffect(() => {
+    const nuJaar = new Date().getFullYear();
+    const van = Math.floor(new Date(`${nuJaar}-01-02`).getTime() / 1000); // 2 jan (1 jan is feestdag)
+    const tot = Math.floor(new Date(`${nuJaar}-01-05`).getTime() / 1000); // eerste handelsdag
+
+    beleggingen.forEach(async (b) => {
+      if (ytdKoersen[b.symbol]) return; // al geladen
+      const cacheKey = `matico_ytd_${b.symbol}_${nuJaar}`;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          setYtdKoersen(prev => ({ ...prev, [b.symbol]: parseFloat(cached) }));
+          return;
+        }
+      } catch (e) {}
+
+      try {
+        const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(b.symbol)}&van=${van}&tot=${tot}&resolutie=D`);
+        const data = await res.json();
+        // Finnhub candle: { c: [slotkoersen], t: [timestamps], s: 'ok' }
+        if (data?.s === 'ok' && data?.c?.length > 0) {
+          const eersteSlot = data.c[0];
+          localStorage.setItem(cacheKey, String(eersteSlot));
+          setYtdKoersen(prev => ({ ...prev, [b.symbol]: eersteSlot }));
+        }
+      } catch (e) {}
+    });
+  }, [beleggingen.map(b => b.symbol).join(',')]);
+
   const ytdPct = (() => {
     const nuJaar = new Date().getFullYear();
     const eersteJan = new Date(`${nuJaar}-01-01`);
-    
     let waardeNu = 0;
-    let waardeEersteJan = 0;
+    let waardeStart = 0;
 
     beleggingen.forEach(b => {
       const koers = koersen[b.symbol];
       const factor = getMuntFactor(b.munt || 'EUR');
-      const aankoopDatum = b.datum ? new Date(b.datum) : null;
-      
-      // Huidige waarde
       const prijsNu = koers ? koers.c : b.kostprijs;
+      const aankoopDatum = b.datum ? new Date(b.datum) : null;
       waardeNu += prijsNu * b.aantal * factor;
 
-      // Waarde op 1 jan: als aandeel al in bezit was op 1 jan
       if (aankoopDatum && aankoopDatum <= eersteJan) {
-        // Gebruik 52-week high/low gemiddelde als proxy voor jaarstart
-        // Of val terug op kostprijs als referentie
-        const prijsJanStart = koers?.o || koers?.pc || b.kostprijs;
-        waardeEersteJan += b.kostprijs * b.aantal * factor; // aankoopwaarde als basis
-      } else if (aankoopDatum && aankoopDatum > eersteJan) {
-        // Nieuw aangekocht in dit jaar: gebruik aankoopprijs als basis
-        waardeEersteJan += b.kostprijs * b.aantal * factor;
+        // In bezit op 1 jan → gebruik historische koers op 1 jan
+        const prijsJan = ytdKoersen[b.symbol] || b.kostprijs;
+        waardeStart += prijsJan * b.aantal * factor;
+      } else {
+        // Gekocht na 1 jan → aankoopprijs als basis
+        waardeStart += b.kostprijs * b.aantal * factor;
       }
     });
 
-    if (waardeEersteJan === 0) return 0;
-    return ((waardeNu - waardeEersteJan) / waardeEersteJan) * 100;
+    if (waardeStart === 0) return 0;
+    return ((waardeNu - waardeStart) / waardeStart) * 100;
   })();
 
   return (
