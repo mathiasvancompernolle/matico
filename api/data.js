@@ -48,28 +48,63 @@ export default async function handler(req, res) {
   try {
     if (endpoint === 'quote') {
       const { symbol } = req.query;
-      // Eerst Finnhub
+      const isEuropees = symbol.includes('.DE') || symbol.includes('.PA') || symbol.includes('.AS') || symbol.includes('.BR') || symbol.includes('.L') || symbol.includes('.SW') || symbol.includes('.MI');
+
+      // Voor Europese symbolen: gebruik Yahoo Finance direct (live koersen)
+      if (isEuropees) {
+        try {
+          const yfSym = toYahooSymbol(symbol);
+          const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=1d&interval=1m&events=div`;
+          const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
+          const yfData = await yfRes.json();
+          const result = yfData?.chart?.result?.[0];
+          if (result) {
+            const meta = result.meta;
+            const quotes = result.indicators?.quote?.[0];
+            const closes = quotes?.close?.filter(v => v != null) || [];
+            const huidigeKoers = meta.regularMarketPrice || closes[closes.length - 1] || 0;
+            const vorigeSlot = meta.chartPreviousClose || meta.previousClose || huidigeKoers;
+            if (huidigeKoers > 0) {
+              return res.json({
+                c: huidigeKoers,
+                pc: vorigeSlot,
+                o: meta.regularMarketOpen || huidigeKoers,
+                h: meta.regularMarketDayHigh || huidigeKoers,
+                l: meta.regularMarketDayLow || huidigeKoers,
+                v: meta.regularMarketVolume || 0,
+              });
+            }
+          }
+        } catch (e) { console.error('Yahoo quote fout:', e); }
+      }
+
+      // US symbolen: Finnhub (real-time)
       try {
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
         const d = await r.json();
         if (d.c && d.c > 0) return res.json(d);
       } catch (e) {}
-      // Fallback: Alpha Vantage voor Europese symbolen
+
+      // Laatste fallback: Yahoo Finance voor alles
       try {
-        const avSym = symbol.replace('.DE', '.DEX').replace('.PA', '.PAR').replace('.AS', '.AMS').replace('.BR', '.BRU').replace('.L', '.LON');
-        const d = await avFetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSym}&apikey=__AV_KEY__`);
-        const q = d['Global Quote'];
-        if (q && q['05. price']) {
+        const yfSym = toYahooSymbol(symbol);
+        const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=1d&interval=5m`;
+        const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const yfData = await yfRes.json();
+        const result = yfData?.chart?.result?.[0];
+        if (result?.meta?.regularMarketPrice) {
+          const meta = result.meta;
           return res.json({
-            c: parseFloat(q['05. price']),
-            pc: parseFloat(q['08. previous close']),
-            o: parseFloat(q['02. open']),
-            h: parseFloat(q['03. high']),
-            l: parseFloat(q['04. low']),
-            v: parseInt(q['06. volume'])
+            c: meta.regularMarketPrice,
+            pc: meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice,
+            o: meta.regularMarketOpen || meta.regularMarketPrice,
+            h: meta.regularMarketDayHigh || meta.regularMarketPrice,
+            l: meta.regularMarketDayLow || meta.regularMarketPrice,
+            v: meta.regularMarketVolume || 0,
           });
         }
       } catch (e) {}
+
       return res.json({ c: 0, pc: 0, o: 0, h: 0, l: 0, v: 0 });
     }
 
