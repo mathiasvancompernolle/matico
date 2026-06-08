@@ -399,8 +399,32 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     return { xTicks: ticks, xTickFormatter: formatter };
   })();
   const beursOpenPortfolio = beleggingen.some(b => isBeursOpen(b.munt || 'EUR'));
-  const periodeWinst = grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : (beursOpenPortfolio ? dagWinst : 0);
-  const periodeWinstPct = grafiekData.length > 1 && grafiekData[0].waarde > 0 ? (periodeWinst / grafiekData[0].waarde) * 100 : (beursOpenPortfolio ? dagWinstPct : 0);
+
+  // Voor 1D: bereken winst alleen op basis van beurzen die vandaag al open waren
+  const dagWinst1D = beleggingen.reduce((s, b) => {
+    if (!isBeursOpen(b.munt || 'EUR')) return s; // sla gesloten beurzen over
+    const koers = koersen[b.symbol];
+    if (!koers) return s;
+    const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+    return s + (koers.c - koers.pc) * b.aantal * factor;
+  }, 0);
+
+  const dagWaarde1D = beleggingen.reduce((s, b) => {
+    if (!isBeursOpen(b.munt || 'EUR')) return s;
+    const koers = koersen[b.symbol];
+    const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+    return s + (koers ? koers.pc : b.kostprijs) * b.aantal * factor;
+  }, 0);
+
+  const dagWinstPct1D = dagWaarde1D > 0 ? (dagWinst1D / dagWaarde1D) * 100 : 0;
+
+  const periodeWinst = tijdperk === '1D'
+    ? (beursOpenPortfolio ? dagWinst1D : 0)
+    : (grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : 0);
+
+  const periodeWinstPct = tijdperk === '1D'
+    ? (beursOpenPortfolio ? dagWinstPct1D : 0)
+    : (grafiekData.length > 1 && grafiekData[0].waarde > 0 ? (periodeWinst / grafiekData[0].waarde) * 100 : 0);
   const periodeTekst = tijdperk === '1D' ? 'Prestatie vandaag' : tijdperk === '1W' ? 'Prestatie deze week' : tijdperk === '1M' ? 'Prestatie deze maand' : tijdperk === '1J' ? 'Prestatie dit jaar' : tijdperk === 'YTD' ? 'Prestatie dit kalenderjaar' : tijdperk === 'Laatste' ? 'Prestatie sinds laatste aankoop' : 'Prestatie sinds eerste aankoop';
   const beursGesloten1D = tijdperk === '1D' && !beursOpenPortfolio;
   // Als beurs gesloten: forceer platte displayData zodat grafiek recht is
