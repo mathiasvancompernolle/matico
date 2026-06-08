@@ -141,10 +141,21 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
             gisterenWaarde += b.kostprijs * b.aantal * factor;
           }
         });
-        setGrafiekData([
-          { label: 'Gisteren', waarde: Math.round(gisterenWaarde * 100) / 100 },
-          { label: 'Nu', waarde: Math.round(nuWaarde * 100) / 100 }
-        ]);
+
+        // Als geen enkele beurs vandaag al open was → platte lijn op slotkoers
+        const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR'));
+        if (!iemandOpen) {
+          // Platte lijn: toon slotkoers van gisteren als rechte lijn
+          setGrafiekData([
+            { label: 'Gisteren', waarde: Math.round(gisterenWaarde * 100) / 100, gesloten: true },
+            { label: 'Nu', waarde: Math.round(gisterenWaarde * 100) / 100, gesloten: true }
+          ]);
+        } else {
+          setGrafiekData([
+            { label: 'Gisteren', waarde: Math.round(gisterenWaarde * 100) / 100 },
+            { label: 'Nu', waarde: Math.round(nuWaarde * 100) / 100 }
+          ]);
+        }
         setGrafiekLoading(false);
         return;
       }
@@ -391,7 +402,10 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   const periodeWinst = grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : (beursOpenPortfolio ? dagWinst : 0);
   const periodeWinstPct = grafiekData.length > 1 && grafiekData[0].waarde > 0 ? (periodeWinst / grafiekData[0].waarde) * 100 : (beursOpenPortfolio ? dagWinstPct : 0);
   const periodeTekst = tijdperk === '1D' ? 'Prestatie vandaag' : tijdperk === '1W' ? 'Prestatie deze week' : tijdperk === '1M' ? 'Prestatie deze maand' : tijdperk === '1J' ? 'Prestatie dit jaar' : tijdperk === 'YTD' ? 'Prestatie dit kalenderjaar' : tijdperk === 'Laatste' ? 'Prestatie sinds laatste aankoop' : 'Prestatie sinds eerste aankoop';
-  const grafiekKleur = displayData.length > 1 && displayData[displayData.length-1]?.waarde >= displayData[0]?.waarde ? '#6366f1' : '#ef4444';
+  const beursGesloten1D = tijdperk === '1D' && !beursOpenPortfolio;
+  const grafiekKleur = beursGesloten1D
+    ? '#94a3b8'
+    : displayData.length > 1 && displayData[displayData.length-1]?.waarde >= displayData[0]?.waarde ? '#6366f1' : '#ef4444';
 
   // Y-as domein: altijd strak rond de data, nooit vanaf 0
   // Y-as: nette gehele getallen, vaste stapgrootte, Totaal start bij 0
@@ -475,9 +489,15 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 <div className="portfolio-waarde">
                   €{gefilterdeTotaalWaarde.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-                <span className={`badge ${periodeWinstPct >= 0 ? 'badge-green' : 'badge-red'}`}>
-                  {periodeWinstPct >= 0 ? '▲' : '▼'} {Math.abs(periodeWinstPct).toFixed(2)}% ({periodeWinst >= 0 ? '+' : ''}€{Math.abs(periodeWinst).toFixed(2)})
-                </span>
+                {(tijdperk === '1D' && !beursOpenPortfolio) ? (
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)', padding: '3px 10px', background: 'var(--bg)', borderRadius: 6, fontWeight: 500 }}>
+                    — Beurs gesloten
+                  </span>
+                ) : (
+                  <span className={`badge ${periodeWinstPct >= 0 ? 'badge-green' : 'badge-red'}`}>
+                    {periodeWinstPct >= 0 ? '▲' : '▼'} {Math.abs(periodeWinstPct).toFixed(2)}% ({periodeWinst >= 0 ? '+' : ''}€{Math.abs(periodeWinst).toFixed(2)})
+                  </span>
+                )}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -512,6 +532,19 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
               <span style={{ fontSize: 13 }}>Grafiek laden...</span>
             </div>
           ) : (
+            <div style={{ position: 'relative' }}>
+              {beursGesloten1D && (
+                <div style={{
+                  position: 'absolute', top: '50%', left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  background: 'rgba(255,255,255,0.9)', borderRadius: 8,
+                  padding: '6px 14px', fontSize: 12, color: 'var(--text-muted)',
+                  fontWeight: 600, pointerEvents: 'none', zIndex: 5,
+                  border: '1px solid var(--border)', whiteSpace: 'nowrap'
+                }}>
+                  🔒 Beurs gesloten
+                </div>
+              )}
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={displayData} margin={{ top: 5, right: 5, bottom: 5, left: 10 }}>
                 <defs>
@@ -665,6 +698,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                   activeDot={{ r: 5, fill: grafiekKleur }} />
               </AreaChart>
             </ResponsiveContainer>
+            </div>
           )}
         </div>
 
