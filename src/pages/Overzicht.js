@@ -126,7 +126,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       if (beleggingVoorGrafiek.length === 0) { setGrafiekData([]); return; }
       setGrafiekLoading(true);
 
-      // 1D: gisteren en nu
+      // 1D: vorige handelsdag en nu
       if (tijdperk === '1D') {
         let gisterenWaarde = 0;
         let nuWaarde = 0;
@@ -142,17 +142,38 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
           }
         });
 
+        // Bepaal correct label voor vorige handelsdag
+        const nu = new Date();
+        const dag = nu.getDay(); // 0=zo, 1=ma, ..., 6=za
+        const maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+        let vorigeHandelsDag;
+        if (dag === 1) {
+          // Maandag → vorige handelsdag is vrijdag
+          const vrijdag = new Date(nu);
+          vrijdag.setDate(nu.getDate() - 3);
+          vorigeHandelsDag = `${vrijdag.getDate()} ${maanden[vrijdag.getMonth()]}`;
+        } else if (dag === 0) {
+          // Zondag → vorige handelsdag is vrijdag
+          const vrijdag = new Date(nu);
+          vrijdag.setDate(nu.getDate() - 2);
+          vorigeHandelsDag = `${vrijdag.getDate()} ${maanden[vrijdag.getMonth()]}`;
+        } else {
+          // Doordeweeks → gisteren
+          const gisteren = new Date(nu);
+          gisteren.setDate(nu.getDate() - 1);
+          vorigeHandelsDag = `${gisteren.getDate()} ${maanden[gisteren.getMonth()]}`;
+        }
+
         // Als geen enkele beurs vandaag al open was → platte lijn op slotkoers
         const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR'));
         if (!iemandOpen) {
-          // Platte lijn: toon slotkoers van gisteren als rechte lijn
           setGrafiekData([
-            { label: 'Gisteren', waarde: Math.round(gisterenWaarde * 100) / 100, gesloten: true },
+            { label: vorigeHandelsDag, waarde: Math.round(gisterenWaarde * 100) / 100, gesloten: true },
             { label: 'Nu', waarde: Math.round(gisterenWaarde * 100) / 100, gesloten: true }
           ]);
         } else {
           setGrafiekData([
-            { label: 'Gisteren', waarde: Math.round(gisterenWaarde * 100) / 100 },
+            { label: vorigeHandelsDag, waarde: Math.round(gisterenWaarde * 100) / 100 },
             { label: 'Nu', waarde: Math.round(nuWaarde * 100) / 100 }
           ]);
         }
