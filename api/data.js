@@ -127,125 +127,100 @@ export default async function handler(req, res) {
     if (endpoint === 'candle') {
       const { symbol, tijdperk, van, tot, resolutie } = req.query;
 
-      // Historische candle data (niet 1D)
+      // ── Historische candle data via timestamp range (voor YTD berekening) ──
       if (van && tot) {
         try {
           const r = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=${resolutie || 'D'}&from=${van}&to=${tot}&token=${FINNHUB_KEY}`);
           const d = await r.json();
           if (d?.s === 'ok' && d?.c?.length > 0) return res.json(d);
         } catch (e) {}
-        // Fallback Yahoo voor Europese symbolen
         try {
           const yfSym = toYahooSymbol(symbol);
-          const range = Math.round((tot - van) / 86400);
-          const interval = range <= 5 ? '1d' : range <= 90 ? '1wk' : '1mo';
-          const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?period1=${van}&period2=${tot}&interval=${interval}`;
+          const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?period1=${van}&period2=${tot}&interval=1d`;
           const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
           const yfData = await yfRes.json();
           const result = yfData?.chart?.result?.[0];
           if (result?.timestamp?.length > 0) {
-            return res.json({
-              s: 'ok',
-              t: result.timestamp,
-              c: result.indicators.quote[0].close,
-              o: result.indicators.quote[0].open,
-              h: result.indicators.quote[0].high,
-              l: result.indicators.quote[0].low,
-              v: result.indicators.quote[0].volume,
-            });
+            return res.json({ s: 'ok', t: result.timestamp, c: result.indicators.quote[0].close });
           }
         } catch (e) {}
         return res.json({ s: 'no_data' });
       }
 
-      // 1D: gebruik Yahoo Finance voor correcte vorige slotkoers
-      const isEuropees = symbol.includes('.') && !symbol.match(/\.(US)$/i);
-
-      if (isEuropees) {
-        try {
-          const yfSym = toYahooSymbol(symbol);
-          const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=5d&interval=1d`;
-          const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
-          const yfData = await yfRes.json();
-          const result = yfData?.chart?.result?.[0];
-          if (result?.timestamp?.length >= 2) {
-            const closes = result.indicators.quote[0].close.filter(v => v != null);
-            const timestamps = result.timestamp;
-            const vorigeSlot = closes[closes.length - 2] || closes[closes.length - 1];
-            const huidig = result.meta.regularMarketPrice || closes[closes.length - 1];
-            const vorigeDatum = new Date(timestamps[timestamps.length - 2] * 1000).toISOString().split('T')[0];
-            return res.json({
-              punten: [
-                { label: 'Vorige slotkoers', datum: vorigeDatum, prijs: vorigeSlot },
-                { label: 'Nu', datum: new Date().toISOString().split('T')[0], prijs: huidig }
-              ]
-            });
-          }
-        } catch (e) { console.error('Yahoo 1D fout:', e); }
-      }
-
-      // US symbolen: Finnhub
-      try {
-        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
-        const d = await r.json();
-        if (d.c && d.c > 0 && d.pc && d.pc > 0) {
-          return res.json({
-            punten: [
-              { label: 'Vorige slotkoers', datum: new Date(Date.now() - 86400000).toISOString().split('T')[0], prijs: d.pc },
-              { label: 'Nu', datum: new Date().toISOString().split('T')[0], prijs: d.c }
-            ]
-          });
-        }
-      } catch (e) {}
-
-      return res.json({ punten: [] });
-    }
-
-      // Bereken Yahoo Finance range en interval
-      const yfRange = tijdperk === '1W' ? '5d'
+      // ── Grafiek tijdperken (1D, 1W, 1M, 1J, YTD, 3J, 5J, Max) ──
+      const yfRange = tijdperk === '1D' ? '5d'
+        : tijdperk === '1W' ? '5d'
         : tijdperk === '1M' ? '1mo'
         : tijdperk === '1J' ? '1y'
         : tijdperk === 'YTD' ? 'ytd'
         : tijdperk === '3J' ? '3y'
         : tijdperk === '5J' ? '5y'
-        : '10y'; // Max
+        : '10y';
 
-      const yfInterval = tijdperk === '1W' ? '1d'
+      const yfInterval = tijdperk === '1D' ? '1d'
+        : tijdperk === '1W' ? '1d'
         : tijdperk === '1M' ? '1d'
         : tijdperk === '1J' ? '1wk'
         : tijdperk === 'YTD' ? '1wk'
-        : '1wk'; // 3J, 5J, Max
+        : '1wk';
 
-      // Yahoo Finance v8 API — gecorrigeerde koersen, gratis!
       try {
         const yfSym = toYahooSymbol(symbol);
         const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=${yfRange}&interval=${yfInterval}&events=div,splits`;
-        const r = await fetch(yfUrl, { headers: YF_HEADERS });
+        const r = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
         const data = await r.json();
         const result = data?.chart?.result?.[0];
 
-        if (result && result.timestamp) {
+        if (result?.timestamp?.length > 0) {
           const timestamps = result.timestamp;
-          const adjClose = result.indicators?.adjclose?.[0]?.adjclose || result.indicators?.quote?.[0]?.close;
+          const closes = result.indicators?.adjclose?.[0]?.adjclose || result.indicators?.quote?.[0]?.close || [];
 
-          if (adjClose && adjClose.length > 1) {
-            const punten = timestamps.map((t, i) => {
-              if (adjClose[i] === null || adjClose[i] === undefined) return null;
-              const datum = new Date(t * 1000);
-              return {
-                label: datum.toLocaleDateString('nl-BE', {
-                  day: 'numeric', month: 'short',
-                  year: (tijdperk === '3J' || tijdperk === '5J' || tijdperk === 'Max') ? 'numeric' : undefined
-                }),
-                datum: datum.toISOString().split('T')[0],
-                prijs: Math.round(adjClose[i] * 100) / 100
-              };
-            }).filter(p => p !== null);
-
-            if (punten.length > 1) return res.json({ punten });
+          // Voor 1D: neem enkel de vorige slotkoers + huidige koers
+          if (tijdperk === '1D') {
+            const geldigeCloses = closes.filter(v => v != null);
+            const vorigeSlot = geldigeCloses[geldigeCloses.length - 2] || geldigeCloses[geldigeCloses.length - 1];
+            const huidig = result.meta.regularMarketPrice || geldigeCloses[geldigeCloses.length - 1];
+            const vorigeTs = timestamps[timestamps.length - 2] || timestamps[timestamps.length - 1];
+            const vorigeDatum = new Date(vorigeTs * 1000);
+            const maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+            const vorigeLabel = `${vorigeDatum.getDate()} ${maanden[vorigeDatum.getMonth()]}`;
+            if (vorigeSlot && huidig) {
+              return res.json({ punten: [
+                { label: vorigeLabel, datum: vorigeDatum.toISOString().split('T')[0], prijs: Math.round(vorigeSlot * 100) / 100 },
+                { label: 'Nu', datum: new Date().toISOString().split('T')[0], prijs: Math.round(huidig * 100) / 100 }
+              ]});
+            }
           }
+
+          // Andere tijdperken: volledige reeks
+          const punten = timestamps.map((t, i) => {
+            if (closes[i] == null) return null;
+            const datum = new Date(t * 1000);
+            return {
+              label: datum.toLocaleDateString('nl-BE', {
+                day: 'numeric', month: 'short',
+                year: (tijdperk === '3J' || tijdperk === '5J' || tijdperk === 'Max') ? 'numeric' : undefined
+              }),
+              datum: datum.toISOString().split('T')[0],
+              prijs: Math.round(closes[i] * 100) / 100
+            };
+          }).filter(p => p !== null);
+
+          if (punten.length > 0) return res.json({ punten });
         }
-      } catch (e) { console.error('Yahoo Finance fout:', e); }
+      } catch (e) { console.error('Candle fout:', e); }
+
+      // Fallback: Finnhub voor US
+      try {
+        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
+        const d = await r.json();
+        if (d.c && d.c > 0 && d.pc && d.pc > 0) {
+          return res.json({ punten: [
+            { label: 'Gisteren', datum: new Date(Date.now() - 86400000).toISOString().split('T')[0], prijs: d.pc },
+            { label: 'Nu', datum: new Date().toISOString().split('T')[0], prijs: d.c }
+          ]});
+        }
+      } catch (e) {}
 
       return res.json({ punten: [] });
     }
