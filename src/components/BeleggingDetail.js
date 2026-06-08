@@ -92,7 +92,18 @@ export default function BeleggingDetail({ belegging, onClose }) {
     setTimeout(() => setGekopieerd(false), 2000);
   };
 
-  const grafiekKleur = grafiekData.length > 1 && grafiekData[grafiekData.length-1].prijs >= grafiekData[0].prijs ? '#22c55e' : '#ef4444';
+  // Check of beurs open is voor dit aandeel
+  const isBeursOpenDetail = () => {
+    const nu = new Date();
+    const dag = nu.getDay();
+    if (dag === 0 || dag === 6) return false;
+    const tijdUTC = nu.getUTCHours() * 60 + nu.getUTCMinutes();
+    const munt = belegging.munt || 'EUR';
+    if (munt === 'EUR') return tijdUTC >= 7 * 60;
+    return tijdUTC >= 13 * 60 + 30;
+  };
+  const beursGesloten = tijdperk === '1D' && !isBeursOpenDetail();
+  const grafiekKleur = beursGesloten ? '#94a3b8' : (grafiekData.length > 1 && grafiekData[grafiekData.length-1].prijs >= grafiekData[0].prijs ? '#22c55e' : '#ef4444');
 
   // ── Slimme X-as: meet werkelijk datumbereik ──
   const { detailXTicks, detailXFormatter } = (() => {
@@ -226,6 +237,17 @@ export default function BeleggingDetail({ belegging, onClose }) {
               <Loader size={20} style={{ animation: 'spin 1s linear infinite' }} />
             </div>
           ) : (
+            <div style={{ position: 'relative' }}>
+              {beursGesloten && (
+                <div style={{
+                  position: 'absolute', top: '50%', left: '50%',
+                  transform: 'translate(-50%,-50%)',
+                  background: 'rgba(255,255,255,0.9)', borderRadius: 8,
+                  padding: '5px 12px', fontSize: 11, color: 'var(--text-muted)',
+                  fontWeight: 600, zIndex: 5, border: '1px solid var(--border)',
+                  whiteSpace: 'nowrap', pointerEvents: 'none'
+                }}>🔒 Beurs gesloten</div>
+              )}
             <ResponsiveContainer width="100%" height={160}>
               <AreaChart data={grafiekData}>
                 <defs>
@@ -244,6 +266,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
                 <Area type="monotone" dataKey="prijs" stroke={grafiekKleur} strokeWidth={2} fill="url(#detailGrad)" dot={false} />
               </AreaChart>
             </ResponsiveContainer>
+            </div>
           )}
 
           {/* Open/hoog/laag/volume + extra metrics */}
