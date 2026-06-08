@@ -26,12 +26,26 @@ export default function BeleggingDetail({ belegging, onClose }) {
   const kostprijsTotaal = belegging.kostprijs * belegging.aantal * factor;
   const winstTotaal = huidigeWaarde - kostprijsTotaal;
   const winstTotaalPct = kostprijsTotaal > 0 ? (winstTotaal / kostprijsTotaal) * 100 : 0;
-  const dagV = koers ? (koers.c - koers.pc) : 0;
-  const dagVPct = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
-  const dagVEur = dagV * belegging.aantal * factor;
+  const dagVRaw = koers ? (koers.c - koers.pc) : 0;
+  const dagVPctRaw = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
   const gewicht = portfolioWaarde > 0 ? (huidigeWaarde / portfolioWaarde) * 100 : 0;
   const muntSym = (belegging.munt || 'EUR') === 'USD' ? '$' : '€';
-  const isBeursgesloten = koers && (koers.c === koers.pc || dagV === 0);
+
+  // Check of beurs open is voor dit aandeel
+  const isBeursOpenNu = () => {
+    const nu = new Date();
+    const dag = nu.getDay();
+    if (dag === 0 || dag === 6) return false; // weekend
+    const tijdUTC = nu.getUTCHours() * 60 + nu.getUTCMinutes();
+    const munt = belegging.munt || 'EUR';
+    if (munt === 'EUR') return tijdUTC >= 7 * 60;       // Xetra open vanaf 09:00 CET
+    return tijdUTC >= 13 * 60 + 30;                      // NYSE open vanaf 15:30 CET
+  };
+  const dagToonbaar = isBeursOpenNu(); // toon % doordeweeks van opening tot middernacht
+
+  const dagV = dagToonbaar ? dagVRaw : 0;
+  const dagVPct = dagToonbaar ? dagVPctRaw : 0;
+  const dagVEur = dagV * belegging.aantal * factor;
 
   // Echte historische grafiek data
   useEffect(() => {
@@ -102,7 +116,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
     if (munt === 'EUR') return tijdUTC >= 7 * 60;
     return tijdUTC >= 13 * 60 + 30;
   };
-  const beursGesloten = tijdperk === '1D' && !isBeursOpenDetail();
+  const beursGesloten = tijdperk === '1D' && !isBeursOpenNu();
   const grafiekKleur = beursGesloten ? '#94a3b8' : (grafiekData.length > 1 && grafiekData[grafiekData.length-1].prijs >= grafiekData[0].prijs ? '#22c55e' : '#ef4444');
 
   // ── Slimme X-as: meet werkelijk datumbereik ──
@@ -212,9 +226,15 @@ export default function BeleggingDetail({ belegging, onClose }) {
               </span>
             )}
           </div>
-          <div style={{ fontSize: 14, color: dagVPct >= 0 ? 'var(--green)' : 'var(--red)', marginTop: 4, fontWeight: 500 }}>
-            {dagVPct >= 0 ? '+' : ''}{dagVPct.toFixed(2)}% ({dagV >= 0 ? '+' : ''}{muntSym}{Math.abs(dagV).toFixed(2)})
-          </div>
+          {dagToonbaar ? (
+            <div style={{ fontSize: 14, color: dagVPctRaw >= 0 ? 'var(--green)' : 'var(--red)', marginTop: 4, fontWeight: 500 }}>
+              {dagVPctRaw >= 0 ? '+' : ''}{dagVPctRaw.toFixed(2)}% ({dagVRaw >= 0 ? '+' : ''}{muntSym}{Math.abs(dagVRaw).toFixed(2)})
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, fontWeight: 500 }}>
+              — Beurs gesloten
+            </div>
+          )}
         </div>
 
         {/* Tijdperk tabs */}
@@ -319,8 +339,8 @@ export default function BeleggingDetail({ belegging, onClose }) {
             </div>
             <div>
               <div className="detail-item-label">Winst vandaag</div>
-              <div className="detail-item-value" style={{ color: dagVEur >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                {dagVEur >= 0 ? '+' : ''}€{Math.abs(dagVEur).toFixed(2)}
+              <div className="detail-item-value" style={{ color: dagToonbaar ? (dagVEur >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--text-muted)' }}>
+                {dagToonbaar ? `${dagVEur >= 0 ? '+' : ''}€${Math.abs(dagVEur).toFixed(2)}` : '—'}
               </div>
             </div>
             <div>

@@ -403,6 +403,10 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   const periodeWinstPct = grafiekData.length > 1 && grafiekData[0].waarde > 0 ? (periodeWinst / grafiekData[0].waarde) * 100 : (beursOpenPortfolio ? dagWinstPct : 0);
   const periodeTekst = tijdperk === '1D' ? 'Prestatie vandaag' : tijdperk === '1W' ? 'Prestatie deze week' : tijdperk === '1M' ? 'Prestatie deze maand' : tijdperk === '1J' ? 'Prestatie dit jaar' : tijdperk === 'YTD' ? 'Prestatie dit kalenderjaar' : tijdperk === 'Laatste' ? 'Prestatie sinds laatste aankoop' : 'Prestatie sinds eerste aankoop';
   const beursGesloten1D = tijdperk === '1D' && !beursOpenPortfolio;
+  // Als beurs gesloten: forceer platte displayData zodat grafiek recht is
+  const displayDataEff = beursGesloten1D && displayData.length > 0
+    ? displayData.map(d => ({ ...d, waarde: displayData[0].waarde }))
+    : displayData;
   const grafiekKleur = beursGesloten1D
     ? '#94a3b8'
     : displayData.length > 1 && displayData[displayData.length-1]?.waarde >= displayData[0]?.waarde ? '#6366f1' : '#ef4444';
@@ -546,7 +550,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 </div>
               )}
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={displayData} margin={{ top: 5, right: 5, bottom: 5, left: 10 }}>
+              <AreaChart data={displayDataEff} margin={{ top: 5, right: 5, bottom: 5, left: 10 }}>
                 <defs>
                   <linearGradient id="portfolioGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={grafiekKleur} stopOpacity={0.15} />
