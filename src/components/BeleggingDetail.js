@@ -220,7 +220,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
         <div className="detail-section">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div className="detail-koers">{muntSym}{huidigePrijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            {isBeursgesloten && (
+            {!dagToonbaar && (
               <span style={{ fontSize: 11, color: '#b45309', background: '#fef3c7', padding: '3px 10px', borderRadius: 6, fontWeight: 600 }}>
                 Beurs gesloten
               </span>
