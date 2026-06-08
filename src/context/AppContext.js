@@ -66,6 +66,22 @@ export function AppProvider({ children }) {
     if (beleggingen.length > 0) refreshAlleKoersen();
   }, [beleggingen.length]);
 
+  // ── Auto-refresh koersen ──
+  // Bij laden altijd verversen, daarna elke 60 seconden
+  useEffect(() => {
+    if (beleggingen.length === 0) return;
+
+    // Altijd verversen bij eerste load (ongeacht cache)
+    refreshAlleKoersen();
+
+    // Daarna elke 60 seconden
+    const interval = setInterval(() => {
+      refreshAlleKoersen();
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);  // lege dependency → alleen bij mount
+
   const getMuntFactor = (munt) => {
     if (munt === 'USD') return wisselkoers.usdEur;
     if (munt === 'GBP') return wisselkoers.usdEur * 1.27; // GBP/EUR benadering
