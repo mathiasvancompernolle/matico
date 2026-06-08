@@ -128,43 +128,52 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
 
       // 1D: vorige handelsdag en nu
       if (tijdperk === '1D') {
+        const nu = new Date();
+        const dag = nu.getDay();
+        const maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+
+        // Bepaal datum van vorige handelsdag
+        const vorigeD = new Date(nu);
+        if (dag === 1) vorigeD.setDate(nu.getDate() - 3); // ma → vr
+        else if (dag === 0) vorigeD.setDate(nu.getDate() - 2); // zo → vr
+        else vorigeD.setDate(nu.getDate() - 1); // doordeweeks → gisteren
+        const vorigeHandelsDag = `${vorigeD.getDate()} ${maanden[vorigeD.getMonth()]}`;
+
+        // Haal werkelijke slotkoers van vorige handelsdag op via candle API
+        const vanTs = Math.floor(new Date(vorigeD.getFullYear(), vorigeD.getMonth(), vorigeD.getDate(), 0, 0, 0).getTime() / 1000);
+        const totTs = Math.floor(new Date(vorigeD.getFullYear(), vorigeD.getMonth(), vorigeD.getDate(), 23, 59, 59).getTime() / 1000);
+
         let gisterenWaarde = 0;
         let nuWaarde = 0;
+
+        // Haal voor elk aandeel de slotkoers van vorige handelsdag op
+        const slotKoersen = {};
+        await Promise.all(beleggingVoorGrafiek.map(async (b) => {
+          const cacheKey = `matico_slot_${b.symbol}_${vorigeD.toDateString()}`;
+          try {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) { slotKoersen[b.symbol] = parseFloat(cached); return; }
+          } catch (e) {}
+          try {
+            const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(b.symbol)}&van=${vanTs}&tot=${totTs}&resolutie=D`);
+            const data = await res.json();
+            if (data?.s === 'ok' && data?.c?.length > 0) {
+              const slot = data.c[data.c.length - 1];
+              localStorage.setItem(cacheKey, String(slot));
+              slotKoersen[b.symbol] = slot;
+            }
+          } catch (e) {}
+        }));
+
         beleggingVoorGrafiek.forEach(b => {
           const koers = koersen[b.symbol];
           const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-          if (koers && koers.c > 0) {
-            nuWaarde += koers.c * b.aantal * factor;
-            gisterenWaarde += (koers.pc || koers.c) * b.aantal * factor;
-          } else {
-            nuWaarde += b.kostprijs * b.aantal * factor;
-            gisterenWaarde += b.kostprijs * b.aantal * factor;
-          }
+          const slotVorige = slotKoersen[b.symbol] || koers?.pc || b.kostprijs;
+          const prijsNu = koers?.c || b.kostprijs;
+          gisterenWaarde += slotVorige * b.aantal * factor;
+          nuWaarde += prijsNu * b.aantal * factor;
         });
 
-        // Bepaal correct label voor vorige handelsdag
-        const nu = new Date();
-        const dag = nu.getDay(); // 0=zo, 1=ma, ..., 6=za
-        const maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-        let vorigeHandelsDag;
-        if (dag === 1) {
-          // Maandag → vorige handelsdag is vrijdag
-          const vrijdag = new Date(nu);
-          vrijdag.setDate(nu.getDate() - 3);
-          vorigeHandelsDag = `${vrijdag.getDate()} ${maanden[vrijdag.getMonth()]}`;
-        } else if (dag === 0) {
-          // Zondag → vorige handelsdag is vrijdag
-          const vrijdag = new Date(nu);
-          vrijdag.setDate(nu.getDate() - 2);
-          vorigeHandelsDag = `${vrijdag.getDate()} ${maanden[vrijdag.getMonth()]}`;
-        } else {
-          // Doordeweeks → gisteren
-          const gisteren = new Date(nu);
-          gisteren.setDate(nu.getDate() - 1);
-          vorigeHandelsDag = `${gisteren.getDate()} ${maanden[gisteren.getMonth()]}`;
-        }
-
-        // Als geen enkele beurs vandaag al open was → platte lijn op slotkoers
         const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR'));
         if (!iemandOpen) {
           setGrafiekData([
