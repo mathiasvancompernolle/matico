@@ -59,6 +59,31 @@ function getBegindatumVoorTijdperk(tijdperk, beleggingen) {
 
 export default function Overzicht({ onToevoegen, onImporteren }) {
   const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen } = useApp();
+
+  // ── Check of dagpercentage getoond mag worden ──
+  // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
+  // Toon NIET als: weekend of nieuwe dag begonnen zonder dat beurs al open was
+  const isBeursOpen = (munt) => {
+    const nu = new Date();
+    const dag = nu.getDay(); // 0=zo, 6=za
+    if (dag === 0 || dag === 6) return false; // weekend: nooit tonen
+
+    // Doordeweeks: toon percentage van vandaag tot middernacht
+    // (beurs was vandaag open, resultaat mag zichtbaar blijven)
+    const uurUTC = nu.getUTCHours();
+    const minUTC = nu.getUTCMinutes();
+    const tijdUTC = uurUTC * 60 + minUTC;
+
+    if (munt === 'EUR') {
+      // Xetra: 08:00-17:30 CET = 07:00-16:30 UTC
+      // Toon van opening tot middernacht (00:00 UTC)
+      return tijdUTC >= 7 * 60; // vanaf opening tot einde dag
+    } else {
+      // NYSE/NASDAQ: 09:30-16:00 ET = 13:30-20:00 UTC
+      // Toon van opening tot middernacht (00:00 UTC)
+      return tijdUTC >= 13 * 60 + 30; // vanaf opening tot einde dag
+    }
+  };
   const [tijdperk, setTijdperk] = useState('1D');
   const [weergave, setWeergave] = useState('waarde');
   const [grafiekData, setGrafiekData] = useState([]);
@@ -362,8 +387,9 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
 
     return { xTicks: ticks, xTickFormatter: formatter };
   })();
-  const periodeWinst = grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : dagWinst;
-  const periodeWinstPct = grafiekData.length > 1 && grafiekData[0].waarde > 0 ? (periodeWinst / grafiekData[0].waarde) * 100 : dagWinstPct;
+  const beursOpenPortfolio = beleggingen.some(b => isBeursOpen(b.munt || 'EUR'));
+  const periodeWinst = grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : (beursOpenPortfolio ? dagWinst : 0);
+  const periodeWinstPct = grafiekData.length > 1 && grafiekData[0].waarde > 0 ? (periodeWinst / grafiekData[0].waarde) * 100 : (beursOpenPortfolio ? dagWinstPct : 0);
   const periodeTekst = tijdperk === '1D' ? 'Prestatie vandaag' : tijdperk === '1W' ? 'Prestatie deze week' : tijdperk === '1M' ? 'Prestatie deze maand' : tijdperk === '1J' ? 'Prestatie dit jaar' : tijdperk === 'YTD' ? 'Prestatie dit kalenderjaar' : tijdperk === 'Laatste' ? 'Prestatie sinds laatste aankoop' : 'Prestatie sinds eerste aankoop';
   const grafiekKleur = displayData.length > 1 && displayData[displayData.length-1]?.waarde >= displayData[0]?.waarde ? '#6366f1' : '#ef4444';
 
@@ -660,8 +686,11 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
               const kostprijs = b.kostprijs * b.aantal * factor;
               const winstTotaal = huidigeWaarde - kostprijs;
               const winstTotaalPct = kostprijs > 0 ? (winstTotaal / kostprijs) * 100 : 0;
-              const dagV = koers ? (koers.c - koers.pc) * b.aantal * factor : 0;
-              const dagVPct = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
+              const beursOpen = isBeursOpen(b.munt || 'EUR');
+              const dagVRaw = koers ? (koers.c - koers.pc) * b.aantal * factor : 0;
+              const dagVPctRaw = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
+              const dagV = beursOpen ? dagVRaw : 0;
+              const dagVPct = beursOpen ? dagVPctRaw : 0;
               const portfolioTotaal = beleggingen.reduce((s, bb) => {
                 const k = koersen[bb.symbol]; const p = k ? k.c : bb.kostprijs;
                 const f = getMuntFactor ? getMuntFactor(bb.munt || 'EUR') : ((bb.munt || 'EUR') === 'USD' ? 0.865 : 1);
@@ -685,10 +714,16 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                   <div className="koers-display">{muntSym}{huidigePrijs.toFixed(2)}</div>
                   <div className="koers-display">€{huidigeWaarde.toFixed(2)}</div>
                   <div>
-                    <span className={dagVPct >= 0 ? 'pct-pos' : 'pct-neg'}>{dagV >= 0 ? '+' : ''}€{Math.abs(dagV).toFixed(2)}</span>
-                    {' '}<span className={`badge ${dagVPct >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 11, padding: '2px 6px' }}>
-                      {dagVPct >= 0 ? '+' : ''}{dagVPct.toFixed(2)}%
-                    </span>
+                    {beursOpen ? (
+                      <>
+                        <span className={dagVPctRaw >= 0 ? 'pct-pos' : 'pct-neg'}>{dagVRaw >= 0 ? '+' : ''}€{Math.abs(dagVRaw).toFixed(2)}</span>
+                        {' '}<span className={`badge ${dagVPctRaw >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 11, padding: '2px 6px' }}>
+                          {dagVPctRaw >= 0 ? '+' : ''}{dagVPctRaw.toFixed(2)}%
+                        </span>
+                      </>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>
+                    )}
                   </div>
                   <div>
                     <span className={winstTotaal >= 0 ? 'pct-pos' : 'pct-neg'}>{winstTotaal >= 0 ? '+' : ''}€{Math.abs(winstTotaal).toFixed(2)}</span>
