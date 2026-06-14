@@ -266,7 +266,7 @@ const inputStyle = {
 
 // ── Hoofd component ──────────────────────────────────────────────
 export default function Beleggingen({ onToevoegen }) {
-  const { beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen, setBlokkeerNavigatie } = useApp();
+  const { beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen } = useApp();
 
   // Haal logo's op voor actieve én verkochte beleggingen zonder logo
   React.useEffect(() => {
@@ -300,7 +300,6 @@ export default function Beleggingen({ onToevoegen }) {
   const openVerkoopModal = (belegging = null) => {
     setVerkoopVoorBelegging(belegging);
     setVerkoopModal(true);
-    setBlokkeerNavigatie(true);
   };
 
   const registreerVerkoop = (belegging, verkoopdata) => {
@@ -598,7 +597,7 @@ export default function Beleggingen({ onToevoegen }) {
         <VerkoopModal
           beleggingen={verkoopVoorBelegging ? [verkoopVoorBelegging] : beleggingen}
           koersen={koersen}
-          onClose={() => { setVerkoopModal(false); setVerkoopVoorBelegging(null); setBlokkeerNavigatie(false); }}
+          onClose={() => { setVerkoopModal(false); setVerkoopVoorBelegging(null); }}
           onBevestig={registreerVerkoop}
         />
       )}

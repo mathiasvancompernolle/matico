@@ -26,7 +26,7 @@ const REF_KOERSEN_2025 = {
 };
 
 export default function Belastingen() {
-  const { beleggingen, koersen, verkochteBeleggingen, getMuntFactor, setBlokkeerNavigatie } = useApp();
+  const { beleggingen, koersen, verkochteBeleggingen, getMuntFactor } = useApp();
   const [jaar, setJaar] = useState(new Date().getFullYear());
   const [jaarDropdown, setJaarDropdown] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -37,8 +37,8 @@ export default function Belastingen() {
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
 
-  const openSimulatie = () => { setSimulatieOpen(true); setBlokkeerNavigatie(true); };
-  const sluitSimulatie = () => { setSimulatieOpen(false); setSimBelegging(null); setSimAantal(''); setBlokkeerNavigatie(false); };
+  const openSimulatie = () => setSimulatieOpen(true);
+  const sluitSimulatie = () => { setSimulatieOpen(false); setSimBelegging(null); setSimAantal(''); };
 
   const parseNLDatum = (str) => {
     if (!str) return null;

@@ -12,42 +12,53 @@ import ImportBeleggingen from './pages/ImportBeleggingen';
 import './App.css';
 
 function AppInner() {
-  const { activeNav, setActiveNav, gebruiker, blokkeerNavigatie, setBlokkeerNavigatie } = useApp();
+  const { activeNav, setActiveNav, gebruiker } = useApp();
   const [toevoegenOpen, setToevoegenOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [overzichtResetKey, setOverzichtResetKey] = useState(0);
 
   if (!gebruiker.voornaam) {
     return <NaamInstellen />;
   }
 
+  const scrollNaarBoven = () => {
+    document.querySelector('.app-main')?.scrollTo({ top: 0, behavior: 'auto' });
+  };
+
   // Centrale navigatie: altijd direct naar de gekozen pagina, ook tijdens een
   // belegging toevoegen/importeren, een verkoop verwerken of een simulatie.
-  // Enkel als er een actie loopt (blokkeerNavigatie) wordt eerst om bevestiging gevraagd.
   const navigeerNaar = (doel) => {
-    if (blokkeerNavigatie) {
-      const door = window.confirm('Je hebt een actie in uitvoering (bv. een belegging toevoegen, een verkoop verwerken of een simulatie). Weet je zeker dat je wilt verlaten? Niet-opgeslagen wijzigingen gaan verloren.');
-      if (!door) return;
-    }
-    setBlokkeerNavigatie(false);
     setToevoegenOpen(false);
     setImportOpen(false);
     setActiveNav(doel);
+    scrollNaarBoven();
+  };
+
+  // Matico-logo: altijd naar Overzicht. Sta je daar al, reset dan ook de
+  // grafiek naar boven + terug naar het standaard 1D-tijdslot.
+  const naarHome = () => {
+    if (activeNav === 'overzicht' && !toevoegenOpen && !importOpen) {
+      setOverzichtResetKey(k => k + 1);
+      scrollNaarBoven();
+    } else {
+      navigeerNaar('overzicht');
+    }
   };
 
   const renderPage = () => {
-    if (importOpen) return <ImportBeleggingen onClose={() => { setImportOpen(false); setBlokkeerNavigatie(false); }} />;
-    if (toevoegenOpen) return <BeleggingToevoegen onClose={() => { setToevoegenOpen(false); setBlokkeerNavigatie(false); }} />;
-    const openToevoegen = () => { setToevoegenOpen(true); setBlokkeerNavigatie(true); };
-    const openImporteren = () => { setImportOpen(true); setBlokkeerNavigatie(true); };
+    if (importOpen) return <ImportBeleggingen onClose={() => setImportOpen(false)} />;
+    if (toevoegenOpen) return <BeleggingToevoegen onClose={() => setToevoegenOpen(false)} />;
+    const openToevoegen = () => setToevoegenOpen(true);
+    const openImporteren = () => setImportOpen(true);
     switch (activeNav) {
-      case 'overzicht': return <Overzicht onToevoegen={openToevoegen} onImporteren={openImporteren} />;
+      case 'overzicht': return <Overzicht key={overzichtResetKey} onToevoegen={openToevoegen} onImporteren={openImporteren} />;
       case 'beleggingen': return <Beleggingen onToevoegen={openToevoegen} />;
       case 'analyse': return <Analyse />;
       case 'dividend': return <Dividend />;
       case 'belastingen': return <Belastingen />;
       case 'instellingen': return <Instellingen />;
-      default: return <Overzicht onToevoegen={openToevoegen} onImporteren={openImporteren} />;
+      default: return <Overzicht key={overzichtResetKey} onToevoegen={openToevoegen} onImporteren={openImporteren} />;
     }
   };
 
@@ -56,7 +67,7 @@ function AppInner() {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onHome={() => navigeerNaar('overzicht')}
+        onHome={naarHome}
         onNavigate={navigeerNaar}
       />
       <main className="app-main">
