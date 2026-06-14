@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────
 const fmt = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -861,7 +861,7 @@ export function Analyse() {
       <div style={{ padding: '0 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* ── Rij 1: Totale winst/verlies + Risicoprofiel ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="analyse-row-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
           {/* Totale winst/verlies */}
           <div className="card">
@@ -1110,9 +1110,9 @@ export function Analyse() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 32, alignItems: 'flex-start' }}>
+          <div className="analyse-spread-grid" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 32, alignItems: 'flex-start' }}>
             {/* Donut — sticky naast de legenda */}
-            <div style={{ position: 'sticky', top: 0, height: 260 }}>
+            <div className="analyse-spread-donut" style={{ position: 'sticky', top: 0, height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={pieData} dataKey="pct" nameKey="label" cx="50%" cy="50%" innerRadius={65} outerRadius={110} paddingAngle={2}>
@@ -1146,7 +1146,7 @@ export function Analyse() {
         </div>
 
         {/* ── Rij 3: Concentratierisico + Valutablootstelling ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="analyse-row-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
           {/* Concentratierisico */}
           <div className="card">
@@ -1261,7 +1261,7 @@ export function Analyse() {
                 .sort((a, b) => b.waarde - a.waarde);
 
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'center' }}>
+                <div className="analyse-currency-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'center' }}>
                   <div style={{ height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -1406,7 +1406,7 @@ export function Analyse() {
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Top holdings van je ETFs — automatisch bijgewerkt</div>
 
             {/* Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 24 }}>
+            <div className="analyse-etf-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 24 }}>
               <div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Aantal ETFs</div>
                 <div style={{ fontSize: 28, fontWeight: 700 }}>{etfs.length}</div>
@@ -1427,13 +1427,13 @@ export function Analyse() {
               <div style={{ padding: '10px 0 6px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>
                 Top 10 bedrijven met het grootste gewicht (over alle ETFs samen)
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 1fr', padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+              <div className="analyse-etf-row" style={{ display: 'grid', gridTemplateColumns: '1fr 160px 1fr', padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
                 <span>Naam</span>
                 <span style={{ textAlign: 'right' }}>Gewicht in portfolio</span>
-                <span style={{ textAlign: 'right' }}>Via</span>
+                <span className="analyse-etf-via" style={{ textAlign: 'right' }}>Via</span>
               </div>
               {alleHoldings.slice(0, 10).map((h, i) => (
-                <div key={h.sym} style={{
+                <div key={h.sym} className="analyse-etf-row" style={{
                   display: 'grid', gridTemplateColumns: '1fr 160px 1fr',
                   padding: '11px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center'
                 }}
@@ -1469,7 +1469,7 @@ export function Analyse() {
                     {h.gewicht.toFixed(2)}%
                   </div>
                   {/* Via ETFs */}
-                  <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                  <div className="analyse-etf-via" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
                     {h.viaEtfs.map(v => (
                       <div key={v.sym}>{v.sym} <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{v.pct.toFixed(2)}%</span></div>
                     ))}
@@ -1485,110 +1485,3 @@ export function Analyse() {
   );
 }
 
-// ── Overige exports ongewijzigd ───────────────────────────────────
-export function Dividend() {
-  const { beleggingen } = useApp();
-  return (
-    <div style={{ padding: '0 0 40px' }}>
-      <div className="page-header" style={{ marginBottom: 24 }}><h1>Dividend</h1></div>
-      <div style={{ padding: '0 32px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
-          {[{ label: 'Verwacht dit jaar', value: '€0,00' }, { label: 'Ontvangen dit jaar', value: '€0,00' }, { label: 'Totaal ontvangen', value: '€0,00' }].map(({ label, value }) => (
-            <div key={label} className="card">
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{label}</div>
-              <div style={{ fontSize: 24, fontWeight: 700 }}>{value}</div>
-            </div>
-          ))}
-        </div>
-        <div className="card">
-          <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Dividend per belegging</h3>
-          {beleggingen.length === 0 ? <div className="empty-state"><p>Voeg beleggingen toe die dividend uitkeren</p></div>
-            : beleggingen.map(b => (
-              <div key={b.symbol} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border-light)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div className="belegging-avatar">{b.symbol.slice(0, 2)}</div>
-                  <div><div style={{ fontWeight: 600 }}>{b.naam}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.symbol}</div></div>
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Geen dividenddata beschikbaar</div>
-              </div>
-            ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function Belastingen() {
-  const { beleggingen, koersen } = useApp();
-  const totaalMeerwaarde = beleggingen.reduce((sum, b) => {
-    const koers = koersen[b.symbol]; const huidigePrijs = koers ? koers.c : b.kostprijs;
-    const factor = (b.munt || 'EUR') === 'USD' ? 0.92 : 1;
-    return sum + (huidigePrijs - b.kostprijs) * b.aantal * factor;
-  }, 0);
-  return (
-    <div style={{ padding: '0 0 40px' }}>
-      <div className="page-header" style={{ marginBottom: 24 }}><h1>Belastingen</h1></div>
-      <div style={{ padding: '0 32px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>
-          <div className="card">
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>Totale meerwaarde</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: totaalMeerwaarde >= 0 ? 'var(--green)' : 'var(--red)' }}>
-              {totaalMeerwaarde >= 0 ? '+' : ''}€{Math.abs(totaalMeerwaarde).toFixed(2)}
-            </div>
-          </div>
-          <div className="card">
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>Meerwaardebelasting (10%)</div>
-            <div style={{ fontSize: 24, fontWeight: 700 }}>€{Math.max(0, totaalMeerwaarde * 0.10).toFixed(2)}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Indicatief — raadpleeg een belastingadviseur</div>
-          </div>
-        </div>
-        <div className="card">
-          <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Overzicht per belegging</h3>
-          {beleggingen.map(b => {
-            const koers = koersen[b.symbol]; const huidigePrijs = koers ? koers.c : b.kostprijs;
-            const factor = (b.munt || 'EUR') === 'USD' ? 0.92 : 1;
-            const winst = (huidigePrijs - b.kostprijs) * b.aantal * factor;
-            return (
-              <div key={b.symbol} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border-light)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div className="belegging-avatar">{b.symbol.slice(0, 2)}</div>
-                  <div><div style={{ fontWeight: 600 }}>{b.naam}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.symbol}</div></div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 600, color: winst >= 0 ? 'var(--green)' : 'var(--red)' }}>{winst >= 0 ? '+' : ''}€{winst.toFixed(2)}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Meerwaarde</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function Instellingen() {
-  const { gebruiker, setGebruiker } = useApp();
-  const [voornaam, setVoornaam] = useState(gebruiker.voornaam);
-  const [achternaam, setAchternaam] = useState(gebruiker.achternaam);
-  const [opgeslagen, setOpgeslagen] = useState(false);
-  const opslaan = () => { setGebruiker({ voornaam, achternaam }); setOpgeslagen(true); setTimeout(() => setOpgeslagen(false), 2000); };
-  return (
-    <div style={{ padding: '0 0 40px' }}>
-      <div className="page-header" style={{ marginBottom: 24 }}><h1>Instellingen</h1></div>
-      <div style={{ padding: '0 32px' }}>
-        <div className="card" style={{ maxWidth: 500 }}>
-          <h3 style={{ marginBottom: 20, fontSize: 16, fontWeight: 700 }}>Persoonlijke gegevens</h3>
-          <div className="form-group"><label className="form-label">Voornaam</label><input type="text" className="form-input" value={voornaam} onChange={e => setVoornaam(e.target.value)} /></div>
-          <div className="form-group"><label className="form-label">Achternaam</label><input type="text" className="form-input" value={achternaam} onChange={e => setAchternaam(e.target.value)} /></div>
-          <button className="btn btn-primary" onClick={opslaan} style={{ marginTop: 8 }}>{opgeslagen ? '✓ Opgeslagen!' : 'Opslaan'}</button>
-        </div>
-        <div className="card" style={{ maxWidth: 500, marginTop: 16 }}>
-          <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Over Matico</h3>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>Matico is je persoonlijke portfolio tracker. Real-time koersen via Finnhub.io, AI-analyses via Claude (Anthropic). Alle data wordt lokaal in je browser opgeslagen.</p>
-          <div style={{ marginTop: 16, padding: 12, background: 'var(--bg)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted)' }}>Versie 1.0.0 · © 2026 Matico</div>
-        </div>
-      </div>
-    </div>
-  );
-}

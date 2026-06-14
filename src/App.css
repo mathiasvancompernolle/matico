@@ -771,13 +771,47 @@ body {
   }
 
   /* ── Analyse grids ── */
-  .analyse-spread-grid {
+  /* Rij 1 (winst/verlies + risicoprofiel) en Rij 3 (concentratie + valuta) → 1 kolom */
+  .analyse-row-grid {
     grid-template-columns: 1fr !important;
   }
 
-  /* Inline grids in pagina's */
-  [style*="gridTemplateColumns: '1fr 1fr'"],
-  [style*='gridTemplateColumns: "1fr 1fr"'] {
+  /* Spreiding: donut + legenda → onder elkaar, donut niet meer sticky */
+  .analyse-spread-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+  .analyse-spread-donut {
+    position: static !important;
+    height: 220px !important;
+  }
+
+  /* Valutaverdeling: donut + legenda → onder elkaar */
+  .analyse-currency-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .analyse-currency-grid > div:first-child {
+    height: 200px !important;
+  }
+
+  /* ETF X-ray statistieken: blijven 3 naast elkaar, maar kleiner */
+  .analyse-etf-stats-grid {
+    gap: 10px !important;
+  }
+  .analyse-etf-stats-grid > div > div:last-child {
+    font-size: 18px !important;
+  }
+
+  /* ETF X-ray tabel: "Via"-kolom verbergen, gewicht-kolom smaller */
+  .analyse-etf-row {
+    grid-template-columns: 1fr 70px !important;
+  }
+  .analyse-etf-via {
+    display: none !important;
+  }
+
+  /* Inline grids in pagina's: alle 1fr-1fr grids worden 1 kolom */
+  [style*="grid-template-columns: 1fr 1fr"] {
     grid-template-columns: 1fr !important;
   }
 }
@@ -802,19 +836,13 @@ body {
     padding-right: 0 !important;
   }
 
-  /* Twee-koloms grids → één kolom */
-  .card > div[style*="grid-template-columns: 1fr 1fr"],
-  .card > div[style*="gridTemplateColumns"] {
-    grid-template-columns: 1fr !important;
-  }
-
   /* Beleggingen tabel kolommen verbergen op mobile */
   .belegging-grid > *:nth-child(n+5) {
     display: none;
   }
 
-  /* Pagina padding aanpassen */
-  div[style*="padding: '0 32px'"] {
+  /* Pagina padding aanpassen (React rendert padding: '0 32px' als "padding: 0px 32px" in de DOM) */
+  div[style*="padding: 0px 32px"] {
     padding: 0 16px !important;
   }
 
