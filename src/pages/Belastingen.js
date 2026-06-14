@@ -26,7 +26,7 @@ const REF_KOERSEN_2025 = {
 };
 
 export default function Belastingen() {
-  const { beleggingen, koersen, verkochteBeleggingen, getMuntFactor } = useApp();
+  const { beleggingen, koersen, verkochteBeleggingen, getMuntFactor, setBlokkeerNavigatie } = useApp();
   const [jaar, setJaar] = useState(new Date().getFullYear());
   const [jaarDropdown, setJaarDropdown] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -36,6 +36,9 @@ export default function Belastingen() {
   const printRef = useRef();
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+
+  const openSimulatie = () => { setSimulatieOpen(true); setBlokkeerNavigatie(true); };
+  const sluitSimulatie = () => { setSimulatieOpen(false); setSimBelegging(null); setSimAantal(''); setBlokkeerNavigatie(false); };
 
   const parseNLDatum = (str) => {
     if (!str) return null;
@@ -180,7 +183,7 @@ export default function Belastingen() {
       <div className="page-header" style={{ marginBottom: 0 }}>
         <h1>Belastingen</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button onClick={() => setSimulatieOpen(true)} style={{
+          <button onClick={openSimulatie} style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px',
             background: ACCENT, color: 'white', border: 'none', borderRadius: 8,
             cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 600
@@ -397,14 +400,14 @@ export default function Belastingen() {
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }} onClick={() => { setSimulatieOpen(false); setSimBelegging(null); setSimAantal(''); }}>
+        }} onClick={sluitSimulatie}>
           <div style={{
             background: 'white', borderRadius: 16, padding: 32, width: 520,
             maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)'
           }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700 }}>🧮 Verkoopsimulatie</h2>
-              <button onClick={() => { setSimulatieOpen(false); setSimBelegging(null); setSimAantal(''); }} style={{
+              <button onClick={sluitSimulatie} style={{
                 background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-muted)'
               }}>✕</button>
             </div>
@@ -496,7 +499,7 @@ export default function Belastingen() {
               </div>
             )}
 
-            <button onClick={() => { setSimulatieOpen(false); setSimBelegging(null); setSimAantal(''); }} style={{
+            <button onClick={sluitSimulatie} style={{
               width: '100%', padding: '11px', background: ACCENT, color: 'white',
               border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
               fontSize: 14, fontWeight: 600

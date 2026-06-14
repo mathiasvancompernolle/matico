@@ -14,8 +14,8 @@ const navItems = [
   { id: 'instellingen', label: 'Instellingen', icon: Settings },
 ];
 
-export default function Sidebar({ collapsed, onToggle, onHome }) {
-  const { activeNav, setActiveNav, gebruiker, portfolioWaarde, dagWinstPct, ytdPct } = useApp();
+export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
+  const { activeNav, gebruiker, portfolioWaarde, dagWinstPct, ytdPct } = useApp();
   const isMobile = window.innerWidth <= 768;
 
   const formatBedrag = (n) => '€' + n.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -57,7 +57,7 @@ export default function Sidebar({ collapsed, onToggle, onHome }) {
           <div
             key={id}
             className={`nav-item ${activeNav === id ? 'active' : ''}`}
-            onClick={() => setActiveNav(id)}
+            onClick={() => onNavigate(id)}
           >
             <Icon size={18} />
             <span>{label}</span>

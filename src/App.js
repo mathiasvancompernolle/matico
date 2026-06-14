@@ -12,7 +12,7 @@ import ImportBeleggingen from './pages/ImportBeleggingen';
 import './App.css';
 
 function AppInner() {
-  const { activeNav, setActiveNav, gebruiker } = useApp();
+  const { activeNav, setActiveNav, gebruiker, blokkeerNavigatie, setBlokkeerNavigatie } = useApp();
   const [toevoegenOpen, setToevoegenOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -21,17 +21,33 @@ function AppInner() {
     return <NaamInstellen />;
   }
 
+  // Centrale navigatie: altijd direct naar de gekozen pagina, ook tijdens een
+  // belegging toevoegen/importeren, een verkoop verwerken of een simulatie.
+  // Enkel als er een actie loopt (blokkeerNavigatie) wordt eerst om bevestiging gevraagd.
+  const navigeerNaar = (doel) => {
+    if (blokkeerNavigatie) {
+      const door = window.confirm('Je hebt een actie in uitvoering (bv. een belegging toevoegen, een verkoop verwerken of een simulatie). Weet je zeker dat je wilt verlaten? Niet-opgeslagen wijzigingen gaan verloren.');
+      if (!door) return;
+    }
+    setBlokkeerNavigatie(false);
+    setToevoegenOpen(false);
+    setImportOpen(false);
+    setActiveNav(doel);
+  };
+
   const renderPage = () => {
-    if (importOpen) return <ImportBeleggingen onClose={() => setImportOpen(false)} />;
-    if (toevoegenOpen) return <BeleggingToevoegen onClose={() => setToevoegenOpen(false)} />;
+    if (importOpen) return <ImportBeleggingen onClose={() => { setImportOpen(false); setBlokkeerNavigatie(false); }} />;
+    if (toevoegenOpen) return <BeleggingToevoegen onClose={() => { setToevoegenOpen(false); setBlokkeerNavigatie(false); }} />;
+    const openToevoegen = () => { setToevoegenOpen(true); setBlokkeerNavigatie(true); };
+    const openImporteren = () => { setImportOpen(true); setBlokkeerNavigatie(true); };
     switch (activeNav) {
-      case 'overzicht': return <Overzicht onToevoegen={() => setToevoegenOpen(true)} onImporteren={() => setImportOpen(true)} />;
-      case 'beleggingen': return <Beleggingen onToevoegen={() => setToevoegenOpen(true)} />;
+      case 'overzicht': return <Overzicht onToevoegen={openToevoegen} onImporteren={openImporteren} />;
+      case 'beleggingen': return <Beleggingen onToevoegen={openToevoegen} />;
       case 'analyse': return <Analyse />;
       case 'dividend': return <Dividend />;
       case 'belastingen': return <Belastingen />;
       case 'instellingen': return <Instellingen />;
-      default: return <Overzicht onToevoegen={() => setToevoegenOpen(true)} onImporteren={() => setImportOpen(true)} />;
+      default: return <Overzicht onToevoegen={openToevoegen} onImporteren={openImporteren} />;
     }
   };
 
@@ -40,7 +56,8 @@ function AppInner() {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onHome={() => { setActiveNav('overzicht'); setToevoegenOpen(false); setImportOpen(false); }}
+        onHome={() => navigeerNaar('overzicht')}
+        onNavigate={navigeerNaar}
       />
       <main className="app-main">
         {renderPage()}

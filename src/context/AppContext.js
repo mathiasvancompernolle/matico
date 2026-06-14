@@ -17,6 +17,10 @@ export function AppProvider({ children }) {
   const [activeNav, setActiveNav] = useState('overzicht');
   const [wisselkoers, setWisselkoers] = useState({ usdEur: 0.865 }); // live bijgewerkt
 
+  // Navigatie-bescherming: true wanneer er een actie loopt (belegging toevoegen/importeren,
+  // verkoop verwerken, simulatie) die onderbroken zou worden door te navigeren.
+  const [blokkeerNavigatie, setBlokkeerNavigatie] = useState(false);
+
   useEffect(() => {
     localStorage.setItem('matico_gebruiker', JSON.stringify(gebruiker));
   }, [gebruiker]);
@@ -178,6 +182,7 @@ export function AppProvider({ children }) {
       beleggingen, setBeleggingen,
       koersen, fetchKoers, refreshAlleKoersen,
       activeNav, setActiveNav,
+      blokkeerNavigatie, setBlokkeerNavigatie,
       wisselkoers, getMuntFactor,
       portfolioWaarde, portfolioKostprijs,
       portfolioWinstVerlies, portfolioWinstPct,
