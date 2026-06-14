@@ -85,7 +85,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
   const [stap, setStap] = useState('kiezen'); // 'kiezen' | 'invullen'
   const [zoek, setZoek] = useState('');
   const [gekozen, setGekozen] = useState(null);
-  const [form, setForm] = useState({ datum: new Date().toLocaleDateString('nl-BE'), aantal: '', koers: '', munt: 'EUR' });
+  const [form, setForm] = useState({ datum: new Date().toISOString().slice(0, 10), aantal: '', koers: '', munt: 'EUR' });
 
   // Pre-fill koers als beschikbaar
   useEffect(() => {
@@ -94,7 +94,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
       const koers = k ? k.c.toFixed(2) : gekozen.kostprijs.toFixed(2);
       const munt = gekozen.munt || 'EUR';
       setForm({
-        datum: new Date().toLocaleDateString('nl-BE'),
+        datum: new Date().toISOString().slice(0, 10),
         aantal: gekozen.aantal.toString(),
         koers,
         munt

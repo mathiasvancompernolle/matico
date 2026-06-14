@@ -13,6 +13,11 @@ export function AppProvider({ children }) {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [verkochteBeleggingen, setVerkochteBeleggingen] = useState(() => {
+    const saved = localStorage.getItem('matico_verkochte_beleggingen');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [koersen, setKoersen] = useState({});
   const [activeNav, setActiveNav] = useState('overzicht');
   const [wisselkoers, setWisselkoers] = useState({ usdEur: 0.865 }); // live bijgewerkt
@@ -24,6 +29,10 @@ export function AppProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('matico_beleggingen', JSON.stringify(beleggingen));
   }, [beleggingen]);
+
+  useEffect(() => {
+    localStorage.setItem('matico_verkochte_beleggingen', JSON.stringify(verkochteBeleggingen));
+  }, [verkochteBeleggingen]);
 
   // Haal live wisselkoers op
   useEffect(() => {
@@ -176,6 +185,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       gebruiker, setGebruiker,
       beleggingen, setBeleggingen,
+      verkochteBeleggingen, setVerkochteBeleggingen,
       koersen, fetchKoers, refreshAlleKoersen,
       activeNav, setActiveNav,
       wisselkoers, getMuntFactor,
