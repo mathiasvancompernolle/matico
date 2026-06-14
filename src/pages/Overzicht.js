@@ -604,7 +604,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 </div>
               )}
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={displayDataEff} margin={{ top: 5, right: 5, bottom: 5, left: 10 }}>
+              <AreaChart data={displayDataEff} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
                 <defs>
                   <linearGradient id="portfolioGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={grafiekKleur} stopOpacity={0.15} />
@@ -616,7 +616,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 <YAxis
                   tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
                   tickFormatter={v => '€' + Math.round(v).toLocaleString('nl-BE')}
-                  domain={yDomain} ticks={yTicks} width={70}
+                  domain={yDomain} ticks={yTicks} width={45}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
@@ -803,12 +803,13 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                       <div className="belegging-symbol">{b.symbol} · {b.aantal} st.</div>
                     </div>
                   </div>
-                  <div className="koers-display">{muntSym}{huidigePrijs.toFixed(2)}</div>
-                  <div className="koers-display">€{huidigeWaarde.toFixed(2)}</div>
+                  <div className="koers-display"><span className="mobile-stat-label">Koers</span>{muntSym}{huidigePrijs.toFixed(2)}</div>
+                  <div className="koers-display"><span className="mobile-stat-label">Waarde</span>€{huidigeWaarde.toFixed(2)}</div>
                   <div>
+                    <span className="mobile-stat-label">Vandaag</span>
                     {beursOpen ? (
                       <>
-                        <span className={dagVPctRaw >= 0 ? 'pct-pos' : 'pct-neg'}>{dagVRaw >= 0 ? '+' : ''}€{Math.abs(dagVRaw).toFixed(2)}</span>
+                        <span className={`mobile-hide-amount ${dagVPctRaw >= 0 ? 'pct-pos' : 'pct-neg'}`}>{dagVRaw >= 0 ? '+' : ''}€{Math.abs(dagVRaw).toFixed(2)}</span>
                         {' '}<span className={`badge ${dagVPctRaw >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 11, padding: '2px 6px' }}>
                           {dagVPctRaw >= 0 ? '+' : ''}{dagVPctRaw.toFixed(2)}%
                         </span>
@@ -818,7 +819,8 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     )}
                   </div>
                   <div>
-                    <span className={winstTotaal >= 0 ? 'pct-pos' : 'pct-neg'}>{winstTotaal >= 0 ? '+' : ''}€{Math.abs(winstTotaal).toFixed(2)}</span>
+                    <span className="mobile-stat-label">Totaal</span>
+                    <span className={`mobile-hide-amount ${winstTotaal >= 0 ? 'pct-pos' : 'pct-neg'}`}>{winstTotaal >= 0 ? '+' : ''}€{Math.abs(winstTotaal).toFixed(2)}</span>
                     {' '}<span className={`badge ${winstTotaalPct >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 11, padding: '2px 6px' }}>
                       {winstTotaalPct >= 0 ? '+' : ''}{winstTotaalPct.toFixed(2)}%
                     </span>

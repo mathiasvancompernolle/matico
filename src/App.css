@@ -343,6 +343,7 @@ body {
 .belegging-symbol { font-size: 12px; color: var(--text-muted); }
 
 .koers-display { font-family: 'DM Mono', monospace; font-size: 14px; }
+.mobile-stat-label { display: none; }
 .pct-pos { color: var(--green); }
 .pct-neg { color: var(--red); }
 
@@ -748,37 +749,81 @@ body {
     display: none !important;
   }
   .tabel-rij.belegging-grid {
-    grid-template-columns: 1fr auto !important;
-    grid-template-areas: "naam waarde" "naam winst";
+    grid-template-columns: 1fr auto auto !important;
+    grid-template-areas: "naam koers vandaag" "naam waarde totaal";
+    column-gap: 12px;
     row-gap: 4px;
   }
-  /* 1: Naam (logo + naam + symbool) */
+  /* 1: Naam (logo + naam + symbool) — spant beide rijen */
   .tabel-rij.belegging-grid > *:nth-child(1) {
     grid-area: naam;
     min-width: 0;
   }
-  /* 2: Koers — verbergen, past niet */
+  /* 2: Koers — rechtsboven */
   .tabel-rij.belegging-grid > *:nth-child(2) {
-    display: none !important;
+    grid-area: koers;
+    justify-self: end;
+    text-align: right;
+    font-size: 13px;
   }
-  /* 3: Huidige waarde — rechtsboven */
+  /* 3: Huidige waarde — linksonder (van de waarde-kolom) */
   .tabel-rij.belegging-grid > *:nth-child(3) {
     grid-area: waarde;
     justify-self: end;
+    text-align: right;
     font-weight: 600;
+    font-size: 13px;
   }
-  /* 4: Winst/verlies vandaag — verbergen (vaak "—" bij gesloten beurs) */
+  /* 4: Winst/verlies vandaag — rechtsboven */
   .tabel-rij.belegging-grid > *:nth-child(4) {
-    display: none !important;
-  }
-  /* 5: Winst/verlies totaal — rechtsonder */
-  .tabel-rij.belegging-grid > *:nth-child(5) {
-    grid-area: winst;
+    grid-area: vandaag;
     justify-self: end;
     text-align: right;
   }
-  /* 6: Gewicht — verbergen */
+  /* 5: Winst/verlies totaal — rechtsonder */
+  .tabel-rij.belegging-grid > *:nth-child(5) {
+    grid-area: totaal;
+    justify-self: end;
+    text-align: right;
+  }
+  /* 6: Gewicht — verbergen, geen ruimte */
   .tabel-rij.belegging-grid > *:nth-child(6) {
+    display: none !important;
+  }
+  /* Kleine labeltjes boven elke waarde tonen op mobiel */
+  .mobile-stat-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+  /* €-bedrag in de winst-badges verbergen op mobiel, enkel % tonen (te weinig plaats) */
+  .mobile-hide-amount {
+    display: none !important;
+  }
+
+  /* ── BeleggingToevoegen: type-keuze (Aandeel/ETF/Crypto/Zelf) → 1 kolom ── */
+  .toevoegen-grid {
+    grid-template-columns: 1fr !important;
+    padding: 16px 18px !important;
+    gap: 12px !important;
+  }
+  .type-card {
+    padding: 16px !important;
+  }
+
+  /* ── BeleggingToevoegen: invoerstap — Naam/Datum/Koers, Aantal, Transactiekosten onder elkaar ── */
+  .toevoegen-row-header {
+    display: none !important;
+  }
+  .toevoegen-row {
+    grid-template-columns: 1fr !important;
+    row-gap: 8px !important;
+  }
+  .toevoegen-row > div:empty {
     display: none !important;
   }
 

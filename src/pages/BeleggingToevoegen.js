@@ -170,12 +170,12 @@ export default function BeleggingToevoegen({ onClose }) {
             <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16 }}>
 
               {/* Rij 1: Naam, datum, kostprijs */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, padding: '8px 0', fontWeight: 600, fontSize: 12, color: 'var(--text-muted)' }}>
+              <div className="toevoegen-row-header" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, padding: '8px 0', fontWeight: 600, fontSize: 12, color: 'var(--text-muted)' }}>
                 <span>Naam</span>
                 <span>Aankoopdatum</span>
                 <span>Koers per stuk</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
+              <div className="toevoegen-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{geselecteerd.description}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{geselecteerd.symbol}</div>
@@ -195,7 +195,7 @@ export default function BeleggingToevoegen({ onClose }) {
               </div>
 
               {/* Rij 2: Aantal */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
+              <div className="toevoegen-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
                 <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Aantal aandelen/eenheden</div>
                 <div />
                 <input type="number" className="form-input" placeholder="1" value={form.aantal}
@@ -203,7 +203,7 @@ export default function BeleggingToevoegen({ onClose }) {
               </div>
 
               {/* Rij 3: Transactiekosten */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
+              <div className="toevoegen-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
                 <div>
                   <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Transactiekosten</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Totale kosten voor deze aankoop</div>
