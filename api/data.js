@@ -124,6 +124,29 @@ export default async function handler(req, res) {
       }
     }
 
+    if (endpoint === 'forex-history') {
+      // Historische wisselkoers naar EUR op een specifieke datum (voor "kostprijs in EUR" bij toevoegen)
+      const { datum, van } = req.query; // datum = YYYY-MM-DD, van = broncurrency (USD/GBP/...)
+      if (!van || van === 'EUR') {
+        return res.json({ rate: 1, datum: datum || null });
+      }
+      // Frankfurter (ECB) — gratis, geen key nodig, geeft bij weekend/feestdag de laatst gekende koers
+      try {
+        const r = await fetch(`https://api.frankfurter.app/${datum}?from=${van}&to=EUR`);
+        const d = await r.json();
+        const rate = d?.rates?.EUR;
+        if (rate) return res.json({ rate, datum: d.date || datum });
+      } catch (e) {}
+      // Fallback: huidige live koers
+      try {
+        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=OANDA:${van}_EUR&token=${FINNHUB_KEY}`);
+        const d = await r.json();
+        if (d.c) return res.json({ rate: d.c, datum, fallback: true });
+      } catch (e) {}
+      const fallbackRates = { USD: 0.865, GBP: 1.17 };
+      return res.json({ rate: fallbackRates[van] || 1, datum, fallback: true });
+    }
+
     if (endpoint === 'candle') {
       const { symbol, tijdperk, van, tot, resolutie } = req.query;
 

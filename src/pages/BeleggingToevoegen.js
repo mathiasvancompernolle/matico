@@ -18,6 +18,25 @@ export default function BeleggingToevoegen({ onClose }) {
   const [zoekLoading, setZoekLoading] = useState(false);
   const [geselecteerd, setGeselecteerd] = useState(null);
   const [form, setForm] = useState({ datum: '', kostprijs: '', aantal: '', munt: 'EUR', transactiekosten: '' });
+  const [wisselkoersOpDatum, setWisselkoersOpDatum] = useState(1);
+  const [wisselkoersLoading, setWisselkoersLoading] = useState(false);
+
+  // Historische wisselkoers naar EUR ophalen wanneer munt of datum verandert
+  useEffect(() => {
+    if (form.munt === 'EUR') {
+      setWisselkoersOpDatum(1);
+      return;
+    }
+    if (!form.datum) return;
+    let actief = true;
+    setWisselkoersLoading(true);
+    fetch(`/api/data?endpoint=forex-history&datum=${form.datum}&van=${form.munt}`)
+      .then(res => res.json())
+      .then(data => { if (actief && data?.rate) setWisselkoersOpDatum(data.rate); })
+      .catch(() => {})
+      .finally(() => { if (actief) setWisselkoersLoading(false); });
+    return () => { actief = false; };
+  }, [form.munt, form.datum]);
 
   useEffect(() => {
     if (zoekterm.length < 2) { setZoekResultaten([]); return; }
@@ -86,10 +105,12 @@ export default function BeleggingToevoegen({ onClose }) {
   };
 
   // Berekening voor preview
+  const muntSymbool = (munt) => munt === 'USD' ? '$' : munt === 'GBP' ? '£' : '€';
   const kostprijsPerStuk = parseFloat(form.kostprijs) || 0;
   const aantalStuks = parseFloat(form.aantal) || 0;
   const transactiekosten = parseFloat(form.transactiekosten) || 0;
   const totaalKostprijs = kostprijsPerStuk * aantalStuks + transactiekosten;
+  const totaalKostprijsEUR = totaalKostprijs * wisselkoersOpDatum;
 
   return (
     <div style={{ minHeight: '100vh' }}>
@@ -215,14 +236,28 @@ export default function BeleggingToevoegen({ onClose }) {
 
               {/* Preview totale kostprijs */}
               {(kostprijsPerStuk > 0 && aantalStuks > 0) && (
-                <div style={{ marginTop: 16, padding: '12px 16px', background: 'var(--bg)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                    Totale kostprijs
-                    {transactiekosten > 0 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> (incl. €{transactiekosten.toFixed(2)} kosten)</span>}
+                <div style={{ marginTop: 16, padding: '12px 16px', background: 'var(--bg)', borderRadius: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                      Totale kostprijs
+                      {transactiekosten > 0 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> (incl. {muntSymbool(form.munt)}{transactiekosten.toFixed(2)} kosten)</span>}
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>
+                      {muntSymbool(form.munt)}{totaalKostprijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>
-                    €{totaalKostprijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
+                  {form.munt !== 'EUR' && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border-light)' }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        {wisselkoersLoading
+                          ? 'Wisselkoers ophalen...'
+                          : `≈ wisselkoers op ${form.datum}: 1 ${form.munt} = €${wisselkoersOpDatum.toFixed(4)}`}
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>
+                        ≈ €{totaalKostprijsEUR.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
