@@ -65,7 +65,9 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   // Toon NIET als: weekend of nieuwe dag begonnen zonder dat beurs al open was
   const isBeursOpen = (munt) => {
     const nu = new Date();
-    const dag = nu.getDay(); // 0=zo, 6=za
+    // Gebruik UTC-dag (consistent met de UTC-tijdscheck hieronder), anders loopt
+    // dit rond middernacht lokale tijd (CEST = UTC+2) uit elkaar.
+    const dag = nu.getUTCDay(); // 0=zo, 6=za
     if (dag === 0 || dag === 6) return false; // weekend: nooit tonen
 
     // Doordeweeks: toon percentage van vandaag tot middernacht
