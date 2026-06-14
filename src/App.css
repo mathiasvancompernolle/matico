@@ -727,7 +727,7 @@ body {
 
   /* ── Page header ── */
   .page-header {
-    padding: 16px 16px 0;
+    padding: 18px 18px 0;
     flex-wrap: wrap;
     gap: 8px;
   }
@@ -738,7 +738,7 @@ body {
 
   /* ── Cards ── */
   .card {
-    padding: 16px;
+    padding: 18px;
     border-radius: 12px;
   }
 
@@ -814,6 +814,79 @@ body {
   [style*="grid-template-columns: 1fr 1fr"] {
     grid-template-columns: 1fr !important;
   }
+
+  /* ── Tijdperk-tabs (Overzicht): horizontaal scrollbaar ipv afgekapt ── */
+  .time-tabs {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .time-tabs::-webkit-scrollbar { display: none; }
+  .time-tab {
+    flex-shrink: 0;
+  }
+
+  /* ── Overzicht: portfolio-header (waarde + Vergelijk/Filter knoppen) ── */
+  .overzicht-portfolio-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+  }
+  .overzicht-portfolio-actions {
+    width: 100%;
+  }
+  .overzicht-portfolio-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* ── Beleggingen: tabelrijen → gestapelde kaartjes op mobiel ── */
+  .belegging-table-header {
+    display: none !important;
+  }
+  .belegging-row-grid {
+    grid-template-columns: 1fr 40px !important;
+    row-gap: 8px !important;
+    padding: 14px 16px !important;
+  }
+  .belegging-row-grid > *:first-child {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .belegging-row-grid > *:last-child {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .belegging-row-grid > *:not(:first-child):not(:last-child) {
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+  }
+  /* Naam-kolom: tekst mag breken/wrappen ipv de rij breder te maken dan het scherm */
+  .belegging-row-grid > *:first-child > div:last-child {
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+
+  /* ── Analyse: kaartkoppen (titel + tab-knoppen) → onder elkaar als het niet past ── */
+  .analyse-card-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .analyse-tab-group {
+    width: 100%;
+  }
+
+  /* ── Analyse: valutaverdeling-legenda — bedrag + percentage op eigen regel, rechts uitgelijnd ── */
+  .analyse-currency-legend-row {
+    flex-wrap: wrap;
+  }
+  .analyse-currency-amount {
+    flex: 1 0 100%;
+    text-align: right;
+  }
 }
 
 /* Extra klein (< 400px) */
@@ -843,7 +916,7 @@ body {
 
   /* Pagina padding aanpassen (React rendert padding: '0 32px' als "padding: 0px 32px" in de DOM) */
   div[style*="padding: 0px 32px"] {
-    padding: 0 16px !important;
+    padding: 0 18px !important;
   }
 
   /* Grafiek hoogte verkleinen */

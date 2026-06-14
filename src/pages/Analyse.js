@@ -1054,12 +1054,12 @@ export function Analyse() {
 
         {/* ── Spreiding ── */}
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+          <div className="analyse-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>
               <div style={{ fontSize: 16, fontWeight: 700 }}>Spreiding</div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Van je portfolio</div>
             </div>
-            <div style={{ display: 'flex', gap: 4 }}>
+            <div className="analyse-tab-group" style={{ display: 'flex', gap: 4 }}>
               {['Type', 'Sectoren', 'Regio'].map(t => (
                 <button key={t} onClick={() => { setSpreidingTab(t); setSpreidingSubFilter('Alles'); setSpreidingDropdownOpen(false); }} style={{
                   padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)',
@@ -1178,9 +1178,9 @@ export function Analyse() {
 
           {/* Valutablootstelling */}
           <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+            <div className="analyse-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
               <div style={{ fontSize: 16, fontWeight: 700 }}>Valutablootstelling</div>
-              <div style={{ display: 'flex', gap: 4 }}>
+              <div className="analyse-tab-group" style={{ display: 'flex', gap: 4 }}>
                 {['verdeling', 'wisselkoers'].map(t => (
                   <button key={t} onClick={() => setValutaTab(t)} style={{
                     padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)',
@@ -1285,13 +1285,13 @@ export function Analyse() {
                   <div>
                     {valutaData.map((v, i) => (
                       <div key={v.munt} style={{ marginBottom: 8 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                        <div className="analyse-currency-legend-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ width: 8, height: 8, borderRadius: '50%', background: PIE_KLEUREN[i % PIE_KLEUREN.length], display: 'inline-block' }} />
                             <span style={{ fontSize: 13, fontWeight: 600 }}>{v.munt}</span>
                           </div>
-                          <div>
-                            <span style={{ fontSize: 13, fontWeight: 600, marginRight: 6 }}>€{fmt(v.waarde)}</span>
+                          <div className="analyse-currency-amount">
+                            <span className="analyse-currency-value" style={{ fontSize: 13, fontWeight: 600, marginRight: 6 }}>€{fmt(v.waarde)}</span>
                             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{v.pct.toFixed(2)}%</span>
                           </div>
                         </div>
