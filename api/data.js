@@ -270,19 +270,32 @@ export default async function handler(req, res) {
 
     if (endpoint === 'profile') {
       const { symbol } = req.query;
+      let resultaat = {};
       try {
         const r = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_KEY}`);
         const d = await r.json();
-        if (d.name) {
-          try {
-            const r2 = await fetch(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`);
-            const d2 = await r2.json();
-            if (d2[0]) { d.ceo = d2[0].ceo; d.description = d2[0].description; d.isin = d2[0].isin; d.employeeTotal = d2[0].fullTimeEmployees; }
-          } catch (e) {}
-          return res.json(d);
+        if (d.name) resultaat = { ...d };
+      } catch (e) {}
+      // FMP heeft betere dekking voor Europese/Aziatische/overige internationale aandelen
+      // (sector, industry, bèta, land) — vult aan of vervangt lege Finnhub-data
+      try {
+        const r2 = await fetch(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`);
+        const d2 = await r2.json();
+        if (d2[0]) {
+          const f = d2[0];
+          resultaat.name = resultaat.name || f.companyName;
+          resultaat.logo = resultaat.logo || f.image;
+          resultaat.ceo = resultaat.ceo || f.ceo;
+          resultaat.description = resultaat.description || f.description;
+          resultaat.isin = resultaat.isin || f.isin;
+          resultaat.employeeTotal = resultaat.employeeTotal || f.fullTimeEmployees;
+          resultaat.sector = resultaat.sector || f.sector;
+          resultaat.industry = resultaat.industry || f.industry;
+          resultaat.beta = resultaat.beta || f.beta;
+          resultaat.country = resultaat.country || f.country;
         }
       } catch (e) {}
-      return res.json({});
+      return res.json(resultaat);
     }
 
     if (endpoint === 'metrics') {

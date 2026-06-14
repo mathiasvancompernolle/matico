@@ -92,11 +92,37 @@ const SYMBOOL_REGIO = {
   NOVO: 'Europa - Ontwikkeld', NESN: 'Europa - Ontwikkeld', ROG: 'Europa - Ontwikkeld',
 };
 
-function getSector(b) {
+// FMP-sectoren (Engels, via /api/data?endpoint=profile) → Nederlandse labels die elders gebruikt worden
+const FMP_SECTOR_MAP = {
+  'Technology': 'Technologie',
+  'Financial Services': 'Financiële dienstverlening',
+  'Financial': 'Financiële dienstverlening',
+  'Financials': 'Financiële dienstverlening',
+  'Consumer Cyclical': 'Cyclische consumptiegoederen',
+  'Consumer Discretionary': 'Cyclische consumptiegoederen',
+  'Healthcare': 'Gezondheidszorg',
+  'Health Care': 'Gezondheidszorg',
+  'Communication Services': 'Communicatiediensten',
+  'Telecommunication Services': 'Communicatiediensten',
+  'Telecommunications': 'Communicatiediensten',
+  'Industrials': 'Industrie',
+  'Industrial': 'Industrie',
+  'Consumer Defensive': 'Defensieve consumptiegoederen',
+  'Consumer Staples': 'Defensieve consumptiegoederen',
+  'Energy': 'Energie',
+  'Basic Materials': 'Basismaterialen',
+  'Materials': 'Basismaterialen',
+  'Utilities': 'Nutsbedrijven',
+  'Real Estate': 'Vastgoed',
+};
+
+function getSector(b, liveSectoren = {}) {
   const sym = b.symbol.toUpperCase().split('.')[0];
   if (isEtfBelegging(b)) return 'ETF';
   if (b.type === 'crypto') return 'Crypto';
-  return SECTOR_MAP[sym] || 'Overige';
+  if (SECTOR_MAP[sym]) return SECTOR_MAP[sym];
+  if (liveSectoren[sym]) return liveSectoren[sym];
+  return 'Overige';
 }
 
 function getRegio(b) {
@@ -158,7 +184,8 @@ export function Analyse() {
   const [wisselkoersPeriode, setWisselkoersPeriode] = useState('YTD');
   const [wisselkoersDropdown, setWisselkoersDropdown] = useState(false);
   const [liveEtfData, setLiveEtfData] = useState({});
-  const [liveBetas, setLiveBetas] = useState({}); // { VWCE: { holdings, sectoren, landen, kostenratio, geladen } }
+  const [liveBetas, setLiveBetas] = useState({});
+  const [liveSectoren, setLiveSectoren] = useState({}); // { PRX: 'Cyclische consumptiegoederen', ... }
   const [etfDataLoading, setEtfDataLoading] = useState(false);
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
@@ -398,7 +425,7 @@ export function Analyse() {
         }
       } else {
         // Directe aandelen: gebruik sector/regio mapping
-        const label = isRegio ? getRegio(b) : getSector(b);
+        const label = isRegio ? getRegio(b) : getSector(b, liveSectoren);
         map[label] = (map[label] || 0) + w;
       }
     });
@@ -409,7 +436,7 @@ export function Analyse() {
       .sort((a, b) => b.waarde - a.waarde);
 
     return { spreidingData: data, pieData: data };
-  }, [beleggingen, koersen, spreidingTab, spreidingSubFilter]);
+  }, [beleggingen, koersen, spreidingTab, spreidingSubFilter, liveSectoren]);
 
   // ── Concentratierisico ──
   // ── Live bèta ophalen via Finnhub metrics API ──
@@ -441,6 +468,17 @@ export function Analyse() {
           return { sym, beta };
         }
       } catch (e) {}
+
+      // Fallback: bèta via profile-endpoint (FMP), heeft betere dekking voor Europese/Aziatische aandelen
+      try {
+        const res = await fetch(`/api/data?endpoint=profile&symbol=${b.symbol}`);
+        const data = await res.json();
+        const beta = data?.beta;
+        if (beta && beta > 0) {
+          localStorage.setItem(cacheKey, JSON.stringify({ beta, timestamp: Date.now() }));
+          return { sym, beta };
+        }
+      } catch (e) {}
       return null;
     };
 
@@ -448,6 +486,52 @@ export function Analyse() {
       const nieuw = {};
       results.forEach(r => { if (r) nieuw[r.sym] = r.beta; });
       if (Object.keys(nieuw).length > 0) setLiveBetas(prev => ({ ...prev, ...nieuw }));
+    });
+  }, [beleggingen.map(b => b.symbol).join(',')]);
+
+  // ── Live sector ophalen voor aandelen die niet in SECTOR_MAP staan ──
+  // (vooral Europese/Aziatische/overige internationale aandelen, bv. Prosus)
+  useEffect(() => {
+    const onbekend = beleggingen.filter(b => {
+      if (isEtfBelegging(b) || b.type === 'crypto') return false;
+      const sym = b.symbol.toUpperCase().split('.')[0];
+      return !SECTOR_MAP[sym] && !liveSectoren[sym];
+    });
+    if (onbekend.length === 0) return;
+
+    const CACHE_DUUR_SECTOR = 30 * 24 * 60 * 60 * 1000; // 30 dagen
+
+    const laadSector = async (b) => {
+      const sym = b.symbol.toUpperCase().split('.')[0];
+      const cacheKey = `matico_sector_${sym}`;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const { sector, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_DUUR_SECTOR) {
+            return { sym, sector };
+          }
+        }
+      } catch (e) {}
+
+      try {
+        const res = await fetch(`/api/data?endpoint=profile&symbol=${b.symbol}`);
+        const data = await res.json();
+        // FMP geeft 'sector' in het Engels; Finnhub geeft 'finnhubIndustry'. Map naar onze NL-labels.
+        const ruweSector = data?.sector || data?.finnhubIndustry;
+        const sector = FMP_SECTOR_MAP[ruweSector] || (ruweSector ? 'Overige' : null);
+        if (sector) {
+          localStorage.setItem(cacheKey, JSON.stringify({ sector, timestamp: Date.now() }));
+          return { sym, sector };
+        }
+      } catch (e) {}
+      return null;
+    };
+
+    Promise.all(onbekend.map(laadSector)).then(results => {
+      const nieuw = {};
+      results.forEach(r => { if (r) nieuw[r.sym] = r.sector; });
+      if (Object.keys(nieuw).length > 0) setLiveSectoren(prev => ({ ...prev, ...nieuw }));
     });
   }, [beleggingen.map(b => b.symbol).join(',')]);
 
@@ -505,7 +589,7 @@ export function Analyse() {
     beleggingen.forEach(b => {
       const k = koersen[b.symbol];
       const w = ((k ? k.c : b.kostprijs) * b.aantal * factor(b) / totaal) * 100;
-      const s = getSector(b); const r = getRegio(b);
+      const s = getSector(b, liveSectoren); const r = getRegio(b);
       sectorMap[s] = (sectorMap[s] || 0) + w;
       regioMap[r] = (regioMap[r] || 0) + w;
     });
@@ -569,7 +653,7 @@ export function Analyse() {
       topRegio: topR[0], topRegioPct: topR[1],
       concentratieTips: tips,
     };
-  }, [beleggingen, koersen]);
+  }, [beleggingen, koersen, liveSectoren]);
 
   // ── ETF X-ray database ──
   const etfs = beleggingen.filter(b => b.type === 'etf');
