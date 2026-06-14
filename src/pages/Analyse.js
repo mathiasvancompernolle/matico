@@ -8,6 +8,15 @@ const fmt = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximum
 const ACCENT = '#6366f1';
 const PIE_KLEUREN = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#f97316', '#06b6d4', '#84cc16', '#ec4899', '#14b8a6', '#a855f7', '#eab308'];
 
+// Bekende ETF-tickers (komen overeen met de ETF_DB/ETF_VALUTA-databases hieronder).
+// Hiermee herkennen we een belegging ook als ETF wanneer het symbool bekend is,
+// zelfs als het type-veld bij het toevoegen abusievelijk niet op 'etf' staat.
+const KNOWN_ETF_SYMBOLS = new Set([
+  'CNDX', 'CSPX', 'CSX5', 'EEM', 'EMIM', 'EQQQ', 'GWL', 'IEMA', 'IMEU', 'IUSA', 'IVV',
+  'IWDA', 'LCWD', 'PRAW', 'QQQ', 'SMEA', 'SPY', 'SWRD', 'SXR8', 'VWCE', 'VWRL', 'WEBG', 'XDWD', 'XWLD'
+]);
+const isEtfBelegging = (b) => b.type === 'etf' || KNOWN_ETF_SYMBOLS.has((b.symbol || '').toUpperCase().split('.')[0]);
+
 // Sector mapping op basis van type/symbol
 const SECTOR_MAP = {
   NKE: 'Cyclische consumptiegoederen', NIKE: 'Cyclische consumptiegoederen',
@@ -85,7 +94,7 @@ const SYMBOOL_REGIO = {
 
 function getSector(b) {
   const sym = b.symbol.toUpperCase().split('.')[0];
-  if (b.type === 'etf') return 'ETF';
+  if (isEtfBelegging(b)) return 'ETF';
   if (b.type === 'crypto') return 'Crypto';
   return SECTOR_MAP[sym] || 'Overige';
 }
@@ -131,7 +140,14 @@ function Staaf({ label, waarde, pct, kleur }) {
 
 // ── Hoofd Analyse component ───────────────────────────────────────
 export function Analyse() {
-  const { beleggingen, koersen, getMuntFactor, verkochteBeleggingen } = useApp();
+  const { beleggingen: beleggingenRaw, koersen, getMuntFactor, verkochteBeleggingen } = useApp();
+  // Belegging-type normaliseren: bekende ETF-tickers (VWCE, IWDA, ...) tellen altijd
+  // als ETF voor Spreiding/Sectoren/Regio/Valuta/ETF X-ray, ook als het type-veld
+  // bij het toevoegen niet correct op 'etf' werd gezet.
+  const beleggingen = useMemo(
+    () => beleggingenRaw.map(b => (b.type !== 'etf' && isEtfBelegging(b)) ? { ...b, type: 'etf' } : b),
+    [beleggingenRaw]
+  );
   const [winstFilter, setWinstFilter] = useState('exclusief'); // 'exclusief' | 'inclusief'
   const [winstDropdown, setWinstDropdown] = useState(false);
   const [spreidingTab, setSpreidingTab] = useState('Type');
