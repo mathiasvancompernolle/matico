@@ -380,7 +380,7 @@ export default function Beleggingen({ onToevoegen }) {
                 </div>
 
                 {/* Kolomhoofden */}
-                <div style={{
+                <div className="belegging-table-header" style={{
                   display: 'grid',
                   gridTemplateColumns: '2.5fr 1.2fr 1.4fr 0.8fr 40px',
                   padding: '8px 24px',
@@ -399,7 +399,7 @@ export default function Beleggingen({ onToevoegen }) {
                 {beleggingen.map((b) => {
                   const ms = muntSymbool(b.munt || 'EUR');
                   return (
-                    <div key={b.id} style={{
+                    <div key={b.id} className="belegging-row-grid" style={{
                       display: 'grid',
                       gridTemplateColumns: '2.5fr 1.2fr 1.4fr 0.8fr 40px',
                       padding: '14px 24px',
@@ -525,7 +525,7 @@ export default function Beleggingen({ onToevoegen }) {
                 </div>
 
                 {/* Kolomhoofden */}
-                <div style={{
+                <div className="belegging-table-header" style={{
                   display: 'grid',
                   gridTemplateColumns: '2.5fr 1.2fr 1.2fr 1.2fr 1fr 40px',
                   padding: '8px 24px',
@@ -546,7 +546,7 @@ export default function Beleggingen({ onToevoegen }) {
                   const isPos = wv >= 0;
                   const ms = muntSymbool(b.verkoopMunt || b.munt || 'EUR');
                   return (
-                    <div key={b.id + b.verkoopdatum} style={{
+                    <div key={b.id + b.verkoopdatum} className="belegging-row-grid" style={{
                       display: 'grid',
                       gridTemplateColumns: '2.5fr 1.2fr 1.2fr 1.2fr 1fr 40px',
                       padding: '14px 24px',

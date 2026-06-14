@@ -539,7 +539,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
 
       <div style={{ padding: '0 32px' }}>
         <div className="card" style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+          <div className="overzicht-portfolio-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Portfolio</div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{periodeTekst}</div>
@@ -558,7 +558,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 )}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="overzicht-portfolio-actions" style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setVergelijkOpen(true)}>
                 <GitCompare size={15} /> Vergelijk
               </button>
