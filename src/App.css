@@ -903,12 +903,6 @@ body {
 /* Fixes voor inline styles in React componenten */
 @media (max-width: 768px) {
 
-  /* Overzicht portfolio grafiek */
-  .app-main > div > div {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
   /* Beleggingen tabel kolommen verbergen op mobile */
   .belegging-grid > *:nth-child(n+5) {
     display: none;
