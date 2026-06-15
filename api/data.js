@@ -295,6 +295,30 @@ export default async function handler(req, res) {
           resultaat.country = resultaat.country || f.country;
         }
       } catch (e) {}
+      // Yahoo Finance (gratis, geen key) — meestal de beste dekking voor
+      // Europese/Aziatische/overige internationale aandelen (bv. Prosus PRX.AS)
+      if (!resultaat.sector || !resultaat.beta) {
+        try {
+          const yfSym = toYahooSymbol(symbol);
+          const yfUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=assetProfile,defaultKeyStatistics,price`;
+          const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
+          const yfData = await yfRes.json();
+          const yfResult = yfData?.quoteSummary?.result?.[0];
+          if (yfResult) {
+            const profiel = yfResult.assetProfile || {};
+            const stats = yfResult.defaultKeyStatistics || {};
+            const prijs = yfResult.price || {};
+            resultaat.name = resultaat.name || prijs.longName || prijs.shortName;
+            resultaat.sector = resultaat.sector || profiel.sector;
+            resultaat.industry = resultaat.industry || profiel.industry;
+            resultaat.country = resultaat.country || profiel.country;
+            resultaat.description = resultaat.description || profiel.longBusinessSummary;
+            resultaat.employeeTotal = resultaat.employeeTotal || profiel.fullTimeEmployees;
+            const beta = stats?.beta?.raw;
+            if (beta) resultaat.beta = resultaat.beta || beta;
+          }
+        } catch (e) {}
+      }
       return res.json(resultaat);
     }
 
