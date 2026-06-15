@@ -10,6 +10,7 @@ export default async function handler(req, res) {
   const NEWSAPI_KEY = process.env.NEWSAPI_KEY;
   const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
   const FMP_KEY = process.env.FMP_API_KEY;
+  const EODHD_KEY = process.env.EODHD_API_KEY;
 
   // Yahoo Finance headers
   const YF_HEADERS = {
@@ -271,11 +272,36 @@ export default async function handler(req, res) {
     if (endpoint === 'profile') {
       const { symbol } = req.query;
       let resultaat = {};
+      // EODHD — beste gratis dekking voor Europese/Aziatische/internationale aandelen
+      // Gewone fetch(), geen npm-package nodig. Geeft sector, industrie, bèta, land.
+      try {
+        const eoRes = await fetch(`https://eodhd.com/api/fundamentals/${symbol}?filter=General,Technicals&api_token=${EODHD_KEY}&fmt=json`);
+        const eoData = await eoRes.json();
+        if (eoData?.General?.Name) {
+          const g = eoData.General;
+          const t = eoData.Technicals || {};
+          resultaat.name = g.Name;
+          resultaat.sector = g.Sector;
+          resultaat.industry = g.Industry;
+          resultaat.country = g.CountryName;
+          resultaat.description = g.Description;
+          resultaat.isin = g.ISIN;
+          resultaat.employeeTotal = g.FullTimeEmployees;
+          if (t.Beta) resultaat.beta = t.Beta;
+        }
+      } catch (e) {}
+      // Finnhub als aanvulling (logo)
       try {
         const r = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_KEY}`);
         const d = await r.json();
-        if (d.name) resultaat = { ...d };
+        if (d.name) {
+          resultaat.name = resultaat.name || d.name;
+          resultaat.logo = resultaat.logo || d.logo;
+          resultaat.country = resultaat.country || d.country;
+          resultaat.sector = resultaat.sector || d.finnhubIndustry;
+        }
       } catch (e) {}
+      // FMP als laatste aanvulling
       try {
         const r2 = await fetch(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`);
         const d2 = await r2.json();
@@ -286,7 +312,6 @@ export default async function handler(req, res) {
           resultaat.ceo = resultaat.ceo || f.ceo;
           resultaat.description = resultaat.description || f.description;
           resultaat.isin = resultaat.isin || f.isin;
-          resultaat.employeeTotal = resultaat.employeeTotal || f.fullTimeEmployees;
           resultaat.sector = resultaat.sector || f.sector;
           resultaat.industry = resultaat.industry || f.industry;
           resultaat.beta = resultaat.beta || f.beta;
