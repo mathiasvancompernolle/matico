@@ -1,5 +1,3 @@
-import yahooFinance from 'yahoo-finance2';
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -273,36 +271,10 @@ export default async function handler(req, res) {
     if (endpoint === 'profile') {
       const { symbol } = req.query;
       let resultaat = {};
-      // Yahoo Finance via 'yahoo-finance2' package — beste gratis dekking voor
-      // sector/industry/bèta/land van Europese/Aziatische/overige internationale
-      // aandelen (bv. Prosus PRX.AS). Werkt voor élk symbool, niet enkel Prosus.
-      try {
-        const yfSym = toYahooSymbol(symbol);
-        const yfResult = await yahooFinance.quoteSummary(yfSym, {
-          modules: ['assetProfile', 'defaultKeyStatistics', 'price'],
-        }, { validateResult: false });
-        const profiel = yfResult?.assetProfile || {};
-        const stats = yfResult?.defaultKeyStatistics || {};
-        const prijs = yfResult?.price || {};
-        if (prijs.longName || profiel.sector) {
-          resultaat.name = prijs.longName || prijs.shortName;
-          resultaat.sector = profiel.sector;
-          resultaat.industry = profiel.industry;
-          resultaat.country = profiel.country;
-          resultaat.description = profiel.longBusinessSummary;
-          resultaat.employeeTotal = profiel.fullTimeEmployees;
-          if (stats?.beta) resultaat.beta = stats.beta;
-        }
-      } catch (e) {}
       try {
         const r = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_KEY}`);
         const d = await r.json();
-        if (d.name) {
-          resultaat.name = resultaat.name || d.name;
-          resultaat.logo = resultaat.logo || d.logo;
-          resultaat.country = resultaat.country || d.country;
-          resultaat.sector = resultaat.sector || d.finnhubIndustry;
-        }
+        if (d.name) resultaat = { ...d };
       } catch (e) {}
       try {
         const r2 = await fetch(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`);
