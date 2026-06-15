@@ -1,3 +1,5 @@
+import yahooFinance from 'yahoo-finance2';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -271,13 +273,40 @@ export default async function handler(req, res) {
     if (endpoint === 'profile') {
       const { symbol } = req.query;
       let resultaat = {};
+      // Yahoo Finance via 'yahoo-finance2' package (handelt cookie/crumb-auth zelf af —
+      // rechtstreekse fetch naar Yahoo's API wordt geblokkeerd zonder dit).
+      // Beste gratis dekking voor sector/industry/bèta van Europese/Aziatische/overige
+      // internationale aandelen (bv. Prosus PRX.AS).
+      try {
+        const yfSym = toYahooSymbol(symbol);
+        const yfResult = await yahooFinance.quoteSummary(yfSym, {
+          modules: ['assetProfile', 'defaultKeyStatistics', 'price'],
+        }, { validateResult: false });
+        const profiel = yfResult?.assetProfile || {};
+        const stats = yfResult?.defaultKeyStatistics || {};
+        const prijs = yfResult?.price || {};
+        if (prijs.longName || profiel.sector) {
+          resultaat.name = prijs.longName || prijs.shortName;
+          resultaat.sector = profiel.sector;
+          resultaat.industry = profiel.industry;
+          resultaat.country = profiel.country;
+          resultaat.description = profiel.longBusinessSummary;
+          resultaat.employeeTotal = profiel.fullTimeEmployees;
+          if (stats?.beta) resultaat.beta = stats.beta;
+        }
+      } catch (e) {}
+      // Finnhub als aanvulling (logo, finnhubIndustry als fallback-sector)
       try {
         const r = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_KEY}`);
         const d = await r.json();
-        if (d.name) resultaat = { ...d };
+        if (d.name) {
+          resultaat.name = resultaat.name || d.name;
+          resultaat.logo = resultaat.logo || d.logo;
+          resultaat.country = resultaat.country || d.country;
+          resultaat.sector = resultaat.sector || d.finnhubIndustry;
+        }
       } catch (e) {}
-      // FMP heeft betere dekking voor Europese/Aziatische/overige internationale aandelen
-      // (sector, industry, bèta, land) — vult aan of vervangt lege Finnhub-data
+      // FMP als laatste aanvulling (ceo, isin, beschrijving, beta indien nog leeg)
       try {
         const r2 = await fetch(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`);
         const d2 = await r2.json();
@@ -295,30 +324,6 @@ export default async function handler(req, res) {
           resultaat.country = resultaat.country || f.country;
         }
       } catch (e) {}
-      // Yahoo Finance (gratis, geen key) — meestal de beste dekking voor
-      // Europese/Aziatische/overige internationale aandelen (bv. Prosus PRX.AS)
-      if (!resultaat.sector || !resultaat.beta) {
-        try {
-          const yfSym = toYahooSymbol(symbol);
-          const yfUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=assetProfile,defaultKeyStatistics,price`;
-          const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
-          const yfData = await yfRes.json();
-          const yfResult = yfData?.quoteSummary?.result?.[0];
-          if (yfResult) {
-            const profiel = yfResult.assetProfile || {};
-            const stats = yfResult.defaultKeyStatistics || {};
-            const prijs = yfResult.price || {};
-            resultaat.name = resultaat.name || prijs.longName || prijs.shortName;
-            resultaat.sector = resultaat.sector || profiel.sector;
-            resultaat.industry = resultaat.industry || profiel.industry;
-            resultaat.country = resultaat.country || profiel.country;
-            resultaat.description = resultaat.description || profiel.longBusinessSummary;
-            resultaat.employeeTotal = resultaat.employeeTotal || profiel.fullTimeEmployees;
-            const beta = stats?.beta?.raw;
-            if (beta) resultaat.beta = resultaat.beta || beta;
-          }
-        } catch (e) {}
-      }
       return res.json(resultaat);
     }
 
