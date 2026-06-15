@@ -1,5 +1,3 @@
-import yahooFinance from 'yahoo-finance2';
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -273,40 +271,11 @@ export default async function handler(req, res) {
     if (endpoint === 'profile') {
       const { symbol } = req.query;
       let resultaat = {};
-      // Yahoo Finance via 'yahoo-finance2' package (handelt cookie/crumb-auth zelf af —
-      // rechtstreekse fetch naar Yahoo's API wordt geblokkeerd zonder dit).
-      // Beste gratis dekking voor sector/industry/bèta van Europese/Aziatische/overige
-      // internationale aandelen (bv. Prosus PRX.AS).
-      try {
-        const yfSym = toYahooSymbol(symbol);
-        const yfResult = await yahooFinance.quoteSummary(yfSym, {
-          modules: ['assetProfile', 'defaultKeyStatistics', 'price'],
-        }, { validateResult: false });
-        const profiel = yfResult?.assetProfile || {};
-        const stats = yfResult?.defaultKeyStatistics || {};
-        const prijs = yfResult?.price || {};
-        if (prijs.longName || profiel.sector) {
-          resultaat.name = prijs.longName || prijs.shortName;
-          resultaat.sector = profiel.sector;
-          resultaat.industry = profiel.industry;
-          resultaat.country = profiel.country;
-          resultaat.description = profiel.longBusinessSummary;
-          resultaat.employeeTotal = profiel.fullTimeEmployees;
-          if (stats?.beta) resultaat.beta = stats.beta;
-        }
-      } catch (e) {}
-      // Finnhub als aanvulling (logo, finnhubIndustry als fallback-sector)
       try {
         const r = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_KEY}`);
         const d = await r.json();
-        if (d.name) {
-          resultaat.name = resultaat.name || d.name;
-          resultaat.logo = resultaat.logo || d.logo;
-          resultaat.country = resultaat.country || d.country;
-          resultaat.sector = resultaat.sector || d.finnhubIndustry;
-        }
+        if (d.name) resultaat = { ...d };
       } catch (e) {}
-      // FMP als laatste aanvulling (ceo, isin, beschrijving, beta indien nog leeg)
       try {
         const r2 = await fetch(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`);
         const d2 = await r2.json();
