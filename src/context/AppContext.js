@@ -290,7 +290,16 @@ export function AppProvider({ children }) {
       wisselkoers, getMuntFactor,
       portfolioWaarde, portfolioKostprijs,
       portfolioWinstVerlies, portfolioWinstPct, portfolioWinstPctInclVerkocht,
-      dagWinst, dagWinstPct, ytdPct, ytdPctInclVerkocht, periodeKoersen
+      portfolioWinstVerliesInclVerkocht: (() => {
+        const verkoopWinst = (verkochteBeleggingen || []).reduce((sum, b) => {
+          const factor = getMuntFactor(b.munt || 'EUR');
+          const prijsVerkoop = b.verkoopkoers || b.kostprijs;
+          const kostprijs = b.kostprijs;
+          return sum + (prijsVerkoop - kostprijs) * (b.aantalVerkocht || b.aantal || 1) * factor;
+        }, 0);
+        return portfolioWinstVerlies + verkoopWinst;
+      })(),
+      dagWinst, dagWinstPct, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen
     }}>
       {children}
     </AppContext.Provider>

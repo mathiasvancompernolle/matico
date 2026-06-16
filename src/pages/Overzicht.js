@@ -58,7 +58,7 @@ function getBegindatumVoorTijdperk(tijdperk, beleggingen) {
 }
 
 export default function Overzicht({ onToevoegen, onImporteren }) {
-  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen } = useApp();
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen } = useApp();
 
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
@@ -477,9 +477,58 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
 
   const dagWinstPct1D = dagWaarde1D > 0 ? (dagWinst1D / dagWaarde1D) * 100 : 0;
 
-  const periodeWinst = tijdperk === '1D'
-    ? (beursOpenPortfolio ? dagWinst1D : 0)
-    : (grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : 0);
+  // periodeWinst = waardeverandering van posities die al in bezit waren aan begin periode
+  // (exclusief het effect van nieuwe aankopen — dat is geen rendement)
+  const periodeWinst = (() => {
+    if (tijdperk === '1D') return beursOpenPortfolio ? dagWinst1D : 0;
+
+    const nu = new Date();
+    const periodeMs = { '1W': 7, '1M': 30, '1J': 365, 'YTD': null, 'Laatste': null, 'Totaal': null }[tijdperk];
+    const nuJaar = new Date().getFullYear();
+
+    let startDatum;
+    if (tijdperk === 'YTD') startDatum = new Date(`${nuJaar}-01-01`);
+    else if (tijdperk === 'Laatste') return grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : 0;
+    else if (tijdperk === 'Totaal') return filterBezit === 'inbezit' ? portfolioWinstVerlies : (portfolioWinstVerliesInclVerkocht || portfolioWinstVerlies);
+    else startDatum = new Date(nu - periodeMs * 86400000);
+
+    const pK = tijdperk === 'YTD' ? ytdKoersen : (periodeKoersen[tijdperk] || {});
+
+    let winst = 0;
+    beleggingen.forEach(b => {
+      const k = koersen[b.symbol];
+      const prijsNu = k ? k.c : b.kostprijs;
+      const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+      const aankoopDatum = b.datum ? new Date(b.datum) : null;
+
+      if (aankoopDatum && aankoopDatum <= startDatum) {
+        // In bezit voor start periode → gebruik startkoers
+        const prijsStart = pK[b.symbol];
+        if (prijsStart && prijsStart > 0) {
+          winst += (prijsNu - prijsStart) * b.aantal * factor;
+        }
+      }
+      // Nieuwe aankopen negeren voor eurobedrag (die verhogen waarde maar zijn geen rendement)
+    });
+
+    // Inclusief verkochte effecten
+    if (filterBezit !== 'inbezit') {
+      (verkochteBeleggingen || []).forEach(b => {
+        const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
+        if (!vd || vd < startDatum) return;
+        const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+        const aankoopDatum = b.datum ? new Date(b.datum) : null;
+        const prijsVerkoop = b.verkoopkoers || b.kostprijs;
+        if (aankoopDatum && aankoopDatum <= startDatum) {
+          const prijsStart = pK[b.symbol];
+          if (prijsStart && prijsStart > 0) {
+            winst += (prijsVerkoop - prijsStart) * (b.aantalVerkocht || b.aantal || 1) * factor;
+          }
+        }
+      });
+    }
+    return winst;
+  })();
 
   const periodeWinstPct = (() => {
     if (tijdperk === '1D') return beursOpenPortfolio ? dagWinstPct1D : 0;
