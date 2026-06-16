@@ -74,6 +74,29 @@ export default function Instellingen() {
   const [emailOpgeslagen, setEmailOpgeslagen] = useState(false);
   const [testVerstuurd, setTestVerstuurd] = useState(false);
   const [emailFout, setEmailFout] = useState('');
+  const [syncBezig, setSyncBezig] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null); // 'ok' | 'fout'
+
+  const synchroniseer = async () => {
+    setSyncBezig(true);
+    setSyncStatus(null);
+    try {
+      const res = await fetch('/api/sync-beleggingen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ beleggingen, gebruiker }),
+      });
+      if (res.ok) {
+        setSyncStatus('ok');
+        setTimeout(() => setSyncStatus(null), 3000);
+      } else {
+        setSyncStatus('fout');
+      }
+    } catch {
+      setSyncStatus('fout');
+    }
+    setSyncBezig(false);
+  };
 
   const slaPortfolioOp = () => {
     setGebruiker({ voornaam, achternaam });
@@ -352,6 +375,22 @@ export default function Instellingen() {
               }}>
                 {testVerstuurd ? '✓ Testmail verstuurd!' : '✈ Testmail versturen'}
               </button>
+
+              {/* Synchroniseer knop */}
+              <div style={{ marginTop: 16, padding: 16, background: 'var(--bg-subtle)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>📡 Synchroniseer portfolio</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                  Sla je beleggingen op in de cloud zodat de automatische dagelijkse mail (22:00, ma–vr) je actuele portfolio bevat. Doe dit na elke nieuwe aankoop of verkoop.
+                </div>
+                <button onClick={synchroniseer} disabled={syncBezig} style={{
+                  width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: syncBezig ? 'default' : 'pointer',
+                  fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+                  background: syncStatus === 'ok' ? '#16a34a' : syncStatus === 'fout' ? '#dc2626' : ACCENT,
+                  color: 'white',
+                }}>
+                  {syncBezig ? '⟳ Bezig...' : syncStatus === 'ok' ? '✓ Portfolio gesynchroniseerd!' : syncStatus === 'fout' ? '✗ Sync mislukt, probeer opnieuw' : '↑ Synchroniseer nu'}
+                </button>
+              </div>
             </div>
 
             {/* Preview e-mail */}
