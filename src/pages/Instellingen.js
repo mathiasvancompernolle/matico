@@ -526,20 +526,11 @@ function DataKwaliteitTab({ beleggingen }) {
     const nieuw = {};
     for (const b of aandelen) {
       const sym = (b.symbol || '').toUpperCase().split('.')[0];
-      // Check localStorage cache eerst
-      const cachedSector = (() => { try { const c = localStorage.getItem(`matico_sector_${sym}`); return c ? JSON.parse(c).sector : null; } catch { return null; } })();
-      const cachedBeta = (() => { try { const c = localStorage.getItem(`matico_beta_${sym}`); return c ? JSON.parse(c).beta : null; } catch { return null; } })();
+      // Manuele waarden hebben altijd voorrang en worden nooit overschreven
       const manueel = (() => { try { const c = localStorage.getItem(`matico_manueel_${sym}`); return c ? JSON.parse(c) : null; } catch { return null; } })();
 
-      if (manueel?.sector || cachedSector || manueel?.beta || cachedBeta) {
-        nieuw[sym] = {
-          sector: manueel?.sector || vertaalSector(cachedSector) || null,
-          beta: manueel?.beta || cachedBeta || null,
-          manueel: !!manueel,
-        };
-        continue;
-      }
-      // Live check via profile endpoint (sector) + metrics endpoint (bèta)
+      // Live fetch voor sector en bèta
+      let liveSector = null, liveBeta = null;
       try {
         const [profileRes, metricsRes] = await Promise.all([
           fetch(`/api/data?endpoint=profile&symbol=${b.symbol}`),
@@ -547,15 +538,18 @@ function DataKwaliteitTab({ beleggingen }) {
         ]);
         const profileData = await profileRes.json();
         const metricsData = await metricsRes.json();
-        const sector = vertaalSector(profileData?.sector || profileData?.finnhubIndustry) || null;
-        const beta = metricsData?.metric?.beta || profileData?.beta || null;
-        // Opslaan in cache zodat Analyse ze ook oppikt
-        if (sector) localStorage.setItem(`matico_sector_${sym}`, JSON.stringify({ sector, timestamp: Date.now() }));
-        if (beta) localStorage.setItem(`matico_beta_${sym}`, JSON.stringify({ beta, timestamp: Date.now() }));
-        nieuw[sym] = { sector, beta, manueel: false };
-      } catch {
-        nieuw[sym] = { sector: null, beta: null, manueel: false };
-      }
+        liveSector = vertaalSector(profileData?.sector || profileData?.finnhubIndustry) || null;
+        liveBeta = metricsData?.metric?.beta || profileData?.beta || null;
+        // Cache opslaan (enkel als er geen manuele waarde is)
+        if (liveSector && !manueel?.sector) localStorage.setItem(`matico_sector_${sym}`, JSON.stringify({ sector: liveSector, timestamp: Date.now() }));
+        if (liveBeta && !manueel?.beta) localStorage.setItem(`matico_beta_${sym}`, JSON.stringify({ beta: liveBeta, timestamp: Date.now() }));
+      } catch {}
+
+      nieuw[sym] = {
+        sector: manueel?.sector || liveSector || null,
+        beta: manueel?.beta || liveBeta || null,
+        manueel: !!manueel,
+      };
     }
     setStatussen(nieuw);
     setBezig(false);
