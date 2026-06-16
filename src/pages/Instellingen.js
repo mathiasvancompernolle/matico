@@ -454,6 +454,22 @@ const SECTOREN = [
   'Industrie', 'Energie', 'Basismaterialen', 'Nutsbedrijven', 'Vastgoed', 'Overige',
 ];
 
+// Engels → Nederlands (API geeft Engelse labels terug)
+const SECTOR_NL = {
+  'Technology': 'Technologie', 'Information Technology': 'Technologie',
+  'Financial Services': 'Financiële dienstverlening', 'Financial': 'Financiële dienstverlening', 'Financials': 'Financiële dienstverlening',
+  'Consumer Cyclical': 'Cyclische consumptiegoederen', 'Consumer Discretionary': 'Cyclische consumptiegoederen',
+  'Consumer Defensive': 'Defensieve consumptiegoederen', 'Consumer Staples': 'Defensieve consumptiegoederen',
+  'Healthcare': 'Gezondheidszorg', 'Health Care': 'Gezondheidszorg',
+  'Communication Services': 'Communicatiediensten', 'Telecommunication Services': 'Communicatiediensten', 'Telecommunications': 'Communicatiediensten',
+  'Industrials': 'Industrie', 'Industrial': 'Industrie',
+  'Energy': 'Energie',
+  'Basic Materials': 'Basismaterialen', 'Materials': 'Basismaterialen',
+  'Utilities': 'Nutsbedrijven',
+  'Real Estate': 'Vastgoed',
+};
+const vertaalSector = (s) => s ? (SECTOR_NL[s] || s) : null;
+
 function DataKwaliteitTab({ beleggingen }) {
   const [statussen, setStatussen] = useState({});
   const [bezig, setBezig] = useState(false);
@@ -478,7 +494,7 @@ function DataKwaliteitTab({ beleggingen }) {
 
       if (manueel?.sector || cachedSector || manueel?.beta || cachedBeta) {
         nieuw[sym] = {
-          sector: manueel?.sector || cachedSector || null,
+          sector: manueel?.sector || vertaalSector(cachedSector) || null,
           beta: manueel?.beta || cachedBeta || null,
           manueel: !!manueel,
         };
@@ -488,7 +504,7 @@ function DataKwaliteitTab({ beleggingen }) {
       try {
         const res = await fetch(`/api/data?endpoint=profile&symbol=${b.symbol}`);
         const data = await res.json();
-        const sector = data?.sector || data?.finnhubIndustry || null;
+        const sector = vertaalSector(data?.sector || data?.finnhubIndustry) || null;
         const beta = data?.beta || null;
         nieuw[sym] = { sector, beta, manueel: false };
       } catch {
