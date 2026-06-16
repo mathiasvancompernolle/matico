@@ -481,9 +481,21 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     ? (beursOpenPortfolio ? dagWinst1D : 0)
     : (grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : 0);
 
+  // Voor YTD: gebruik de waarde op 1 jan als startpunt, niet het eerste grafiekpunt
+  const ytdStartWaarde = useMemo(() => {
+    if (tijdperk !== 'YTD' || grafiekData.length < 2) return null;
+    const huidigJaar = new Date().getFullYear();
+    // Zoek het datapunt het dichtst bij 1 januari van dit jaar
+    const beginJaar = new Date(`${huidigJaar}-01-01`);
+    const gesorteerd = [...grafiekData].sort((a, b) => Math.abs(new Date(a.datum) - beginJaar) - Math.abs(new Date(b.datum) - beginJaar));
+    return gesorteerd[0]?.waarde || grafiekData[0].waarde;
+  }, [tijdperk, grafiekData]);
+
   const periodeWinstPct = tijdperk === '1D'
     ? (beursOpenPortfolio ? dagWinstPct1D : 0)
-    : (grafiekData.length > 1 && grafiekData[0].waarde > 0 ? (periodeWinst / grafiekData[0].waarde) * 100 : 0);
+    : tijdperk === 'YTD' && ytdStartWaarde > 0
+      ? ((grafiekData[grafiekData.length-1].waarde - ytdStartWaarde) / ytdStartWaarde) * 100
+      : (grafiekData.length > 1 && grafiekData[0].waarde > 0 ? (periodeWinst / grafiekData[0].waarde) * 100 : 0);
   const periodeTekst = tijdperk === '1D' ? 'Prestatie vandaag' : tijdperk === '1W' ? 'Prestatie deze week' : tijdperk === '1M' ? 'Prestatie deze maand' : tijdperk === '1J' ? 'Prestatie dit jaar' : tijdperk === 'YTD' ? 'Prestatie dit kalenderjaar' : tijdperk === 'Laatste' ? 'Prestatie sinds laatste aankoop' : 'Prestatie sinds eerste aankoop';
   const beursGesloten1D = tijdperk === '1D' && !beursOpenPortfolio;
   // Als beurs gesloten: forceer platte displayData zodat grafiek recht is
