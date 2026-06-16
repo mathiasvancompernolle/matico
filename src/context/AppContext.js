@@ -113,6 +113,21 @@ export function AppProvider({ children }) {
   const portfolioWinstVerlies = portfolioWaarde - portfolioKostprijs;
   const portfolioWinstPct = portfolioKostprijs > 0 ? (portfolioWinstVerlies / portfolioKostprijs) * 100 : 0;
 
+  // Inclusief verkochte effecten: kostprijs + verkoopwaarde meenemen
+  const portfolioWinstPctInclVerkocht = (() => {
+    const kostprijsVerkocht = (verkochteBeleggingen || []).reduce((sum, b) => {
+      const factor = getMuntFactor(b.munt || 'EUR');
+      return sum + (b.kostprijs * (b.aantalVerkocht || b.aantal || 1) * factor);
+    }, 0);
+    const verkoopWaarde = (verkochteBeleggingen || []).reduce((sum, b) => {
+      const factor = getMuntFactor(b.munt || 'EUR');
+      return sum + ((b.verkoopkoers || b.kostprijs) * (b.aantalVerkocht || b.aantal || 1) * factor);
+    }, 0);
+    const totaalKostprijs = portfolioKostprijs + kostprijsVerkocht;
+    const totaalWaarde = portfolioWaarde + verkoopWaarde;
+    return totaalKostprijs > 0 ? ((totaalWaarde - totaalKostprijs) / totaalKostprijs) * 100 : 0;
+  })();
+
   const dagWinst = beleggingen.reduce((sum, b) => {
     const koers = koersen[b.symbol];
     if (!koers) return sum;
@@ -228,7 +243,7 @@ export function AppProvider({ children }) {
       activeNav, setActiveNav,
       wisselkoers, getMuntFactor,
       portfolioWaarde, portfolioKostprijs,
-      portfolioWinstVerlies, portfolioWinstPct,
+      portfolioWinstVerlies, portfolioWinstPct, portfolioWinstPctInclVerkocht,
       dagWinst, dagWinstPct, ytdPct, ytdPctInclVerkocht
     }}>
       {children}
