@@ -58,7 +58,7 @@ function getBegindatumVoorTijdperk(tijdperk, beleggingen) {
 }
 
 export default function Overzicht({ onToevoegen, onImporteren }) {
-  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen } = useApp();
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct } = useApp();
 
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
@@ -483,61 +483,10 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
 
   const periodeWinstPct = (() => {
     if (tijdperk === '1D') return beursOpenPortfolio ? dagWinstPct1D : 0;
-    if (tijdperk !== 'YTD') {
-      return grafiekData.length > 1 && grafiekData[0].waarde > 0
-        ? (periodeWinst / grafiekData[0].waarde) * 100
-        : 0;
-    }
-    // YTD: TWR berekening die de filter (inclusief/exclusief verkochte effecten) respecteert
-    const nuJaar = new Date().getFullYear();
-    const eersteJan = new Date(`${nuJaar}-01-01`);
-    let gewogenTeller = 0, gewogenNoemer = 0;
-
-    // Actieve beleggingen (gefilterd op type/symbolen)
-    beleggingVoorGrafiek.forEach(b => {
-      const koers = koersen[b.symbol];
-      const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-      const prijsNu = koers ? koers.c : b.kostprijs;
-      const aankoopDatum = b.datum ? new Date(b.datum) : null;
-      const waardeNu = prijsNu * b.aantal * factor;
-      let rendement = 0;
-      if (aankoopDatum && aankoopDatum <= eersteJan) {
-        const cached = (() => { try { const c = localStorage.getItem(`matico_ytd_${b.symbol}_${nuJaar}`); return c ? parseFloat(c) : null; } catch { return null; } })();
-        const prijsStart = cached && cached > 0 ? cached : b.kostprijs;
-        rendement = prijsStart > 0 ? (prijsNu - prijsStart) / prijsStart : 0;
-      } else {
-        rendement = b.kostprijs > 0 ? (prijsNu - b.kostprijs) / b.kostprijs : 0;
-      }
-      gewogenTeller += rendement * waardeNu;
-      gewogenNoemer += waardeNu;
-    });
-
-    // Verkochte effecten (enkel bij "inclusief" filter)
-    if (filterBezit !== 'inbezit') {
-      (verkochteBeleggingen || []).filter(b => {
-        if (filterType !== 'alle' && b.type !== filterType) return false;
-        if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
-        const vd = (() => { if (!b.verkoopdatum) return null; const d = b.verkoopdatum.split('/'); return d.length === 3 ? new Date(`${d[2]}-${d[1]}-${d[0]}`) : new Date(b.verkoopdatum); })();
-        return vd && vd.getFullYear() === nuJaar;
-      }).forEach(b => {
-        const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-        const aankoopDatum = b.datum ? new Date(b.datum) : null;
-        const prijsVerkoop = b.verkoopkoers || b.kostprijs;
-        const waardeVerkoop = prijsVerkoop * (b.aantalVerkocht || b.aantal || 1) * factor;
-        let rendement = 0;
-        if (aankoopDatum && aankoopDatum <= eersteJan) {
-          const cached = (() => { try { const c = localStorage.getItem(`matico_ytd_${b.symbol}_${nuJaar}`); return c ? parseFloat(c) : null; } catch { return null; } })();
-          const prijsStart = cached && cached > 0 ? cached : b.kostprijs;
-          rendement = prijsStart > 0 ? (prijsVerkoop - prijsStart) / prijsStart : 0;
-        } else {
-          rendement = b.kostprijs > 0 ? (prijsVerkoop - b.kostprijs) / b.kostprijs : 0;
-        }
-        gewogenTeller += rendement * waardeVerkoop;
-        gewogenNoemer += waardeVerkoop;
-      });
-    }
-
-    return gewogenNoemer > 0 ? (gewogenTeller / gewogenNoemer) * 100 : 0;
+    if (tijdperk === 'YTD') return ytdPct; // gebruik de echte TWR uit AppContext
+    return grafiekData.length > 1 && grafiekData[0].waarde > 0
+      ? (periodeWinst / grafiekData[0].waarde) * 100
+      : 0;
   })();
   const periodeTekst = tijdperk === '1D' ? 'Prestatie vandaag' : tijdperk === '1W' ? 'Prestatie deze week' : tijdperk === '1M' ? 'Prestatie deze maand' : tijdperk === '1J' ? 'Prestatie dit jaar' : tijdperk === 'YTD' ? 'Prestatie dit kalenderjaar' : tijdperk === 'Laatste' ? 'Prestatie sinds laatste aankoop' : 'Prestatie sinds eerste aankoop';
   const beursGesloten1D = tijdperk === '1D' && !beursOpenPortfolio;

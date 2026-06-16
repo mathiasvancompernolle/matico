@@ -124,14 +124,47 @@ export function AppProvider({ children }) {
 
   // ── Echte YTD: laad historische koers op 1 jan via Finnhub ──
   const [ytdKoersen, setYtdKoersen] = React.useState({});
+  const [historischeKoersen, setHistorischeKoersen] = React.useState({}); // { 'NVDA_2026-06-03': 135.20, ... }
+
+  // Haal koers op voor een specifieke datum (voor TWR berekening)
+  const haalHistorischeKoers = React.useCallback(async (symbol, datum) => {
+    const sleutel = `${symbol}_${datum}`;
+    const cacheKey = `matico_hist_${sleutel}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        setHistorischeKoersen(prev => ({ ...prev, [sleutel]: parseFloat(cached) }));
+        return;
+      }
+    } catch (e) {}
+    try {
+      const d = new Date(datum);
+      const van = Math.floor(d.getTime() / 1000) - 86400; // dag ervoor (weekend buffer)
+      const tot = Math.floor(d.getTime() / 1000) + 86400 * 4; // 4 dagen later
+      const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(symbol)}&van=${van}&tot=${tot}&resolutie=D`);
+      const data = await res.json();
+      if (data?.s === 'ok' && data?.c?.length > 0) {
+        // Neem de koers het dichtst bij de gevraagde datum
+        const koers = data.c[0];
+        localStorage.setItem(cacheKey, String(koers));
+        setHistorischeKoersen(prev => ({ ...prev, [sleutel]: koers }));
+      }
+    } catch (e) {}
+  }, []);
 
   React.useEffect(() => {
     const nuJaar = new Date().getFullYear();
-    const van = Math.floor(new Date(`${nuJaar}-01-02`).getTime() / 1000); // 2 jan (1 jan is feestdag)
-    const tot = Math.floor(new Date(`${nuJaar}-01-05`).getTime() / 1000); // eerste handelsdag
+    const van = Math.floor(new Date(`${nuJaar}-01-02`).getTime() / 1000);
+    const tot = Math.floor(new Date(`${nuJaar}-01-05`).getTime() / 1000);
 
-    beleggingen.forEach(async (b) => {
-      if (ytdKoersen[b.symbol]) return; // al geladen
+    // Begin-jaar koersen voor effecten die voor 1 jan in bezit waren
+    const alleSymbolen = [
+      ...beleggingen,
+      ...(verkochteBeleggingen || [])
+    ].filter(b => b.datum && new Date(b.datum) < new Date(`${nuJaar}-01-01`));
+
+    alleSymbolen.forEach(async (b) => {
+      if (ytdKoersen[b.symbol]) return;
       const cacheKey = `matico_ytd_${b.symbol}_${nuJaar}`;
       try {
         const cached = localStorage.getItem(cacheKey);
@@ -140,11 +173,9 @@ export function AppProvider({ children }) {
           return;
         }
       } catch (e) {}
-
       try {
         const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(b.symbol)}&van=${van}&tot=${tot}&resolutie=D`);
         const data = await res.json();
-        // Finnhub candle: { c: [slotkoersen], t: [timestamps], s: 'ok' }
         if (data?.s === 'ok' && data?.c?.length > 0) {
           const eersteSlot = data.c[0];
           localStorage.setItem(cacheKey, String(eersteSlot));
@@ -152,80 +183,114 @@ export function AppProvider({ children }) {
         }
       } catch (e) {}
     });
-  }, [beleggingen.map(b => b.symbol).join(',')]);
+
+    // Historische koersen ophalen voor alle aankoop/verkoopdatums in dit jaar
+    const cashflowDatums = [];
+    [...beleggingen, ...(verkochteBeleggingen || [])].forEach(b => {
+      if (b.datum) {
+        const d = new Date(b.datum);
+        if (d.getFullYear() === nuJaar) cashflowDatums.push({ symbol: b.symbol, datum: b.datum });
+      }
+      if (b.verkoopdatum) {
+        const vd = new Date(b.verkoopdatum);
+        if (vd.getFullYear() === nuJaar) cashflowDatums.push({ symbol: b.symbol, datum: b.verkoopdatum });
+      }
+    });
+
+    cashflowDatums.forEach(({ symbol, datum }) => {
+      const sleutel = `${symbol}_${datum}`;
+      if (!historischeKoersen[sleutel]) {
+        haalHistorischeKoers(symbol, datum);
+      }
+    });
+  }, [beleggingen.map(b => b.symbol).join(','), (verkochteBeleggingen || []).map(b => b.symbol).join(',')]);
 
   const ytdPct = (() => {
-    // Time-Weighted Return (TWR) — zoals Trading212, Bolero, Degiro
-    // Alle effecten: aandelen, ETFs, crypto, én verkochte posities die dit jaar bezit waren
+    // Echte Time-Weighted Return (TWR)
+    // Berekent het rendement per sub-periode tussen cashflows en vermenigvuldigt ze
     const nuJaar = new Date().getFullYear();
     const eersteJan = new Date(`${nuJaar}-01-01`);
+    const nu = new Date();
 
-    let gewogenTeller = 0;
-    let gewogenNoemer = 0;
+    // Verzamel alle cashflow-datums (aankopen en verkopen in dit jaar)
+    const alleBel = [
+      ...beleggingen.map(b => ({ ...b, verkocht: false })),
+      ...(verkochteBeleggingen || []).map(b => ({ ...b, verkocht: true }))
+    ];
 
-    // Actieve beleggingen
-    beleggingen.forEach(b => {
-      const koers = koersen[b.symbol];
-      const factor = getMuntFactor(b.munt || 'EUR');
-      const prijsNu = koers ? koers.c : b.kostprijs;
-      const aankoopDatum = b.datum ? new Date(b.datum) : null;
-      const waardeNu = prijsNu * b.aantal * factor;
-
-      let rendement = 0;
-      if (aankoopDatum && aankoopDatum <= eersteJan) {
-        // In bezit op 1 jan → gebruik koers begin jaar als startpunt
-        const prijsStart = ytdKoersen[b.symbol];
-        if (prijsStart && prijsStart > 0) {
-          rendement = (prijsNu - prijsStart) / prijsStart;
-        } else {
-          // Geen historische koers → aankoopprijs als fallback
-          rendement = b.kostprijs > 0 ? (prijsNu - b.kostprijs) / b.kostprijs : 0;
-        }
-      } else {
-        // Gekocht na 1 jan → aankoopprijs als startpunt
-        if (b.kostprijs > 0) {
-          rendement = (prijsNu - b.kostprijs) / b.kostprijs;
-        }
+    // Bepaal alle unieke sub-periode grenzen: begin jaar + alle aankoop/verkoopdatums + nu
+    const grensDatums = new Set([eersteJan.toISOString().slice(0, 10)]);
+    alleBel.forEach(b => {
+      if (b.datum) {
+        const d = new Date(b.datum);
+        if (d > eersteJan && d <= nu) grensDatums.add(b.datum.slice(0, 10));
       }
-
-      gewogenTeller += rendement * waardeNu;
-      gewogenNoemer += waardeNu;
+      if (b.verkoopdatum) {
+        const vd = new Date(b.verkoopdatum);
+        if (vd > eersteJan && vd <= nu) grensDatums.add(b.verkoopdatum.slice(0, 10));
+      }
     });
 
-    // Verkochte beleggingen die dit jaar in bezit waren
-    (verkochteBeleggingen || []).forEach(b => {
-      const factor = getMuntFactor(b.munt || 'EUR');
-      const aankoopDatum = b.datum ? new Date(b.datum) : null;
-      const verkoopdatumParsed = (() => {
-        if (!b.verkoopdatum) return null;
-        const d = b.verkoopdatum.split('/');
-        return d.length === 3 ? new Date(`${d[2]}-${d[1]}-${d[0]}`) : new Date(b.verkoopdatum);
-      })();
+    const gesorteerdeGrenzen = [...grensDatums].sort();
 
-      // Alleen meetellen als verkoop in dit jaar was
-      if (!verkoopdatumParsed || verkoopdatumParsed.getFullYear() !== nuJaar) return;
+    // Bereken portfoliowaarde op een gegeven datum
+    const portfolioWaardeOp = (datumStr) => {
+      const datum = new Date(datumStr);
+      let waarde = 0;
+      alleBel.forEach(b => {
+        const aankoopDatum = b.datum ? new Date(b.datum) : null;
+        const verkoopDatum = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
 
-      const prijsVerkoop = b.verkoopkoers || b.kostprijs;
-      const waardeVerkoop = prijsVerkoop * (b.aantalVerkocht || b.aantal || 1) * factor;
+        // Effect was in bezit op deze datum?
+        if (aankoopDatum && datum < aankoopDatum) return; // nog niet gekocht
+        if (verkoopDatum && datum >= verkoopDatum) return; // al verkocht
 
-      let rendement = 0;
-      if (aankoopDatum && aankoopDatum <= eersteJan) {
-        const prijsStart = ytdKoersen[b.symbol];
-        if (prijsStart && prijsStart > 0) {
-          rendement = (prijsVerkoop - prijsStart) / prijsStart;
+        const factor = getMuntFactor(b.munt || 'EUR');
+        // Koers op deze datum opzoeken
+        let koers;
+        if (datumStr === eersteJan.toISOString().slice(0, 10)) {
+          koers = ytdKoersen[b.symbol] || b.kostprijs;
+        } else if (datumStr === gesorteerdeGrenzen[gesorteerdeGrenzen.length - 1]) {
+          const k = koersen[b.symbol];
+          koers = k ? k.c : b.kostprijs;
         } else {
-          rendement = b.kostprijs > 0 ? (prijsVerkoop - b.kostprijs) / b.kostprijs : 0;
+          const sleutel = `${b.symbol}_${b.datum?.slice(0,10)}`;
+          koers = historischeKoersen[sleutel] || b.kostprijs;
         }
-      } else {
-        rendement = b.kostprijs > 0 ? (prijsVerkoop - b.kostprijs) / b.kostprijs : 0;
+        waarde += koers * b.aantal * factor;
+      });
+      return waarde;
+    };
+
+    // TWR: vermenigvuldig sub-periode rendementen
+    let twr = 1;
+    for (let i = 0; i < gesorteerdeGrenzen.length - 1; i++) {
+      const beginDatum = gesorteerdeGrenzen[i];
+      const eindDatum = gesorteerdeGrenzen[i + 1];
+      const beginWaarde = portfolioWaardeOp(beginDatum);
+      const eindWaarde = portfolioWaardeOp(eindDatum);
+      if (beginWaarde > 0) {
+        twr *= (eindWaarde / beginWaarde);
       }
+    }
 
-      gewogenTeller += rendement * waardeVerkoop;
-      gewogenNoemer += waardeVerkoop;
-    });
+    // Laatste periode: van laatste grens tot nu
+    const laatsteGrens = gesorteerdeGrenzen[gesorteerdeGrenzen.length - 1];
+    if (gesorteerdeGrenzen.length > 0) {
+      const beginWaarde = portfolioWaardeOp(laatsteGrens);
+      let eindWaarde = 0;
+      alleBel.forEach(b => {
+        if (b.verkocht) return; // verkochte effecten tellen niet mee in huidige waarde
+        const aankoopDatum = b.datum ? new Date(b.datum) : null;
+        if (aankoopDatum && nu < aankoopDatum) return;
+        const factor = getMuntFactor(b.munt || 'EUR');
+        const k = koersen[b.symbol];
+        eindWaarde += (k ? k.c : b.kostprijs) * b.aantal * factor;
+      });
+      if (beginWaarde > 0) twr *= (eindWaarde / beginWaarde);
+    }
 
-    if (gewogenNoemer === 0) return 0;
-    return (gewogenTeller / gewogenNoemer) * 100;
+    return (twr - 1) * 100;
   })();
 
   return (
