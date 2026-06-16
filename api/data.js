@@ -354,13 +354,13 @@ export default async function handler(req, res) {
 
     if (endpoint === 'dividend') {
       const { symbol, van, tot } = req.query;
+      const EODHD_KEY = process.env.EODHD_API_KEY;
       
-      // Probeer Finnhub dividend2 (geeft exDate, amount, paymentDate)
+      // Probeer Finnhub dividend2
       try {
         const r = await fetch(`https://finnhub.io/api/v1/stock/dividend2?symbol=${symbol}&from=${van}&to=${tot}&token=${FINNHUB_KEY}`);
         const d = await r.json();
         if (Array.isArray(d) && d.length > 0) {
-          // Normaliseer naar consistent formaat
           return res.json(d.map(item => ({
             exDate: item.exDate || item.date || '',
             paymentDate: item.paymentDate || item.date || '',
@@ -370,7 +370,7 @@ export default async function handler(req, res) {
         }
       } catch (e) {}
 
-      // Fallback: FMP dividend history — normaliseer ook dit formaat
+      // Fallback: FMP dividend history
       try {
         const basis = symbol.split('.')[0];
         const r = await fetch(`https://financialmodelingprep.com/api/v3/historical/stock_dividend/${basis}?limit=20&apikey=${FMP_KEY}`);
@@ -386,6 +386,26 @@ export default async function handler(req, res) {
           symbol: basis,
         })));
       } catch (e) {}
+
+      // Fallback: EODHD — beste dekking voor Europese/internationale aandelen
+      // Dividenden vallen onder de gratis EOD-tier van EODHD
+      if (EODHD_KEY) {
+        try {
+          // EODHD verwacht symbool in formaat TICKER.EXCHANGE (bv. PRX.AS, SOFI.US, NVDA.US)
+          const eoSym = symbol.includes('.') ? symbol : `${symbol}.US`;
+          const r = await fetch(`https://eodhd.com/api/div/${eoSym}?from=${van}&to=${tot}&api_token=${EODHD_KEY}&fmt=json`);
+          const d = await r.json();
+          if (Array.isArray(d) && d.length > 0) {
+            return res.json(d.map(item => ({
+              exDate: item.date || '',
+              paymentDate: item.paymentDate || item.date || '',
+              amount: parseFloat(item.value || item.unadjustedValue || 0),
+              currency: item.currency || 'EUR',
+              symbol,
+            })));
+          }
+        } catch (e) {}
+      }
 
       return res.json([]);
     }
