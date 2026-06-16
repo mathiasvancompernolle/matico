@@ -493,27 +493,40 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       const startDatum = new Date(nu - periodeMs);
       const pK = periodeKoersen[tijdperk] || {};
       let teller = 0, noemer = 0;
-      beleggingen.forEach(b => {
-        const k = koersen[b.symbol];
-        const prijsNu = k ? k.c : b.kostprijs;
+
+      const verwerkB = (b, prijsEind) => {
         const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
         let prijsStart, startWaarde;
         if (aankoopDatum && aankoopDatum <= startDatum) {
-          // In bezit voor start van periode → gebruik periodekoers
           prijsStart = pK[b.symbol];
-          if (!prijsStart || prijsStart <= 0) return; // nog niet geladen, sla over
+          if (!prijsStart || prijsStart <= 0) return;
           startWaarde = prijsStart * b.aantal * factor;
         } else {
-          // Gekocht tijdens periode → aankoopprijs als startpunt
           prijsStart = b.kostprijs;
           if (!prijsStart || prijsStart <= 0) return;
           startWaarde = prijsStart * b.aantal * factor;
         }
-        const rendement = (prijsNu - prijsStart) / prijsStart;
+        const rendement = (prijsEind - prijsStart) / prijsStart;
         teller += rendement * startWaarde;
         noemer += startWaarde;
+      };
+
+      // Actieve beleggingen
+      beleggingen.forEach(b => {
+        const k = koersen[b.symbol];
+        verwerkB(b, k ? k.c : b.kostprijs);
       });
+
+      // Verkochte effecten (enkel bij "inclusief")
+      if (filterBezit !== 'inbezit') {
+        (verkochteBeleggingen || []).forEach(b => {
+          const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
+          if (!vd || vd < startDatum) return; // verkocht voor deze periode, telt niet mee
+          verwerkB({ ...b, aantal: b.aantalVerkocht || b.aantal }, b.verkoopkoers || b.kostprijs);
+        });
+      }
+
       return noemer > 0 ? (teller / noemer) * 100 : 0;
     }
 
