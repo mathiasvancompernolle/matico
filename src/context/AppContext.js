@@ -124,33 +124,9 @@ export function AppProvider({ children }) {
 
   // ── Echte YTD: laad historische koers op 1 jan via Finnhub ──
   const [ytdKoersen, setYtdKoersen] = React.useState({});
-  const [historischeKoersen, setHistorischeKoersen] = React.useState({}); // { 'NVDA_2026-06-03': 135.20, ... }
+  const [historischeKoersen, setHistorischeKoersen] = React.useState({});
 
-  // Haal koers op voor een specifieke datum (voor TWR berekening)
-  const haalHistorischeKoers = React.useCallback(async (symbol, datum) => {
-    const sleutel = `${symbol}_${datum}`;
-    const cacheKey = `matico_hist_${sleutel}`;
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        setHistorischeKoersen(prev => ({ ...prev, [sleutel]: parseFloat(cached) }));
-        return;
-      }
-    } catch (e) {}
-    try {
-      const d = new Date(datum);
-      const van = Math.floor(d.getTime() / 1000) - 86400; // dag ervoor (weekend buffer)
-      const tot = Math.floor(d.getTime() / 1000) + 86400 * 4; // 4 dagen later
-      const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(symbol)}&van=${van}&tot=${tot}&resolutie=D`);
-      const data = await res.json();
-      if (data?.s === 'ok' && data?.c?.length > 0) {
-        // Neem de koers het dichtst bij de gevraagde datum
-        const koers = data.c[0];
-        localStorage.setItem(cacheKey, String(koers));
-        setHistorischeKoersen(prev => ({ ...prev, [sleutel]: koers }));
-      }
-    } catch (e) {}
-  }, []);
+  const haalHistorischeKoers = React.useCallback(async (symbol, datum) => {}, []);
 
   React.useEffect(() => {
     const nuJaar = new Date().getFullYear();
@@ -183,109 +159,65 @@ export function AppProvider({ children }) {
         }
       } catch (e) {}
     });
-
-    // Historische koersen ophalen voor alle symbolen op elke cashflow-datum in dit jaar
-    const nuDatum = new Date();
-    const alleBelForFetch = [...beleggingen, ...(verkochteBeleggingen || [])];
-    const cashflowDatums = new Set();
-
-    alleBelForFetch.forEach(b => {
-      if (b.datum) { const d = new Date(b.datum); if (d.getFullYear() === nuJaar && d <= nuDatum) cashflowDatums.add(b.datum.slice(0, 10)); }
-      if (b.verkoopdatum) { const vd = new Date(b.verkoopdatum); if (vd.getFullYear() === nuJaar && vd <= nuDatum) cashflowDatums.add(b.verkoopdatum.slice(0, 10)); }
-    });
-
-    // Voor elke grensdag: haal koers op voor alle symbolen die dan in bezit zijn
-    cashflowDatums.forEach(datum => {
-      alleBelForFetch.forEach(b => {
-        const aankoop = b.datum ? new Date(b.datum) : null;
-        const verkoop = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
-        const d = new Date(datum);
-        if (aankoop && d < aankoop) return; // nog niet in bezit
-        if (verkoop && d >= verkoop) return; // al verkocht
-        const sleutel = `${b.symbol}_${datum}`;
-        if (!historischeKoersen[sleutel]) {
-          haalHistorischeKoers(b.symbol, datum);
-        }
-      });
-    });
   }, [beleggingen.map(b => b.symbol).join(','), (verkochteBeleggingen || []).map(b => b.symbol).join(',')]);
 
   const berekenTWR = (inclVerkocht) => {
-    // Echte Time-Weighted Return (TWR)
     const nuJaar = new Date().getFullYear();
     const eersteJan = new Date(`${nuJaar}-01-01`);
-    const nu = new Date();
 
-    const actief = beleggingen.map(b => ({ ...b, verkocht: false }));
-    const verkocht = (verkochteBeleggingen || []).map(b => ({ ...b, verkocht: true }));
-    const alleBel = inclVerkocht ? [...actief, ...verkocht] : actief;
+    // Gewogen YTD-rendement:
+    // - Effect in bezit vóór 1 jan → rendement tov gecachede beginjaarskoers
+    // - Effect gekocht ná 1 jan → rendement tov aankoopprijs
+    // - Verkocht effect → rendement tov beginjaarskoers of aankoopprijs, gewogen op startwaarde
+    // Weging op startwaarde (niet huidige waarde) → correcte gewogen gemiddelde
 
-    // Unieke sub-periode grenzen
-    const grensDatums = new Set([eersteJan.toISOString().slice(0, 10)]);
-    alleBel.forEach(b => {
-      if (b.datum) { const d = new Date(b.datum); if (d > eersteJan && d <= nu) grensDatums.add(b.datum.slice(0, 10)); }
-      if (b.verkoopdatum) { const vd = new Date(b.verkoopdatum); if (vd > eersteJan && vd <= nu) grensDatums.add(b.verkoopdatum.slice(0, 10)); }
-    });
-    const grenzen = [...grensDatums].sort();
+    let teller = 0, noemer = 0;
 
-    const waardeOp = (datumStr) => {
-      const datum = new Date(datumStr);
-      const isEersteJan = datumStr === eersteJan.toISOString().slice(0, 10);
-      let waarde = 0;
-      alleBel.forEach(b => {
-        const aankoop = b.datum ? new Date(b.datum) : null;
-        const verkoop = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
-        if (aankoop && datum < aankoop) return;
-        if (verkoop && datum >= verkoop) return;
-        const factor = getMuntFactor(b.munt || 'EUR');
-        let koers;
-        if (isEersteJan) {
-          // Begin van het jaar: gebruik gecachede beginjaarskoers
-          koers = ytdKoersen[b.symbol] || b.kostprijs;
-        } else {
-          // Tussenliggende grens: gebruik historische koers op DEZE datum (niet aankoopDatum)
-          const sleutel = `${b.symbol}_${datumStr}`;
-          const historisch = historischeKoersen[sleutel];
-          if (historisch && historisch > 0) {
-            koers = historisch;
-          } else {
-            // Fallback: live koers of beginjaarskoers (beter dan aankoopprijs)
-            const k = koersen[b.symbol];
-            koers = k ? k.c : (ytdKoersen[b.symbol] || b.kostprijs);
-          }
-        }
-        waarde += koers * b.aantal * factor;
-      });
-      return waarde;
+    const verwerkBelegging = (b, prijsEind) => {
+      const factor = getMuntFactor(b.munt || 'EUR');
+      const aankoopDatum = b.datum ? new Date(b.datum) : null;
+      let prijsStart, startWaarde;
+
+      if (aankoopDatum && aankoopDatum <= eersteJan) {
+        // In bezit op 1 jan → beginjaarskoers als startpunt
+        prijsStart = ytdKoersen[b.symbol];
+        if (!prijsStart || prijsStart <= 0) return; // geen data, sla over
+        startWaarde = prijsStart * b.aantal * factor;
+      } else {
+        // Gekocht na 1 jan → aankoopprijs als startpunt
+        prijsStart = b.kostprijs;
+        if (!prijsStart || prijsStart <= 0) return;
+        startWaarde = prijsStart * b.aantal * factor;
+      }
+
+      const rendement = (prijsEind - prijsStart) / prijsStart;
+      teller += rendement * startWaarde;
+      noemer += startWaarde;
     };
 
-    let twr = 1;
-    for (let i = 0; i < grenzen.length - 1; i++) {
-      const bw = waardeOp(grenzen[i]);
-      const ew = waardeOp(grenzen[i + 1]);
-      if (bw > 0) twr *= (ew / bw);
-    }
+    // Actieve beleggingen
+    beleggingen.forEach(b => {
+      const k = koersen[b.symbol];
+      const prijsNu = k ? k.c : b.kostprijs;
+      verwerkBelegging(b, prijsNu);
+    });
 
-    // Laatste periode tot nu
-    const laatste = grenzen[grenzen.length - 1];
-    if (grenzen.length > 0) {
-      const bw = waardeOp(laatste);
-      let ew = 0;
-      actief.forEach(b => {
-        const aankoop = b.datum ? new Date(b.datum) : null;
-        if (aankoop && nu < aankoop) return;
-        const factor = getMuntFactor(b.munt || 'EUR');
-        const k = koersen[b.symbol];
-        ew += (k ? k.c : b.kostprijs) * b.aantal * factor;
+    // Verkochte beleggingen (enkel als inclVerkocht)
+    if (inclVerkocht) {
+      (verkochteBeleggingen || []).forEach(b => {
+        const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
+        if (!vd || vd.getFullYear() !== nuJaar) return;
+        const prijsVerkoop = b.verkoopkoers || b.kostprijs;
+        verwerkBelegging({ ...b, aantal: b.aantalVerkocht || b.aantal }, prijsVerkoop);
       });
-      if (bw > 0) twr *= (ew / bw);
     }
 
-    return (twr - 1) * 100;
+    if (noemer === 0) return 0;
+    return (teller / noemer) * 100;
   };
 
-  const ytdPct = berekenTWR(false);         // exclusief verkochte effecten (standaard, sidebar)
-  const ytdPctInclVerkocht = berekenTWR(true); // inclusief verkochte effecten
+  const ytdPct = berekenTWR(false);
+  const ytdPctInclVerkocht = berekenTWR(true);
 
   return (
     <AppContext.Provider value={{
