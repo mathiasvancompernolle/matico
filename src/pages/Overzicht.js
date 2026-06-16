@@ -535,48 +535,38 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     if (tijdperk === 'YTD') return filterBezit === 'inbezit' ? ytdPct : ytdPctInclVerkocht;
     if (tijdperk === 'Totaal') return filterBezit === 'inbezit' ? portfolioWinstPct : portfolioWinstPctInclVerkocht;
 
-    // 1W, 1M, 1J: gewogen rendement op basis van startkoers per periode
+    // 1W, 1M, 1J: percentage = periodeWinst / startwaarde van posities die al in bezit waren
     if (['1W', '1M', '1J'].includes(tijdperk)) {
       const nu = new Date();
       const periodeMs = { '1W': 7, '1M': 30, '1J': 365 }[tijdperk] * 86400000;
       const startDatum = new Date(nu - periodeMs);
       const pK = periodeKoersen[tijdperk] || {};
-      let teller = 0, noemer = 0;
+      let startWaarde = 0;
 
-      const verwerkB = (b, prijsEind) => {
-        const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-        const aankoopDatum = b.datum ? new Date(b.datum) : null;
-        let prijsStart, startWaarde;
-        if (aankoopDatum && aankoopDatum <= startDatum) {
-          prijsStart = pK[b.symbol];
-          if (!prijsStart || prijsStart <= 0) return;
-          startWaarde = prijsStart * b.aantal * factor;
-        } else {
-          prijsStart = b.kostprijs;
-          if (!prijsStart || prijsStart <= 0) return;
-          startWaarde = prijsStart * b.aantal * factor;
-        }
-        const rendement = (prijsEind - prijsStart) / prijsStart;
-        teller += rendement * startWaarde;
-        noemer += startWaarde;
-      };
-
-      // Actieve beleggingen
+      // Startwaarde van posities die al in bezit waren (zelfde logica als periodeWinst)
       beleggingen.forEach(b => {
-        const k = koersen[b.symbol];
-        verwerkB(b, k ? k.c : b.kostprijs);
+        const aankoopDatum = b.datum ? new Date(b.datum) : null;
+        if (aankoopDatum && aankoopDatum <= startDatum) {
+          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+          const prijsStart = pK[b.symbol];
+          if (prijsStart && prijsStart > 0) startWaarde += prijsStart * b.aantal * factor;
+        }
       });
 
-      // Verkochte effecten (enkel bij "inclusief")
       if (filterBezit !== 'inbezit') {
         (verkochteBeleggingen || []).forEach(b => {
           const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
-          if (!vd || vd < startDatum) return; // verkocht voor deze periode, telt niet mee
-          verwerkB({ ...b, aantal: b.aantalVerkocht || b.aantal }, b.verkoopkoers || b.kostprijs);
+          if (!vd || vd < startDatum) return;
+          const aankoopDatum = b.datum ? new Date(b.datum) : null;
+          if (aankoopDatum && aankoopDatum <= startDatum) {
+            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+            const prijsStart = pK[b.symbol];
+            if (prijsStart && prijsStart > 0) startWaarde += prijsStart * (b.aantalVerkocht || b.aantal || 1) * factor;
+          }
         });
       }
 
-      return noemer > 0 ? (teller / noemer) * 100 : 0;
+      return startWaarde > 0 ? (periodeWinst / startWaarde) * 100 : 0;
     }
 
     // Laatste: grafiek-gebaseerd
