@@ -127,10 +127,16 @@ export default function Dividend() {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < cacheDuur) {
+          // Lege cache max 1 uur bewaren zodat nieuwe bronnen (bv. EODHD) toch geprobeerd worden
+          const leegCacheDuur = 60 * 60 * 1000; // 1 uur
+          if (data && data.length > 0 && Date.now() - timestamp < cacheDuur) {
             setLiveDividend(prev => ({ ...prev, [sleutel]: data }));
             return;
           }
+          if ((!data || data.length === 0) && Date.now() - timestamp < leegCacheDuur) {
+            return; // Lege cache nog vers, niet opnieuw proberen
+          }
+          // Cache verlopen of leeg en oud genoeg — opnieuw ophalen
         }
       } catch (e) {}
 
