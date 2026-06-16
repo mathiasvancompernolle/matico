@@ -515,15 +515,20 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     if (filterBezit !== 'inbezit') {
       (verkochteBeleggingen || []).forEach(b => {
         const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
-        if (!vd || vd < startDatum) return;
+        if (!vd || vd < startDatum) return; // verkoop was voor deze periode
         const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
         const prijsVerkoop = b.verkoopkoers || b.kostprijs;
+        const aantal = b.aantalVerkocht || b.aantal || 1;
         if (aankoopDatum && aankoopDatum <= startDatum) {
+          // Al in bezit voor start periode → gebruik startkoers
           const prijsStart = pK[b.symbol];
           if (prijsStart && prijsStart > 0) {
-            winst += (prijsVerkoop - prijsStart) * (b.aantalVerkocht || b.aantal || 1) * factor;
+            winst += (prijsVerkoop - prijsStart) * aantal * factor;
           }
+        } else {
+          // Gekocht én verkocht tijdens deze periode → gebruik aankoopprijs als startpunt
+          winst += (prijsVerkoop - b.kostprijs) * aantal * factor;
         }
       });
     }
@@ -559,9 +564,14 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
           if (!vd || vd < startDatum) return;
           const aankoopDatum = b.datum ? new Date(b.datum) : null;
           if (aankoopDatum && aankoopDatum <= startDatum) {
+            // Al in bezit voor start periode → startkoers als basis
             const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
             const prijsStart = pK[b.symbol];
             if (prijsStart && prijsStart > 0) startWaarde += prijsStart * (b.aantalVerkocht || b.aantal || 1) * factor;
+          } else {
+            // Gekocht én verkocht tijdens periode → aankoopprijs als basis
+            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+            if (b.kostprijs > 0) startWaarde += b.kostprijs * (b.aantalVerkocht || b.aantal || 1) * factor;
           }
         });
       }
