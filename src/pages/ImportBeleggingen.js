@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Upload, Download, ArrowLeft, Info, Check } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 export default function ImportBeleggingen({ onClose }) {
   const { setBeleggingen } = useApp();
@@ -36,29 +37,70 @@ export default function ImportBeleggingen({ onClose }) {
     return { hdrs, rijen };
   };
 
+  const parseXLSX = (buffer) => {
+    const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    if (data.length < 2) return { hdrs: [], rijen: [] };
+    const hdrs = data[0].map(h => String(h).trim());
+    const rijen = data.slice(1).filter(r => r.some(c => c !== '')).map(r => {
+      const obj = {};
+      hdrs.forEach((h, i) => {
+        let val = r[i];
+        // Excel datum-waarden omzetten naar string
+        if (val instanceof Date) {
+          val = val.toISOString().slice(0, 10);
+        }
+        obj[h] = val !== undefined && val !== null ? String(val).trim() : '';
+      });
+      return obj;
+    });
+    return { hdrs, rijen };
+  };
+
+  const detecteerMapping = (hdrs) => {
+    const autoMapping = { naam: '', symbol: '', datum: '', kostprijs: '', aantal: '', munt: '' };
+    hdrs.forEach(h => {
+      const hl = h.toLowerCase();
+      if (hl.includes('naam') || hl.includes('name') || hl.includes('product')) autoMapping.naam = h;
+      if (hl.includes('ticker') || hl.includes('symbol') || hl.includes('isin')) autoMapping.symbol = h;
+      if (hl.includes('datum') || hl.includes('date')) autoMapping.datum = h;
+      if (hl.includes('prijs') || hl.includes('price') || hl.includes('koop') || hl.includes('koers')) autoMapping.kostprijs = h;
+      if (hl.includes('aantal') || hl.includes('quantity') || hl.includes('shares') || hl.includes('stuks')) autoMapping.aantal = h;
+      if (hl.includes('munt') || hl.includes('currency') || hl.includes('valuta')) autoMapping.munt = h;
+    });
+    return autoMapping;
+  };
+
   const verwerkBestand = async (file) => {
     setBestand(file);
     setFout('');
     const naam = file.name.toLowerCase();
+
     if (naam.endsWith('.csv')) {
       const tekst = await file.text();
       const { hdrs, rijen } = parseCSV(tekst);
       setHeaders(hdrs);
       setPreview(rijen);
-      const autoMapping = { naam: '', symbol: '', datum: '', kostprijs: '', aantal: '', munt: '' };
-      hdrs.forEach(h => {
-        const hl = h.toLowerCase();
-        if (hl.includes('naam') || hl.includes('name') || hl.includes('product')) autoMapping.naam = h;
-        if (hl.includes('ticker') || hl.includes('symbol') || hl.includes('isin')) autoMapping.symbol = h;
-        if (hl.includes('datum') || hl.includes('date')) autoMapping.datum = h;
-        if (hl.includes('prijs') || hl.includes('price') || hl.includes('koop')) autoMapping.kostprijs = h;
-        if (hl.includes('aantal') || hl.includes('quantity') || hl.includes('shares')) autoMapping.aantal = h;
-        if (hl.includes('munt') || hl.includes('currency') || hl.includes('valuta')) autoMapping.munt = h;
-      });
-      setMapping(autoMapping);
+      setMapping(detecteerMapping(hdrs));
       setStap('mapping');
+    } else if (naam.endsWith('.xlsx') || naam.endsWith('.xls')) {
+      try {
+        const buffer = await file.arrayBuffer();
+        const { hdrs, rijen } = parseXLSX(buffer);
+        if (hdrs.length === 0) {
+          setFout('Het bestand lijkt leeg of heeft geen herkenbare structuur.');
+          return;
+        }
+        setHeaders(hdrs);
+        setPreview(rijen);
+        setMapping(detecteerMapping(hdrs));
+        setStap('mapping');
+      } catch (e) {
+        setFout('Fout bij het lezen van het Excel-bestand. Probeer het op te slaan als .xlsx en opnieuw te uploaden.');
+      }
     } else {
-      setFout('Momenteel alleen CSV bestanden ondersteund. XLSX/XLS ondersteuning volgt binnenkort.');
+      setFout('Ongeldig bestandstype. Upload een CSV, XLSX of XLS bestand.');
     }
   };
 
@@ -73,8 +115,8 @@ export default function ImportBeleggingen({ onClose }) {
       symbol: r[mapping.symbol] || '',
       type: 'aandeel',
       datum: mapping.datum ? r[mapping.datum] : '',
-      kostprijs: parseFloat(r[mapping.kostprijs]?.replace(',', '.')) || 0,
-      aantal: parseFloat(r[mapping.aantal]?.replace(',', '.')) || 0,
+      kostprijs: parseFloat(String(r[mapping.kostprijs] || '0').replace(',', '.')) || 0,
+      aantal: parseFloat(String(r[mapping.aantal] || '0').replace(',', '.')) || 0,
       munt: mapping.munt ? (r[mapping.munt] || 'EUR') : 'EUR',
     })).filter(b => b.symbol && b.kostprijs > 0 && b.aantal > 0);
 
@@ -106,7 +148,6 @@ export default function ImportBeleggingen({ onClose }) {
 
   return (
     <div style={{ padding: '0 0 40px' }}>
-      {/* Header */}
       <div className="page-header" style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {stap === 'mapping' && (
@@ -125,7 +166,6 @@ export default function ImportBeleggingen({ onClose }) {
       </div>
 
       <div style={{ padding: '0 32px' }}>
-        {/* Info blok */}
         <div className="card" style={{ marginBottom: 24, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <Info size={18} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2 }} />
           <div>
@@ -177,7 +217,6 @@ export default function ImportBeleggingen({ onClose }) {
               Bestand: <strong>{bestand?.name}</strong> — <strong>{preview.length}</strong> rijen gedetecteerd
             </p>
 
-            {/* Preview tabel */}
             <div style={{ overflowX: 'auto', marginBottom: 24, border: '1px solid var(--border)', borderRadius: 8 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
@@ -199,7 +238,6 @@ export default function ImportBeleggingen({ onClose }) {
               </table>
             </div>
 
-            {/* Mapping */}
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Wijs kolommen toe</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
               {[
