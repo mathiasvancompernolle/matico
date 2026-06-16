@@ -23,7 +23,8 @@ const DIVIDEND_DB = {
   MA: { jaarlijks: 2.64, frequentie: 4, ex_maanden: [1, 4, 7, 10] },        // $0.66/kwartaal
   JNJ: { jaarlijks: 4.96, frequentie: 4, ex_maanden: [2, 5, 8, 11] },       // $1.24/kwartaal
   NKE: { jaarlijks: 1.64, frequentie: 4, ex_maanden: [3, 6, 9, 12] },       // $0.41/kwartaal (bijgewerkt jun 2026)
-  SOFI: { jaarlijks: 0, frequentie: 0, ex_maanden: [] },
+  SOFI: { jaarlijks: 0, frequentie: 0, ex_maanden: [], geenDividend: true },
+  PRX: { jaarlijks: 0.20, frequentie: 1, ex_maanden: [10] },    // €0.20/jaar, ex-datum oktober
   AVGO: { jaarlijks: 21.00, frequentie: 4, ex_maanden: [2, 5, 8, 11] },     // $5.25/kwartaal
   // ETFs — accumulerend (geen dividend)
   VWCE: { jaarlijks: 0, frequentie: 0, ex_maanden: [], accumulating: true },
@@ -152,7 +153,7 @@ export default function Dividend() {
 
   // ── Bereken dividenddata per belegging ──
   // Gebruikt live Finnhub data als beschikbaar, anders hardcoded database
-  const { perBelegging, ontvangen, verwacht, dividendRendement, rendementOpAankoop, maandData, zonderData } = useMemo(() => {
+  const { perBelegging, ontvangen, verwacht, dividendRendement, rendementOpAankoop, maandData, zonderData, geenDividend } = useMemo(() => {
     const huidigMaand = new Date().getMonth() + 1;
     const huidigJaar = new Date().getFullYear();
     const isHuidigJaar = jaar === huidigJaar;
@@ -162,6 +163,7 @@ export default function Dividend() {
     let totaalVerwacht = 0;
     const maandTotalen = Array(12).fill(0);
     const zonderDataLijst = [];
+    const geenDividendLijst = []; // bedrijven die bewust geen dividend uitkeren
 
     const parseNLDatumHelper = (str) => {
       if (!str) return null;
@@ -289,7 +291,40 @@ export default function Dividend() {
       // ── Fallback: hardcoded database ──
       const db = getDividendData(b.symbol, jaar);
       if (!db || db.jaarlijks === 0) {
-        if (!db?.accumulating) zonderDataLijst.push(b.naam || b.symbol);
+        if (!db?.accumulating) {
+          // Slim bepalen: heeft dit aandeel historisch ooit dividend uitgekeerd?
+          // Check cache van de laatste 3 jaar
+          const basis2 = b.symbol.toUpperCase().split('.')[0];
+          let heeftHistorischDividend = false;
+          let verwachteMaand = null;
+
+          for (let y = jaar - 1; y >= jaar - 3; y--) {
+            try {
+              const cached = localStorage.getItem(`matico_div_${basis2}_${y}`);
+              if (cached) {
+                const { data } = JSON.parse(cached);
+                if (data && data.length > 0) {
+                  heeftHistorischDividend = true;
+                  // Bepaal typische uitbetalingsmaand uit historische data
+                  const maanden = data.map(d => new Date(d.exDate || d.date || '').getMonth() + 1).filter(m => m > 0);
+                  if (maanden.length > 0) verwachteMaand = maanden[maanden.length - 1]; // meest recente
+                  break;
+                }
+              }
+            } catch (e) {}
+          }
+
+          if (db?.geenDividend) {
+            geenDividendLijst.push(b.naam || b.symbol);
+          } else if (heeftHistorischDividend && verwachteMaand) {
+            const maandNamen = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+            zonderDataLijst.push(`${b.naam || b.symbol} (verwacht ~${maandNamen[verwachteMaand - 1]})`);
+          } else if (heeftHistorischDividend) {
+            zonderDataLijst.push(`${b.naam || b.symbol} (verwacht later dit jaar)`);
+          } else {
+            geenDividendLijst.push(b.naam || b.symbol);
+          }
+        }
         return;
       }
 
@@ -348,6 +383,7 @@ export default function Dividend() {
       rendementOpAankoop: (jaarlijksBrutoTotaal / totaalKostprijs) * 100,
       maandData: MAANDEN.map((label, i) => ({ label, waarde: maandTotalen[i] })),
       zonderData: [...new Set(zonderDataLijst)],
+      geenDividend: [...new Set(geenDividendLijst)],
     };
   }, [beleggingen, koersen, jaar, modus, verkochteBeleggingen]);
 
@@ -573,9 +609,14 @@ export default function Dividend() {
             </div>
           ))}
           {/* Beleggingen zonder data */}
-          {zonderData.length > 0 && (
-            <div style={{ padding: '12px 24px', fontSize: 12, color: 'var(--text-muted)', borderTop: '1px solid var(--border-light)' }}>
-              Beleggingen zonder dividendgegevens: {zonderData.join(' en ')}
+          {(zonderData.length > 0 || geenDividend.length > 0) && (
+            <div style={{ padding: '12px 24px', fontSize: 12, color: 'var(--text-muted)', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {geenDividend.length > 0 && (
+                <span>🚫 Keert geen dividend uit: {geenDividend.join(', ')}</span>
+              )}
+              {zonderData.length > 0 && (
+                <span>🕐 Nog geen dividend dit jaar: {zonderData.join(', ')}</span>
+              )}
             </div>
           )}
         </div>
