@@ -205,56 +205,40 @@ export function AppProvider({ children }) {
     });
   }, [beleggingen.map(b => b.symbol).join(','), (verkochteBeleggingen || []).map(b => b.symbol).join(',')]);
 
-  const ytdPct = (() => {
+  const berekenTWR = (inclVerkocht) => {
     // Echte Time-Weighted Return (TWR)
-    // Berekent het rendement per sub-periode tussen cashflows en vermenigvuldigt ze
     const nuJaar = new Date().getFullYear();
     const eersteJan = new Date(`${nuJaar}-01-01`);
     const nu = new Date();
 
-    // Verzamel alle cashflow-datums (aankopen en verkopen in dit jaar)
-    const alleBel = [
-      ...beleggingen.map(b => ({ ...b, verkocht: false })),
-      ...(verkochteBeleggingen || []).map(b => ({ ...b, verkocht: true }))
-    ];
+    const actief = beleggingen.map(b => ({ ...b, verkocht: false }));
+    const verkocht = (verkochteBeleggingen || []).map(b => ({ ...b, verkocht: true }));
+    const alleBel = inclVerkocht ? [...actief, ...verkocht] : actief;
 
-    // Bepaal alle unieke sub-periode grenzen: begin jaar + alle aankoop/verkoopdatums + nu
+    // Unieke sub-periode grenzen
     const grensDatums = new Set([eersteJan.toISOString().slice(0, 10)]);
     alleBel.forEach(b => {
-      if (b.datum) {
-        const d = new Date(b.datum);
-        if (d > eersteJan && d <= nu) grensDatums.add(b.datum.slice(0, 10));
-      }
-      if (b.verkoopdatum) {
-        const vd = new Date(b.verkoopdatum);
-        if (vd > eersteJan && vd <= nu) grensDatums.add(b.verkoopdatum.slice(0, 10));
-      }
+      if (b.datum) { const d = new Date(b.datum); if (d > eersteJan && d <= nu) grensDatums.add(b.datum.slice(0, 10)); }
+      if (b.verkoopdatum) { const vd = new Date(b.verkoopdatum); if (vd > eersteJan && vd <= nu) grensDatums.add(b.verkoopdatum.slice(0, 10)); }
     });
+    const grenzen = [...grensDatums].sort();
 
-    const gesorteerdeGrenzen = [...grensDatums].sort();
-
-    // Bereken portfoliowaarde op een gegeven datum
-    const portfolioWaardeOp = (datumStr) => {
+    const waardeOp = (datumStr) => {
       const datum = new Date(datumStr);
       let waarde = 0;
       alleBel.forEach(b => {
-        const aankoopDatum = b.datum ? new Date(b.datum) : null;
-        const verkoopDatum = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
-
-        // Effect was in bezit op deze datum?
-        if (aankoopDatum && datum < aankoopDatum) return; // nog niet gekocht
-        if (verkoopDatum && datum >= verkoopDatum) return; // al verkocht
-
+        const aankoop = b.datum ? new Date(b.datum) : null;
+        const verkoop = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
+        if (aankoop && datum < aankoop) return;
+        if (verkoop && datum >= verkoop) return;
         const factor = getMuntFactor(b.munt || 'EUR');
-        // Koers op deze datum opzoeken
         let koers;
         if (datumStr === eersteJan.toISOString().slice(0, 10)) {
           koers = ytdKoersen[b.symbol] || b.kostprijs;
-        } else if (datumStr === gesorteerdeGrenzen[gesorteerdeGrenzen.length - 1]) {
-          const k = koersen[b.symbol];
-          koers = k ? k.c : b.kostprijs;
+        } else if (datumStr === grenzen[grenzen.length - 1]) {
+          const k = koersen[b.symbol]; koers = k ? k.c : b.kostprijs;
         } else {
-          const sleutel = `${b.symbol}_${b.datum?.slice(0,10)}`;
+          const sleutel = `${b.symbol}_${b.datum?.slice(0, 10)}`;
           koers = historischeKoersen[sleutel] || b.kostprijs;
         }
         waarde += koers * b.aantal * factor;
@@ -262,36 +246,33 @@ export function AppProvider({ children }) {
       return waarde;
     };
 
-    // TWR: vermenigvuldig sub-periode rendementen
     let twr = 1;
-    for (let i = 0; i < gesorteerdeGrenzen.length - 1; i++) {
-      const beginDatum = gesorteerdeGrenzen[i];
-      const eindDatum = gesorteerdeGrenzen[i + 1];
-      const beginWaarde = portfolioWaardeOp(beginDatum);
-      const eindWaarde = portfolioWaardeOp(eindDatum);
-      if (beginWaarde > 0) {
-        twr *= (eindWaarde / beginWaarde);
-      }
+    for (let i = 0; i < grenzen.length - 1; i++) {
+      const bw = waardeOp(grenzen[i]);
+      const ew = waardeOp(grenzen[i + 1]);
+      if (bw > 0) twr *= (ew / bw);
     }
 
-    // Laatste periode: van laatste grens tot nu
-    const laatsteGrens = gesorteerdeGrenzen[gesorteerdeGrenzen.length - 1];
-    if (gesorteerdeGrenzen.length > 0) {
-      const beginWaarde = portfolioWaardeOp(laatsteGrens);
-      let eindWaarde = 0;
-      alleBel.forEach(b => {
-        if (b.verkocht) return; // verkochte effecten tellen niet mee in huidige waarde
-        const aankoopDatum = b.datum ? new Date(b.datum) : null;
-        if (aankoopDatum && nu < aankoopDatum) return;
+    // Laatste periode tot nu
+    const laatste = grenzen[grenzen.length - 1];
+    if (grenzen.length > 0) {
+      const bw = waardeOp(laatste);
+      let ew = 0;
+      actief.forEach(b => {
+        const aankoop = b.datum ? new Date(b.datum) : null;
+        if (aankoop && nu < aankoop) return;
         const factor = getMuntFactor(b.munt || 'EUR');
         const k = koersen[b.symbol];
-        eindWaarde += (k ? k.c : b.kostprijs) * b.aantal * factor;
+        ew += (k ? k.c : b.kostprijs) * b.aantal * factor;
       });
-      if (beginWaarde > 0) twr *= (eindWaarde / beginWaarde);
+      if (bw > 0) twr *= (ew / bw);
     }
 
     return (twr - 1) * 100;
-  })();
+  };
+
+  const ytdPct = berekenTWR(false);         // exclusief verkochte effecten (standaard, sidebar)
+  const ytdPctInclVerkocht = berekenTWR(true); // inclusief verkochte effecten
 
   return (
     <AppContext.Provider value={{
@@ -303,7 +284,7 @@ export function AppProvider({ children }) {
       wisselkoers, getMuntFactor,
       portfolioWaarde, portfolioKostprijs,
       portfolioWinstVerlies, portfolioWinstPct,
-      dagWinst, dagWinstPct, ytdPct
+      dagWinst, dagWinstPct, ytdPct, ytdPctInclVerkocht
     }}>
       {children}
     </AppContext.Provider>
