@@ -549,6 +549,9 @@ function DataKwaliteitTab({ beleggingen }) {
         const metricsData = await metricsRes.json();
         const sector = vertaalSector(profileData?.sector || profileData?.finnhubIndustry) || null;
         const beta = metricsData?.metric?.beta || profileData?.beta || null;
+        // Opslaan in cache zodat Analyse ze ook oppikt
+        if (sector) localStorage.setItem(`matico_sector_${sym}`, JSON.stringify({ sector, timestamp: Date.now() }));
+        if (beta) localStorage.setItem(`matico_beta_${sym}`, JSON.stringify({ beta, timestamp: Date.now() }));
         nieuw[sym] = { sector, beta, manueel: false };
       } catch {
         nieuw[sym] = { sector: null, beta: null, manueel: false };
