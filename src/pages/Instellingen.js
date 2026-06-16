@@ -455,18 +455,55 @@ const SECTOREN = [
 ];
 
 // Engels → Nederlands (API geeft Engelse labels terug)
+// Dekt zowel FMP/EODHD sector-namen als Finnhub finnhubIndustry-namen
 const SECTOR_NL = {
+  // Technologie
   'Technology': 'Technologie', 'Information Technology': 'Technologie',
+  'Semiconductors': 'Technologie', 'Semiconductor': 'Technologie',
+  'Software': 'Technologie', 'Software—Application': 'Technologie', 'Software—Infrastructure': 'Technologie',
+  'Hardware': 'Technologie', 'Computer Hardware': 'Technologie',
+  'Electronic Technology': 'Technologie', 'Electronics': 'Technologie',
+  'Internet Content & Information': 'Technologie',
+  // Financiën
   'Financial Services': 'Financiële dienstverlening', 'Financial': 'Financiële dienstverlening', 'Financials': 'Financiële dienstverlening',
+  'Banks': 'Financiële dienstverlening', 'Banks—Diversified': 'Financiële dienstverlening',
+  'Insurance': 'Financiële dienstverlening', 'Asset Management': 'Financiële dienstverlening',
+  'Capital Markets': 'Financiële dienstverlening', 'Credit Services': 'Financiële dienstverlening',
+  'Finance': 'Financiële dienstverlening',
+  // Cyclisch
   'Consumer Cyclical': 'Cyclische consumptiegoederen', 'Consumer Discretionary': 'Cyclische consumptiegoederen',
+  'Retail': 'Cyclische consumptiegoederen', 'Automobiles': 'Cyclische consumptiegoederen',
+  'Auto Manufacturers': 'Cyclische consumptiegoederen', 'Footwear & Accessories': 'Cyclische consumptiegoederen',
+  'Apparel Manufacturing': 'Cyclische consumptiegoederen', 'Apparel Retail': 'Cyclische consumptiegoederen',
+  'Specialty Retail': 'Cyclische consumptiegoederen', 'E-Commerce': 'Cyclische consumptiegoederen',
+  'Leisure': 'Cyclische consumptiegoederen', 'Hotels & Entertainment Services': 'Cyclische consumptiegoederen',
+  // Defensief
   'Consumer Defensive': 'Defensieve consumptiegoederen', 'Consumer Staples': 'Defensieve consumptiegoederen',
+  'Food': 'Defensieve consumptiegoederen', 'Beverages': 'Defensieve consumptiegoederen',
+  'Household & Personal Products': 'Defensieve consumptiegoederen', 'Tobacco': 'Defensieve consumptiegoederen',
+  // Gezondheidszorg
   'Healthcare': 'Gezondheidszorg', 'Health Care': 'Gezondheidszorg',
-  'Communication Services': 'Communicatiediensten', 'Telecommunication Services': 'Communicatiediensten', 'Telecommunications': 'Communicatiediensten',
+  'Biotechnology': 'Gezondheidszorg', 'Pharmaceuticals': 'Gezondheidszorg',
+  'Medical Devices': 'Gezondheidszorg', 'Drug Manufacturers': 'Gezondheidszorg',
+  'Drug Manufacturers—General': 'Gezondheidszorg',
+  // Communicatie
+  'Communication Services': 'Communicatiediensten', 'Telecommunication Services': 'Communicatiediensten',
+  'Telecommunications': 'Communicatiediensten', 'Media': 'Communicatiediensten',
+  'Entertainment': 'Communicatiediensten', 'Broadcasting': 'Communicatiediensten',
+  'Internet Services': 'Communicatiediensten',
+  // Industrie
   'Industrials': 'Industrie', 'Industrial': 'Industrie',
-  'Energy': 'Energie',
+  'Aerospace & Defense': 'Industrie', 'Transportation': 'Industrie',
+  'Construction': 'Industrie', 'Machinery': 'Industrie',
+  // Energie
+  'Energy': 'Energie', 'Oil & Gas': 'Energie', 'Oil, Gas & Consumable Fuels': 'Energie',
+  // Materialen
   'Basic Materials': 'Basismaterialen', 'Materials': 'Basismaterialen',
+  'Chemicals': 'Basismaterialen', 'Metals & Mining': 'Basismaterialen',
+  // Nutsbedrijven
   'Utilities': 'Nutsbedrijven',
-  'Real Estate': 'Vastgoed',
+  // Vastgoed
+  'Real Estate': 'Vastgoed', 'REITs': 'Vastgoed',
 };
 const vertaalSector = (s) => s ? (SECTOR_NL[s] || s) : null;
 

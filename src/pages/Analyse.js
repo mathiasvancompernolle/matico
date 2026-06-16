@@ -117,28 +117,44 @@ const SYMBOOL_REGIO = {
   NOVO: 'Europa - Ontwikkeld', NESN: 'Europa - Ontwikkeld', ROG: 'Europa - Ontwikkeld',
 };
 
-// FMP-sectoren (Engels, via /api/data?endpoint=profile) → Nederlandse labels die elders gebruikt worden
+// FMP/Finnhub/EODHD sectoren (Engels) → Nederlandse labels
 const FMP_SECTOR_MAP = {
-  'Technology': 'Technologie',
-  'Financial Services': 'Financiële dienstverlening',
-  'Financial': 'Financiële dienstverlening',
-  'Financials': 'Financiële dienstverlening',
-  'Consumer Cyclical': 'Cyclische consumptiegoederen',
-  'Consumer Discretionary': 'Cyclische consumptiegoederen',
-  'Healthcare': 'Gezondheidszorg',
-  'Health Care': 'Gezondheidszorg',
-  'Communication Services': 'Communicatiediensten',
-  'Telecommunication Services': 'Communicatiediensten',
-  'Telecommunications': 'Communicatiediensten',
-  'Industrials': 'Industrie',
-  'Industrial': 'Industrie',
-  'Consumer Defensive': 'Defensieve consumptiegoederen',
-  'Consumer Staples': 'Defensieve consumptiegoederen',
-  'Energy': 'Energie',
-  'Basic Materials': 'Basismaterialen',
-  'Materials': 'Basismaterialen',
+  'Technology': 'Technologie', 'Information Technology': 'Technologie',
+  'Semiconductors': 'Technologie', 'Semiconductor': 'Technologie',
+  'Software': 'Technologie', 'Software—Application': 'Technologie', 'Software—Infrastructure': 'Technologie',
+  'Hardware': 'Technologie', 'Computer Hardware': 'Technologie',
+  'Electronic Technology': 'Technologie', 'Electronics': 'Technologie',
+  'Internet Content & Information': 'Technologie',
+  'Financial Services': 'Financiële dienstverlening', 'Financial': 'Financiële dienstverlening', 'Financials': 'Financiële dienstverlening',
+  'Banks': 'Financiële dienstverlening', 'Banks—Diversified': 'Financiële dienstverlening',
+  'Insurance': 'Financiële dienstverlening', 'Asset Management': 'Financiële dienstverlening',
+  'Capital Markets': 'Financiële dienstverlening', 'Credit Services': 'Financiële dienstverlening',
+  'Finance': 'Financiële dienstverlening',
+  'Consumer Cyclical': 'Cyclische consumptiegoederen', 'Consumer Discretionary': 'Cyclische consumptiegoederen',
+  'Retail': 'Cyclische consumptiegoederen', 'Automobiles': 'Cyclische consumptiegoederen',
+  'Auto Manufacturers': 'Cyclische consumptiegoederen', 'Footwear & Accessories': 'Cyclische consumptiegoederen',
+  'Apparel Manufacturing': 'Cyclische consumptiegoederen', 'Apparel Retail': 'Cyclische consumptiegoederen',
+  'Specialty Retail': 'Cyclische consumptiegoederen', 'E-Commerce': 'Cyclische consumptiegoederen',
+  'Leisure': 'Cyclische consumptiegoederen', 'Hotels & Entertainment Services': 'Cyclische consumptiegoederen',
+  'Consumer Defensive': 'Defensieve consumptiegoederen', 'Consumer Staples': 'Defensieve consumptiegoederen',
+  'Food': 'Defensieve consumptiegoederen', 'Beverages': 'Defensieve consumptiegoederen',
+  'Household & Personal Products': 'Defensieve consumptiegoederen', 'Tobacco': 'Defensieve consumptiegoederen',
+  'Healthcare': 'Gezondheidszorg', 'Health Care': 'Gezondheidszorg',
+  'Biotechnology': 'Gezondheidszorg', 'Pharmaceuticals': 'Gezondheidszorg',
+  'Medical Devices': 'Gezondheidszorg', 'Drug Manufacturers': 'Gezondheidszorg',
+  'Drug Manufacturers—General': 'Gezondheidszorg',
+  'Communication Services': 'Communicatiediensten', 'Telecommunication Services': 'Communicatiediensten',
+  'Telecommunications': 'Communicatiediensten', 'Media': 'Communicatiediensten',
+  'Entertainment': 'Communicatiediensten', 'Broadcasting': 'Communicatiediensten',
+  'Internet Services': 'Communicatiediensten',
+  'Industrials': 'Industrie', 'Industrial': 'Industrie',
+  'Aerospace & Defense': 'Industrie', 'Transportation': 'Industrie',
+  'Construction': 'Industrie', 'Machinery': 'Industrie',
+  'Energy': 'Energie', 'Oil & Gas': 'Energie', 'Oil, Gas & Consumable Fuels': 'Energie',
+  'Basic Materials': 'Basismaterialen', 'Materials': 'Basismaterialen',
+  'Chemicals': 'Basismaterialen', 'Metals & Mining': 'Basismaterialen',
   'Utilities': 'Nutsbedrijven',
-  'Real Estate': 'Vastgoed',
+  'Real Estate': 'Vastgoed', 'REITs': 'Vastgoed',
 };
 
 function getSector(b, liveSectoren = {}) {
@@ -555,7 +571,7 @@ export function Analyse() {
         const data = await res.json();
         // FMP geeft 'sector' in het Engels; Finnhub geeft 'finnhubIndustry'. Map naar onze NL-labels.
         const ruweSector = data?.sector || data?.finnhubIndustry;
-        const sector = FMP_SECTOR_MAP[ruweSector] || (ruweSector ? 'Overige' : null);
+        const sector = FMP_SECTOR_MAP[ruweSector] || null;
         if (sector) {
           localStorage.setItem(cacheKey, JSON.stringify({ sector, timestamp: Date.now() }));
           return { sym, sector };
