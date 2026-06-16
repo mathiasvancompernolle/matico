@@ -184,24 +184,29 @@ export function AppProvider({ children }) {
       } catch (e) {}
     });
 
-    // Historische koersen ophalen voor alle aankoop/verkoopdatums in dit jaar
-    const cashflowDatums = [];
-    [...beleggingen, ...(verkochteBeleggingen || [])].forEach(b => {
-      if (b.datum) {
-        const d = new Date(b.datum);
-        if (d.getFullYear() === nuJaar) cashflowDatums.push({ symbol: b.symbol, datum: b.datum });
-      }
-      if (b.verkoopdatum) {
-        const vd = new Date(b.verkoopdatum);
-        if (vd.getFullYear() === nuJaar) cashflowDatums.push({ symbol: b.symbol, datum: b.verkoopdatum });
-      }
+    // Historische koersen ophalen voor alle symbolen op elke cashflow-datum in dit jaar
+    const nuDatum = new Date();
+    const alleBelForFetch = [...beleggingen, ...(verkochteBeleggingen || [])];
+    const cashflowDatums = new Set();
+
+    alleBelForFetch.forEach(b => {
+      if (b.datum) { const d = new Date(b.datum); if (d.getFullYear() === nuJaar && d <= nuDatum) cashflowDatums.add(b.datum.slice(0, 10)); }
+      if (b.verkoopdatum) { const vd = new Date(b.verkoopdatum); if (vd.getFullYear() === nuJaar && vd <= nuDatum) cashflowDatums.add(b.verkoopdatum.slice(0, 10)); }
     });
 
-    cashflowDatums.forEach(({ symbol, datum }) => {
-      const sleutel = `${symbol}_${datum}`;
-      if (!historischeKoersen[sleutel]) {
-        haalHistorischeKoers(symbol, datum);
-      }
+    // Voor elke grensdag: haal koers op voor alle symbolen die dan in bezit zijn
+    cashflowDatums.forEach(datum => {
+      alleBelForFetch.forEach(b => {
+        const aankoop = b.datum ? new Date(b.datum) : null;
+        const verkoop = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
+        const d = new Date(datum);
+        if (aankoop && d < aankoop) return; // nog niet in bezit
+        if (verkoop && d >= verkoop) return; // al verkocht
+        const sleutel = `${b.symbol}_${datum}`;
+        if (!historischeKoersen[sleutel]) {
+          haalHistorischeKoers(b.symbol, datum);
+        }
+      });
     });
   }, [beleggingen.map(b => b.symbol).join(','), (verkochteBeleggingen || []).map(b => b.symbol).join(',')]);
 
@@ -225,6 +230,7 @@ export function AppProvider({ children }) {
 
     const waardeOp = (datumStr) => {
       const datum = new Date(datumStr);
+      const isEersteJan = datumStr === eersteJan.toISOString().slice(0, 10);
       let waarde = 0;
       alleBel.forEach(b => {
         const aankoop = b.datum ? new Date(b.datum) : null;
@@ -233,13 +239,20 @@ export function AppProvider({ children }) {
         if (verkoop && datum >= verkoop) return;
         const factor = getMuntFactor(b.munt || 'EUR');
         let koers;
-        if (datumStr === eersteJan.toISOString().slice(0, 10)) {
+        if (isEersteJan) {
+          // Begin van het jaar: gebruik gecachede beginjaarskoers
           koers = ytdKoersen[b.symbol] || b.kostprijs;
-        } else if (datumStr === grenzen[grenzen.length - 1]) {
-          const k = koersen[b.symbol]; koers = k ? k.c : b.kostprijs;
         } else {
-          const sleutel = `${b.symbol}_${b.datum?.slice(0, 10)}`;
-          koers = historischeKoersen[sleutel] || b.kostprijs;
+          // Tussenliggende grens: gebruik historische koers op DEZE datum (niet aankoopDatum)
+          const sleutel = `${b.symbol}_${datumStr}`;
+          const historisch = historischeKoersen[sleutel];
+          if (historisch && historisch > 0) {
+            koers = historisch;
+          } else {
+            // Fallback: live koers of beginjaarskoers (beter dan aankoopprijs)
+            const k = koersen[b.symbol];
+            koers = k ? k.c : (ytdKoersen[b.symbol] || b.kostprijs);
+          }
         }
         waarde += koers * b.aantal * factor;
       });
