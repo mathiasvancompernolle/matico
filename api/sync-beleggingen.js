@@ -29,6 +29,7 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
           'x-content-type': 'application/json',
           'x-allow-overwrite': '1',
+          'x-add-random-suffix': '0',
         },
         body: data,
       });
