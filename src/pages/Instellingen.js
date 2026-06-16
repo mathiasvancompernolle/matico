@@ -477,6 +477,8 @@ const SECTOR_NL = {
   'Apparel Manufacturing': 'Cyclische consumptiegoederen', 'Apparel Retail': 'Cyclische consumptiegoederen',
   'Specialty Retail': 'Cyclische consumptiegoederen', 'E-Commerce': 'Cyclische consumptiegoederen',
   'Leisure': 'Cyclische consumptiegoederen', 'Hotels & Entertainment Services': 'Cyclische consumptiegoederen',
+  'Textiles, Apparel & Luxury Goods': 'Cyclische consumptiegoederen',
+  'Textile Manufacturing': 'Cyclische consumptiegoederen',
   // Defensief
   'Consumer Defensive': 'Defensieve consumptiegoederen', 'Consumer Staples': 'Defensieve consumptiegoederen',
   'Food': 'Defensieve consumptiegoederen', 'Beverages': 'Defensieve consumptiegoederen',
@@ -537,12 +539,16 @@ function DataKwaliteitTab({ beleggingen }) {
         };
         continue;
       }
-      // Live check via profile endpoint
+      // Live check via profile endpoint (sector) + metrics endpoint (bèta)
       try {
-        const res = await fetch(`/api/data?endpoint=profile&symbol=${b.symbol}`);
-        const data = await res.json();
-        const sector = vertaalSector(data?.sector || data?.finnhubIndustry) || null;
-        const beta = data?.beta || null;
+        const [profileRes, metricsRes] = await Promise.all([
+          fetch(`/api/data?endpoint=profile&symbol=${b.symbol}`),
+          fetch(`/api/data?endpoint=metrics&symbol=${b.symbol}`),
+        ]);
+        const profileData = await profileRes.json();
+        const metricsData = await metricsRes.json();
+        const sector = vertaalSector(profileData?.sector || profileData?.finnhubIndustry) || null;
+        const beta = metricsData?.metric?.beta || profileData?.beta || null;
         nieuw[sym] = { sector, beta, manueel: false };
       } catch {
         nieuw[sym] = { sector: null, beta: null, manueel: false };

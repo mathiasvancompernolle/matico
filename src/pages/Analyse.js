@@ -136,6 +136,8 @@ const FMP_SECTOR_MAP = {
   'Apparel Manufacturing': 'Cyclische consumptiegoederen', 'Apparel Retail': 'Cyclische consumptiegoederen',
   'Specialty Retail': 'Cyclische consumptiegoederen', 'E-Commerce': 'Cyclische consumptiegoederen',
   'Leisure': 'Cyclische consumptiegoederen', 'Hotels & Entertainment Services': 'Cyclische consumptiegoederen',
+  'Textiles, Apparel & Luxury Goods': 'Cyclische consumptiegoederen',
+  'Textile Manufacturing': 'Cyclische consumptiegoederen',
   'Consumer Defensive': 'Defensieve consumptiegoederen', 'Consumer Staples': 'Defensieve consumptiegoederen',
   'Food': 'Defensieve consumptiegoederen', 'Beverages': 'Defensieve consumptiegoederen',
   'Household & Personal Products': 'Defensieve consumptiegoederen', 'Tobacco': 'Defensieve consumptiegoederen',
