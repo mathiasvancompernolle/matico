@@ -58,7 +58,7 @@ function getBegindatumVoorTijdperk(tijdperk, beleggingen) {
 }
 
 export default function Overzicht({ onToevoegen, onImporteren }) {
-  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht } = useApp();
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht } = useApp();
 
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
@@ -484,6 +484,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   const periodeWinstPct = (() => {
     if (tijdperk === '1D') return beursOpenPortfolio ? dagWinstPct1D : 0;
     if (tijdperk === 'YTD') return filterBezit === 'inbezit' ? ytdPct : ytdPctInclVerkocht;
+    if (tijdperk === 'Totaal') return portfolioWinstPct; // huidige waarde vs totale kostprijs
     return grafiekData.length > 1 && grafiekData[0].waarde > 0
       ? (periodeWinst / grafiekData[0].waarde) * 100
       : 0;
