@@ -155,30 +155,77 @@ export function AppProvider({ children }) {
   }, [beleggingen.map(b => b.symbol).join(',')]);
 
   const ytdPct = (() => {
+    // Time-Weighted Return (TWR) — zoals Trading212, Bolero, Degiro
+    // Alle effecten: aandelen, ETFs, crypto, én verkochte posities die dit jaar bezit waren
     const nuJaar = new Date().getFullYear();
     const eersteJan = new Date(`${nuJaar}-01-01`);
-    let waardeNu = 0;
-    let waardeStart = 0;
 
+    let gewogenTeller = 0;
+    let gewogenNoemer = 0;
+
+    // Actieve beleggingen
     beleggingen.forEach(b => {
       const koers = koersen[b.symbol];
       const factor = getMuntFactor(b.munt || 'EUR');
       const prijsNu = koers ? koers.c : b.kostprijs;
       const aankoopDatum = b.datum ? new Date(b.datum) : null;
-      waardeNu += prijsNu * b.aantal * factor;
+      const waardeNu = prijsNu * b.aantal * factor;
 
+      let rendement = 0;
       if (aankoopDatum && aankoopDatum <= eersteJan) {
-        // In bezit op 1 jan → gebruik historische koers op 1 jan
-        const prijsJan = ytdKoersen[b.symbol] || b.kostprijs;
-        waardeStart += prijsJan * b.aantal * factor;
+        // In bezit op 1 jan → gebruik koers begin jaar als startpunt
+        const prijsStart = ytdKoersen[b.symbol];
+        if (prijsStart && prijsStart > 0) {
+          rendement = (prijsNu - prijsStart) / prijsStart;
+        } else {
+          // Geen historische koers → aankoopprijs als fallback
+          rendement = b.kostprijs > 0 ? (prijsNu - b.kostprijs) / b.kostprijs : 0;
+        }
       } else {
-        // Gekocht na 1 jan → aankoopprijs als basis
-        waardeStart += b.kostprijs * b.aantal * factor;
+        // Gekocht na 1 jan → aankoopprijs als startpunt
+        if (b.kostprijs > 0) {
+          rendement = (prijsNu - b.kostprijs) / b.kostprijs;
+        }
       }
+
+      gewogenTeller += rendement * waardeNu;
+      gewogenNoemer += waardeNu;
     });
 
-    if (waardeStart === 0) return 0;
-    return ((waardeNu - waardeStart) / waardeStart) * 100;
+    // Verkochte beleggingen die dit jaar in bezit waren
+    (verkochteBeleggingen || []).forEach(b => {
+      const factor = getMuntFactor(b.munt || 'EUR');
+      const aankoopDatum = b.datum ? new Date(b.datum) : null;
+      const verkoopdatumParsed = (() => {
+        if (!b.verkoopdatum) return null;
+        const d = b.verkoopdatum.split('/');
+        return d.length === 3 ? new Date(`${d[2]}-${d[1]}-${d[0]}`) : new Date(b.verkoopdatum);
+      })();
+
+      // Alleen meetellen als verkoop in dit jaar was
+      if (!verkoopdatumParsed || verkoopdatumParsed.getFullYear() !== nuJaar) return;
+
+      const prijsVerkoop = b.verkoopkoers || b.kostprijs;
+      const waardeVerkoop = prijsVerkoop * (b.aantalVerkocht || b.aantal || 1) * factor;
+
+      let rendement = 0;
+      if (aankoopDatum && aankoopDatum <= eersteJan) {
+        const prijsStart = ytdKoersen[b.symbol];
+        if (prijsStart && prijsStart > 0) {
+          rendement = (prijsVerkoop - prijsStart) / prijsStart;
+        } else {
+          rendement = b.kostprijs > 0 ? (prijsVerkoop - b.kostprijs) / b.kostprijs : 0;
+        }
+      } else {
+        rendement = b.kostprijs > 0 ? (prijsVerkoop - b.kostprijs) / b.kostprijs : 0;
+      }
+
+      gewogenTeller += rendement * waardeVerkoop;
+      gewogenNoemer += waardeVerkoop;
+    });
+
+    if (gewogenNoemer === 0) return 0;
+    return (gewogenTeller / gewogenNoemer) * 100;
   })();
 
   return (
