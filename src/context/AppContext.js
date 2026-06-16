@@ -140,8 +140,33 @@ export function AppProvider({ children }) {
   // ── Echte YTD: laad historische koers op 1 jan via Finnhub ──
   const [ytdKoersen, setYtdKoersen] = React.useState({});
   const [historischeKoersen, setHistorischeKoersen] = React.useState({});
+  const [periodeKoersen, setPeriodeKoersen] = React.useState({}); // { '1W': { NVDA: 200, ... }, '1M': {...}, '1J': {...} }
 
   const haalHistorischeKoers = React.useCallback(async (symbol, datum) => {}, []);
+
+  const haalPeriodeKoers = React.useCallback(async (symbol, periodeKey, vanTimestamp, totTimestamp) => {
+    const cacheKey = `matico_periode_${periodeKey}_${symbol}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { koers, timestamp } = JSON.parse(cached);
+        // Cache 1 uur geldig voor recente periodes
+        if (Date.now() - timestamp < 60 * 60 * 1000) {
+          setPeriodeKoersen(prev => ({ ...prev, [periodeKey]: { ...(prev[periodeKey] || {}), [symbol]: koers } }));
+          return;
+        }
+      }
+    } catch (e) {}
+    try {
+      const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(symbol)}&van=${vanTimestamp}&tot=${vanTimestamp + 86400 * 5}&resolutie=D`);
+      const data = await res.json();
+      if (data?.s === 'ok' && data?.c?.length > 0) {
+        const koers = data.c[0];
+        localStorage.setItem(cacheKey, JSON.stringify({ koers, timestamp: Date.now() }));
+        setPeriodeKoersen(prev => ({ ...prev, [periodeKey]: { ...(prev[periodeKey] || {}), [symbol]: koers } }));
+      }
+    } catch (e) {}
+  }, []);
 
   React.useEffect(() => {
     const nuJaar = new Date().getFullYear();
@@ -175,6 +200,27 @@ export function AppProvider({ children }) {
       } catch (e) {}
     });
   }, [beleggingen.map(b => b.symbol).join(','), (verkochteBeleggingen || []).map(b => b.symbol).join(',')]);
+
+  // ── Periodekoersen ophalen voor 1W, 1M, 1J ──
+  React.useEffect(() => {
+    const nu = new Date();
+    const periodes = {
+      '1W': Math.floor(new Date(nu - 7 * 86400000).getTime() / 1000),
+      '1M': Math.floor(new Date(nu - 30 * 86400000).getTime() / 1000),
+      '1J': Math.floor(new Date(nu - 365 * 86400000).getTime() / 1000),
+    };
+    beleggingen.forEach(b => {
+      Object.entries(periodes).forEach(([key, van]) => {
+        const aankoopDatum = b.datum ? new Date(b.datum) : null;
+        // Enkel ophalen als effect al in bezit was aan begin van periode
+        if (aankoopDatum && aankoopDatum.getTime() / 1000 < van) {
+          if (!periodeKoersen[key]?.[b.symbol]) {
+            haalPeriodeKoers(b.symbol, key, van, van + 86400 * 5);
+          }
+        }
+      });
+    });
+  }, [beleggingen.map(b => b.symbol).join(',')]);
 
   const berekenTWR = (inclVerkocht) => {
     const nuJaar = new Date().getFullYear();
@@ -244,7 +290,7 @@ export function AppProvider({ children }) {
       wisselkoers, getMuntFactor,
       portfolioWaarde, portfolioKostprijs,
       portfolioWinstVerlies, portfolioWinstPct, portfolioWinstPctInclVerkocht,
-      dagWinst, dagWinstPct, ytdPct, ytdPctInclVerkocht
+      dagWinst, dagWinstPct, ytdPct, ytdPctInclVerkocht, periodeKoersen
     }}>
       {children}
     </AppContext.Provider>

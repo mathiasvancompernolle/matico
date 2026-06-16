@@ -58,7 +58,7 @@ function getBegindatumVoorTijdperk(tijdperk, beleggingen) {
 }
 
 export default function Overzicht({ onToevoegen, onImporteren }) {
-  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht } = useApp();
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen } = useApp();
 
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
@@ -485,6 +485,39 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     if (tijdperk === '1D') return beursOpenPortfolio ? dagWinstPct1D : 0;
     if (tijdperk === 'YTD') return filterBezit === 'inbezit' ? ytdPct : ytdPctInclVerkocht;
     if (tijdperk === 'Totaal') return filterBezit === 'inbezit' ? portfolioWinstPct : portfolioWinstPctInclVerkocht;
+
+    // 1W, 1M, 1J: gewogen rendement op basis van startkoers per periode
+    if (['1W', '1M', '1J'].includes(tijdperk)) {
+      const nu = new Date();
+      const periodeMs = { '1W': 7, '1M': 30, '1J': 365 }[tijdperk] * 86400000;
+      const startDatum = new Date(nu - periodeMs);
+      const pK = periodeKoersen[tijdperk] || {};
+      let teller = 0, noemer = 0;
+      beleggingen.forEach(b => {
+        const k = koersen[b.symbol];
+        const prijsNu = k ? k.c : b.kostprijs;
+        const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+        const aankoopDatum = b.datum ? new Date(b.datum) : null;
+        let prijsStart, startWaarde;
+        if (aankoopDatum && aankoopDatum <= startDatum) {
+          // In bezit voor start van periode → gebruik periodekoers
+          prijsStart = pK[b.symbol];
+          if (!prijsStart || prijsStart <= 0) return; // nog niet geladen, sla over
+          startWaarde = prijsStart * b.aantal * factor;
+        } else {
+          // Gekocht tijdens periode → aankoopprijs als startpunt
+          prijsStart = b.kostprijs;
+          if (!prijsStart || prijsStart <= 0) return;
+          startWaarde = prijsStart * b.aantal * factor;
+        }
+        const rendement = (prijsNu - prijsStart) / prijsStart;
+        teller += rendement * startWaarde;
+        noemer += startWaarde;
+      });
+      return noemer > 0 ? (teller / noemer) * 100 : 0;
+    }
+
+    // Laatste: grafiek-gebaseerd
     return grafiekData.length > 1 && grafiekData[0].waarde > 0
       ? (periodeWinst / grafiekData[0].waarde) * 100
       : 0;
