@@ -1,5 +1,5 @@
 // api/sync-beleggingen.js
-// Slaat beleggingen op in Vercel Blob via directe REST API (geen @vercel/blob package nodig)
+// Slaat beleggingen op in Vercel Blob via directe REST API
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -10,6 +10,9 @@ export default async function handler(req, res) {
   const TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
   if (!TOKEN) return res.status(500).json({ error: 'BLOB_READ_WRITE_TOKEN niet ingesteld' });
 
+  // Haal store hostname op uit token (formaat: vercel_blob_rw_STOREID_...)
+  const storeId = TOKEN.split('_')[3] || '';
+
   if (req.method === 'POST') {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -18,8 +21,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Ongeldige data' });
       }
       const data = JSON.stringify({ beleggingen, gebruiker, bijgewerkt: new Date().toISOString() });
-      // Vercel Blob REST API — PUT om bestand op te slaan
-      const blobRes = await fetch('https://blob.vercel-storage.com/matico-portfolio.json', {
+
+      const blobRes = await fetch(`https://blob.vercel-storage.com/matico-portfolio.json`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${TOKEN}`,
@@ -29,29 +32,38 @@ export default async function handler(req, res) {
         },
         body: data,
       });
+
+      const resultText = await blobRes.text();
       if (!blobRes.ok) {
-        const err = await blobRes.text();
-        console.error('Blob PUT fout:', err);
-        return res.status(500).json({ error: 'Blob opslaan mislukt', detail: err });
+        console.error('Blob PUT fout:', resultText);
+        return res.status(500).json({ error: 'Blob opslaan mislukt', detail: resultText });
       }
-      const result = await blobRes.json();
+
+      let result;
+      try { result = JSON.parse(resultText); } catch { result = {}; }
       return res.status(200).json({ success: true, url: result.url });
     } catch (err) {
-      console.error('Sync error:', err);
+      console.error('Sync POST error:', err);
       return res.status(500).json({ error: err.message });
     }
   }
 
   if (req.method === 'GET') {
     try {
-      // Lijst opvragen en dan het bestand downloaden
-      const listRes = await fetch('https://blob.vercel-storage.com?prefix=matico-portfolio', {
+      // Gebruik de juiste Vercel Blob list endpoint
+      const listRes = await fetch(`https://blob.vercel-storage.com?prefix=matico-portfolio.json&limit=1`, {
         headers: { 'Authorization': `Bearer ${TOKEN}` },
       });
-      const listData = await listRes.json();
-      const blob = listData.blobs?.find(b => b.pathname === 'matico-portfolio.json');
-      if (!blob) return res.status(404).json({ error: 'Geen data gevonden' });
-      const fileRes = await fetch(blob.downloadUrl);
+      const listText = await listRes.text();
+      let listData;
+      try { listData = JSON.parse(listText); } catch { return res.status(500).json({ error: 'List parse fout', detail: listText }); }
+
+      const blob = listData.blobs?.[0];
+      if (!blob?.downloadUrl && !blob?.url) {
+        return res.status(404).json({ error: 'Geen portfolio gevonden', blobs: listData.blobs });
+      }
+
+      const fileRes = await fetch(blob.downloadUrl || blob.url);
       const data = await fileRes.json();
       return res.status(200).json(data);
     } catch (err) {
