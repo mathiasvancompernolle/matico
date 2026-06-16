@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import { SlidersHorizontal, GitCompare, Plus, ChevronDown, X, Check, Upload, Edit3 } from 'lucide-react';
@@ -98,6 +98,8 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   const [filterSymbolen, setFilterSymbolen] = useState([]);
   const [filterBezit, setFilterBezit] = useState('inbezit'); // 'alles' | 'inbezit'
   const [detailBelegging, setDetailBelegging] = useState(null);
+  const [sortCol, setSortCol] = useState('datum'); // standaard: oudste naar nieuwste
+  const [sortDir, setSortDir] = useState('asc');
   const [toevoegenMenuOpen, setToevoegenMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -309,11 +311,36 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
     return () => clearInterval(interval);
   }, []);
 
-  const gefilterdeBeleggingen = beleggingen.filter(b => {
-    if (filterType !== 'alle' && b.type !== filterType) return false;
-    if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
-    return true;
-  });
+  const gefilterdeBeleggingen = useMemo(() => {
+    const lijst = beleggingen.filter(b => {
+      if (filterType !== 'alle' && b.type !== filterType) return false;
+      if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
+      return true;
+    });
+    const parseDatum = (s) => { if (!s) return 0; const d = s.split('/'); return d.length === 3 ? new Date(`${d[2]}-${d[1]}-${d[0]}`).getTime() : new Date(s).getTime(); };
+    return [...lijst].sort((a, b) => {
+      let va, vb;
+      const ka = koersen[a.symbol], kb = koersen[b.symbol];
+      const fa = getMuntFactor ? getMuntFactor(a.munt || 'EUR') : ((a.munt||'EUR')==='USD'?0.865:1);
+      const fb = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt||'EUR')==='USD'?0.865:1);
+      switch (sortCol) {
+        case 'naam': va = a.naam?.toLowerCase(); vb = b.naam?.toLowerCase(); break;
+        case 'koers': va = ka ? ka.c : a.kostprijs; vb = kb ? kb.c : b.kostprijs; break;
+        case 'waarde': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa; vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb; break;
+        case 'vandaag': va = ka ? (ka.c - ka.pc) * a.aantal * fa : 0; vb = kb ? (kb.c - kb.pc) * b.aantal * fb : 0; break;
+        case 'totaal': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa - a.kostprijs * a.aantal * fa; vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb - b.kostprijs * b.aantal * fb; break;
+        case 'gewicht': {
+          const tot = lijst.reduce((s,bb) => { const k=koersen[bb.symbol]; const f=getMuntFactor?getMuntFactor(bb.munt||'EUR'):((bb.munt||'EUR')==='USD'?0.865:1); return s+(k?k.c:bb.kostprijs)*bb.aantal*f; }, 0);
+          va = tot > 0 ? (ka?ka.c:a.kostprijs)*a.aantal*fa/tot : 0;
+          vb = tot > 0 ? (kb?kb.c:b.kostprijs)*b.aantal*fb/tot : 0; break;
+        }
+        default: va = parseDatum(a.datum); vb = parseDatum(b.datum); break; // datum
+      }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [beleggingen, filterType, filterSymbolen, sortCol, sortDir, koersen]);
 
   // Winst/verlies = huidige waarde - aankoopwaarde van alle posities actief op die datum
   const winstData = grafiekData.map((d) => {
@@ -769,8 +796,15 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Automatisch opgevolgd door Matico</div>
             </div>
             <div className="tabel-header belegging-grid" style={{ marginTop: 16 }}>
-              <span>Naam ↑↓</span><span>Koers ↑↓</span><span>Huidige waarde ↑↓</span>
-              <span>Winst/verlies vandaag ↑↓</span><span>Winst/verlies totaal ↑↓</span><span>Gewicht ↑↓</span>
+              {[['naam','Naam'],['koers','Koers'],['waarde','Huidige waarde'],['vandaag','Winst/verlies vandaag'],['totaal','Winst/verlies totaal'],['gewicht','Gewicht']].map(([col, label]) => (
+                <span key={col} onClick={() => { if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortCol(col); setSortDir('asc'); } }}
+                  style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {label}
+                  <span style={{ fontSize: 10, color: sortCol === col ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 700 }}>
+                    {sortCol === col ? (sortDir === 'asc' ? '↑' : '↓') : '↑↓'}
+                  </span>
+                </span>
+              ))}
             </div>
             {gefilterdeBeleggingen.map(b => {
               const koers = koersen[b.symbol];

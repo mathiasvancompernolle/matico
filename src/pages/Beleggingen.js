@@ -290,6 +290,30 @@ export default function Beleggingen({ onToevoegen }) {
   const [detailBelegging, setDetailBelegging] = useState(null);
   const [verkoopModal, setVerkoopModal] = useState(false);
   const [verkoopVoorBelegging, setVerkoopVoorBelegging] = useState(null);
+  const [sortCol, setSortCol] = useState('datum');
+  const [sortDir, setSortDir] = useState('asc');
+
+  const wisselSort = (col) => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+  const sortPijl = (col) => sortCol === col ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
+
+  const parseDatum = (s) => { if (!s) return 0; const d = s.split('/'); return d.length === 3 ? new Date(`${d[2]}-${d[1]}-${d[0]}`).getTime() : new Date(s).getTime(); };
+
+  const gesorteerd = (lijst) => [...lijst].sort((a, b) => {
+    let va, vb;
+    switch (sortCol) {
+      case 'naam': va = a.naam?.toLowerCase(); vb = b.naam?.toLowerCase(); break;
+      case 'datum': va = parseDatum(a.datum); vb = parseDatum(b.datum); break;
+      case 'kostprijs': va = a.kostprijs; vb = b.kostprijs; break;
+      case 'aantal': va = a.aantal; vb = b.aantal; break;
+      default: va = parseDatum(a.datum); vb = parseDatum(b.datum);
+    }
+    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   const verwijder = (id) => {
     if (window.confirm('Wil je deze belegging verwijderen?')) {
@@ -388,15 +412,16 @@ export default function Beleggingen({ onToevoegen }) {
                   fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
                   alignItems: 'center'
                 }}>
-                  <ColHeader>Naam ↕</ColHeader>
-                  <ColHeader>Aankoopdatum ↕</ColHeader>
-                  <ColHeader>Kostprijs per stuk ↕</ColHeader>
-                  <ColHeader>Aantal ↕</ColHeader>
+                  {[['naam','Naam'],['datum','Aankoopdatum'],['kostprijs','Kostprijs per stuk'],['aantal','Aantal']].map(([col,label]) => (
+                    <span key={col} onClick={() => wisselSort(col)} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {label} <span style={{ color: sortCol === col ? 'var(--accent)' : 'var(--text-muted)' }}>{sortPijl(col)}</span>
+                    </span>
+                  ))}
                   <span />
                 </div>
 
                 {/* Rijen */}
-                {beleggingen.map((b) => {
+                {gesorteerd(beleggingen).map((b) => {
                   const ms = muntSymbool(b.munt || 'EUR');
                   return (
                     <div key={b.id} className="belegging-row-grid" style={{
@@ -533,15 +558,27 @@ export default function Beleggingen({ onToevoegen }) {
                   fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
                   alignItems: 'center'
                 }}>
-                  <span>Naam ↕</span>
-                  <span>Verkoopdatum ↕</span>
-                  <span>Aankoopkoers ↕</span>
-                  <span>Verkoopkoers ↕</span>
-                  <span>Winst/Verlies ↕</span>
+                  {[['naam','Naam'],['datum','Verkoopdatum'],['kostprijs','Aankoopkoers'],['verkoopkoers','Verkoopkoers'],['winst','Winst/Verlies']].map(([col,label]) => (
+                    <span key={col} onClick={() => wisselSort(col)} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {label} <span style={{ color: sortCol === col ? 'var(--accent)' : 'var(--text-muted)' }}>{sortPijl(col)}</span>
+                    </span>
+                  ))}
                   <span />
                 </div>
 
-                {verkochteBeleggingen.map((b) => {
+                {[...verkochteBeleggingen].sort((a, b) => {
+                  let va, vb;
+                  switch (sortCol) {
+                    case 'naam': va = a.naam?.toLowerCase(); vb = b.naam?.toLowerCase(); break;
+                    case 'kostprijs': va = a.kostprijs; vb = b.kostprijs; break;
+                    case 'verkoopkoers': va = a.verkoopkoers || 0; vb = b.verkoopkoers || 0; break;
+                    case 'winst': va = a.winstverlies || 0; vb = b.winstverlies || 0; break;
+                    default: va = parseDatum(a.verkoopdatum || a.datum); vb = parseDatum(b.verkoopdatum || b.datum);
+                  }
+                  if (va < vb) return sortDir === 'asc' ? -1 : 1;
+                  if (va > vb) return sortDir === 'asc' ? 1 : -1;
+                  return 0;
+                }).map((b) => {
                   const wv = b.winstverlies || 0;
                   const isPos = wv >= 0;
                   const ms = muntSymbool(b.verkoopMunt || b.munt || 'EUR');
