@@ -1632,6 +1632,8 @@ export function Analyse() {
               ))}
             </div>
           </div>
+        )}
+
         {/* ── Transactiekosten ── */}
         {(() => {
           const kostenActief = beleggingen.reduce((sum, b) => sum + (b.transactiekosten || 0) * factor(b), 0);
