@@ -73,7 +73,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
         const [profielRes, metricsRes, nieuwsRes] = await Promise.all([
           fetch(`/api/data?endpoint=profile&symbol=${belegging.symbol}`),
           fetch(`/api/data?endpoint=metrics&symbol=${belegging.symbol}`),
-          fetch(`/api/data?endpoint=news&symbol=${belegging.symbol}`)
+          fetch(`/api/data?endpoint=news&symbol=${belegging.symbol}&naam=${encodeURIComponent(belegging.naam || '')}`)
         ]);
         const p = await profielRes.json();
         const m = await metricsRes.json();

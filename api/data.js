@@ -251,22 +251,47 @@ export default async function handler(req, res) {
     }
 
     if (endpoint === 'news') {
-      const { symbol } = req.query;
+      const { symbol, naam } = req.query;
       const to = new Date().toISOString().split('T')[0];
-      const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+      const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; // 30 dagen ipv 7
+
+      // 1. Finnhub company-news (werkt goed voor US aandelen)
       try {
         const r = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${from}&to=${to}&token=${FINNHUB_KEY}`);
         const d = await r.json();
-        if (Array.isArray(d) && d.length > 0) return res.json(d);
+        if (Array.isArray(d) && d.length > 0) return res.json(d.slice(0, 10));
       } catch (e) {}
+
+      // 2. NewsAPI — gebruik bedrijfsnaam voor betere resultaten bij Europese aandelen/ETFs
+      const zoekterm = naam || symbol.split('.')[0]; // bv. "Prosus" of "VWCE"
       try {
-        const r = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(symbol)}&sortBy=publishedAt&pageSize=5&apiKey=${NEWSAPI_KEY}`);
+        const r = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(zoekterm)}&sortBy=publishedAt&pageSize=10&language=en&apiKey=${NEWSAPI_KEY}`);
         const d = await r.json();
-        return res.json((d.articles || []).map(a => ({
-          headline: a.title, url: a.url, source: a.source?.name,
+        if (d.articles?.length > 0) return res.json(d.articles.map(a => ({
+          headline: a.title,
+          summary: a.description,
+          url: a.url,
+          source: a.source?.name,
+          image: a.urlToImage,
           datetime: Math.floor(new Date(a.publishedAt).getTime() / 1000)
         })));
       } catch (e) {}
+
+      // 3. EODHD nieuws (voor Europese aandelen)
+      if (EODHD_KEY) {
+        try {
+          const r = await fetch(`https://eodhd.com/api/news?s=${symbol}&limit=10&api_token=${EODHD_KEY}&fmt=json`);
+          const d = await r.json();
+          if (Array.isArray(d) && d.length > 0) return res.json(d.map(a => ({
+            headline: a.title,
+            summary: a.content?.slice(0, 200),
+            url: a.link,
+            source: 'EODHD',
+            datetime: Math.floor(new Date(a.date).getTime() / 1000)
+          })));
+        } catch (e) {}
+      }
+
       return res.json([]);
     }
 
