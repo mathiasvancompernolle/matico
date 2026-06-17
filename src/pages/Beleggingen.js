@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, ChevronDown, Calendar, MoreVertical, Search, ArrowLeft, X, Trash2 } from 'lucide-react';
+import { Plus, ChevronDown, Calendar, MoreVertical, Search, ArrowLeft, X, Trash2, Download } from 'lucide-react';
 import BeleggingDetail from '../components/BeleggingDetail';
 
 // ── kleine hulpfuncties ──────────────────────────────────────────
@@ -266,7 +266,7 @@ const inputStyle = {
 
 // ── Hoofd component ──────────────────────────────────────────────
 export default function Beleggingen({ onToevoegen }) {
-  const { beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen } = useApp();
+  const { beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen, getMuntFactor } = useApp();
 
   // Haal logo's op voor actieve én verkochte beleggingen zonder logo
   React.useEffect(() => {
@@ -348,6 +348,94 @@ export default function Beleggingen({ onToevoegen }) {
     });
   };
 
+  const exporteerNaarExcel = () => {
+    const nu = new Date();
+    const datumStr = `${nu.getDate().toString().padStart(2,'0')}-${(nu.getMonth()+1).toString().padStart(2,'0')}-${nu.getFullYear()}`;
+    const tijdStr = `${nu.getHours().toString().padStart(2,'0')}_${nu.getMinutes().toString().padStart(2,'0')}_${nu.getSeconds().toString().padStart(2,'0')}`;
+
+    // Dynamisch xlsx importeren
+    import('xlsx').then(XLSX => {
+      const wb = XLSX.utils.book_new();
+
+      // ── Sheet 1: Actieve posities ──
+      const positieData = [
+        ['Instrument','Valuta','Aantal','Aankoopkoers','Huidige koers','Aankoopwaarde (€)','Huidige waarde (€)','Winst/Verlies (€)','Winst/Verlies (%)','ISIN','Type','Aankoopdatum'],
+        ...beleggingen.map(b => {
+          const k = koersen[b.symbol];
+          const factor = getMuntFactor(b.munt || 'EUR');
+          const koersNu = k ? k.c : b.kostprijs;
+          const aankoopWaarde = b.kostprijs * b.aantal * factor;
+          const huidigeWaarde = koersNu * b.aantal * factor;
+          const winstVerlies = huidigeWaarde - aankoopWaarde;
+          const winstPct = aankoopWaarde > 0 ? (winstVerlies / aankoopWaarde) * 100 : 0;
+          return [
+            b.naam || b.symbol,
+            b.munt || 'EUR',
+            b.aantal,
+            b.kostprijs,
+            koersNu,
+            parseFloat(aankoopWaarde.toFixed(2)),
+            parseFloat(huidigeWaarde.toFixed(2)),
+            parseFloat(winstVerlies.toFixed(2)),
+            parseFloat(winstPct.toFixed(2)),
+            '',
+            b.type === 'etf' ? 'ETF' : b.type === 'crypto' ? 'Crypto' : 'Aandeel',
+            b.datum || '',
+          ];
+        })
+      ];
+      const ws1 = XLSX.utils.aoa_to_sheet(positieData);
+      ws1['!cols'] = [30,8,8,12,12,16,16,16,14,14,10,12].map(w => ({ wch: w }));
+      XLSX.utils.book_append_sheet(wb, ws1, 'Posities');
+
+      // ── Sheet 2: Transactiegeschiedenis ──
+      const transactieData = [
+        ['Datum','Type','Instrument','Symbool','Valuta','Aantal','Koers','Transactiekosten','Totaal (€)'],
+        // Aankopen (actieve beleggingen)
+        ...beleggingen.map(b => {
+          const factor = getMuntFactor(b.munt || 'EUR');
+          return [
+            b.datum || '',
+            'Aankoop',
+            b.naam || b.symbol,
+            b.symbol,
+            b.munt || 'EUR',
+            b.aantal,
+            b.kostprijs,
+            b.transactiekosten || 0,
+            parseFloat((b.kostprijs * b.aantal * factor + (b.transactiekosten || 0)).toFixed(2)),
+          ];
+        }),
+        // Aankopen + verkopen (verkochte beleggingen)
+        ...(verkochteBeleggingen || []).flatMap(b => {
+          const factor = getMuntFactor(b.munt || 'EUR');
+          const rijen = [];
+          if (b.datum) rijen.push([
+            b.datum, 'Aankoop', b.naam || b.symbol, b.symbol, b.munt || 'EUR',
+            b.aantalVerkocht || b.aantal, b.kostprijs, b.transactiekosten || 0,
+            parseFloat((b.kostprijs * (b.aantalVerkocht || b.aantal) * factor).toFixed(2)),
+          ]);
+          if (b.verkoopdatum) rijen.push([
+            b.verkoopdatum, 'Verkoop', b.naam || b.symbol, b.symbol, b.munt || 'EUR',
+            b.aantalVerkocht || b.aantal, b.verkoopkoers, 0,
+            parseFloat((b.verkoopkoers * (b.aantalVerkocht || b.aantal) * factor).toFixed(2)),
+          ]);
+          return rijen;
+        }),
+      ].sort((a, b) => a[0] < b[0] ? -1 : 1); // Sorteren op datum
+
+      const ws2 = XLSX.utils.aoa_to_sheet(transactieData);
+      ws2['!cols'] = [12,10,28,10,8,8,10,14,12].map(w => ({ wch: w }));
+      XLSX.utils.book_append_sheet(wb, ws2, 'Transacties');
+
+      // Bestandsnaam zoals Saxo: Posities_17-jun-2026_1_03_05
+      const maandNamen = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+      const saxoDatum = `${nu.getDate()}-${maandNamen[nu.getMonth()]}-${nu.getFullYear()}`;
+      const bestandsnaam = `Posities_${saxoDatum}_${tijdStr.replace(/_/g,'_')}.xlsx`;
+      XLSX.writeFile(wb, bestandsnaam);
+    });
+  };
+
   const muntSymbool = (munt) => munt === 'USD' ? '$' : munt === 'GBP' ? '£' : '€';
 
   const ColHeader = ({ children }) => (
@@ -362,6 +450,9 @@ export default function Beleggingen({ onToevoegen }) {
       <div className="page-header" style={{ marginBottom: 24 }}>
         <h1>Beleggingen</h1>
         <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-secondary" onClick={exporteerNaarExcel} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Download size={15} /> Exporteren
+          </button>
           <button className="btn btn-primary" onClick={onToevoegen}>
             <Plus size={16} /> Beleggingen toevoegen
           </button>
