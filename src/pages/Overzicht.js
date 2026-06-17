@@ -540,11 +540,33 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
   const periodeWinstPct = (() => {
     if (tijdperk === '1D') return beursOpenPortfolio ? dagWinstPct1D : 0;
     if (tijdperk === 'YTD') {
-      // Noemer = altijd exclusief verkochte effecten, teller volgt filter
-      return ytdPct !== 0 ? (filterBezit === 'inbezit' ? ytdPct : ytdPctInclVerkocht) : 0;
+      // Noemer = startwaarde posities die op 1 jan in bezit waren
+      const nuJaar = new Date().getFullYear();
+      const eersteJan = new Date(`${nuJaar}-01-01`);
+      let noemer = 0;
+      beleggingen.forEach(b => {
+        const aankoopDatum = b.datum ? new Date(b.datum) : null;
+        if (aankoopDatum && aankoopDatum <= eersteJan) {
+          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+          const prijsStart = ytdKoersen[b.symbol];
+          if (prijsStart && prijsStart > 0) noemer += prijsStart * b.aantal * factor;
+        }
+      });
+      if (filterBezit !== 'inbezit') {
+        (verkochteBeleggingen || []).forEach(b => {
+          const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
+          if (!vd || vd.getFullYear() !== nuJaar) return;
+          const aankoopDatum = b.datum ? new Date(b.datum) : null;
+          if (aankoopDatum && aankoopDatum <= eersteJan) {
+            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+            const prijsStart = ytdKoersen[b.symbol];
+            if (prijsStart && prijsStart > 0) noemer += prijsStart * (b.aantalVerkocht || b.aantal || 1) * factor;
+          }
+        });
+      }
+      return noemer > 0 ? (periodeWinst / noemer) * 100 : 0;
     }
     if (tijdperk === 'Totaal') {
-      // Noemer = kostprijs actieve posities, teller volgt filter
       return filterBezit === 'inbezit' ? portfolioWinstPct : portfolioWinstPctInclVerkocht;
     }
 
