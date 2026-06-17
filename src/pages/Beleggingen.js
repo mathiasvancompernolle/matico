@@ -718,7 +718,6 @@ export default function Beleggingen({ onToevoegen }) {
             )}
           </>
         )}
-      </div>
 
         {/* ── GESCHIEDENIS TAB ── */}
         {tab === 'geschiedenis' && (() => {
@@ -751,11 +750,9 @@ export default function Beleggingen({ onToevoegen }) {
 
           return (
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>Transactiegeschiedenis</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{transacties.length} transacties</div>
-                </div>
+              <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-light)' }}>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>Transactiegeschiedenis</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{transacties.length} transacties</div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 100px 1fr 1fr 1fr 1fr', padding: '10px 24px', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-light)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 <span>Instrument</span><span>Type</span><span>Datum</span>
