@@ -537,10 +537,17 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
 
   const periodeWinstPct = (() => {
     if (tijdperk === '1D') return beursOpenPortfolio ? dagWinstPct1D : 0;
-    if (tijdperk === 'YTD') return filterBezit === 'inbezit' ? ytdPct : ytdPctInclVerkocht;
-    if (tijdperk === 'Totaal') return filterBezit === 'inbezit' ? portfolioWinstPct : portfolioWinstPctInclVerkocht;
+    if (tijdperk === 'YTD') {
+      // Noemer = altijd exclusief verkochte effecten, teller volgt filter
+      return ytdPct !== 0 ? (filterBezit === 'inbezit' ? ytdPct : ytdPctInclVerkocht) : 0;
+    }
+    if (tijdperk === 'Totaal') {
+      // Noemer = kostprijs actieve posities, teller volgt filter
+      return filterBezit === 'inbezit' ? portfolioWinstPct : portfolioWinstPctInclVerkocht;
+    }
 
-    // 1W, 1M, 1J: percentage = periodeWinst / startwaarde van posities die al in bezit waren
+    // 1W, 1M, 1J: percentage = periodeWinst / startwaarde actieve posities
+    // Noemer verandert NIET bij inclusief/exclusief — alleen de teller (periodeWinst) verandert
     if (['1W', '1M', '1J'].includes(tijdperk)) {
       const nu = new Date();
       const periodeMs = { '1W': 7, '1M': 30, '1J': 365 }[tijdperk] * 86400000;
@@ -548,7 +555,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       const pK = periodeKoersen[tijdperk] || {};
       let startWaarde = 0;
 
-      // Startwaarde van posities die al in bezit waren (zelfde logica als periodeWinst)
+      // Altijd alleen actieve posities voor de startwaarde (noemer)
       beleggingen.forEach(b => {
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
         if (aankoopDatum && aankoopDatum <= startDatum) {
@@ -557,24 +564,6 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
           if (prijsStart && prijsStart > 0) startWaarde += prijsStart * b.aantal * factor;
         }
       });
-
-      if (filterBezit !== 'inbezit') {
-        (verkochteBeleggingen || []).forEach(b => {
-          const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
-          if (!vd || vd < startDatum) return;
-          const aankoopDatum = b.datum ? new Date(b.datum) : null;
-          if (aankoopDatum && aankoopDatum <= startDatum) {
-            // Al in bezit voor start periode → startkoers als basis
-            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-            const prijsStart = pK[b.symbol];
-            if (prijsStart && prijsStart > 0) startWaarde += prijsStart * (b.aantalVerkocht || b.aantal || 1) * factor;
-          } else {
-            // Gekocht én verkocht tijdens periode → aankoopprijs als basis
-            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-            if (b.kostprijs > 0) startWaarde += b.kostprijs * (b.aantalVerkocht || b.aantal || 1) * factor;
-          }
-        });
-      }
 
       return startWaarde > 0 ? (periodeWinst / startWaarde) * 100 : 0;
     }
