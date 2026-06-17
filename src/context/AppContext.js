@@ -33,6 +33,14 @@ export function AppProvider({ children }) {
     return saved ? JSON.parse(saved) : { voornaam: '', achternaam: '' };
   });
 
+  // ── Dark mode ──
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('matico_darkmode') === 'true');
+
+  useEffect(() => {
+    document.body.classList.toggle('dark', darkMode);
+    localStorage.setItem('matico_darkmode', darkMode);
+  }, [darkMode]);
+
   // ── Multi-portfolio state ──
   const [portfolios, setPortfolios] = useState(() => laadPortfolios());
   const [actiefPortfolioId, setActiefPortfolioId] = useState(() => {
@@ -327,6 +335,7 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       gebruiker, setGebruiker,
+      darkMode, setDarkMode,
       portfolios, actiefPortfolio, actiefPortfolioId,
       wisselPortfolio, voegPortfolioToe, verwijderPortfolio,
       hernoemPortfolio: hernoemPortfolioFn,

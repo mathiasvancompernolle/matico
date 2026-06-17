@@ -16,6 +16,7 @@
   --border-light: #f1f5f9;
   --bg: #f8fafc;
   --bg-white: #ffffff;
+  --bg-subtle: #f8fafc;
   --sidebar-width: 260px;
   --sidebar-collapsed: 64px;
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
@@ -25,6 +26,40 @@
   --radius-sm: 8px;
   --radius-lg: 16px;
 }
+
+/* ── Dark mode ── */
+body.dark {
+  --accent: #818cf8;
+  --accent-light: #a5b4fc;
+  --accent-dark: #6366f1;
+  --accent-bg: #1e1b4b;
+  --green: #4ade80;
+  --green-bg: #052e16;
+  --red: #f87171;
+  --red-bg: #2d0a0a;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border: #334155;
+  --border-light: #1e293b;
+  --bg: #0f172a;
+  --bg-white: #1e293b;
+  --bg-subtle: #162032;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+body.dark .card { background: var(--bg-white); }
+body.dark input, body.dark select, body.dark textarea { background: var(--bg); color: var(--text-primary); border-color: var(--border); }
+body.dark .form-input { background: var(--bg); color: var(--text-primary); }
+body.dark .btn-secondary { background: var(--bg-subtle); color: var(--text-primary); border-color: var(--border); }
+body.dark .nav-item:hover { background: var(--bg-subtle); }
+body.dark .nav-item.active { background: var(--accent-bg); }
+body.dark .sidebar { background: var(--bg-white); border-color: var(--border); }
+body.dark .recharts-cartesian-grid-horizontal line,
+body.dark .recharts-cartesian-grid-vertical line { stroke: var(--border); }
+body.dark .recharts-tooltip-wrapper .recharts-default-tooltip { background: var(--bg-white) !important; border-color: var(--border) !important; color: var(--text-primary) !important; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
