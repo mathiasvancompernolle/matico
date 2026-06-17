@@ -513,10 +513,8 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
 
     // Inclusief verkochte effecten
     if (filterBezit !== 'inbezit') {
-      console.log('DEBUG: inclusief verkochte effecten, aantal:', (verkochteBeleggingen || []).length);
       (verkochteBeleggingen || []).forEach(b => {
         const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
-        console.log('DEBUG:', b.symbol, 'vd:', b.verkoopdatum, 'startDatum:', startDatum.toISOString(), 'vd>=start?', vd >= startDatum);
         if (!vd || vd < startDatum) return; // verkoop was voor deze periode
         const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
         const aankoopDatum = b.datum ? new Date(b.datum) : null;

@@ -209,7 +209,9 @@ export function AppProvider({ children }) {
       '1M': Math.floor(new Date(nu - 30 * 86400000).getTime() / 1000),
       '1J': Math.floor(new Date(nu - 365 * 86400000).getTime() / 1000),
     };
-    beleggingen.forEach(b => {
+    // Zowel actieve als verkochte beleggingen meenemen
+    const alleBel = [...beleggingen, ...(verkochteBeleggingen || [])];
+    alleBel.forEach(b => {
       Object.entries(periodes).forEach(([key, van]) => {
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
         // Enkel ophalen als effect al in bezit was aan begin van periode
@@ -220,7 +222,7 @@ export function AppProvider({ children }) {
         }
       });
     });
-  }, [beleggingen.map(b => b.symbol).join(',')]);
+  }, [beleggingen.map(b => b.symbol).join(','), (verkochteBeleggingen || []).map(b => b.symbol).join(',')]);
 
   const berekenTWR = (inclVerkocht) => {
     const nuJaar = new Date().getFullYear();
