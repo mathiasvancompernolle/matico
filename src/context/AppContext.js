@@ -113,19 +113,15 @@ export function AppProvider({ children }) {
   const portfolioWinstVerlies = portfolioWaarde - portfolioKostprijs;
   const portfolioWinstPct = portfolioKostprijs > 0 ? (portfolioWinstVerlies / portfolioKostprijs) * 100 : 0;
 
-  // Inclusief verkochte effecten: kostprijs + verkoopwaarde meenemen
+  // Inclusief verkochte effecten: noemer blijft portfolioKostprijs (actieve posities)
+  // teller = huidige winst + gerealiseerde winst/verlies verkochte posities
   const portfolioWinstPctInclVerkocht = (() => {
-    const kostprijsVerkocht = (verkochteBeleggingen || []).reduce((sum, b) => {
+    const gerealiseerdeWinst = (verkochteBeleggingen || []).reduce((sum, b) => {
       const factor = getMuntFactor(b.munt || 'EUR');
-      return sum + (b.kostprijs * (b.aantalVerkocht || b.aantal || 1) * factor);
+      return sum + ((b.verkoopkoers - b.kostprijs) * (b.aantalVerkocht || b.aantal || 1) * factor);
     }, 0);
-    const verkoopWaarde = (verkochteBeleggingen || []).reduce((sum, b) => {
-      const factor = getMuntFactor(b.munt || 'EUR');
-      return sum + ((b.verkoopkoers || b.kostprijs) * (b.aantalVerkocht || b.aantal || 1) * factor);
-    }, 0);
-    const totaalKostprijs = portfolioKostprijs + kostprijsVerkocht;
-    const totaalWaarde = portfolioWaarde + verkoopWaarde;
-    return totaalKostprijs > 0 ? ((totaalWaarde - totaalKostprijs) / totaalKostprijs) * 100 : 0;
+    const totaalWinst = portfolioWinstVerlies + gerealiseerdeWinst;
+    return portfolioKostprijs > 0 ? (totaalWinst / portfolioKostprijs) * 100 : 0;
   })();
 
   const dagWinst = beleggingen.reduce((sum, b) => {
