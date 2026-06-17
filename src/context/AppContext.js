@@ -228,41 +228,31 @@ export function AppProvider({ children }) {
     const nuJaar = new Date().getFullYear();
     const eersteJan = new Date(`${nuJaar}-01-01`);
 
-    // Gewogen YTD-rendement:
-    // - Effect in bezit vóór 1 jan → rendement tov gecachede beginjaarskoers
-    // - Effect gekocht ná 1 jan → rendement tov aankoopprijs
-    // - Verkocht effect → rendement tov beginjaarskoers of aankoopprijs, gewogen op startwaarde
-    // Weging op startwaarde (niet huidige waarde) → correcte gewogen gemiddelde
+    // YTD percentage:
+    // - Noemer = alleen posities die al op 1 jan in bezit waren (beginjaarskoers)
+    // - Teller = winst van posities op 1 jan + winst/verlies van nieuwe aankopen + verkochte (indien incl)
+    // Nieuwe aankopen tellen WEL mee in teller maar NIET in noemer (zoals bij echte brokers)
 
     let teller = 0, noemer = 0;
-
-    const verwerkBelegging = (b, prijsEind) => {
-      const factor = getMuntFactor(b.munt || 'EUR');
-      const aankoopDatum = b.datum ? new Date(b.datum) : null;
-      let prijsStart, startWaarde;
-
-      if (aankoopDatum && aankoopDatum <= eersteJan) {
-        // In bezit op 1 jan → beginjaarskoers als startpunt
-        prijsStart = ytdKoersen[b.symbol];
-        if (!prijsStart || prijsStart <= 0) return; // geen data, sla over
-        startWaarde = prijsStart * b.aantal * factor;
-      } else {
-        // Gekocht na 1 jan → aankoopprijs als startpunt
-        prijsStart = b.kostprijs;
-        if (!prijsStart || prijsStart <= 0) return;
-        startWaarde = prijsStart * b.aantal * factor;
-      }
-
-      const rendement = (prijsEind - prijsStart) / prijsStart;
-      teller += rendement * startWaarde;
-      noemer += startWaarde;
-    };
 
     // Actieve beleggingen
     beleggingen.forEach(b => {
       const k = koersen[b.symbol];
       const prijsNu = k ? k.c : b.kostprijs;
-      verwerkBelegging(b, prijsNu);
+      const factor = getMuntFactor(b.munt || 'EUR');
+      const aankoopDatum = b.datum ? new Date(b.datum) : null;
+
+      if (aankoopDatum && aankoopDatum <= eersteJan) {
+        // In bezit op 1 jan → telt mee in noemer én teller
+        const prijsStart = ytdKoersen[b.symbol];
+        if (!prijsStart || prijsStart <= 0) return;
+        const startWaarde = prijsStart * b.aantal * factor;
+        teller += (prijsNu - prijsStart) * b.aantal * factor;
+        noemer += startWaarde;
+      } else {
+        // Nieuw gekocht na 1 jan → telt WEL mee in teller, NIET in noemer
+        teller += (prijsNu - b.kostprijs) * b.aantal * factor;
+      }
     });
 
     // Verkochte beleggingen (enkel als inclVerkocht)
@@ -270,8 +260,21 @@ export function AppProvider({ children }) {
       (verkochteBeleggingen || []).forEach(b => {
         const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
         if (!vd || vd.getFullYear() !== nuJaar) return;
+        const factor = getMuntFactor(b.munt || 'EUR');
+        const aankoopDatum = b.datum ? new Date(b.datum) : null;
         const prijsVerkoop = b.verkoopkoers || b.kostprijs;
-        verwerkBelegging({ ...b, aantal: b.aantalVerkocht || b.aantal }, prijsVerkoop);
+        const aantal = b.aantalVerkocht || b.aantal || 1;
+
+        if (aankoopDatum && aankoopDatum <= eersteJan) {
+          // In bezit op 1 jan → telt mee in noemer én teller
+          const prijsStart = ytdKoersen[b.symbol];
+          if (!prijsStart || prijsStart <= 0) return;
+          teller += (prijsVerkoop - prijsStart) * aantal * factor;
+          noemer += prijsStart * aantal * factor;
+        } else {
+          // Gekocht na 1 jan → alleen teller
+          teller += (prijsVerkoop - b.kostprijs) * aantal * factor;
+        }
       });
     }
 
