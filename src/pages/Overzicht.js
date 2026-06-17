@@ -507,8 +507,10 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
         if (prijsStart && prijsStart > 0) {
           winst += (prijsNu - prijsStart) * b.aantal * factor;
         }
+      } else if (tijdperk === 'YTD' || ['1W','1M','1J'].includes(tijdperk)) {
+        // Nieuwe aankopen: winst tov aankoopprijs meenemen in teller (consistent met percentage)
+        winst += (prijsNu - b.kostprijs) * b.aantal * factor;
       }
-      // Nieuwe aankopen negeren voor eurobedrag (die verhogen waarde maar zijn geen rendement)
     });
 
     // Inclusief verkochte effecten
