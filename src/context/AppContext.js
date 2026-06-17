@@ -2,51 +2,125 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AppContext = createContext();
 
+// ── Portfolio helpers ──────────────────────────────────────────
+const laadPortfolios = () => {
+  try {
+    const saved = localStorage.getItem('matico_portfolios');
+    if (saved) return JSON.parse(saved);
+  } catch (e) {}
+  // Migreer bestaande data naar eerste portfolio
+  const bestaandeBeleggingen = (() => { try { return JSON.parse(localStorage.getItem('matico_beleggingen') || '[]'); } catch { return []; } })();
+  const bestaandeVerkochte = (() => { try { return JSON.parse(localStorage.getItem('matico_verkochte_beleggingen') || '[]'); } catch { return []; } })();
+  const defaultPortfolio = { id: 'portfolio_1', naam: 'Mijn portfolio', type: 'standaard', aangemaakt: new Date().toISOString() };
+  localStorage.setItem(`matico_beleggingen_portfolio_1`, JSON.stringify(bestaandeBeleggingen));
+  localStorage.setItem(`matico_verkochte_portfolio_1`, JSON.stringify(bestaandeVerkochte));
+  localStorage.setItem('matico_portfolios', JSON.stringify([defaultPortfolio]));
+  return [defaultPortfolio];
+};
+
+const laadActiefPortfolioId = (portfolios) => {
+  const saved = localStorage.getItem('matico_actief_portfolio');
+  if (saved && portfolios.find(p => p.id === saved)) return saved;
+  return portfolios[0]?.id || 'portfolio_1';
+};
+
 export function AppProvider({ children }) {
   const [gebruiker, setGebruiker] = useState(() => {
     const saved = localStorage.getItem('matico_gebruiker');
     return saved ? JSON.parse(saved) : { voornaam: '', achternaam: '' };
   });
 
+  // ── Multi-portfolio state ──
+  const [portfolios, setPortfolios] = useState(() => laadPortfolios());
+  const [actiefPortfolioId, setActiefPortfolioId] = useState(() => {
+    const ps = laadPortfolios();
+    return laadActiefPortfolioId(ps);
+  });
+
   const [beleggingen, setBeleggingen] = useState(() => {
-    const saved = localStorage.getItem('matico_beleggingen');
-    return saved ? JSON.parse(saved) : [];
+    const ps = laadPortfolios();
+    const id = laadActiefPortfolioId(ps);
+    try { return JSON.parse(localStorage.getItem(`matico_beleggingen_${id}`) || '[]'); } catch { return []; }
   });
 
   const [verkochteBeleggingen, setVerkochteBeleggingen] = useState(() => {
-    const saved = localStorage.getItem('matico_verkochte_beleggingen');
-    return saved ? JSON.parse(saved) : [];
+    const ps = laadPortfolios();
+    const id = laadActiefPortfolioId(ps);
+    try { return JSON.parse(localStorage.getItem(`matico_verkochte_${id}`) || '[]'); } catch { return []; }
   });
 
   const [koersen, setKoersen] = useState({});
   const [activeNav, setActiveNav] = useState('overzicht');
-  const [wisselkoers, setWisselkoers] = useState({ usdEur: 0.865 }); // live bijgewerkt
+  const [wisselkoers, setWisselkoers] = useState({ usdEur: 0.865 });
 
+  // ── Portfolio wisselen ──
+  const wisselPortfolio = (id) => {
+    if (id === actiefPortfolioId) return;
+    localStorage.setItem('matico_actief_portfolio', id);
+    setActiefPortfolioId(id);
+    setKoersen({});
+    try { setBeleggingen(JSON.parse(localStorage.getItem(`matico_beleggingen_${id}`) || '[]')); } catch { setBeleggingen([]); }
+    try { setVerkochteBeleggingen(JSON.parse(localStorage.getItem(`matico_verkochte_${id}`) || '[]')); } catch { setVerkochteBeleggingen([]); }
+  };
+
+  // ── Portfolio toevoegen ──
+  const voegPortfolioToe = (naam, type) => {
+    const id = `portfolio_${Date.now()}`;
+    const nieuw = { id, naam, type, aangemaakt: new Date().toISOString() };
+    const bijgewerkt = [...portfolios, nieuw];
+    localStorage.setItem('matico_portfolios', JSON.stringify(bijgewerkt));
+    localStorage.setItem(`matico_beleggingen_${id}`, JSON.stringify([]));
+    localStorage.setItem(`matico_verkochte_${id}`, JSON.stringify([]));
+    setPortfolios(bijgewerkt);
+    wisselPortfolio(id);
+    return nieuw;
+  };
+
+  // ── Portfolio verwijderen ──
+  const verwijderPortfolio = (id) => {
+    if (portfolios.length <= 1) return; // minimaal 1 portfolio
+    const bijgewerkt = portfolios.filter(p => p.id !== id);
+    localStorage.setItem('matico_portfolios', JSON.stringify(bijgewerkt));
+    localStorage.removeItem(`matico_beleggingen_${id}`);
+    localStorage.removeItem(`matico_verkochte_${id}`);
+    setPortfolios(bijgewerkt);
+    if (actiefPortfolioId === id) wisselPortfolio(bijgewerkt[0].id);
+  };
+
+  // ── Portfolio hernoemen ──
+  const hernoemPortfolioFn = (id, nieuweNaam) => {
+    const bijgewerkt = portfolios.map(p => p.id === id ? { ...p, naam: nieuweNaam } : p);
+    localStorage.setItem('matico_portfolios', JSON.stringify(bijgewerkt));
+    setPortfolios(bijgewerkt);
+  };
+
+  // ── Actief portfolio object ──
+  const actiefPortfolio = portfolios.find(p => p.id === actiefPortfolioId) || portfolios[0];
+
+  // ── Opslaan per portfolio ──
   useEffect(() => {
     localStorage.setItem('matico_gebruiker', JSON.stringify(gebruiker));
   }, [gebruiker]);
 
   useEffect(() => {
-    localStorage.setItem('matico_beleggingen', JSON.stringify(beleggingen));
-  }, [beleggingen]);
+    localStorage.setItem(`matico_beleggingen_${actiefPortfolioId}`, JSON.stringify(beleggingen));
+  }, [beleggingen, actiefPortfolioId]);
 
   useEffect(() => {
-    localStorage.setItem('matico_verkochte_beleggingen', JSON.stringify(verkochteBeleggingen));
-  }, [verkochteBeleggingen]);
+    localStorage.setItem(`matico_verkochte_${actiefPortfolioId}`, JSON.stringify(verkochteBeleggingen));
+  }, [verkochteBeleggingen, actiefPortfolioId]);
 
-  // Haal live wisselkoers op
+  // ── Live wisselkoers ──
   useEffect(() => {
     const haalWisselkoers = async () => {
       try {
         const res = await fetch('/api/data?endpoint=forex');
         const data = await res.json();
         if (data.usdEur) setWisselkoers(data);
-      } catch (e) {
-        console.error('Wisselkoers ophalen mislukt:', e);
-      }
+      } catch (e) {}
     };
     haalWisselkoers();
-    const interval = setInterval(haalWisselkoers, 3600000); // elk uur
+    const interval = setInterval(haalWisselkoers, 3600000);
     return () => clearInterval(interval);
   }, []);
 
@@ -54,50 +128,33 @@ export function AppProvider({ children }) {
     try {
       const res = await fetch(`/api/data?endpoint=quote&symbol=${encodeURIComponent(symbol)}`);
       const data = await res.json();
-      if (data.c) {
-        setKoersen(prev => ({ ...prev, [symbol]: data }));
-        return data;
-      }
-    } catch (e) {
-      console.error('Koers ophalen mislukt:', e);
-    }
+      if (data.c) { setKoersen(prev => ({ ...prev, [symbol]: data })); return data; }
+    } catch (e) {}
     return null;
   };
 
   const refreshAlleKoersen = async () => {
     const symbolen = [...new Set(beleggingen.map(b => b.symbol))];
-    for (const s of symbolen) {
-      await fetchKoers(s);
-    }
+    for (const s of symbolen) await fetchKoers(s);
   };
 
   useEffect(() => {
     if (beleggingen.length > 0) refreshAlleKoersen();
-  }, [beleggingen.length]);
+  }, [beleggingen.length, actiefPortfolioId]);
 
-  // ── Auto-refresh koersen ──
-  // Bij laden altijd verversen, daarna elke 60 seconden
   useEffect(() => {
     if (beleggingen.length === 0) return;
-
-    // Altijd verversen bij eerste load (ongeacht cache)
     refreshAlleKoersen();
-
-    // Daarna elke 60 seconden
-    const interval = setInterval(() => {
-      refreshAlleKoersen();
-    }, 60000);
-
+    const interval = setInterval(() => refreshAlleKoersen(), 60000);
     return () => clearInterval(interval);
-  }, []);  // lege dependency → alleen bij mount
+  }, [actiefPortfolioId]);
 
   const getMuntFactor = (munt) => {
     if (munt === 'USD') return wisselkoers.usdEur;
-    if (munt === 'GBP') return wisselkoers.usdEur * 1.27; // GBP/EUR benadering
+    if (munt === 'GBP') return wisselkoers.usdEur * 1.27;
     return 1;
   };
 
-  // Bereken portfolio totaal met live wisselkoers
   const portfolioWaarde = beleggingen.reduce((sum, b) => {
     const koers = koersen[b.symbol];
     const prijs = koers ? koers.c : b.kostprijs;
@@ -113,8 +170,6 @@ export function AppProvider({ children }) {
   const portfolioWinstVerlies = portfolioWaarde - portfolioKostprijs;
   const portfolioWinstPct = portfolioKostprijs > 0 ? (portfolioWinstVerlies / portfolioKostprijs) * 100 : 0;
 
-  // Inclusief verkochte effecten: noemer blijft portfolioKostprijs (actieve posities)
-  // teller = huidige winst + gerealiseerde winst/verlies verkochte posities
   const portfolioWinstPctInclVerkocht = (() => {
     const gerealiseerdeWinst = (verkochteBeleggingen || []).reduce((sum, b) => {
       const factor = getMuntFactor(b.munt || 'EUR');
@@ -133,20 +188,18 @@ export function AppProvider({ children }) {
 
   const dagWinstPct = portfolioWaarde > 0 ? (dagWinst / (portfolioWaarde - dagWinst)) * 100 : 0;
 
-  // ── Echte YTD: laad historische koers op 1 jan via Finnhub ──
   const [ytdKoersen, setYtdKoersen] = React.useState({});
   const [historischeKoersen, setHistorischeKoersen] = React.useState({});
-  const [periodeKoersen, setPeriodeKoersen] = React.useState({}); // { '1W': { NVDA: 200, ... }, '1M': {...}, '1J': {...} }
+  const [periodeKoersen, setPeriodeKoersen] = React.useState({});
 
   const haalHistorischeKoers = React.useCallback(async (symbol, datum) => {}, []);
 
-  const haalPeriodeKoers = React.useCallback(async (symbol, periodeKey, vanTimestamp, totTimestamp) => {
+  const haalPeriodeKoers = React.useCallback(async (symbol, periodeKey, vanTimestamp) => {
     const cacheKey = `matico_periode_${periodeKey}_${symbol}`;
     try {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         const { koers, timestamp } = JSON.parse(cached);
-        // Cache 1 uur geldig voor recente periodes
         if (Date.now() - timestamp < 60 * 60 * 1000) {
           setPeriodeKoersen(prev => ({ ...prev, [periodeKey]: { ...(prev[periodeKey] || {}), [symbol]: koers } }));
           return;
@@ -165,39 +218,33 @@ export function AppProvider({ children }) {
   }, []);
 
   React.useEffect(() => {
+    setYtdKoersen({});
+    setPeriodeKoersen({});
+  }, [actiefPortfolioId]);
+
+  React.useEffect(() => {
     const nuJaar = new Date().getFullYear();
     const van = Math.floor(new Date(`${nuJaar}-01-02`).getTime() / 1000);
-    const tot = Math.floor(new Date(`${nuJaar}-01-05`).getTime() / 1000);
-
-    // Begin-jaar koersen voor effecten die voor 1 jan in bezit waren
-    const alleSymbolen = [
-      ...beleggingen,
-      ...(verkochteBeleggingen || [])
-    ].filter(b => b.datum && new Date(b.datum) < new Date(`${nuJaar}-01-01`));
-
+    const alleSymbolen = [...beleggingen, ...(verkochteBeleggingen || [])]
+      .filter(b => b.datum && new Date(b.datum) < new Date(`${nuJaar}-01-01`));
     alleSymbolen.forEach(async (b) => {
       if (ytdKoersen[b.symbol]) return;
       const cacheKey = `matico_ytd_${b.symbol}_${nuJaar}`;
       try {
         const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          setYtdKoersen(prev => ({ ...prev, [b.symbol]: parseFloat(cached) }));
-          return;
-        }
+        if (cached) { setYtdKoersen(prev => ({ ...prev, [b.symbol]: parseFloat(cached) })); return; }
       } catch (e) {}
       try {
-        const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(b.symbol)}&van=${van}&tot=${tot}&resolutie=D`);
+        const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(b.symbol)}&van=${van}&tot=${van + 86400 * 4}&resolutie=D`);
         const data = await res.json();
         if (data?.s === 'ok' && data?.c?.length > 0) {
-          const eersteSlot = data.c[0];
-          localStorage.setItem(cacheKey, String(eersteSlot));
-          setYtdKoersen(prev => ({ ...prev, [b.symbol]: eersteSlot }));
+          localStorage.setItem(cacheKey, String(data.c[0]));
+          setYtdKoersen(prev => ({ ...prev, [b.symbol]: data.c[0] }));
         }
       } catch (e) {}
     });
-  }, [beleggingen.map(b => b.symbol).join(','), (verkochteBeleggingen || []).map(b => b.symbol).join(',')]);
+  }, [beleggingen.map(b => b.symbol).join(','), (verkochteBeleggingen || []).map(b => b.symbol).join(','), actiefPortfolioId]);
 
-  // ── Periodekoersen ophalen voor 1W, 1M, 1J ──
   React.useEffect(() => {
     const nu = new Date();
     const periodes = {
@@ -205,53 +252,37 @@ export function AppProvider({ children }) {
       '1M': Math.floor(new Date(nu - 30 * 86400000).getTime() / 1000),
       '1J': Math.floor(new Date(nu - 365 * 86400000).getTime() / 1000),
     };
-    // Zowel actieve als verkochte beleggingen meenemen
     const alleBel = [...beleggingen, ...(verkochteBeleggingen || [])];
     alleBel.forEach(b => {
       Object.entries(periodes).forEach(([key, van]) => {
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
-        // Enkel ophalen als effect al in bezit was aan begin van periode
         if (aankoopDatum && aankoopDatum.getTime() / 1000 < van) {
-          if (!periodeKoersen[key]?.[b.symbol]) {
-            haalPeriodeKoers(b.symbol, key, van, van + 86400 * 5);
-          }
+          if (!periodeKoersen[key]?.[b.symbol]) haalPeriodeKoers(b.symbol, key, van);
         }
       });
     });
-  }, [beleggingen.map(b => b.symbol).join(','), (verkochteBeleggingen || []).map(b => b.symbol).join(',')]);
+  }, [beleggingen.map(b => b.symbol).join(','), (verkochteBeleggingen || []).map(b => b.symbol).join(','), actiefPortfolioId]);
 
   const berekenTWR = (inclVerkocht) => {
     const nuJaar = new Date().getFullYear();
     const eersteJan = new Date(`${nuJaar}-01-01`);
-
-    // YTD percentage:
-    // - Noemer = alleen posities die al op 1 jan in bezit waren (beginjaarskoers)
-    // - Teller = winst van posities op 1 jan + winst/verlies van nieuwe aankopen + verkochte (indien incl)
-    // Nieuwe aankopen tellen WEL mee in teller maar NIET in noemer (zoals bij echte brokers)
-
     let teller = 0, noemer = 0;
 
-    // Actieve beleggingen
     beleggingen.forEach(b => {
       const k = koersen[b.symbol];
       const prijsNu = k ? k.c : b.kostprijs;
       const factor = getMuntFactor(b.munt || 'EUR');
       const aankoopDatum = b.datum ? new Date(b.datum) : null;
-
       if (aankoopDatum && aankoopDatum <= eersteJan) {
-        // In bezit op 1 jan → telt mee in noemer én teller
         const prijsStart = ytdKoersen[b.symbol];
         if (!prijsStart || prijsStart <= 0) return;
-        const startWaarde = prijsStart * b.aantal * factor;
         teller += (prijsNu - prijsStart) * b.aantal * factor;
-        noemer += startWaarde;
+        noemer += prijsStart * b.aantal * factor;
       } else {
-        // Nieuw gekocht na 1 jan → telt WEL mee in teller, NIET in noemer
         teller += (prijsNu - b.kostprijs) * b.aantal * factor;
       }
     });
 
-    // Verkochte beleggingen (enkel als inclVerkocht)
     if (inclVerkocht) {
       (verkochteBeleggingen || []).forEach(b => {
         const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
@@ -260,15 +291,12 @@ export function AppProvider({ children }) {
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
         const prijsVerkoop = b.verkoopkoers || b.kostprijs;
         const aantal = b.aantalVerkocht || b.aantal || 1;
-
         if (aankoopDatum && aankoopDatum <= eersteJan) {
-          // In bezit op 1 jan → telt mee in noemer én teller
           const prijsStart = ytdKoersen[b.symbol];
           if (!prijsStart || prijsStart <= 0) return;
           teller += (prijsVerkoop - prijsStart) * aantal * factor;
           noemer += prijsStart * aantal * factor;
         } else {
-          // Gekocht na 1 jan → alleen teller
           teller += (prijsVerkoop - b.kostprijs) * aantal * factor;
         }
       });
@@ -284,6 +312,9 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       gebruiker, setGebruiker,
+      portfolios, actiefPortfolio, actiefPortfolioId,
+      wisselPortfolio, voegPortfolioToe, verwijderPortfolio,
+      hernoemPortfolio: hernoemPortfolioFn,
       beleggingen, setBeleggingen,
       verkochteBeleggingen, setVerkochteBeleggingen,
       koersen, fetchKoers, refreshAlleKoersen,
@@ -294,9 +325,7 @@ export function AppProvider({ children }) {
       portfolioWinstVerliesInclVerkocht: (() => {
         const verkoopWinst = (verkochteBeleggingen || []).reduce((sum, b) => {
           const factor = getMuntFactor(b.munt || 'EUR');
-          const prijsVerkoop = b.verkoopkoers || b.kostprijs;
-          const kostprijs = b.kostprijs;
-          return sum + (prijsVerkoop - kostprijs) * (b.aantalVerkocht || b.aantal || 1) * factor;
+          return sum + ((b.verkoopkoers - b.kostprijs) * (b.aantalVerkocht || b.aantal || 1) * factor);
         }, 0);
         return portfolioWinstVerlies + verkoopWinst;
       })(),
