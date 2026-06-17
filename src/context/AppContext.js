@@ -11,7 +11,10 @@ const laadPortfolios = () => {
   // Migreer bestaande data naar eerste portfolio
   const bestaandeBeleggingen = (() => { try { return JSON.parse(localStorage.getItem('matico_beleggingen') || '[]'); } catch { return []; } })();
   const bestaandeVerkochte = (() => { try { return JSON.parse(localStorage.getItem('matico_verkochte_beleggingen') || '[]'); } catch { return []; } })();
-  const defaultPortfolio = { id: 'portfolio_1', naam: 'Mijn portfolio', type: 'standaard', aangemaakt: new Date().toISOString() };
+  // Gebruik voornaam van gebruiker als die beschikbaar is
+  const voornaam = (() => { try { const g = JSON.parse(localStorage.getItem('matico_gebruiker') || '{}'); return g.voornaam || ''; } catch { return ''; } })();
+  const portfolioNaam = voornaam ? `${voornaam}'s portfolio` : 'Mijn portfolio';
+  const defaultPortfolio = { id: 'portfolio_1', naam: portfolioNaam, type: 'standaard', aangemaakt: new Date().toISOString() };
   localStorage.setItem(`matico_beleggingen_portfolio_1`, JSON.stringify(bestaandeBeleggingen));
   localStorage.setItem(`matico_verkochte_portfolio_1`, JSON.stringify(bestaandeVerkochte));
   localStorage.setItem('matico_portfolios', JSON.stringify([defaultPortfolio]));
@@ -36,6 +39,18 @@ export function AppProvider({ children }) {
     const ps = laadPortfolios();
     return laadActiefPortfolioId(ps);
   });
+
+  // Hernoem het eerste portfolio naar de voornaam van de gebruiker als het nog een generieke naam heeft
+  useEffect(() => {
+    if (!gebruiker.voornaam) return;
+    const eerstePortfolio = portfolios.find(p => p.id === 'portfolio_1');
+    if (eerstePortfolio && (eerstePortfolio.naam === 'Mijn portfolio' || eerstePortfolio.naam === 'Portfolio 1' || eerstePortfolio.naam === `Portfolio 1`)) {
+      const nieuweNaam = `${gebruiker.voornaam}'s portfolio`;
+      const bijgewerkt = portfolios.map(p => p.id === 'portfolio_1' ? { ...p, naam: nieuweNaam } : p);
+      localStorage.setItem('matico_portfolios', JSON.stringify(bijgewerkt));
+      setPortfolios(bijgewerkt);
+    }
+  }, [gebruiker.voornaam]);
 
   const [beleggingen, setBeleggingen] = useState(() => {
     const ps = laadPortfolios();

@@ -45,7 +45,16 @@ export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
     : <Briefcase size={14} color={ACCENT} />;
 
   const handleToevoegen = (type) => {
-    const naam = type === 'pensioen' ? 'Pensioensparen' : nieuweNaam || `Portfolio ${portfolios.length + 1}`;
+    const aantalStandaard = portfolios.filter(p => p.type === 'standaard').length;
+    const voornaam = gebruiker.voornaam || '';
+    let naam;
+    if (type === 'pensioen') {
+      naam = 'Pensioensparen';
+    } else {
+      naam = voornaam
+        ? (aantalStandaard === 0 ? `${voornaam}'s portfolio` : `${voornaam}'s portfolio ${aantalStandaard + 1}`)
+        : `Portfolio ${portfolios.length + 1}`;
+    }
     voegPortfolioToe(naam, type);
     setToevoegenOpen(false);
     setDropdownOpen(false);
