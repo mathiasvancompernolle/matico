@@ -1632,10 +1632,91 @@ export function Analyse() {
               ))}
             </div>
           </div>
-        )}
+        {/* ── Transactiekosten ── */}
+        {(() => {
+          const kostenActief = beleggingen.reduce((sum, b) => sum + (b.transactiekosten || 0) * factor(b), 0);
+          const kostenVerkocht = (verkochteBeleggingen || []).reduce((sum, b) => sum + (b.transactiekosten || 0) * factor(b), 0);
+          const totaalKosten = kostenActief + kostenVerkocht;
+          const totaalGeïnvesteerd = beleggingen.reduce((sum, b) => sum + b.kostprijs * b.aantal * factor(b), 0);
+          const kostenPct = totaalGeïnvesteerd > 0 ? (totaalKosten / totaalGeïnvesteerd) * 100 : 0;
+
+          const kostenLijst = [
+            ...beleggingen.map(b => ({ naam: b.naam || b.symbol, symbol: b.symbol, kosten: (b.transactiekosten || 0) * factor(b), investering: b.kostprijs * b.aantal * factor(b), status: 'actief' })),
+            ...(verkochteBeleggingen || []).map(b => ({ naam: b.naam || b.symbol, symbol: b.symbol, kosten: (b.transactiekosten || 0) * factor(b), investering: b.kostprijs * (b.aantalVerkocht || b.aantal) * factor(b), status: 'verkocht' })),
+          ].filter(b => b.kosten > 0).sort((a, b) => b.kosten - a.kosten);
+
+          return (
+            <div className="card" style={{ marginTop: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>Transactiekosten</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Overzicht van alle betaalde transactiekosten</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 24, fontWeight: 800 }}>€{totaalKosten.toFixed(2)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{kostenPct.toFixed(3)}% van geïnvesteerd kapitaal</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+                {[
+                  { label: 'Actieve posities', waarde: kostenActief, sub: `${beleggingen.filter(b => b.transactiekosten > 0).length} transacties` },
+                  { label: 'Verkochte posities', waarde: kostenVerkocht, sub: `${(verkochteBeleggingen || []).filter(b => b.transactiekosten > 0).length} transacties` },
+                  { label: 'Totaal betaald', waarde: totaalKosten, sub: `${kostenPct.toFixed(3)}% van kapitaal`, accent: true },
+                ].map(({ label, waarde, sub, accent }) => (
+                  <div key={label} style={{ padding: '14px 16px', background: accent ? 'var(--accent-bg)' : 'var(--bg-subtle)', borderRadius: 10, border: `1px solid ${accent ? 'var(--accent)' : 'var(--border-light)'}` }}>
+                    <div style={{ fontSize: 12, color: accent ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: accent ? 'var(--accent)' : 'var(--text-primary)' }}>€{waarde.toFixed(2)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              {kostenLijst.length > 0 ? (
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Per belegging</div>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 100px 100px', padding: '10px 16px', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <span>Instrument</span>
+                      <span style={{ textAlign: 'right' }}>Investering</span>
+                      <span style={{ textAlign: 'right' }}>Kosten</span>
+                      <span style={{ textAlign: 'right' }}>% van inv.</span>
+                    </div>
+                    {kostenLijst.map((b, idx) => {
+                      const pct = b.investering > 0 ? (b.kosten / b.investering) * 100 : 0;
+                      return (
+                        <div key={b.symbol + idx} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 100px 100px', padding: '12px 16px', borderBottom: idx < kostenLijst.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+                              {b.symbol.split('.')[0].slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: 14 }}>{b.naam}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 6 }}>
+                                <span>{b.symbol}</span>
+                                {b.status === 'verkocht' && <span style={{ color: 'var(--red)', fontWeight: 600 }}>Verkocht</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right', fontSize: 13, fontFamily: 'monospace' }}>€{b.investering.toFixed(2)}</div>
+                          <div style={{ textAlign: 'right', fontSize: 13, fontFamily: 'monospace', fontWeight: 600, color: 'var(--red)' }}>€{b.kosten.toFixed(2)}</div>
+                          <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>{pct.toFixed(3)}%</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 13 }}>
+                  <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
+                  Geen transactiekosten geregistreerd. Voeg kosten toe bij het invoeren van een belegging.
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
       </div>
     </div>
   );
 }
-
