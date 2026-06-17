@@ -462,7 +462,7 @@ export default function Beleggingen({ onToevoegen }) {
       <div style={{ padding: '0 32px' }}>
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
-          {['actief', 'verkocht'].map(t => (
+          {['actief', 'verkocht', 'geschiedenis'].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '10px 20px', border: 'none', background: 'transparent',
               fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
@@ -470,7 +470,7 @@ export default function Beleggingen({ onToevoegen }) {
               borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
               cursor: 'pointer', textTransform: 'capitalize', marginBottom: -1
             }}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'actief' ? 'Actief' : t === 'verkocht' ? 'Verkocht' : 'Geschiedenis'}
             </button>
           ))}
         </div>
@@ -718,6 +718,82 @@ export default function Beleggingen({ onToevoegen }) {
             )}
           </>
         )}
+      </div>
+
+        {/* ── GESCHIEDENIS TAB ── */}
+        {tab === 'geschiedenis' && (() => {
+          const maandNamen = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+          const formatDatum = (s) => {
+            if (!s) return '—';
+            const d = new Date(s);
+            return isNaN(d) ? s : `${d.getDate()} ${maandNamen[d.getMonth()]} ${d.getFullYear()}`;
+          };
+
+          const transacties = [
+            ...beleggingen.map(b => ({
+              datum: b.datum || '', type: 'aankoop',
+              naam: b.naam || b.symbol, symbol: b.symbol, logo: b.logo,
+              munt: b.munt || 'EUR', aantal: b.aantal,
+              koers: b.kostprijs, kosten: b.transactiekosten || 0,
+              id: `buy_${b.id}`,
+            })),
+            ...(verkochteBeleggingen || []).flatMap(b => {
+              const items = [];
+              if (b.datum) items.push({ datum: b.datum, type: 'aankoop', naam: b.naam || b.symbol, symbol: b.symbol, logo: b.logo, munt: b.munt || 'EUR', aantal: b.aantalVerkocht || b.aantal, koers: b.kostprijs, kosten: b.transactiekosten || 0, id: `buy_v_${b.id}` });
+              if (b.verkoopdatum) items.push({ datum: b.verkoopdatum, type: 'verkoop', naam: b.naam || b.symbol, symbol: b.symbol, logo: b.logo, munt: b.munt || 'EUR', aantal: b.aantalVerkocht || b.aantal, koers: b.verkoopkoers, kosten: 0, winstverlies: b.winstverlies, id: `sell_${b.id}` });
+              return items;
+            }),
+          ].sort((a, b) => (b.datum || '') > (a.datum || '') ? 1 : -1);
+
+          if (transacties.length === 0) return (
+            <div className="empty-state"><h3>Geen transacties</h3><p>Voeg je eerste belegging toe om te beginnen</p></div>
+          );
+
+          return (
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>Transactiegeschiedenis</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{transacties.length} transacties</div>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 100px 1fr 1fr 1fr 1fr', padding: '10px 24px', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-light)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span>Instrument</span><span>Type</span><span>Datum</span>
+                <span style={{ textAlign: 'right' }}>Aantal</span>
+                <span style={{ textAlign: 'right' }}>Koers</span>
+                <span style={{ textAlign: 'right' }}>Totaal</span>
+              </div>
+              {transacties.map((t, idx) => {
+                const factor = getMuntFactor ? getMuntFactor(t.munt) : (t.munt === 'USD' ? 0.865 : 1);
+                const totaal = (t.koers || 0) * t.aantal * factor + (t.kosten || 0);
+                const ms = t.munt === 'USD' ? '$' : t.munt === 'GBP' ? '£' : '€';
+                const isAankoop = t.type === 'aankoop';
+                return (
+                  <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr 100px 1fr 1fr 1fr 1fr', padding: '14px 24px', borderBottom: idx < transacties.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Avatar symbol={t.symbol} logo={t.logo} />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{t.naam}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{t.symbol}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: isAankoop ? 'var(--green-bg)' : 'var(--red-bg)', color: isAankoop ? 'var(--green)' : 'var(--red)' }}>
+                        {isAankoop ? '↑ Aankoop' : '↓ Verkoop'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{formatDatum(t.datum)}</div>
+                    <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{t.aantal}</div>
+                    <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{ms}{(t.koers || 0).toFixed(2)}</div>
+                    <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right', fontWeight: 600, color: isAankoop ? 'var(--text-primary)' : 'var(--green)' }}>
+                      {isAankoop ? '-' : '+'}€{Math.abs(totaal).toFixed(2)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Modals */}
