@@ -612,7 +612,7 @@ export default async function handler(req, res) {
       // Saxo "1W" = maandag t/m vandaag van de lopende beursweek
       // period1 timestamps voor 1j/3j/5j/max (range shorthand niet precies genoeg)
       // Enkel max gebruikt nog een timestamp — alle andere periodes via Yahoo range shorthand
-      const periodeP1 = periode === 'max' ? (nuSec - 20 * 366 * SPD) : null;
+      const periodeP1 = null; // alle periodes via range shorthand
 
       const gebruikTimestamp = periodeP1 !== null;
       const compRange = {
@@ -622,9 +622,10 @@ export default async function handler(req, res) {
         '3m':  '3mo',
         '6m':  '6mo',
         '1j':  '1y',
-        '3j':  '3y',   // range=3y → chartPreviousClose = exact 3 jaar geleden slot
-        '5j':  '5y',   // range=5y → chartPreviousClose = exact 5 jaar geleden slot
+        '3j':  '3y',
+        '5j':  '5y',
         'ytd': 'ytd',
+        'max': '1d',   // Max: toon 1D change zoals Saxo
       }[periode] || null;
 
       try {
@@ -672,11 +673,10 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             // IPO-filter: aandeel weggooien als het niet lang genoeg genoteerd was
             // Bereken verwachte startdatum op basis van periode
             const eersteTs = d?.chart?.result?.[0]?.timestamp?.[0] || 0;
-            if (eersteTs > 0 && ['3j','5j','max'].includes(periode)) {
+            if (eersteTs > 0 && ['3j','5j'].includes(periode)) {
               const verwachtStartMs = {
                 '3j':  nuMs - 3 * 366 * SPD * 1000,
                 '5j':  nuMs - 5 * 366 * SPD * 1000,
-                'max': nuMs - 15 * 366 * SPD * 1000,
               }[periode];
               // Tolerantie per periode: hoe langer de periode, hoe strikter
               // 5j: max 2 maanden tolerantie (Azelis IPO sept 2021 = 3 maanden na juni 2021 → gefilterd)
