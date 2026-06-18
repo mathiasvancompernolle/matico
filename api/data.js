@@ -598,11 +598,25 @@ export default async function handler(req, res) {
       const syms = componenten[subindex] || componenten['bel20'];
       const idxSym = indexSymbolen[subindex] || '^BFX';
 
-      // Voor ranking: welke candle params gebruiken per periode
-      const compInterval = { '1d':'1d','1w':'1d','1m':'1d','3m':'1d','6m':'1wk','1j':'1wk','3j':'1mo','5j':'1mo','ytd':'1wk','max':'1mo' };
-      const compRange    = { '1d':'5d','1w':'5d','1m':'1mo','3m':'3mo','6m':'6mo','1j':'1y','3j':'3y','5j':'5y','ytd':'ytd','max':'max' };
-      const cInt = compInterval[periode] || '1d';
-      const cRange = compRange[periode] || '5d';
+      // Bereken exacte startdatum per periode → nauwkeuriger dan Yahoo range shorthand
+      const nuMs = Date.now();
+      const nuSec = Math.floor(nuMs / 1000);
+      const dagMs = 86400000;
+      const periodeStartSec = {
+        '1d':  Math.floor((nuMs - 2 * dagMs) / 1000),          // gisteren (vorige handelsdag)
+        '1w':  Math.floor((nuMs - 7 * dagMs) / 1000),          // 7 kalenderdagen terug
+        '1m':  Math.floor((nuMs - 31 * dagMs) / 1000),         // 31 dagen terug
+        '3m':  Math.floor((nuMs - 92 * dagMs) / 1000),         // ~3 maanden
+        '6m':  Math.floor((nuMs - 183 * dagMs) / 1000),        // ~6 maanden
+        '1j':  Math.floor((nuMs - 365 * dagMs) / 1000),        // 1 jaar
+        '3j':  Math.floor((nuMs - 3 * 365 * dagMs) / 1000),    // 3 jaar
+        '5j':  Math.floor((nuMs - 5 * 365 * dagMs) / 1000),    // 5 jaar
+        'ytd': Math.floor(new Date(new Date().getFullYear(), 0, 1).getTime() / 1000), // 1 jan
+        'max': Math.floor((nuMs - 20 * 365 * dagMs) / 1000),   // 20 jaar
+      }[periode] || Math.floor((nuMs - 2 * dagMs) / 1000);
+
+      // Interval per periode voor component candles
+      const cInt = { '1d':'1d','1w':'1d','1m':'1d','3m':'1d','6m':'1wk','1j':'1wk','3j':'1mo','5j':'1mo','ytd':'1d','max':'1mo' }[periode] || '1d';
 
       try {
         // 1. Index candle data voor grafiek
@@ -625,7 +639,7 @@ export default async function handler(req, res) {
           const timer = setTimeout(() => resolve(null), 6000);
           try {
             const r = await fetch(
-              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${cInt}&range=${cRange}`,
+              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${cInt}&period1=${periodeStartSec}&period2=${nuSec}`,
               { headers: { 'User-Agent': 'Mozilla/5.0' } }
             );
             clearTimeout(timer);
