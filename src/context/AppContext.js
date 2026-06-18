@@ -147,6 +147,46 @@ export function AppProvider({ children }) {
     return () => clearInterval(interval);
   }, []);
 
+  const laadIntradayData = () => {
+    const nu = new Date();
+    const dagKey = nu.toISOString().slice(0, 10);
+    const cacheKey = `matico_intraday_${actiefPortfolioId}_${dagKey}`;
+    try {
+      return JSON.parse(localStorage.getItem(cacheKey) || '[]');
+    } catch (e) { return []; }
+  };
+    // Sla huidige portfoliowaarde op als intraday datapunt
+    const nu = new Date();
+    const dagKey = nu.toISOString().slice(0, 10); // bv. "2026-06-18"
+    const cacheKey = `matico_intraday_${actiefPortfolioId}_${dagKey}`;
+
+    // Bereken portfoliowaarde met nieuwe koersen
+    const waarde = beleggingen.reduce((sum, b) => {
+      const koers = nieuweKoersen[b.symbol];
+      const prijs = koers ? koers.c : b.kostprijs;
+      const factor = b.munt === 'USD' ? wisselkoers.usdEur : b.munt === 'GBP' ? wisselkoers.usdEur * 1.27 : 1;
+      return sum + prijs * b.aantal * factor;
+    }, 0);
+
+    if (waarde === 0) return;
+
+    try {
+      const bestaand = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+      // Verwijder oud punt als het minder dan 2 min geleden is (voorkom duplicaten)
+      const tweeMinGeleden = Date.now() - 2 * 60 * 1000;
+      const gefilterd = bestaand.filter(p => p.t > tweeMinGeleden / 1000);
+      gefilterd.push({ t: Math.floor(nu.getTime() / 1000), w: Math.round(waarde * 100) / 100 });
+      localStorage.setItem(cacheKey, JSON.stringify(gefilterd));
+
+      // Opschonen: verwijder data ouder dan 7 dagen
+      for (let i = 1; i <= 7; i++) {
+        const oudeD = new Date(nu - i * 86400000);
+        const oudeKey = `matico_intraday_${actiefPortfolioId}_${oudeD.toISOString().slice(0, 10)}`;
+        if (i >= 2) localStorage.removeItem(oudeKey);
+      }
+    } catch (e) {}
+  };
+
   const fetchKoers = async (symbol) => {
     try {
       const res = await fetch(`/api/data?endpoint=quote&symbol=${encodeURIComponent(symbol)}`);
@@ -158,7 +198,13 @@ export function AppProvider({ children }) {
 
   const refreshAlleKoersen = async () => {
     const symbolen = [...new Set(beleggingen.map(b => b.symbol))];
-    for (const s of symbolen) await fetchKoers(s);
+    const nieuweKoersen = { ...koersen };
+    for (const s of symbolen) {
+      const data = await fetchKoers(s);
+      if (data) nieuweKoersen[s] = data;
+    }
+    // Sla intraday punt op na elke refresh
+    slaIntradayPuntOp(nieuweKoersen);
   };
 
   useEffect(() => {
@@ -353,7 +399,8 @@ export function AppProvider({ children }) {
         }, 0);
         return portfolioWinstVerlies + verkoopWinst;
       })(),
-      dagWinst, dagWinstPct, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen
+      dagWinst, dagWinstPct, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen,
+      laadIntradayData,
     }}>
       {children}
     </AppContext.Provider>

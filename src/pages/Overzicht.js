@@ -58,7 +58,7 @@ function getBegindatumVoorTijdperk(tijdperk, beleggingen) {
 }
 
 export default function Overzicht({ onToevoegen, onImporteren }) {
-  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen } = useApp();
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen, laadIntradayData } = useApp();
 
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
@@ -130,114 +130,69 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       if (beleggingVoorGrafiek.length === 0) { setGrafiekData([]); return; }
       setGrafiekLoading(true);
 
-      // 1D: intraday grafiek met 5-minuten candles
+      // 1D: gebruik zelf opgeslagen intraday datapunten
       if (tijdperk === '1D') {
         const nu = new Date();
         const dag = nu.getDay();
         const maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
-        // Bepaal datum van vorige handelsdag (voor slotkoers als startpunt)
+        // Vorige handelsdag bepalen
         const vorigeD = new Date(nu);
         if (dag === 1) vorigeD.setDate(nu.getDate() - 3);
         else if (dag === 0) vorigeD.setDate(nu.getDate() - 2);
         else vorigeD.setDate(nu.getDate() - 1);
-
-        // Vandaag: van marktopening (14:30 UTC = 09:30 ET) tot nu
-        const vandaagStart = new Date(nu);
-        vandaagStart.setUTCHours(14, 30, 0, 0); // NYSE/NASDAQ opening
-        const vanTs = Math.floor(vandaagStart.getTime() / 1000);
-        const totTs = Math.floor(nu.getTime() / 1000);
+        const vorigeLabel = `${vorigeD.getDate()} ${maanden[vorigeD.getMonth()]}`;
 
         // Slotkoers van gisteren als startpunt
-        const slotTs = Math.floor(new Date(vorigeD.getFullYear(), vorigeD.getMonth(), vorigeD.getDate(), 0, 0, 0).getTime() / 1000);
-        const slotTotTs = slotTs + 86400;
-
         const slotKoersen = {};
-        const intradayData = {}; // { symbol: [{t, c}, ...] }
-
+        const slotTs = Math.floor(new Date(vorigeD.getFullYear(), vorigeD.getMonth(), vorigeD.getDate()).getTime() / 1000);
+        const slotTotTs = slotTs + 86400;
         await Promise.all(beleggingVoorGrafiek.map(async (b) => {
-          // Slotkoers gisteren (gecached)
           const cacheKey = `matico_slot_${b.symbol}_${vorigeD.toDateString()}`;
           try {
             const cached = localStorage.getItem(cacheKey);
-            if (cached) { slotKoersen[b.symbol] = parseFloat(cached); }
-            else {
-              const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(b.symbol)}&van=${slotTs}&tot=${slotTotTs}&resolutie=D`);
-              const data = await res.json();
-              if (data?.s === 'ok' && data?.c?.length > 0) {
-                const slot = data.c[data.c.length - 1];
-                localStorage.setItem(cacheKey, String(slot));
-                slotKoersen[b.symbol] = slot;
-              }
+            if (cached) { slotKoersen[b.symbol] = parseFloat(cached); return; }
+            const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(b.symbol)}&van=${slotTs}&tot=${slotTotTs}&resolutie=D`);
+            const data = await res.json();
+            if (data?.s === 'ok' && data?.c?.length > 0) {
+              localStorage.setItem(cacheKey, String(data.c[data.c.length - 1]));
+              slotKoersen[b.symbol] = data.c[data.c.length - 1];
             }
           } catch (e) {}
-
-          // Intraday 5-minuten candles voor vandaag
-          const iemandOpen = isBeursOpen(b.munt || 'EUR');
-          if (iemandOpen || nu.getUTCHours() >= 14) {
-            try {
-              const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(b.symbol)}&van=${vanTs}&tot=${totTs}&resolutie=5`);
-              const data = await res.json();
-              if (data?.s === 'ok' && data?.t?.length > 0) {
-                intradayData[b.symbol] = data.t.map((t, i) => ({ t, c: data.c[i] }));
-              }
-            } catch (e) {}
-          }
         }));
 
-        // Bouw gecombineerde tijdreeks
-        // Verzamel alle unieke tijdstippen
-        const alleTimestamps = new Set();
+        let startWaarde = 0;
         beleggingVoorGrafiek.forEach(b => {
-          (intradayData[b.symbol] || []).forEach(p => alleTimestamps.add(p.t));
+          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+          startWaarde += (slotKoersen[b.symbol] || koersen[b.symbol]?.pc || b.kostprijs) * b.aantal * factor;
         });
 
+        // Zelf opgeslagen intraday punten laden
+        const intradayPunten = laadIntradayData ? laadIntradayData() : [];
         const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR'));
 
-        if (alleTimestamps.size < 2) {
-          // Geen intraday data beschikbaar → toon rechte lijn (beurs gesloten of data niet beschikbaar)
-          let gisterenWaarde = 0, nuWaarde = 0;
-          beleggingVoorGrafiek.forEach(b => {
-            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-            const koers = koersen[b.symbol];
-            gisterenWaarde += (slotKoersen[b.symbol] || koers?.pc || b.kostprijs) * b.aantal * factor;
-            nuWaarde += (koers?.c || b.kostprijs) * b.aantal * factor;
-          });
-          const vorigeLabel = `${vorigeD.getDate()} ${maanden[vorigeD.getMonth()]}`;
-          setGrafiekData([
-            { label: vorigeLabel, waarde: Math.round(gisterenWaarde * 100) / 100, gesloten: !iemandOpen },
-            { label: 'Nu', waarde: Math.round((iemandOpen ? nuWaarde : gisterenWaarde) * 100) / 100, gesloten: !iemandOpen }
-          ]);
-        } else {
-          // Bouw grafiek op basis van intraday candles
-          const gesorteerd = [...alleTimestamps].sort((a, b) => a - b);
-
-          const punten = gesorteerd.map(ts => {
-            let waarde = 0;
-            beleggingVoorGrafiek.forEach(b => {
-              const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-              const reeks = intradayData[b.symbol] || [];
-              // Zoek dichtstbijzijnde candle op of voor dit tijdstip
-              const punt = reeks.filter(p => p.t <= ts).pop();
-              const koers = punt?.c || slotKoersen[b.symbol] || koersen[b.symbol]?.pc || b.kostprijs;
-              waarde += koers * b.aantal * factor;
+        if (intradayPunten.length >= 2) {
+          // Bouw grafiek van opgeslagen punten
+          const punten = intradayPunten
+            .sort((a, b) => a.t - b.t)
+            .map(p => {
+              const d = new Date(p.t * 1000);
+              return {
+                label: `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`,
+                waarde: p.w
+              };
             });
-            const d = new Date(ts * 1000);
-            const uur = d.getHours().toString().padStart(2, '0');
-            const min = d.getMinutes().toString().padStart(2, '0');
-            return { label: `${uur}:${min}`, waarde: Math.round(waarde * 100) / 100 };
-          });
-
-          // Voeg startpunt toe (slotkoers gisteren)
-          let startWaarde = 0;
+          setGrafiekData([{ label: vorigeLabel, waarde: Math.round(startWaarde * 100) / 100 }, ...punten]);
+        } else {
+          // Nog geen intraday punten → toon rechte lijn
+          let nuWaarde = 0;
           beleggingVoorGrafiek.forEach(b => {
             const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-            startWaarde += (slotKoersen[b.symbol] || koersen[b.symbol]?.pc || b.kostprijs) * b.aantal * factor;
+            nuWaarde += (koersen[b.symbol]?.c || b.kostprijs) * b.aantal * factor;
           });
-          const vorigeLabel = `${vorigeD.getDate()} ${maanden[vorigeD.getMonth()]}`;
           setGrafiekData([
-            { label: vorigeLabel, waarde: Math.round(startWaarde * 100) / 100 },
-            ...punten
+            { label: vorigeLabel, waarde: Math.round(startWaarde * 100) / 100, gesloten: !iemandOpen },
+            { label: 'Nu', waarde: Math.round((iemandOpen ? nuWaarde : startWaarde) * 100) / 100, gesloten: !iemandOpen }
           ]);
         }
 
