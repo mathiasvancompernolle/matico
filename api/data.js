@@ -572,7 +572,6 @@ export default async function handler(req, res) {
     if (endpoint === 'aandelen-regio') {
       const { regio = 'belgie', subindex = 'bel20', periode = '1d' } = req.query;
 
-      // Componenten per subindex
       const componenten = {
         bel20: ['ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR','DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR','SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR'],
         'bel-midcap': ['TINC.BR','OXUR.BR','BONE.BR','BERR.BR','ATENB.BR','AEDX.BR','ONTEX.BR','BEVE.BR','CFE.BR','CPIC.BR','MOBI.BR','SYENS.BR','TITC.BR','VGP.BR','EXMAR.BR'],
@@ -584,66 +583,58 @@ export default async function handler(req, res) {
         hangseng: ['0700.HK','0941.HK','1299.HK','2318.HK','0005.HK','1398.HK','3690.HK','2020.HK','9988.HK','0388.HK'],
       };
 
-      // Index symbool per subindex
       const indexSymbolen = {
         bel20: '^BFX', 'bel-midcap': 'BELM.BR', 'bel-smallcap': 'BELS.BR',
         aex: '^AEX', sp500: '^GSPC', nasdaq: '^NDX', nikkei: '^N225', hangseng: '^HSI',
       };
 
-      const intervalMap = { '1d':'5m','1w':'1h','1m':'1d','3m':'1d','6m':'1wk','1j':'1wk','3j':'1mo','5j':'1mo','ytd':'1d','max':'3mo' };
-      const rangeMap    = { '1d':'1d','1w':'5d','1m':'1mo','3m':'3mo','6m':'6mo','1j':'1y','3j':'3y','5j':'5y','ytd':'ytd','max':'max' };
-      const yahooInterval = intervalMap[periode] || '5m';
-      const yahooRange    = rangeMap[periode]    || '1d';
+      // Grafiek interval+range (voor de index curve)
+      const grafiekInterval = { '1d':'5m','1w':'1h','1m':'1d','3m':'1d','6m':'1wk','1j':'1wk','3j':'1mo','5j':'1mo','ytd':'1d','max':'3mo' }[periode] || '5m';
+      const grafiekRange    = { '1d':'1d','1w':'5d','1m':'1mo','3m':'3mo','6m':'6mo','1j':'1y','3j':'3y','5j':'5y','ytd':'ytd','max':'max' }[periode] || '1d';
 
       const syms = componenten[subindex] || componenten['bel20'];
       const idxSym = indexSymbolen[subindex] || '^BFX';
 
-      // Bereken exacte startdatum per periode → nauwkeuriger dan Yahoo range shorthand
-      const nuMs = Date.now();
-      const nuSec = Math.floor(nuMs / 1000);
-      const dagMs = 86400000;
-
-      // Startdatum van de periode (1 extra dag vroeger zodat we de slotkoers net VOOR de periode pakken)
-      // Dit spiegelt de Saxo methode: referentie = slotkoers laatste handelsdag vóór periode
-      const extraDag = 4 * dagMs; // 4 dagen buffer voor weekends/feestdagen
-      const periodeStartSec = {
-        '1d':  Math.floor((nuMs - 2 * dagMs - extraDag) / 1000),       // vorige handelsdag + buffer
-        '1w':  Math.floor((nuMs - 7 * dagMs - extraDag) / 1000),       // 1 week + buffer
-        '1m':  Math.floor((nuMs - 31 * dagMs - extraDag) / 1000),      // 1 maand + buffer
-        '3m':  Math.floor((nuMs - 92 * dagMs - extraDag) / 1000),      // 3 maanden + buffer
-        '6m':  Math.floor((nuMs - 183 * dagMs - extraDag) / 1000),     // 6 maanden + buffer
-        '1j':  Math.floor((nuMs - 366 * dagMs - extraDag) / 1000),     // 1 jaar + buffer
-        '3j':  Math.floor((nuMs - 3 * 366 * dagMs - extraDag) / 1000), // 3 jaar + buffer
-        '5j':  Math.floor((nuMs - 5 * 366 * dagMs - extraDag) / 1000), // 5 jaar + buffer
-        'ytd': Math.floor(new Date(new Date().getFullYear() - 1, 11, 28).getTime() / 1000), // 28 dec vorig jaar (pakt 31 dec slotkoers)
-        'max': Math.floor((nuMs - 20 * 366 * dagMs) / 1000),
-      }[periode] || Math.floor((nuMs - 6 * dagMs) / 1000);
-
-      // Interval per periode voor component candles
-      const cInt = { '1d':'1d','1w':'1d','1m':'1d','3m':'1d','6m':'1wk','1j':'1wk','3j':'1mo','5j':'1mo','ytd':'1d','max':'1mo' }[periode] || '1d';
+      // ── Referentie range per periode voor component % berekening ────────────
+      // Strategie: haal elke component op met range=X en gebruik:
+      //   - meta.regularMarketPrice  → huidige live prijs
+      //   - meta.chartPreviousClose  → slotkoers begin van de range (exact Saxo methode)
+      // Yahoo's chartPreviousClose is de slotkoers net VOOR de gevraagde range → perfect.
+      const compRange = {
+        '1d':  '1d',   // chartPreviousClose = gisteren slot
+        '1w':  '5d',   // chartPreviousClose = vorige vrijdag slot
+        '1m':  '1mo',  // chartPreviousClose = slot 1 maand geleden
+        '3m':  '3mo',
+        '6m':  '6mo',
+        '1j':  '1y',
+        '3j':  '3y',
+        '5j':  '5y',
+        'ytd': 'ytd',  // chartPreviousClose = 31 dec vorig jaar slot
+        'max': 'max',
+      }[periode] || '1d';
 
       try {
-        // 1. Index candle data voor grafiek
-        const idxUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(idxSym)}?interval=${yahooInterval}&range=${yahooRange}`;
+        // 1. Index candle data voor de grafiek
+        const idxUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(idxSym)}?interval=${grafiekInterval}&range=${grafiekRange}`;
         const idxRes = await fetch(idxUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
         const idxData = await idxRes.json();
         const idxResult = idxData?.chart?.result?.[0];
         const timestamps = idxResult?.timestamp || [];
         const closes = idxResult?.indicators?.quote?.[0]?.close || [];
-        const prevClose = idxResult?.meta?.previousClose || idxResult?.meta?.chartPreviousClose || 0;
+        const prevClose = idxResult?.meta?.chartPreviousClose || idxResult?.meta?.previousClose || 0;
         const huidigePrijs = idxResult?.meta?.regularMarketPrice || 0;
         const grafiekData = timestamps.map((t, i) => ({
           t: t * 1000,
           v: closes[i] !== null && closes[i] !== undefined ? Math.round(closes[i] * 100) / 100 : null,
         })).filter(p => p.v !== null);
 
-        // 2. Component quotes — eerste vs laatste close over de gekozen periode
-        // Timeout per call zodat trage aandelen de rest niet blokkeren
-        const fetchMetTimeout = (sym) => new Promise(async (resolve) => {
-          const timer = setTimeout(() => resolve(null), 6000);
+        // 2. Component quotes parallel — gebruik chartPreviousClose als referentie
+        const fetchComp = (sym) => new Promise(async (resolve) => {
+          const timer = setTimeout(() => resolve(null), 7000);
           try {
+            // interval=1d volstaat voor alle periodes — we gebruiken alleen meta, geen candles
             const r = await fetch(
-              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${cInt}&period1=${periodeStartSec}&period2=${nuSec}`,
+              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=${compRange}`,
               { headers: { 'User-Agent': 'Mozilla/5.0' } }
             );
             clearTimeout(timer);
@@ -653,26 +644,21 @@ export default async function handler(req, res) {
 
         const quoteResults = await Promise.all(syms.map(async (sym) => {
           try {
-            const r = await fetchMetTimeout(sym);
+            const r = await fetchComp(sym);
             if (!r) return null;
             const d = await r.json();
             const meta = d?.chart?.result?.[0]?.meta || {};
-            const allCloses = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
-            const valids = allCloses.filter(v => v !== null && v !== undefined);
             const naamRaw = meta.longName || meta.shortName || sym;
             const naam = naamRaw.length > 22 ? naamRaw.slice(0, 21) + '…' : naamRaw;
-            // Huidige prijs: live regularMarketPrice indien beschikbaar, anders laatste candle
-            const prijs = meta.regularMarketPrice || (valids.length > 0 ? valids[valids.length - 1] : 0);
-            let chg = 0;
-            if (valids.length >= 1) {
-              // Referentieprijs = EERSTE candle in de reeks (= slotkoers net voor de periode)
-              const referentie = valids[0];
-              chg = referentie ? ((prijs - referentie) / referentie) * 100 : 0;
-            } else {
-              // Fallback voor 1d: gebruik previousClose uit meta
-              const prev = meta.previousClose || meta.chartPreviousClose || prijs;
-              chg = prev ? ((prijs - prev) / prev) * 100 : 0;
-            }
+
+            // Live prijs
+            const prijs = meta.regularMarketPrice || 0;
+
+            // Referentieprijs: chartPreviousClose = slotkoers net voor de gevraagde range
+            // Dit is exact hoe Saxo de % berekent
+            const referentie = meta.chartPreviousClose || meta.previousClose || prijs;
+            const chg = referentie ? ((prijs - referentie) / referentie) * 100 : 0;
+
             return { symbol: sym, naam, prijs, change: chg, valuta: meta.currency || 'EUR' };
           } catch {
             return null;
