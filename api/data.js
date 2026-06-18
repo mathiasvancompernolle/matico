@@ -574,7 +574,7 @@ export default async function handler(req, res) {
 
       // Componenten per subindex
       const componenten = {
-        bel20: ['ABI.BR','AGS.BR','ACKB.BR','ARGEN.BR','BPOST.BR','COLR.BR','D5MT.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELX.BR','PROX.BR','SOLB.BR','SOFINA.BR','UCB.BR','UMI.BR','WDP.BR','WEB.BR','DIE.BR'],
+        bel20: ['ABI.BR','ACKB.BR','AED.BR','AGS.BR','ARGX.BR','AZE.BR','COFB.BR','DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELX.BR','PROX.AS','SOLB.BR','UCB.BR','UMI.BR','WDP.BR','SOFINA.BR','COLR.BR'],
         'bel-midcap': ['TINC.BR','OXUR.BR','BONE.BR','BERR.BR','ATENB.BR','AEDX.BR','ONTEX.BR','BEVE.BR','CFE.BR','CPIC.BR','MOBI.BR','SYENS.BR','TITC.BR','VGP.BR','EXMAR.BR'],
         'bel-smallcap': ['COMB.BR','CREI.BR','ESYB.BR','EVOC.BR','IBA.BR','KINB.BR','MELE.BR','NYRB.BR','REC.BR','SHUR.BR','SPAQ.BR','TITAN.BR','VASTB.BR'],
         aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
