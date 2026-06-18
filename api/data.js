@@ -620,12 +620,23 @@ export default async function handler(req, res) {
         })).filter(p => p.v !== null);
 
         // 2. Component quotes — eerste vs laatste close over de gekozen periode
-        const quoteResults = await Promise.all(syms.slice(0, 15).map(async (sym) => {
+        // Timeout per call zodat trage aandelen de rest niet blokkeren
+        const fetchMetTimeout = (sym) => new Promise(async (resolve) => {
+          const timer = setTimeout(() => resolve(null), 6000);
           try {
             const r = await fetch(
               `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${cInt}&range=${cRange}`,
               { headers: { 'User-Agent': 'Mozilla/5.0' } }
             );
+            clearTimeout(timer);
+            resolve(r);
+          } catch { clearTimeout(timer); resolve(null); }
+        });
+
+        const quoteResults = await Promise.all(syms.map(async (sym) => {
+          try {
+            const r = await fetchMetTimeout(sym);
+            if (!r) return null;
             const d = await r.json();
             const meta = d?.chart?.result?.[0]?.meta || {};
             const allCloses = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
