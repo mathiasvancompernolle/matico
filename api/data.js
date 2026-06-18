@@ -610,32 +610,19 @@ export default async function handler(req, res) {
 
       // Bereken exacte maandag van huidige week in Brussels time (voor 1W)
       // Saxo "1W" = maandag t/m vandaag van de lopende beursweek
-      // Voor 1W: period1 = maandag van VORIGE week
-      // Dan geeft Yahoo chartPreviousClose = slotkoers vrijdag vorige week (= Saxo referentie)
-      const startVorig1W = (() => {
-        const brussels = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Brussels' }));
-        const dagIndex = brussels.getDay(); // 0=zo,1=ma,...,5=vr,6=za
-        const diffNaarMa = dagIndex === 0 ? -6 : 1 - dagIndex;
-        const maDezeWeek = new Date(brussels);
-        maDezeWeek.setDate(brussels.getDate() + diffNaarMa);
-        maDezeWeek.setHours(0, 0, 0, 0);
-        // Maandag vorige week = 7 dagen voor maandag deze week
-        return Math.floor(maDezeWeek.getTime() / 1000) - 7 * SPD;
-      })();
-
-      // period1 timestamps voor periodes die Yahoo range niet precies genoeg aankan
+      // period1 timestamps voor 1j/3j/5j/max (range shorthand niet precies genoeg)
       const periodeP1 = {
-        '1w':  startVorig1W,
         '1j':  nuSec - 370 * SPD,
         '3j':  nuSec - 3 * 366 * SPD,
         '5j':  nuSec - 5 * 366 * SPD,
         'max': nuSec - 20 * 366 * SPD,
       }[periode] || null;
 
-      // Voor 1d/1m/3m/6m/ytd werkt Yahoo range shorthand perfect
+      // Voor 1w/1d/1m/3m/6m/ytd: gebruik Yahoo range shorthand → chartPreviousClose is altijd correct
       const gebruikTimestamp = periodeP1 !== null;
       const compRange = {
         '1d':  '1d',
+        '1w':  '1wk',   // Yahoo range=1wk = huidige kalenderweek, chartPreviousClose = vrijdag vorige week
         '1m':  '1mo',
         '3m':  '3mo',
         '6m':  '6mo',
