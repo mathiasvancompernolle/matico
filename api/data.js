@@ -567,6 +567,79 @@ export default async function handler(req, res) {
       }
     }
 
+
+    // ── Aandelen regio: index candle + component quotes ───────────────────────
+    if (endpoint === 'aandelen-regio') {
+      const { regio = 'belgie', subindex = 'bel20', periode = '1d' } = req.query;
+
+      // Componenten per subindex
+      const componenten = {
+        bel20: ['ABI.BR','AGS.BR','ACKB.BR','ARGEN.BR','BPOST.BR','COLR.BR','D5MT.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELX.BR','PROX.BR','SOLB.BR','SOFINA.BR','UCB.BR','UMI.BR','WDP.BR','WEB.BR','DIE.BR'],
+        'bel-midcap': ['TINC.BR','OXUR.BR','BONE.BR','BERR.BR','ATENB.BR','AEDX.BR','ONTEX.BR','BEVE.BR','CFE.BR','CPIC.BR','MOBI.BR','SYENS.BR','TITC.BR','VGP.BR','EXMAR.BR'],
+        'bel-smallcap': ['COMB.BR','CREI.BR','ESYB.BR','EVOC.BR','IBA.BR','KINB.BR','MELE.BR','NYRB.BR','REC.BR','SHUR.BR','SPAQ.BR','TITAN.BR','VASTB.BR'],
+        aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
+        sp500: ['AAPL','MSFT','NVDA','AMZN','GOOGL','META','BRK-B','LLY','AVGO','JPM'],
+        nasdaq: ['AAPL','MSFT','NVDA','AMZN','GOOGL','META','TSLA','AVGO','ADBE','COST'],
+        nikkei: ['7203.T','9984.T','6758.T','8306.T','6861.T','7267.T','4063.T','6594.T','9433.T','8035.T'],
+        hangseng: ['0700.HK','0941.HK','1299.HK','2318.HK','0005.HK','1398.HK','3690.HK','2020.HK','9988.HK','0388.HK'],
+      };
+
+      // Index symbool per subindex
+      const indexSymbolen = {
+        bel20: '^BFX', 'bel-midcap': 'BELM.BR', 'bel-smallcap': 'BELS.BR',
+        aex: '^AEX', sp500: '^GSPC', nasdaq: '^NDX', nikkei: '^N225', hangseng: '^HSI',
+      };
+
+      const yahooInterval = periode === '1w' ? '1h' : periode === '1m' ? '1d' : periode === '3m' ? '1d' : periode === '1j' ? '1wk' : '5m';
+      const yahooRange    = periode === '1w' ? '5d'  : periode === '1m' ? '1mo' : periode === '3m' ? '3mo' : periode === '1j' ? '1y'  : '1d';
+
+      const syms = componenten[subindex] || componenten['bel20'];
+      const idxSym = indexSymbolen[subindex] || '^BFX';
+
+      try {
+        // 1. Index candle data
+        const idxUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(idxSym)}?interval=${yahooInterval}&range=${yahooRange}`;
+        const idxRes = await fetch(idxUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const idxData = await idxRes.json();
+        const idxResult = idxData?.chart?.result?.[0];
+        const timestamps = idxResult?.timestamp || [];
+        const closes = idxResult?.indicators?.quote?.[0]?.close || [];
+        const prevClose = idxResult?.meta?.previousClose || idxResult?.meta?.chartPreviousClose || 0;
+        const huidigePrijs = idxResult?.meta?.regularMarketPrice || 0;
+        const grafiekData = timestamps.map((t, i) => ({
+          t: t * 1000,
+          v: closes[i] !== null && closes[i] !== undefined ? Math.round(closes[i] * 100) / 100 : null,
+        })).filter(p => p.v !== null);
+
+        // 2. Component quotes (parallel, max 15 tegelijk)
+        const quoteResults = await Promise.all(syms.slice(0, 15).map(async (sym) => {
+          try {
+            const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+            const d = await r.json();
+            const meta = d?.chart?.result?.[0]?.meta || {};
+            const prijs = meta.regularMarketPrice || 0;
+            const prev  = meta.previousClose || meta.chartPreviousClose || prijs;
+            const chg   = prev ? ((prijs - prev) / prev) * 100 : 0;
+            // Naam: verwijder exchange suffix voor weergave
+            const naamRaw = meta.longName || meta.shortName || sym;
+            const naam = naamRaw.length > 22 ? naamRaw.slice(0, 21) + '…' : naamRaw;
+            return { symbol: sym, naam, prijs, change: chg, valuta: meta.currency || 'EUR' };
+          } catch {
+            return null;
+          }
+        }));
+
+        const quotes = quoteResults.filter(Boolean);
+        const gesorteerd = [...quotes].sort((a, b) => b.change - a.change);
+        const stijgers = gesorteerd.slice(0, 5);
+        const dalers   = [...gesorteerd].reverse().slice(0, 5);
+
+        return res.json({ grafiek: grafiekData, prevClose, huidigePrijs, stijgers, dalers, alleQuotes: quotes });
+      } catch (e) {
+        console.error('aandelen-regio fout:', e);
+        return res.json({ grafiek: [], prevClose: 0, huidigePrijs: 0, stijgers: [], dalers: [], alleQuotes: [] });
+      }
+    }
     return res.status(400).json({ error: 'Onbekend endpoint' });
   } catch (err) {
     console.error(err);

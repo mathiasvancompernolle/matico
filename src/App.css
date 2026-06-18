@@ -1426,3 +1426,267 @@ body.dark .top-nav {
   letter-spacing: 0.3px;
   flex-shrink: 0;
 }
+
+/* ===== AANDELEN SUBPAGINA ===== */
+.aandelen-topbalk {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.aandelen-terug-knop {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  padding: 4px 0;
+}
+
+.aandelen-terug-knop:hover { text-decoration: underline; }
+
+.aandelen-titel {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.aandelen-sub-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin: 16px 0 20px;
+}
+
+.aandelen-sub-tab {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-family: 'DM Sans', sans-serif;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.aandelen-sub-tab:hover { color: var(--text-primary); }
+.aandelen-sub-tab.actief {
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom-color: var(--text-primary);
+}
+
+/* Grafiek + ranking layout */
+.aandelen-content {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .aandelen-content { grid-template-columns: 1fr; }
+}
+
+.aandelen-grafiek-kaart {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.aandelen-grafiek-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.aandelen-grafiek-titel {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.aandelen-periode-knoppen {
+  display: flex;
+  gap: 2px;
+}
+
+.aandelen-periode-knop {
+  background: none;
+  border: none;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.aandelen-periode-knop:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.aandelen-periode-knop.actief { background: var(--border); color: var(--text-primary); font-weight: 600; }
+
+.aandelen-grafiek-skeleton {
+  height: 320px;
+  background: var(--border);
+  border-radius: var(--radius-sm);
+  animation: puls 1.4s ease-in-out infinite;
+}
+
+/* Ranking kolom */
+.aandelen-ranking-kolom {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ranking-tabel-kaart {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.ranking-tabel-header {
+  padding: 12px 16px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ranking-tabel-titel {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ranking-tabel {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ranking-tabel thead tr {
+  background: var(--bg-subtle);
+}
+
+.ranking-tabel th {
+  padding: 6px 12px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.ranking-tabel td {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-light);
+  color: var(--text-primary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Brede tabellen onderaan */
+.aandelen-tabellen-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 4px;
+}
+
+@media (max-width: 700px) {
+  .aandelen-tabellen-grid { grid-template-columns: 1fr; }
+}
+
+.aandelen-tabel-kaart {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.aandelen-tabel-header {
+  padding: 14px 16px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.aandelen-tabel-titel {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.aandelen-tabel {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.aandelen-tabel thead tr { background: var(--bg-subtle); }
+
+.aandelen-tabel th {
+  padding: 7px 14px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.aandelen-tabel td {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-light);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* Kleur cellen */
+.cel-groen { color: var(--green) !important; font-weight: 600; }
+.cel-rood  { color: var(--red)   !important; font-weight: 600; }
+
+/* Klein EQ badge in tabellen */
+.markt-cat-badge-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 16px;
+  border-radius: 3px;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Tabel skeleton */
+.tabel-skeleton {
+  height: 12px;
+  background: var(--border);
+  border-radius: 4px;
+  animation: puls 1.4s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* Categorie knop actief state */
+.markten-cat-knop.actief {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
