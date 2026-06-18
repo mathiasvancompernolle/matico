@@ -7,7 +7,13 @@ const REGIO_TABS = [
   { id: 'azie-pacific',   label: 'Azië-Pacific' },
 ];
 
-// Kleine SVG sparkline
+const CATEGORIEEN = [
+  { id: 'aandelen',          label: "Aandelen",          afk: 'EQ',  kleur: '#f59e0b' },
+  { id: 'etfs',              label: "ETF's",             afk: 'ETF', kleur: '#10b981' },
+  { id: 'beleggingsfondsen', label: "Beleggingsfondsen", afk: 'MF',  kleur: '#8b5cf6' },
+  { id: 'obligaties',        label: "Obligaties",        afk: 'BO',  kleur: '#3b82f6' },
+];
+
 function Sparkline({ data, positief }) {
   if (!data || data.length < 2) return <div style={{ height: 48 }} />;
   const min = Math.min(...data);
@@ -46,9 +52,7 @@ function IndexKaart({ index, laden }) {
     : '—';
   return (
     <div className="markt-index-kaart">
-      <div className="markt-kaart-icon">
-        <span>EQ</span>
-      </div>
+      <div className="markt-kaart-icon"><span>EQ</span></div>
       <div className="markt-kaart-naam">{index.naam}</div>
       <div className="markt-kaart-sparkline">
         <Sparkline data={index.sparkline} positief={positief} />
@@ -63,12 +67,7 @@ function IndexKaart({ index, laden }) {
 
 function NieuwsKaart({ artikel }) {
   return (
-    <a
-      href={artikel.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="markt-nieuws-kaart"
-    >
+    <a href={artikel.url} target="_blank" rel="noopener noreferrer" className="markt-nieuws-kaart">
       {artikel.afbeelding && (
         <div className="markt-nieuws-img-wrap">
           <img src={artikel.afbeelding} alt="" className="markt-nieuws-img" onError={e => { e.target.style.display = 'none'; }} />
@@ -115,13 +114,8 @@ export default function Markten() {
     }
   }, []);
 
-  useEffect(() => {
-    laadIndices(actieveRegio);
-  }, [actieveRegio, laadIndices]);
-
-  useEffect(() => {
-    laadNieuws();
-  }, [laadNieuws]);
+  useEffect(() => { laadIndices(actieveRegio); }, [actieveRegio, laadIndices]);
+  useEffect(() => { laadNieuws(); }, [laadNieuws]);
 
   const skeletons = Array(5).fill(null);
 
@@ -144,10 +138,20 @@ export default function Markten() {
       <div className="markten-indices-grid">
         {ladenIndices
           ? skeletons.map((_, i) => <IndexKaart key={i} index={{}} laden={true} />)
-          : indices.map(idx => (
-            <IndexKaart key={idx.symbol} index={idx} laden={false} />
-          ))
+          : indices.map(idx => <IndexKaart key={idx.symbol} index={idx} laden={false} />)
         }
+      </div>
+
+      <div className="markten-divider" />
+
+      {/* Categorie filterbalk */}
+      <div className="markten-categorie-balk">
+        {CATEGORIEEN.map(cat => (
+          <button key={cat.id} className="markten-cat-knop" title="Binnenkort beschikbaar">
+            <span className="markten-cat-badge" style={{ background: cat.kleur }}>{cat.afk}</span>
+            {cat.label}
+          </button>
+        ))}
       </div>
 
       <div className="markten-divider" />
