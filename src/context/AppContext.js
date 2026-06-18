@@ -127,6 +127,14 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     localStorage.setItem(`matico_beleggingen_${actiefPortfolioId}`, JSON.stringify(beleggingen));
+    // Sync naar Blob zodat de intraday cron weet welke aandelen hij moet ophalen
+    if (beleggingen.length > 0) {
+      fetch('/api/sync-beleggingen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ beleggingen, gebruiker })
+      }).catch(() => {});
+    }
   }, [beleggingen, actiefPortfolioId]);
 
   useEffect(() => {

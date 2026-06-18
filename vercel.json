@@ -2,5 +2,15 @@
   "version": 2,
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-email",
+      "schedule": "0 20 * * 1-5"
+    },
+    {
+      "path": "/api/cron-intraday",
+      "schedule": "*/5 14-21 * * 1-5"
+    }
   ]
 }

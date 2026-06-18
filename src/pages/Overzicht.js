@@ -167,9 +167,28 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
           startWaarde += (slotKoersen[b.symbol] || koersen[b.symbol]?.pc || b.kostprijs) * b.aantal * factor;
         });
 
-        // Zelf opgeslagen intraday punten laden
-        const intradayPunten = laadIntradayData ? laadIntradayData() : [];
+        // Zelf opgeslagen intraday punten laden — eerst lokaal, dan Blob als fallback
+        let intradayPunten = laadIntradayData ? laadIntradayData() : [];
         const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR'));
+
+        // Als weinig lokale punten → haal ook Blob data op (van cron job)
+        if (intradayPunten.length < 2) {
+          try {
+            const dagKey = nu.toISOString().slice(0, 10);
+            const r = await fetch(`https://blob.vercel-storage.com?prefix=matico-intraday-${dagKey}.json&limit=1`, {
+              headers: { 'Authorization': `Bearer ${process.env.REACT_APP_BLOB_TOKEN || ''}` }
+            });
+            // Blob is niet direct toegankelijk vanuit browser zonder token
+            // Gebruik een eigen API endpoint als proxy
+            const blobRes = await fetch(`/api/intraday?dag=${dagKey}`);
+            if (blobRes.ok) {
+              const blobData = await blobRes.json();
+              if (Array.isArray(blobData) && blobData.length > intradayPunten.length) {
+                intradayPunten = blobData;
+              }
+            }
+          } catch (e) {}
+        }
 
         if (intradayPunten.length >= 2) {
           // Bouw grafiek van opgeslagen punten
