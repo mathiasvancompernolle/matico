@@ -155,6 +155,8 @@ export function AppProvider({ children }) {
       return JSON.parse(localStorage.getItem(cacheKey) || '[]');
     } catch (e) { return []; }
   };
+
+  const slaIntradayPuntOp = (nieuweKoersen) => {
     // Sla huidige portfoliowaarde op als intraday datapunt
     const nu = new Date();
     const dagKey = nu.toISOString().slice(0, 10); // bv. "2026-06-18"
