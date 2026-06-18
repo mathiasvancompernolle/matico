@@ -578,7 +578,7 @@ export default async function handler(req, res) {
 
       const componenten = {
         bel20: ['ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR','DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR','SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR'],
-        'bel-midcap': ['IMMO.BR','KIN.BR','ATEB.BR','TITC.BR','SHU.BR','IBAB.BR','BPOST.BR','CFEB.BR','JENS.BR','VGP.BR','RET.BR','HOMI.BR','INTO.BR','COMB.BR','MOURY.BR','TINC.BR','ONTEX.BR','WEB.BR','ROU.BR','MELE.BR'],
+        'bel-midcap': ['IMMO.BR','KIN.BR','ATEB.BR','TITC.BR','SHU.BR','IBAB.BR','BPOST.BR','CFEB.BR','JENS.BR','VGP.BR','RET.BR','HOMI.BR','INTO.BR','COMB.BR','MOURY.BR','TINC.BR','AZE.BR','WEB.BR','ROU.BR','MELE.BR'],
         'bel-smallcap': ['COMB.BR','CREI.BR','ESYB.BR','EVOC.BR','IBA.BR','KINB.BR','MELE.BR','NYRB.BR','REC.BR','SHUR.BR','SPAQ.BR','TITAN.BR','VASTB.BR'],
         aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
         sp500: ['AAPL','MSFT','NVDA','AMZN','GOOGL','META','BRK-B','LLY','AVGO','JPM'],
