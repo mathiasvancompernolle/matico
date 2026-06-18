@@ -602,18 +602,22 @@ export default async function handler(req, res) {
       const nuMs = Date.now();
       const nuSec = Math.floor(nuMs / 1000);
       const dagMs = 86400000;
+
+      // Startdatum van de periode (1 extra dag vroeger zodat we de slotkoers net VOOR de periode pakken)
+      // Dit spiegelt de Saxo methode: referentie = slotkoers laatste handelsdag vóór periode
+      const extraDag = 4 * dagMs; // 4 dagen buffer voor weekends/feestdagen
       const periodeStartSec = {
-        '1d':  Math.floor((nuMs - 2 * dagMs) / 1000),          // gisteren (vorige handelsdag)
-        '1w':  Math.floor((nuMs - 7 * dagMs) / 1000),          // 7 kalenderdagen terug
-        '1m':  Math.floor((nuMs - 31 * dagMs) / 1000),         // 31 dagen terug
-        '3m':  Math.floor((nuMs - 92 * dagMs) / 1000),         // ~3 maanden
-        '6m':  Math.floor((nuMs - 183 * dagMs) / 1000),        // ~6 maanden
-        '1j':  Math.floor((nuMs - 365 * dagMs) / 1000),        // 1 jaar
-        '3j':  Math.floor((nuMs - 3 * 365 * dagMs) / 1000),    // 3 jaar
-        '5j':  Math.floor((nuMs - 5 * 365 * dagMs) / 1000),    // 5 jaar
-        'ytd': Math.floor(new Date(new Date().getFullYear(), 0, 1).getTime() / 1000), // 1 jan
-        'max': Math.floor((nuMs - 20 * 365 * dagMs) / 1000),   // 20 jaar
-      }[periode] || Math.floor((nuMs - 2 * dagMs) / 1000);
+        '1d':  Math.floor((nuMs - 2 * dagMs - extraDag) / 1000),       // vorige handelsdag + buffer
+        '1w':  Math.floor((nuMs - 7 * dagMs - extraDag) / 1000),       // 1 week + buffer
+        '1m':  Math.floor((nuMs - 31 * dagMs - extraDag) / 1000),      // 1 maand + buffer
+        '3m':  Math.floor((nuMs - 92 * dagMs - extraDag) / 1000),      // 3 maanden + buffer
+        '6m':  Math.floor((nuMs - 183 * dagMs - extraDag) / 1000),     // 6 maanden + buffer
+        '1j':  Math.floor((nuMs - 366 * dagMs - extraDag) / 1000),     // 1 jaar + buffer
+        '3j':  Math.floor((nuMs - 3 * 366 * dagMs - extraDag) / 1000), // 3 jaar + buffer
+        '5j':  Math.floor((nuMs - 5 * 366 * dagMs - extraDag) / 1000), // 5 jaar + buffer
+        'ytd': Math.floor(new Date(new Date().getFullYear() - 1, 11, 28).getTime() / 1000), // 28 dec vorig jaar (pakt 31 dec slotkoers)
+        'max': Math.floor((nuMs - 20 * 366 * dagMs) / 1000),
+      }[periode] || Math.floor((nuMs - 6 * dagMs) / 1000);
 
       // Interval per periode voor component candles
       const cInt = { '1d':'1d','1w':'1d','1m':'1d','3m':'1d','6m':'1wk','1j':'1wk','3j':'1mo','5j':'1mo','ytd':'1d','max':'1mo' }[periode] || '1d';
@@ -657,13 +661,15 @@ export default async function handler(req, res) {
             const valids = allCloses.filter(v => v !== null && v !== undefined);
             const naamRaw = meta.longName || meta.shortName || sym;
             const naam = naamRaw.length > 22 ? naamRaw.slice(0, 21) + '…' : naamRaw;
-            const prijs = valids.length > 0 ? valids[valids.length - 1] : (meta.regularMarketPrice || 0);
+            // Huidige prijs: live regularMarketPrice indien beschikbaar, anders laatste candle
+            const prijs = meta.regularMarketPrice || (valids.length > 0 ? valids[valids.length - 1] : 0);
             let chg = 0;
-            if (valids.length >= 2) {
-              const eerste = valids[0];
-              const laatste = valids[valids.length - 1];
-              chg = eerste ? ((laatste - eerste) / eerste) * 100 : 0;
-            } else if (periode === '1d') {
+            if (valids.length >= 1) {
+              // Referentieprijs = EERSTE candle in de reeks (= slotkoers net voor de periode)
+              const referentie = valids[0];
+              chg = referentie ? ((prijs - referentie) / referentie) * 100 : 0;
+            } else {
+              // Fallback voor 1d: gebruik previousClose uit meta
               const prev = meta.previousClose || meta.chartPreviousClose || prijs;
               chg = prev ? ((prijs - prev) / prev) * 100 : 0;
             }
