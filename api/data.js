@@ -659,10 +659,7 @@ export default async function handler(req, res) {
           } catch { clearTimeout(timer); resolve(null); }
         });
 
-        // DEBUG: log eerste aandeel voor diagnose
-        let debugInfo = null;
-
-        const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
+const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           try {
             const r = await fetchComp(sym);
             if (!r) return null;
@@ -685,25 +682,7 @@ export default async function handler(req, res) {
             const referentie = meta.chartPreviousClose || meta.previousClose || prijs;
             const chg = referentie ? ((prijs - referentie) / referentie) * 100 : 0;
 
-            // Sla debug info op van eerste aandeel EN van Sofina
-            if (idx === 0 || sym === 'SOF.BR') {
-              const debugEntry = {
-                sym, periode, gebruikTimestamp,
-                periodeP1: periodeP1 || compRange,
-                url: gebruikTimestamp
-                  ? `interval=1d&period1=${periodeP1}&period2=${nuSec}`
-                  : `interval=1d&range=${compRange}`,
-                regularMarketPrice: meta.regularMarketPrice,
-                chartPreviousClose: meta.chartPreviousClose,
-                previousClose: meta.previousClose,
-                eersteTimestamp: d?.chart?.result?.[0]?.timestamp?.[0],
-                eersteClose: d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.[0],
-                aantalCandles: d?.chart?.result?.[0]?.timestamp?.length,
-                chg,
-              };
-              if (idx === 0) debugInfo = debugEntry;
-              else debugInfo = { ...debugInfo, sofina: debugEntry };
-            }
+
 
             return { symbol: sym, naam, prijs, change: chg, valuta: meta.currency || 'EUR' };
           } catch {
@@ -716,7 +695,7 @@ export default async function handler(req, res) {
         const stijgers = gesorteerd.slice(0, 5);
         const dalers   = [...gesorteerd].reverse().slice(0, 5);
 
-        return res.json({ grafiek: grafiekData, prevClose, huidigePrijs, stijgers, dalers, alleQuotes: quotes, debug: debugInfo });
+        return res.json({ grafiek: grafiekData, prevClose, huidigePrijs, stijgers, dalers, alleQuotes: quotes });
       } catch (e) {
         console.error('aandelen-regio fout:', e);
         return res.json({ grafiek: [], prevClose: 0, huidigePrijs: 0, stijgers: [], dalers: [], alleQuotes: [] });
