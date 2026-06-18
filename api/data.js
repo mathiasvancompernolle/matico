@@ -685,11 +685,11 @@ export default async function handler(req, res) {
             const referentie = meta.chartPreviousClose || meta.previousClose || prijs;
             const chg = referentie ? ((prijs - referentie) / referentie) * 100 : 0;
 
-            // Sla debug info op van eerste aandeel
-            if (idx === 0) {
-              debugInfo = {
+            // Sla debug info op van eerste aandeel EN van Sofina
+            if (idx === 0 || sym === 'SOF.BR') {
+              const debugEntry = {
                 sym, periode, gebruikTimestamp,
-                periodeP1, nuSec,
+                periodeP1: periodeP1 || compRange,
                 url: gebruikTimestamp
                   ? `interval=1d&period1=${periodeP1}&period2=${nuSec}`
                   : `interval=1d&range=${compRange}`,
@@ -697,9 +697,12 @@ export default async function handler(req, res) {
                 chartPreviousClose: meta.chartPreviousClose,
                 previousClose: meta.previousClose,
                 eersteTimestamp: d?.chart?.result?.[0]?.timestamp?.[0],
+                eersteClose: d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.[0],
                 aantalCandles: d?.chart?.result?.[0]?.timestamp?.length,
                 chg,
               };
+              if (idx === 0) debugInfo = debugEntry;
+              else debugInfo = { ...debugInfo, sofina: debugEntry };
             }
 
             return { symbol: sym, naam, prijs, change: chg, valuta: meta.currency || 'EUR' };
