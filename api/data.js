@@ -1,4 +1,4 @@
-// v6-1W-fix
+// v7-debug
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -668,7 +668,10 @@ export default async function handler(req, res) {
           } catch { clearTimeout(timer); resolve(null); }
         });
 
-        const quoteResults = await Promise.all(syms.map(async (sym) => {
+        // DEBUG: log eerste aandeel voor diagnose
+        let debugInfo = null;
+
+        const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           try {
             const r = await fetchComp(sym);
             if (!r) return null;
@@ -681,16 +684,32 @@ export default async function handler(req, res) {
             const prijs = meta.regularMarketPrice || 0;
 
             // Filter: als het aandeel niet lang genoeg genoteerd is voor deze periode → skip
-            // (bv Azelis IPO 2021 → heeft geen geldige 5j data)
             if (gebruikTimestamp) {
               const eersteTs = d?.chart?.result?.[0]?.timestamp?.[0] || 0;
-              const verwachtStart = periodeP1 + 30 * SPD; // mag max 30 dagen later starten
-              if (eersteTs > verwachtStart) return null; // data te kort → weggooien
+              const verwachtStart = periodeP1 + 30 * SPD;
+              if (eersteTs > verwachtStart) return null;
             }
 
             // Referentieprijs: chartPreviousClose = slotkoers net vóór de gevraagde range/periode
             const referentie = meta.chartPreviousClose || meta.previousClose || prijs;
             const chg = referentie ? ((prijs - referentie) / referentie) * 100 : 0;
+
+            // Sla debug info op van eerste aandeel
+            if (idx === 0) {
+              debugInfo = {
+                sym, periode, gebruikTimestamp,
+                periodeP1, nuSec,
+                url: gebruikTimestamp
+                  ? `interval=1d&period1=${periodeP1}&period2=${nuSec}`
+                  : `interval=1d&range=${compRange}`,
+                regularMarketPrice: meta.regularMarketPrice,
+                chartPreviousClose: meta.chartPreviousClose,
+                previousClose: meta.previousClose,
+                eersteTimestamp: d?.chart?.result?.[0]?.timestamp?.[0],
+                aantalCandles: d?.chart?.result?.[0]?.timestamp?.length,
+                chg,
+              };
+            }
 
             return { symbol: sym, naam, prijs, change: chg, valuta: meta.currency || 'EUR' };
           } catch {
@@ -703,7 +722,7 @@ export default async function handler(req, res) {
         const stijgers = gesorteerd.slice(0, 5);
         const dalers   = [...gesorteerd].reverse().slice(0, 5);
 
-        return res.json({ grafiek: grafiekData, prevClose, huidigePrijs, stijgers, dalers, alleQuotes: quotes });
+        return res.json({ grafiek: grafiekData, prevClose, huidigePrijs, stijgers, dalers, alleQuotes: quotes, debug: debugInfo });
       } catch (e) {
         console.error('aandelen-regio fout:', e);
         return res.json({ grafiek: [], prevClose: 0, huidigePrijs: 0, stijgers: [], dalers: [], alleQuotes: [] });
