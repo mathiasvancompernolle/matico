@@ -611,14 +611,9 @@ export default async function handler(req, res) {
       // Bereken exacte maandag van huidige week in Brussels time (voor 1W)
       // Saxo "1W" = maandag t/m vandaag van de lopende beursweek
       // period1 timestamps voor 1j/3j/5j/max (range shorthand niet precies genoeg)
-      const periodeP1 = {
-        '3j':  nuSec - 3 * 366 * SPD,
-        '5j':  nuSec - 5 * 366 * SPD,
-        'max': nuSec - 20 * 366 * SPD,
-      }[periode] || null;
+      // Enkel max gebruikt nog een timestamp — alle andere periodes via Yahoo range shorthand
+      const periodeP1 = periode === 'max' ? (nuSec - 20 * 366 * SPD) : null;
 
-      // Voor alle periodes behalve 3j/5j/max: gebruik Yahoo range shorthand
-      // chartPreviousClose is dan exact de referentieprijs die Saxo ook gebruikt
       const gebruikTimestamp = periodeP1 !== null;
       const compRange = {
         '1d':  '1d',
@@ -626,7 +621,9 @@ export default async function handler(req, res) {
         '1m':  '1mo',
         '3m':  '3mo',
         '6m':  '6mo',
-        '1j':  '1y',   // range=1y → chartPreviousClose = exact 1 jaar geleden slot
+        '1j':  '1y',
+        '3j':  '3y',   // range=3y → chartPreviousClose = exact 3 jaar geleden slot
+        '5j':  '5y',   // range=5y → chartPreviousClose = exact 5 jaar geleden slot
         'ytd': 'ytd',
       }[periode] || null;
 
@@ -672,11 +669,10 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const prijs = meta.regularMarketPrice || 0;
 
             // Filter: als het aandeel niet lang genoeg genoteerd is voor deze periode → skip
-            if (gebruikTimestamp) {
-              const eersteTs = d?.chart?.result?.[0]?.timestamp?.[0] || 0;
-              const verwachtStart = periodeP1 + 30 * SPD;
-              if (eersteTs > verwachtStart) return null;
-            }
+            // IPO-filter: aandeel weggooien als data te kort is voor de gevraagde periode
+            const aantalCandles = d?.chart?.result?.[0]?.timestamp?.length || 0;
+            const minCandles = { '3j': 25, '5j': 45, 'max': 100 }[periode] || 0;
+            if (minCandles > 0 && aantalCandles < minCandles) return null;
 
             // Referentieprijs: chartPreviousClose = slotkoers net vóór de gevraagde range/periode
             const referentie = meta.chartPreviousClose || meta.previousClose || prijs;
