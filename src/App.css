@@ -1380,3 +1380,49 @@ body.dark .top-nav {
   background: var(--bg-white);
   border-color: var(--border);
 }
+
+/* ===== MARKTEN CATEGORIE BALK ===== */
+.markten-categorie-balk {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+  flex-wrap: wrap;
+}
+
+.markten-cat-knop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  box-shadow: var(--shadow-sm);
+}
+
+.markten-cat-knop:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+}
+
+.markten-cat-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 20px;
+  border-radius: 4px;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
