@@ -9,7 +9,29 @@ import Belastingen from './pages/Belastingen';
 import Instellingen from './pages/Instellingen';
 import BeleggingToevoegen from './pages/BeleggingToevoegen';
 import ImportBeleggingen from './pages/ImportBeleggingen';
+import Markten from './pages/Markten';
 import './App.css';
+
+function TopNav({ actieveSectie, onSectieWissel }) {
+  return (
+    <nav className="top-nav">
+      <div className="top-nav-inner">
+        <button
+          className={`top-nav-tab ${actieveSectie === 'portefeuille' ? 'actief' : ''}`}
+          onClick={() => onSectieWissel('portefeuille')}
+        >
+          Portefeuille
+        </button>
+        <button
+          className={`top-nav-tab ${actieveSectie === 'markten' ? 'actief' : ''}`}
+          onClick={() => onSectieWissel('markten')}
+        >
+          Markten
+        </button>
+      </div>
+    </nav>
+  );
+}
 
 function AppInner() {
   const { activeNav, setActiveNav, gebruiker } = useApp();
@@ -17,6 +39,7 @@ function AppInner() {
   const [importOpen, setImportOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [overzichtResetKey, setOverzichtResetKey] = useState(0);
+  const [actieveSectie, setActieveSectie] = useState('portefeuille');
 
   if (!gebruiker.voornaam) {
     return <NaamInstellen />;
@@ -26,8 +49,6 @@ function AppInner() {
     document.querySelector('.app-main')?.scrollTo({ top: 0, behavior: 'auto' });
   };
 
-  // Centrale navigatie: altijd direct naar de gekozen pagina, ook tijdens een
-  // belegging toevoegen/importeren, een verkoop verwerken of een simulatie.
   const navigeerNaar = (doel) => {
     setToevoegenOpen(false);
     setImportOpen(false);
@@ -35,9 +56,11 @@ function AppInner() {
     scrollNaarBoven();
   };
 
-  // Matico-logo: altijd naar Overzicht. Sta je daar al, reset dan ook de
-  // grafiek naar boven + terug naar het standaard 1D-tijdslot.
   const naarHome = () => {
+    if (actieveSectie === 'markten') {
+      setActieveSectie('portefeuille');
+      return;
+    }
     if (activeNav === 'overzicht' && !toevoegenOpen && !importOpen) {
       setOverzichtResetKey(k => k + 1);
       scrollNaarBoven();
@@ -46,7 +69,17 @@ function AppInner() {
     }
   };
 
+  const handleSectieWissel = (sectie) => {
+    setActieveSectie(sectie);
+    scrollNaarBoven();
+    if (sectie === 'portefeuille') {
+      setToevoegenOpen(false);
+      setImportOpen(false);
+    }
+  };
+
   const renderPage = () => {
+    if (actieveSectie === 'markten') return <Markten />;
     if (importOpen) return <ImportBeleggingen onClose={() => setImportOpen(false)} />;
     if (toevoegenOpen) return <BeleggingToevoegen onClose={() => setToevoegenOpen(false)} />;
     const openToevoegen = () => setToevoegenOpen(true);
@@ -62,17 +95,24 @@ function AppInner() {
     }
   };
 
+  const toonSidebar = actieveSectie === 'portefeuille';
+
   return (
-    <div className={`app-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onHome={naarHome}
-        onNavigate={navigeerNaar}
-      />
-      <main className="app-main">
-        {renderPage()}
-      </main>
+    <div className="app-wrapper">
+      <TopNav actieveSectie={actieveSectie} onSectieWissel={handleSectieWissel} />
+      <div className={`app-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${toonSidebar ? '' : 'zonder-sidebar'}`}>
+        {toonSidebar && (
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+            onHome={naarHome}
+            onNavigate={navigeerNaar}
+          />
+        )}
+        <main className="app-main">
+          {renderPage()}
+        </main>
+      </div>
     </div>
   );
 }

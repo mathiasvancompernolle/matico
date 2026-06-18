@@ -1049,3 +1049,334 @@ body {
     z-index: 50;
   }
 }
+
+/* ===== TOP NAVBAR ===== */
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-wrapper .app-layout {
+  flex: 1;
+  overflow: hidden;
+  height: calc(100vh - 48px);
+}
+
+.top-nav {
+  height: 48px;
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 20;
+  position: relative;
+}
+
+.top-nav-inner {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.top-nav-tab {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.top-nav-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+}
+
+.top-nav-tab.actief {
+  color: var(--accent);
+  font-weight: 600;
+  position: relative;
+}
+
+.top-nav-tab.actief::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.app-layout.zonder-sidebar .app-main {
+  width: 100%;
+}
+
+/* ===== MARKTEN PAGINA ===== */
+.markten-pagina {
+  padding: 28px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.markten-regio-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.markten-regio-tab {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-family: 'DM Sans', sans-serif;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.markten-regio-tab:hover {
+  color: var(--text-primary);
+}
+
+.markten-regio-tab.actief {
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom-color: var(--text-primary);
+}
+
+/* Indices grid */
+.markten-indices-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 1100px) {
+  .markten-indices-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 700px) {
+  .markten-indices-grid { grid-template-columns: repeat(2, 1fr); }
+  .markten-pagina { padding: 16px; }
+}
+
+.markt-index-kaart {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s;
+}
+
+.markt-index-kaart:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.markt-kaart-icon {
+  width: 32px;
+  height: 32px;
+  background: #1a56db;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.markt-kaart-naam {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.3;
+  min-height: 32px;
+}
+
+.markt-kaart-sparkline {
+  margin: 4px 0;
+}
+
+.markt-kaart-prijs {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.markt-kaart-change {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.markt-kaart-change.positief { color: var(--green); }
+.markt-kaart-change.negatief { color: var(--red); }
+
+.markt-kaart-periode {
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+/* Skeleton loaders */
+.markt-kaart-laden {
+  pointer-events: none;
+}
+
+.markt-kaart-skeleton-title,
+.markt-kaart-skeleton-chart,
+.markt-kaart-skeleton-price {
+  background: var(--border);
+  border-radius: 6px;
+  animation: puls 1.4s ease-in-out infinite;
+}
+
+.markt-kaart-skeleton-title { height: 14px; width: 80%; }
+.markt-kaart-skeleton-chart { height: 48px; width: 100%; margin: 8px 0; }
+.markt-kaart-skeleton-price { height: 22px; width: 60%; }
+
+@keyframes puls {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Divider */
+.markten-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0 28px;
+}
+
+/* Nieuws */
+.markten-nieuws-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.markten-nieuws-titel-tekst {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.markten-nieuws-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .markten-nieuws-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .markten-nieuws-grid { grid-template-columns: 1fr; }
+}
+
+.markt-nieuws-kaart {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.markt-nieuws-kaart:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.markt-nieuws-img-wrap {
+  width: 100%;
+  height: 140px;
+  overflow: hidden;
+  background: var(--border-light);
+}
+
+.markt-nieuws-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.markt-nieuws-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.markt-nieuws-bron {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.markt-nieuws-titel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Nieuws skeleton */
+.markt-nieuws-laden { pointer-events: none; }
+.markt-nieuws-skeleton-img {
+  height: 140px;
+  background: var(--border);
+  animation: puls 1.4s ease-in-out infinite;
+}
+.markt-nieuws-skeleton-bron {
+  height: 11px;
+  width: 40%;
+  background: var(--border);
+  border-radius: 4px;
+  animation: puls 1.4s ease-in-out infinite;
+}
+.markt-nieuws-skeleton-titel {
+  height: 40px;
+  width: 90%;
+  background: var(--border);
+  border-radius: 4px;
+  animation: puls 1.4s ease-in-out infinite;
+}
+
+/* Dark mode top nav */
+body.dark .top-nav {
+  background: var(--bg-white);
+  border-color: var(--border);
+}

@@ -474,6 +474,99 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── Marktindices ──────────────────────────────────────────────────────────
+    if (endpoint === 'market-indices') {
+      const { regio = 'lokaal' } = req.query;
+      const indicesByRegio = {
+        lokaal: [
+          { symbol: '^BFX',   naam: 'BEL20 Index' },
+          { symbol: 'BELM.BR',naam: 'BEL Midcap Index' },
+          { symbol: 'BELS.BR',naam: 'BEL Smallcap Index' },
+          { symbol: '^AEX',   naam: 'AEX Index' },
+          { symbol: '^FCHI',  naam: 'CAC 40 Index' },
+        ],
+        europa: [
+          { symbol: '^GDAXI', naam: 'DAX Index' },
+          { symbol: '^IBEX',  naam: 'IBEX 35' },
+          { symbol: '^FTSE',  naam: 'FTSE 100' },
+          { symbol: '^STOXX50E', naam: 'Euro Stoxx 50' },
+          { symbol: '^SMI',   naam: 'SMI Index' },
+        ],
+        'noord-amerika': [
+          { symbol: '^GSPC',  naam: 'S&P 500' },
+          { symbol: '^NDX',   naam: 'Nasdaq 100' },
+          { symbol: '^DJI',   naam: 'Dow Jones' },
+          { symbol: '^RUT',   naam: 'Russell 2000' },
+          { symbol: '^TSX',   naam: 'TSX Composite' },
+        ],
+        'azie-pacific': [
+          { symbol: '^N225',  naam: 'Nikkei 225' },
+          { symbol: '^HSI',   naam: 'Hang Seng' },
+          { symbol: '000001.SS', naam: 'Shanghai Composite' },
+          { symbol: '^AXJO',  naam: 'ASX 200' },
+          { symbol: '^KS11',  naam: 'KOSPI' },
+        ],
+      };
+      const indices = indicesByRegio[regio] || indicesByRegio['lokaal'];
+      try {
+        const results = await Promise.all(indices.map(async (idx) => {
+          try {
+            const yahooSym = encodeURIComponent(idx.symbol);
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=5m&range=1d`;
+            const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+            const d = await r.json();
+            const meta = d?.chart?.result?.[0]?.meta || {};
+            const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+            const validCloses = closes.filter(v => v !== null && v !== undefined);
+            const prijs = meta.regularMarketPrice || meta.previousClose || 0;
+            const prevClose = meta.previousClose || meta.chartPreviousClose || prijs;
+            const change = prevClose ? ((prijs - prevClose) / prevClose) * 100 : 0;
+            // Sparkline: laatste 20 datapunten
+            const sparkline = validCloses.slice(-20).map(v => Math.round(v * 100) / 100);
+            return { symbol: idx.symbol, naam: idx.naam, prijs, change, prevClose, sparkline };
+          } catch (e) {
+            return { symbol: idx.symbol, naam: idx.naam, prijs: 0, change: 0, prevClose: 0, sparkline: [] };
+          }
+        }));
+        return res.json(results);
+      } catch (e) {
+        return res.json([]);
+      }
+    }
+
+    // ── Marktnieuws ───────────────────────────────────────────────────────────
+    if (endpoint === 'market-news') {
+      try {
+        const r = await fetch(
+          `https://newsapi.org/v2/top-headlines?category=business&language=nl&pageSize=8&apiKey=${NEWSAPI_KEY}`
+        );
+        const d = await r.json();
+        let artikelen = d?.articles || [];
+        // Fallback: Engelstalig financieel nieuws
+        if (artikelen.length === 0) {
+          const r2 = await fetch(
+            `https://newsapi.org/v2/top-headlines?category=business&language=en&pageSize=8&apiKey=${NEWSAPI_KEY}`
+          );
+          const d2 = await r2.json();
+          artikelen = d2?.articles || [];
+        }
+        const gefilterd = artikelen
+          .filter(a => a.title && a.urlToImage)
+          .slice(0, 6)
+          .map(a => ({
+            titel: a.title,
+            beschrijving: a.description || '',
+            url: a.url,
+            afbeelding: a.urlToImage,
+            bron: a.source?.name || '',
+            datum: a.publishedAt,
+          }));
+        return res.json(gefilterd);
+      } catch (e) {
+        return res.json([]);
+      }
+    }
+
     return res.status(400).json({ error: 'Onbekend endpoint' });
   } catch (err) {
     console.error(err);
