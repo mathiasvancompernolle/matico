@@ -90,10 +90,6 @@ function genereerEmailHTML({ gebruiker, beleggingen, koersen, totaalWaarde, dagW
 }
 
 export default async function handler(req, res) {
-  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
   if (!MATICO_EMAIL || !RESEND_API_KEY || !FINNHUB_KEY || !BLOB_TOKEN) {
     return res.status(500).json({ error: 'Ontbrekende environment variables', missing: { MATICO_EMAIL: !MATICO_EMAIL, RESEND_API_KEY: !RESEND_API_KEY, FINNHUB_KEY: !FINNHUB_KEY, BLOB_TOKEN: !BLOB_TOKEN } });
   }
