@@ -1,4 +1,4 @@
-// v5
+// v6-1W-fix
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -569,6 +569,10 @@ export default async function handler(req, res) {
 
 
     // ── Aandelen regio: index candle + component quotes ───────────────────────
+    if (endpoint === 'debug-version') {
+      return res.json({ version: 'v6-1W-fix', timestamp: new Date().toISOString() });
+    }
+
     if (endpoint === 'aandelen-regio') {
       const { regio = 'belgie', subindex = 'bel20', periode = '1d' } = req.query;
 
