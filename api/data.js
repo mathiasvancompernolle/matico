@@ -702,26 +702,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         const stijgers = gesorteerd.slice(0, 5);
         const dalers   = [...gesorteerd].reverse().slice(0, 5);
 
-        // Tijdelijke debug: toon Azelis filter info
-        const azelisDebug = await (async () => {
-          try {
-            const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/AZE.BR?interval=1d&range=5y`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-            const d = await r.json();
-            const ts = d?.chart?.result?.[0]?.timestamp || [];
-            const eersteTs = ts[0] || 0;
-            const verwachtStartMs = nuMs - 5 * 366 * SPD * 1000;
-            const tolerantieMs = 2 * 31 * SPD * 1000;
-            return {
-              eersteTs,
-              eersteDate: new Date(eersteTs * 1000).toISOString(),
-              verwachtStartDate: new Date(verwachtStartMs).toISOString(),
-              verschilMaanden: ((eersteTs * 1000 - verwachtStartMs) / (31 * SPD * 1000)).toFixed(1),
-              wordtGefilterd: eersteTs * 1000 > verwachtStartMs + tolerantieMs,
-              aantalCandles: ts.length,
-            };
-          } catch(e) { return { error: e.message }; }
-        })();
-        return res.json({ grafiek: grafiekData, prevClose, huidigePrijs, stijgers, dalers, alleQuotes: quotes, azelisDebug });
+        return res.json({ grafiek: grafiekData, prevClose, huidigePrijs, stijgers, dalers, alleQuotes: quotes });
       } catch (e) {
         console.error('aandelen-regio fout:', e);
         return res.json({ grafiek: [], prevClose: 0, huidigePrijs: 0, stijgers: [], dalers: [], alleQuotes: [] });
