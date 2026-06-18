@@ -1,4 +1,4 @@
-// v7-debug
+// v8-1W-vorige-week
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -610,19 +610,22 @@ export default async function handler(req, res) {
 
       // Bereken exacte maandag van huidige week in Brussels time (voor 1W)
       // Saxo "1W" = maandag t/m vandaag van de lopende beursweek
-      const maandagDezeWeek = (() => {
+      // Voor 1W: period1 = maandag van VORIGE week
+      // Dan geeft Yahoo chartPreviousClose = slotkoers vrijdag vorige week (= Saxo referentie)
+      const startVorig1W = (() => {
         const brussels = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Brussels' }));
-        const dagIndex = brussels.getDay(); // 0=zo,1=ma,2=di,3=wo,4=do,5=vr,6=za
+        const dagIndex = brussels.getDay(); // 0=zo,1=ma,...,5=vr,6=za
         const diffNaarMa = dagIndex === 0 ? -6 : 1 - dagIndex;
-        const ma = new Date(brussels);
-        ma.setDate(brussels.getDate() + diffNaarMa);
-        ma.setHours(0, 0, 0, 0);
-        return Math.floor(ma.getTime() / 1000) - 2 * SPD; // 2 dagen eerder als feestdagbuffer
+        const maDezeWeek = new Date(brussels);
+        maDezeWeek.setDate(brussels.getDate() + diffNaarMa);
+        maDezeWeek.setHours(0, 0, 0, 0);
+        // Maandag vorige week = 7 dagen voor maandag deze week
+        return Math.floor(maDezeWeek.getTime() / 1000) - 7 * SPD;
       })();
 
       // period1 timestamps voor periodes die Yahoo range niet precies genoeg aankan
       const periodeP1 = {
-        '1w':  maandagDezeWeek,
+        '1w':  startVorig1W,
         '1j':  nuSec - 370 * SPD,
         '3j':  nuSec - 3 * 366 * SPD,
         '5j':  nuSec - 5 * 366 * SPD,
