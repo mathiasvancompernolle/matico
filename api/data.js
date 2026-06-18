@@ -600,18 +600,40 @@ export default async function handler(req, res) {
       //   - meta.regularMarketPrice  → huidige live prijs
       //   - meta.chartPreviousClose  → slotkoers begin van de range (exact Saxo methode)
       // Yahoo's chartPreviousClose is de slotkoers net VOOR de gevraagde range → perfect.
+      const nuMs = Date.now();
+      const nuSec = Math.floor(nuMs / 1000);
+      const SPD = 86400; // seconds per dag — aparte naam om naamconflict te vermijden
+
+      // Bereken exacte maandag van huidige week in Brussels time (voor 1W)
+      // Saxo "1W" = maandag t/m vandaag van de lopende beursweek
+      const maandagDezeWeek = (() => {
+        const brussels = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Brussels' }));
+        const dagIndex = brussels.getDay(); // 0=zo,1=ma,2=di,3=wo,4=do,5=vr,6=za
+        const diffNaarMa = dagIndex === 0 ? -6 : 1 - dagIndex;
+        const ma = new Date(brussels);
+        ma.setDate(brussels.getDate() + diffNaarMa);
+        ma.setHours(0, 0, 0, 0);
+        return Math.floor(ma.getTime() / 1000) - 2 * SPD; // 2 dagen eerder als feestdagbuffer
+      })();
+
+      // period1 timestamps voor periodes die Yahoo range niet precies genoeg aankan
+      const periodeP1 = {
+        '1w':  maandagDezeWeek,
+        '1j':  nuSec - 370 * SPD,
+        '3j':  nuSec - 3 * 366 * SPD,
+        '5j':  nuSec - 5 * 366 * SPD,
+        'max': nuSec - 20 * 366 * SPD,
+      }[periode] || null;
+
+      // Voor 1d/1m/3m/6m/ytd werkt Yahoo range shorthand perfect
+      const gebruikTimestamp = periodeP1 !== null;
       const compRange = {
-        '1d':  '1d',   // chartPreviousClose = gisteren slot
-        '1w':  '5d',   // chartPreviousClose = vorige vrijdag slot
-        '1m':  '1mo',  // chartPreviousClose = slot 1 maand geleden
+        '1d':  '1d',
+        '1m':  '1mo',
         '3m':  '3mo',
         '6m':  '6mo',
-        '1j':  '1y',
-        '3j':  '3y',
-        '5j':  '5y',
-        'ytd': 'ytd',  // chartPreviousClose = 31 dec vorig jaar slot
-        'max': 'max',
-      }[periode] || '1d';
+        'ytd': 'ytd',
+      }[periode] || null;
 
       try {
         // 1. Index candle data voor de grafiek
@@ -632,11 +654,11 @@ export default async function handler(req, res) {
         const fetchComp = (sym) => new Promise(async (resolve) => {
           const timer = setTimeout(() => resolve(null), 7000);
           try {
-            // interval=1d volstaat voor alle periodes — we gebruiken alleen meta, geen candles
-            const r = await fetch(
-              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=${compRange}`,
-              { headers: { 'User-Agent': 'Mozilla/5.0' } }
-            );
+            // interval=1d — we gebruiken alleen meta.chartPreviousClose en regularMarketPrice
+            const url = gebruikTimestamp
+              ? `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&period1=${periodeP1}&period2=${nuSec}`
+              : `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=${compRange}`;
+            const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
             clearTimeout(timer);
             resolve(r);
           } catch { clearTimeout(timer); resolve(null); }
@@ -654,8 +676,15 @@ export default async function handler(req, res) {
             // Live prijs
             const prijs = meta.regularMarketPrice || 0;
 
-            // Referentieprijs: chartPreviousClose = slotkoers net voor de gevraagde range
-            // Dit is exact hoe Saxo de % berekent
+            // Filter: als het aandeel niet lang genoeg genoteerd is voor deze periode → skip
+            // (bv Azelis IPO 2021 → heeft geen geldige 5j data)
+            if (gebruikTimestamp) {
+              const eersteTs = d?.chart?.result?.[0]?.timestamp?.[0] || 0;
+              const verwachtStart = periodeP1 + 30 * SPD; // mag max 30 dagen later starten
+              if (eersteTs > verwachtStart) return null; // data te kort → weggooien
+            }
+
+            // Referentieprijs: chartPreviousClose = slotkoers net vóór de gevraagde range/periode
             const referentie = meta.chartPreviousClose || meta.previousClose || prijs;
             const chg = referentie ? ((prijs - referentie) / referentie) * 100 : 0;
 
