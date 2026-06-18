@@ -58,7 +58,7 @@ function getBegindatumVoorTijdperk(tijdperk, beleggingen) {
 }
 
 export default function Overzicht({ onToevoegen, onImporteren }) {
-  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen, laadIntradayData } = useApp();
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen } = useApp();
 
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
@@ -130,23 +130,21 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       if (beleggingVoorGrafiek.length === 0) { setGrafiekData([]); return; }
       setGrafiekLoading(true);
 
-      // 1D: gebruik zelf opgeslagen intraday datapunten
+      // 1D: vorige handelsdag slotkoers en huidige koers
       if (tijdperk === '1D') {
         const nu = new Date();
         const dag = nu.getDay();
         const maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
-        // Vorige handelsdag bepalen
         const vorigeD = new Date(nu);
         if (dag === 1) vorigeD.setDate(nu.getDate() - 3);
         else if (dag === 0) vorigeD.setDate(nu.getDate() - 2);
         else vorigeD.setDate(nu.getDate() - 1);
         const vorigeLabel = `${vorigeD.getDate()} ${maanden[vorigeD.getMonth()]}`;
 
-        // Slotkoers van gisteren als startpunt
-        const slotKoersen = {};
         const slotTs = Math.floor(new Date(vorigeD.getFullYear(), vorigeD.getMonth(), vorigeD.getDate()).getTime() / 1000);
         const slotTotTs = slotTs + 86400;
+        const slotKoersen = {};
         await Promise.all(beleggingVoorGrafiek.map(async (b) => {
           const cacheKey = `matico_slot_${b.symbol}_${vorigeD.toDateString()}`;
           try {
@@ -161,60 +159,19 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
           } catch (e) {}
         }));
 
-        let startWaarde = 0;
+        let gisterenWaarde = 0, nuWaarde = 0;
         beleggingVoorGrafiek.forEach(b => {
           const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-          startWaarde += (slotKoersen[b.symbol] || koersen[b.symbol]?.pc || b.kostprijs) * b.aantal * factor;
+          const koers = koersen[b.symbol];
+          gisterenWaarde += (slotKoersen[b.symbol] || koers?.pc || b.kostprijs) * b.aantal * factor;
+          nuWaarde += (koers?.c || b.kostprijs) * b.aantal * factor;
         });
 
-        // Zelf opgeslagen intraday punten laden — eerst lokaal, dan Blob als fallback
-        let intradayPunten = laadIntradayData ? laadIntradayData() : [];
         const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR'));
-
-        // Als weinig lokale punten → haal ook Blob data op (van cron job)
-        if (intradayPunten.length < 2) {
-          try {
-            const dagKey = nu.toISOString().slice(0, 10);
-            const r = await fetch(`https://blob.vercel-storage.com?prefix=matico-intraday-${dagKey}.json&limit=1`, {
-              headers: { 'Authorization': `Bearer ${process.env.REACT_APP_BLOB_TOKEN || ''}` }
-            });
-            // Blob is niet direct toegankelijk vanuit browser zonder token
-            // Gebruik een eigen API endpoint als proxy
-            const blobRes = await fetch(`/api/intraday?dag=${dagKey}`);
-            if (blobRes.ok) {
-              const blobData = await blobRes.json();
-              if (Array.isArray(blobData) && blobData.length > intradayPunten.length) {
-                intradayPunten = blobData;
-              }
-            }
-          } catch (e) {}
-        }
-
-        if (intradayPunten.length >= 2) {
-          // Bouw grafiek van opgeslagen punten
-          const punten = intradayPunten
-            .sort((a, b) => a.t - b.t)
-            .map(p => {
-              const d = new Date(p.t * 1000);
-              return {
-                label: `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`,
-                waarde: p.w
-              };
-            });
-          setGrafiekData([{ label: vorigeLabel, waarde: Math.round(startWaarde * 100) / 100 }, ...punten]);
-        } else {
-          // Nog geen intraday punten → toon rechte lijn
-          let nuWaarde = 0;
-          beleggingVoorGrafiek.forEach(b => {
-            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-            nuWaarde += (koersen[b.symbol]?.c || b.kostprijs) * b.aantal * factor;
-          });
-          setGrafiekData([
-            { label: vorigeLabel, waarde: Math.round(startWaarde * 100) / 100, gesloten: !iemandOpen },
-            { label: 'Nu', waarde: Math.round((iemandOpen ? nuWaarde : startWaarde) * 100) / 100, gesloten: !iemandOpen }
-          ]);
-        }
-
+        setGrafiekData([
+          { label: vorigeLabel, waarde: Math.round(gisterenWaarde * 100) / 100, gesloten: !iemandOpen },
+          { label: 'Nu', waarde: Math.round((iemandOpen ? nuWaarde : gisterenWaarde) * 100) / 100, gesloten: !iemandOpen }
+        ]);
         setGrafiekLoading(false);
         return;
       }
