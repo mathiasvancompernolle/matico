@@ -570,7 +570,7 @@ export default async function handler(req, res) {
 
     // ── Aandelen regio: index candle + component quotes ───────────────────────
     if (endpoint === 'debug-version') {
-      return res.json({ version: 'v6-1W-fix', timestamp: new Date().toISOString() });
+      return res.json({ version: 'v14-alle-fixes', timestamp: new Date().toISOString() });
     }
 
     if (endpoint === 'aandelen-regio') {
@@ -678,8 +678,10 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
                 '5j':  nuMs - 5 * 366 * SPD * 1000,
                 'max': nuMs - 15 * 366 * SPD * 1000,
               }[periode];
-              // Tolerantie: aandeel mag max 6 maanden na de verwachte start begonnen zijn
-              const tolerantieMs = 6 * 31 * SPD * 1000;
+              // Tolerantie per periode: hoe langer de periode, hoe strikter
+              // 5j: max 2 maanden tolerantie (Azelis IPO sept 2021 = 3 maanden na juni 2021 → gefilterd)
+              // 3j: max 2 maanden tolerantie
+              const tolerantieMs = 2 * 31 * SPD * 1000;
               if (eersteTs * 1000 > verwachtStartMs + tolerantieMs) return null;
             }
 
