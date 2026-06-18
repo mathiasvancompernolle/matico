@@ -612,20 +612,21 @@ export default async function handler(req, res) {
       // Saxo "1W" = maandag t/m vandaag van de lopende beursweek
       // period1 timestamps voor 1j/3j/5j/max (range shorthand niet precies genoeg)
       const periodeP1 = {
-        '1j':  nuSec - 370 * SPD,
         '3j':  nuSec - 3 * 366 * SPD,
         '5j':  nuSec - 5 * 366 * SPD,
         'max': nuSec - 20 * 366 * SPD,
       }[periode] || null;
 
-      // Voor 1w/1d/1m/3m/6m/ytd: gebruik Yahoo range shorthand → chartPreviousClose is altijd correct
+      // Voor alle periodes behalve 3j/5j/max: gebruik Yahoo range shorthand
+      // chartPreviousClose is dan exact de referentieprijs die Saxo ook gebruikt
       const gebruikTimestamp = periodeP1 !== null;
       const compRange = {
         '1d':  '1d',
-        '1w':  '1wk',   // Yahoo range=1wk = huidige kalenderweek, chartPreviousClose = vrijdag vorige week
+        '1w':  '1wk',
         '1m':  '1mo',
         '3m':  '3mo',
         '6m':  '6mo',
+        '1j':  '1y',   // range=1y → chartPreviousClose = exact 1 jaar geleden slot
         'ytd': 'ytd',
       }[periode] || null;
 
