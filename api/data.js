@@ -669,10 +669,19 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const prijs = meta.regularMarketPrice || 0;
 
             // Filter: als het aandeel niet lang genoeg genoteerd is voor deze periode → skip
-            // IPO-filter: aandeel weggooien als data te kort is voor de gevraagde periode
-            const aantalCandles = d?.chart?.result?.[0]?.timestamp?.length || 0;
-            const minCandles = { '3j': 25, '5j': 45, 'max': 100 }[periode] || 0;
-            if (minCandles > 0 && aantalCandles < minCandles) return null;
+            // IPO-filter: aandeel weggooien als het niet lang genoeg genoteerd was
+            // Bereken verwachte startdatum op basis van periode
+            const eersteTs = d?.chart?.result?.[0]?.timestamp?.[0] || 0;
+            if (eersteTs > 0 && ['3j','5j','max'].includes(periode)) {
+              const verwachtStartMs = {
+                '3j':  nuMs - 3 * 366 * SPD * 1000,
+                '5j':  nuMs - 5 * 366 * SPD * 1000,
+                'max': nuMs - 15 * 366 * SPD * 1000,
+              }[periode];
+              // Tolerantie: aandeel mag max 6 maanden na de verwachte start begonnen zijn
+              const tolerantieMs = 6 * 31 * SPD * 1000;
+              if (eersteTs * 1000 > verwachtStartMs + tolerantieMs) return null;
+            }
 
             // Referentieprijs: chartPreviousClose = slotkoers net vóór de gevraagde range/periode
             const referentie = meta.chartPreviousClose || meta.previousClose || prijs;
