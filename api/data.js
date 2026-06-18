@@ -574,7 +574,7 @@ export default async function handler(req, res) {
 
       // Componenten per subindex
       const componenten = {
-        bel20: ['ABI.BR','ACKB.BR','AED.BR','AGS.BR','ARGX.BR','AZE.BR','COFB.BR','DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELX.BR','PROX.AS','SOLB.BR','UCB.BR','UMI.BR','WDP.BR','SOFINA.BR','COLR.BR'],
+        bel20: ['ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR','DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR','SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR'],
         'bel-midcap': ['TINC.BR','OXUR.BR','BONE.BR','BERR.BR','ATENB.BR','AEDX.BR','ONTEX.BR','BEVE.BR','CFE.BR','CPIC.BR','MOBI.BR','SYENS.BR','TITC.BR','VGP.BR','EXMAR.BR'],
         'bel-smallcap': ['COMB.BR','CREI.BR','ESYB.BR','EVOC.BR','IBA.BR','KINB.BR','MELE.BR','NYRB.BR','REC.BR','SHUR.BR','SPAQ.BR','TITAN.BR','VASTB.BR'],
         aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
@@ -599,8 +599,8 @@ export default async function handler(req, res) {
       const idxSym = indexSymbolen[subindex] || '^BFX';
 
       // Voor ranking: welke candle params gebruiken per periode
-      const compInterval = { '1d':'1d','1w':'1d','1m':'1wk','3m':'1wk','6m':'1mo','1j':'1mo','3j':'3mo','5j':'3mo','ytd':'1mo','max':'3mo' };
-      const compRange    = { '1d':'5d','1w':'1mo','1m':'3mo','3m':'6mo','6m':'1y','1j':'2y','3j':'5y','5j':'10y','ytd':'ytd','max':'max' };
+      const compInterval = { '1d':'1d','1w':'1d','1m':'1d','3m':'1d','6m':'1wk','1j':'1wk','3j':'1mo','5j':'1mo','ytd':'1wk','max':'1mo' };
+      const compRange    = { '1d':'5d','1w':'5d','1m':'1mo','3m':'3mo','6m':'6mo','1j':'1y','3j':'3y','5j':'5y','ytd':'ytd','max':'max' };
       const cInt = compInterval[periode] || '1d';
       const cRange = compRange[periode] || '5d';
 
