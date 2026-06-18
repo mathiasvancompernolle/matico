@@ -27,11 +27,16 @@ const SUBINDICES = {
 };
 
 const PERIODES = [
-  { id: '1d', label: 'Intraday' },
-  { id: '1w', label: '1W' },
-  { id: '1m', label: '1M' },
-  { id: '3m', label: '3M' },
-  { id: '1j', label: '1J' },
+  { id: '1d',  label: 'Intraday' },
+  { id: '1w',  label: '1W' },
+  { id: '1m',  label: '1M' },
+  { id: '3m',  label: '3M' },
+  { id: '6m',  label: '6M' },
+  { id: '1j',  label: '1J' },
+  { id: '3j',  label: '3J' },
+  { id: '5j',  label: '5J' },
+  { id: 'ytd', label: 'YTD' },
+  { id: 'max', label: 'Max' },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -258,13 +263,13 @@ function AandelenPagina({ actieveRegio }) {
             titel="Best presterend"
             rijen={data?.stijgers || []}
             laden={laden}
-            positief={true}
+            periode={periode}
           />
           <RankingTabel
             titel="Minst presterend"
             rijen={data?.dalers || []}
             laden={laden}
-            positief={false}
+            periode={periode}
           />
         </div>
       </div>
@@ -290,7 +295,9 @@ function AandelenPagina({ actieveRegio }) {
   );
 }
 
-function RankingTabel({ titel, rijen, laden, positief }) {
+function RankingTabel({ titel, rijen, laden, periode }) {
+  const periodeLabels = { '1d':'1D','1w':'1W','1m':'1M','3m':'3M','6m':'6M','1j':'1J','3j':'3J','5j':'5J','ytd':'YTD','max':'Max' };
+  const pLabel = periodeLabels[periode] || '1D';
   return (
     <div className="ranking-tabel-kaart">
       <div className="ranking-tabel-header">
@@ -300,7 +307,7 @@ function RankingTabel({ titel, rijen, laden, positief }) {
         <thead>
           <tr>
             <th>Instrument</th>
-            <th>%1D koers</th>
+            <th>{`%${pLabel}`} koers</th>
             <th>Laatste</th>
             <th>Valuta</th>
           </tr>

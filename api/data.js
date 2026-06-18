@@ -590,14 +590,22 @@ export default async function handler(req, res) {
         aex: '^AEX', sp500: '^GSPC', nasdaq: '^NDX', nikkei: '^N225', hangseng: '^HSI',
       };
 
-      const yahooInterval = periode === '1w' ? '1h' : periode === '1m' ? '1d' : periode === '3m' ? '1d' : periode === '1j' ? '1wk' : '5m';
-      const yahooRange    = periode === '1w' ? '5d'  : periode === '1m' ? '1mo' : periode === '3m' ? '3mo' : periode === '1j' ? '1y'  : '1d';
+      const intervalMap = { '1d':'5m','1w':'1h','1m':'1d','3m':'1d','6m':'1wk','1j':'1wk','3j':'1mo','5j':'1mo','ytd':'1d','max':'3mo' };
+      const rangeMap    = { '1d':'1d','1w':'5d','1m':'1mo','3m':'3mo','6m':'6mo','1j':'1y','3j':'3y','5j':'5y','ytd':'ytd','max':'max' };
+      const yahooInterval = intervalMap[periode] || '5m';
+      const yahooRange    = rangeMap[periode]    || '1d';
 
       const syms = componenten[subindex] || componenten['bel20'];
       const idxSym = indexSymbolen[subindex] || '^BFX';
 
+      // Voor ranking: welke candle params gebruiken per periode
+      const compInterval = { '1d':'1d','1w':'1d','1m':'1wk','3m':'1wk','6m':'1mo','1j':'1mo','3j':'3mo','5j':'3mo','ytd':'1mo','max':'3mo' };
+      const compRange    = { '1d':'5d','1w':'1mo','1m':'3mo','3m':'6mo','6m':'1y','1j':'2y','3j':'5y','5j':'10y','ytd':'ytd','max':'max' };
+      const cInt = compInterval[periode] || '1d';
+      const cRange = compRange[periode] || '5d';
+
       try {
-        // 1. Index candle data
+        // 1. Index candle data voor grafiek
         const idxUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(idxSym)}?interval=${yahooInterval}&range=${yahooRange}`;
         const idxRes = await fetch(idxUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
         const idxData = await idxRes.json();
@@ -611,18 +619,29 @@ export default async function handler(req, res) {
           v: closes[i] !== null && closes[i] !== undefined ? Math.round(closes[i] * 100) / 100 : null,
         })).filter(p => p.v !== null);
 
-        // 2. Component quotes (parallel, max 15 tegelijk)
+        // 2. Component quotes — eerste vs laatste close over de gekozen periode
         const quoteResults = await Promise.all(syms.slice(0, 15).map(async (sym) => {
           try {
-            const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+            const r = await fetch(
+              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${cInt}&range=${cRange}`,
+              { headers: { 'User-Agent': 'Mozilla/5.0' } }
+            );
             const d = await r.json();
             const meta = d?.chart?.result?.[0]?.meta || {};
-            const prijs = meta.regularMarketPrice || 0;
-            const prev  = meta.previousClose || meta.chartPreviousClose || prijs;
-            const chg   = prev ? ((prijs - prev) / prev) * 100 : 0;
-            // Naam: verwijder exchange suffix voor weergave
+            const allCloses = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+            const valids = allCloses.filter(v => v !== null && v !== undefined);
             const naamRaw = meta.longName || meta.shortName || sym;
             const naam = naamRaw.length > 22 ? naamRaw.slice(0, 21) + '…' : naamRaw;
+            const prijs = valids.length > 0 ? valids[valids.length - 1] : (meta.regularMarketPrice || 0);
+            let chg = 0;
+            if (valids.length >= 2) {
+              const eerste = valids[0];
+              const laatste = valids[valids.length - 1];
+              chg = eerste ? ((laatste - eerste) / eerste) * 100 : 0;
+            } else if (periode === '1d') {
+              const prev = meta.previousClose || meta.chartPreviousClose || prijs;
+              chg = prev ? ((prijs - prev) / prev) * 100 : 0;
+            }
             return { symbol: sym, naam, prijs, change: chg, valuta: meta.currency || 'EUR' };
           } catch {
             return null;
