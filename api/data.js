@@ -878,22 +878,24 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         const haaldataOp = async () => {
           const belResults = await Promise.all(ALLE_BEL.map(async (sym) => {
             try {
+              // Gebruik chart API met range=5d → geeft altijd data, ook buiten beursurenre
               const r = await fetch(
-                `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=price,summaryDetail`,
+                `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`,
                 { headers: { 'User-Agent': 'Mozilla/5.0' } }
               );
               const d = await r.json();
-              const price = d?.quoteSummary?.result?.[0]?.price || {};
-              const summary = d?.quoteSummary?.result?.[0]?.summaryDetail || {};
-              const prijs = price.regularMarketPrice?.raw || 0;
-              const prev = price.regularMarketPreviousClose?.raw || prijs;
+              const meta = d?.chart?.result?.[0]?.meta || {};
+              const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+              const valids = closes.filter(v => v !== null && v !== undefined);
+              const prijs = meta.regularMarketPrice || (valids.length > 0 ? valids[valids.length-1] : 0);
+              const prev = meta.chartPreviousClose || meta.previousClose || prijs;
               const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
-              const avgVol3M = summary.averageVolume?.raw || summary.averageVolume10days?.raw || 0;
-              const marketCap = price.marketCap?.raw || 0;
-              const naamRaw = price.longName || price.shortName || sym;
+              const avgVol3M = meta.averageDailyVolume3Month || meta.averageDailyVolume10Day || 0;
+              const marketCap = meta.marketCap || 0;
+              const naamRaw = meta.longName || meta.shortName || sym;
               const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
               if (!prijs) return null;
-              return { symbol: sym, naam, prijs, change1D, avgVol3M, marketCap, valuta: price.currency || 'EUR' };
+              return { symbol: sym, naam, prijs, change1D, avgVol3M, marketCap, valuta: meta.currency || 'EUR' };
             } catch { return null; }
           }));
 
@@ -906,20 +908,21 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           const intlResults = await Promise.all(INTL.map(async (sym) => {
             try {
               const r = await fetch(
-                `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=price,summaryDetail`,
+                `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`,
                 { headers: { 'User-Agent': 'Mozilla/5.0' } }
               );
               const d = await r.json();
-              const price = d?.quoteSummary?.result?.[0]?.price || {};
-              const summary = d?.quoteSummary?.result?.[0]?.summaryDetail || {};
-              const prijs = price.regularMarketPrice?.raw || 0;
-              const prev = price.regularMarketPreviousClose?.raw || prijs;
+              const meta = d?.chart?.result?.[0]?.meta || {};
+              const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+              const valids = closes.filter(v => v !== null && v !== undefined);
+              const prijs = meta.regularMarketPrice || (valids.length > 0 ? valids[valids.length-1] : 0);
+              const prev = meta.chartPreviousClose || meta.previousClose || prijs;
               const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
-              const avgVol3M = summary.averageVolume?.raw || summary.averageVolume10days?.raw || 0;
-              const naamRaw = price.longName || price.shortName || sym;
+              const avgVol3M = meta.averageDailyVolume3Month || meta.averageDailyVolume10Day || 0;
+              const naamRaw = meta.longName || meta.shortName || sym;
               const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
               if (!prijs) return null;
-              return { symbol: sym, naam, prijs, change1D, avgVol3M, valuta: price.currency || 'USD' };
+              return { symbol: sym, naam, prijs, change1D, avgVol3M, valuta: meta.currency || 'USD' };
             } catch { return null; }
           }));
 
