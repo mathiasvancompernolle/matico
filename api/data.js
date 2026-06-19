@@ -977,54 +977,136 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
 
       // ETFs gesorteerd op beheerd vermogen (AUM) — grootste eerst
       // Alle genoteerd op Euronext Amsterdam (.AS) voor Belgische beleggers
+      // ETF lijsten: alle ETFs van Saxo Investor per categorie
+      // Gesorteerd op beheerd vermogen (grootste eerst)
       const ETF_LIJSTEN = {
         aandelen: [
-          'VWCE.DE','IWDA.AS','CSPX.AS','EMIM.AS','SWRD.AS','IUSQ.AS',
-          'VUAA.AS','VUSA.AS','EUNL.AS','MEUD.AS','IQQW.DE','WSML.AS',
-          'IEMA.AS','VEUR.AS','DJMC.AS','IQQH.DE','QDVE.DE','IBCX.AS',
-          'XDWD.DE','VWRL.AS',
+          // Core wereldwijde ETFs
+          'VWCE.DE',    // Vanguard FTSE All-World Acc
+          'IWDA.AS',    // iShares Core MSCI World
+          'CSPX.AS',    // iShares Core S&P 500
+          'EMIM.AS',    // iShares Core MSCI EM IMI (EUR)
+          'EIMI.AS',    // iShares Core MSCI EM IMI (GBp)
+          'SWRD.AS',    // SPDR MSCI World
+          'VUSA.AS',    // Vanguard S&P 500 Dist
+          'VWRL.AS',    // Vanguard FTSE All-World Dist
+          'VUAA.AS',    // Vanguard S&P 500 Acc
+          'LCUW.AS',    // Amundi Core MSCI World
+          'XDWD.DE',    // Xtrackers MSCI World ESG / Amundi Core MSCI World
+          'PRAW.DE',    // Amundi Prime Global
+          // Europa ETFs
+          'MEUD.AS',    // Amundi Core Stoxx Europe 600
+          'MEU.AS',     // Amundi Core Stoxx Europe 600
+          'ESE.AS',     // BNP Paribas Easy Stoxx Europe 600
+          'SMEA.AS',    // iShares Core MSCI Europe EUR
+          'CSE6.AS',    // Amundi STOXX Europe 600 ESG
+          'CSSX5E.AS',  // iShares Core EURO STOXX 50
+          // Opkomende markten
+          'SAEM.AS',    // iShares MSCI EM ESG Enhanced
+          'AEEM.AS',    // Amundi MSCI EM Swap
+          'VFEM.AS',    // Vanguard FTSE Emerging Markets
+          // VS gerichte ETFs
+          'IUES.AS',    // iShares MSCI USA ESG Enhanced
+          'PAPU.AS',    // Amundi S&P 500 Climate Paris
+          'NASL.AS',    // BNP Paribas Easy Nasdaq 100
+          'ACWI.AS',    // SPDR MSCI All Country World
+          // Factor ETFs
+          'IWVL.AS',    // iShares Edge MSCI World Value
+          'MVOL.AS',    // iShares Edge MSCI World Min Volatility
+          'MVEA.AS',    // iShares Edge MSCI World Min Volatile Adv
+          // Sector ETFs
+          'SEMI.AS',    // iShares MSCI Global Semiconductors
+          'SMH.AS',     // VanEck Semiconductor
+          'IITU.AS',    // iShares S&P 500 Info Technology
+          'LCLE.AS',    // L&G Clean Energy
+          'WDEF.DE',    // WisdomTree Europe Defence
+          'XDWU.DE',    // Xtrackers MSCI World Utilities
+          'AGED.AS',    // iShares Ageing Population
+          'SPAG.AS',    // iShares Agribusiness
+          // Japan / Pacific
+          'IJPA.AS',    // iShares Core MSCI Japan IMI
+          // Overige
+          'VUKE.AS',    // Vanguard FTSE 100
+          'IWDH.AS',    // iShares MSCI World EUR Hedged
+          'PAEP.AS',    // Amundi S&P Eurozone Climate Paris
         ],
         obligaties: [
-          'AGGH.AS','IEAG.AS','IEGA.AS','XGSH.AS','IBGL.AS','SEGA.AS',
-          'IEAC.AS','IUSB.AS','SUZE.AS','SYBJ.AS','IBCI.AS','EUNH.AS',
-          'IBTS.AS','EUNA.AS','VGOV.AS',
+          // Core obligatie ETFs
+          'AGGH.AS',    // iShares Core Global Aggregate Bond
+          'IEAG.AS',    // iShares EUR Aggregate Bond
+          'IEGA.AS',    // iShares Core EUR Govt Bond
+          'XGSH.AS',    // Xtrackers II EUR Short Duration
+          'IBGL.AS',    // iShares Global Govt Bond
+          'EUNH.AS',    // iShares EUR Govt Bond
+          'IBTS.AS',    // iShares EUR Govt Bond 1-3yr
+          'IEAC.AS',    // iShares EUR Corp Bond
+          'IUSB.AS',    // iShares Core US Aggregate Bond
+          'SUZE.AS',    // iShares EUR Ultrashort Bond
+          'IBCI.AS',    // iShares EUR Inflation Linked
+          'VGOV.AS',    // Vanguard UK Gilt
+          'SEGA.AS',    // SPDR Bloomberg Euro Govt Bond
+          'EUNA.AS',    // iShares Core EUR Corp Bond
+          // High Yield
+          'IHYG.AS',    // iShares EUR High Yield Corp Bond
+          'SHYG.AS',    // iShares USD Short Duration HY
+          // EM Obligaties
+          'IEMB.AS',    // iShares J.P. Morgan USD EM Bond
+          'VDEA.AS',    // Vanguard USD EM Govt Bond
+          // Inflation linked
+          'ITPS.AS',    // iShares $ TIPS
+          'IBCI.AS',    // iShares EUR Inflation Linked
         ],
         gemengd: [
-          'VNGA80.AS','VNGA60.AS','VNGA40.AS','VNGA20.AS',
-          'IMAP.AS','GSPC.AS','XDEB.DE','FLXA.AS',
+          'VNGA80.AS',  // Vanguard LifeStrategy 80%
+          'VNGA60.AS',  // Vanguard LifeStrategy 60%
+          'VNGA40.AS',  // Vanguard LifeStrategy 40%
+          'VNGA20.AS',  // Vanguard LifeStrategy 20%
+          'IMAP.AS',    // iShares MAP
+          'FLXA.AS',    // Franklin LibertyQ
         ],
         valuta: [
-          'SGLD.AS','PHGP.AS','VZLD.AS','ISLN.AS','4GLD.AS',
-          'SSLV.AS','PHPT.AS','PHPM.AS','RUSS.AS','LCOP.AS',
+          'SGLD.AS',    // Invesco Physical Gold
+          'PHGP.AS',    // WisdomTree Physical Gold
+          'VZLD.AS',    // WisdomTree Physical Swiss Gold
+          '4GLD.AS',    // Xtrackers Physical Gold
+          'SSLV.AS',    // WisdomTree Physical Silver
+          'PHPT.AS',    // WisdomTree Physical Platinum
+          'PHPM.AS',    // WisdomTree Physical Palladium
+          'LCOP.AS',    // L&G Copper Mining
+          'ICOM.AS',    // iShares Diversified Commodity
+          'CMOD.AS',    // Amundi Bloomberg Equal-weight Commodities
         ],
       };
 
+      const { toonAlles = 'false' } = req.query;
       const syms = ETF_LIJSTEN[categorie] || ETF_LIJSTEN['aandelen'];
 
       try {
         const results = await Promise.all(syms.map(async (sym) => {
           try {
-            // Haal meerdere periodes op: 1D, 1M, 3M, 1J, 5J
-            const [r1d, r1m, r3m, r1j, r5j] = await Promise.all([
-              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+            const [r1d, r1m, r3m, r1j, r5j, rAum] = await Promise.all([
+              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
               fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
               fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=3mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
               fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1wk&range=1y`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
               fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1mo&range=5y`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+              fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=summaryDetail`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
             ]);
 
-            const [d1d, d1m, d3m, d1j, d5j] = await Promise.all([r1d.json(), r1m.json(), r3m.json(), r1j.json(), r5j.json()]);
+            const [d1d, d1m, d3m, d1j, d5j, dAum] = await Promise.all([r1d.json(), r1m.json(), r3m.json(), r1j.json(), r5j.json(), rAum.json()]);
 
             const meta = d1d?.chart?.result?.[0]?.meta || {};
             const prijs = meta.regularMarketPrice || 0;
             if (!prijs) return null;
 
-            const pct = (d) => {
-              const m = d?.chart?.result?.[0]?.meta || {};
-              const p = m.regularMarketPrice || 0;
-              const ref = m.chartPreviousClose || m.previousClose || p;
+            // Beheerd vermogen via quoteSummary
+            const totalAssets = dAum?.quoteSummary?.result?.[0]?.summaryDetail?.totalAssets?.raw || 0;
+
+            const pct1D = (() => {
+              const p = meta.regularMarketPrice || 0;
+              const ref = meta.chartPreviousClose || meta.previousClose || p;
               return ref ? ((p - ref) / ref) * 100 : 0;
-            };
+            })();
 
             const pctLang = (d) => {
               const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
@@ -1034,23 +1116,24 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             };
 
             const naamRaw = meta.longName || meta.shortName || sym;
-            const naam = naamRaw.length > 30 ? naamRaw.slice(0, 29) + '…' : naamRaw;
+            const naam = naamRaw.length > 40 ? naamRaw.slice(0, 39) + '…' : naamRaw;
 
             return {
-              symbol: sym,
-              naam,
-              prijs,
+              symbol: sym, naam, prijs,
               valuta: meta.currency || 'EUR',
-              pct1D: pct(d1d),
-              pct1M: pctLang(d1m),
-              pct3M: pctLang(d3m),
-              pct1J: pctLang(d1j),
-              pct5J: pctLang(d5j),
+              totalAssets,
+              pct1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
+              pct1J: pctLang(d1j), pct5J: pctLang(d5j),
             };
           } catch { return null; }
         }));
 
-        return res.json(results.filter(Boolean));
+        // Sorteer op beheerd vermogen (grootste eerst)
+        const gesorteerd = results.filter(Boolean).sort((a, b) => b.totalAssets - a.totalAssets);
+
+        // Top 10 of alles tonen
+        const output = toonAlles === 'true' ? gesorteerd : gesorteerd.slice(0, 10);
+        return res.json(output);
       } catch (e) {
         return res.json([]);
       }

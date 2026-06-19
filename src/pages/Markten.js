@@ -611,15 +611,26 @@ function EtfPagina({ onTerug }) {
   const [actieveTab, setActieveTab] = useState('aandelen');
   const [etfs, setEtfs] = useState([]);
   const [laden, setLaden] = useState(true);
+  const [toonAlles, setToonAlles] = useState(false);
 
   useEffect(() => {
     setLaden(true);
     setEtfs([]);
-    fetch(`/api/data?endpoint=etfs&categorie=${actieveTab}`)
+    setToonAlles(false);
+    fetch(`/api/data?endpoint=etfs&categorie=${actieveTab}&toonAlles=false`)
       .then(r => r.json())
       .then(d => { setEtfs(Array.isArray(d) ? d : []); setLaden(false); })
       .catch(() => setLaden(false));
   }, [actieveTab]);
+
+  const handleToonAlles = () => {
+    setLaden(true);
+    setToonAlles(true);
+    fetch(`/api/data?endpoint=etfs&categorie=${actieveTab}&toonAlles=true`)
+      .then(r => r.json())
+      .then(d => { setEtfs(Array.isArray(d) ? d : []); setLaden(false); })
+      .catch(() => setLaden(false));
+  };
 
   const fmtKoers = (v, val) => {
     if (!v) return '—';
@@ -633,16 +644,23 @@ function EtfPagina({ onTerug }) {
         <h2 className="aandelen-titel">ETFs</h2>
       </div>
 
-      <div className="etf-tabs">
-        {ETF_TABS.map(tab => (
-          <button
-            key={tab.id}
-            className={`etf-tab ${actieveTab === tab.id ? 'actief' : ''}`}
-            onClick={() => setActieveTab(tab.id)}
-          >
-            {tab.label}
+      <div className="etf-tabs-balk">
+        <div className="etf-tabs">
+          {ETF_TABS.map(tab => (
+            <button
+              key={tab.id}
+              className={`etf-tab ${actieveTab === tab.id ? 'actief' : ''}`}
+              onClick={() => setActieveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {!toonAlles && !laden && (
+          <button className="etf-toon-alles-knop" onClick={handleToonAlles}>
+            Toon alles
           </button>
-        ))}
+        )}
       </div>
 
       <div className="etf-tabel-wrap">
