@@ -274,23 +274,7 @@ function AandelenPagina({ actieveRegio }) {
         </div>
       </div>
 
-      {/* Stijgers & dalers breed */}
-      <div className="aandelen-tabellen-grid">
-        <AandelenTabel
-          titel="Grootste stijgers"
-          rijen={data?.stijgers || []}
-          laden={laden}
-          kolom="%1D koers"
-          waardeKey="change"
-        />
-        <AandelenTabel
-          titel="Grootste dalers"
-          rijen={data?.dalers || []}
-          laden={laden}
-          kolom="%1D koers"
-          waardeKey="change"
-        />
-      </div>
+
     </div>
   );
 }
