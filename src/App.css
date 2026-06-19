@@ -1853,7 +1853,7 @@ body.dark .top-nav {
 .overzicht-tabel thead tr { background: var(--bg-subtle); }
 
 .overzicht-tabel th {
-  padding: 6px 10px;
+  padding: 5px 8px;
   text-align: left;
   font-weight: 500;
   color: var(--text-muted);
@@ -1861,9 +1861,39 @@ body.dark .top-nav {
   white-space: nowrap;
 }
 
+.overzicht-tabel th:last-child,
+.overzicht-tabel td:last-child {
+  text-align: right;
+}
+
+.overzicht-tabel th:nth-child(2),
+.overzicht-tabel td:nth-child(2) {
+  text-align: right;
+}
+
 .overzicht-tabel td {
-  padding: 8px 10px;
+  padding: 7px 8px;
   border-top: 1px solid var(--border-light);
   color: var(--text-primary);
   white-space: nowrap;
+}
+
+/* Naam kolom mag afkappen zodat prijs/% zichtbaar blijft */
+.overzicht-tabel td:first-child {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overzicht-tabel td:first-child > div {
+  overflow: hidden;
+}
+
+.overzicht-tabel td:first-child span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 110px;
+  display: inline-block;
+  vertical-align: middle;
 }

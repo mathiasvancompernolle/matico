@@ -876,7 +876,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
             const avgVol3M = meta.averageDailyVolume3Month || meta.averageDailyVolume10Day || 0;
             const naamRaw = meta.longName || meta.shortName || sym;
-            const naam = naamRaw.length > 22 ? naamRaw.slice(0, 21) + '…' : naamRaw;
+            const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
             if (!prijs) return null;
             return { symbol: sym, naam, prijs, change1D, avgVol3M, valuta: meta.currency || 'EUR' };
           } catch { return null; }
@@ -902,7 +902,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
             const avgVol3M = meta.averageDailyVolume3Month || meta.averageDailyVolume10Day || 0;
             const naamRaw = meta.longName || meta.shortName || sym;
-            const naam = naamRaw.length > 22 ? naamRaw.slice(0, 21) + '…' : naamRaw;
+            const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
             if (!prijs) return null;
             return { symbol: sym, naam, prijs, change1D, avgVol3M, valuta: meta.currency || 'USD' };
           } catch { return null; }
