@@ -579,33 +579,15 @@ export default async function handler(req, res) {
       const componenten = {
         bel20: ['ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR','DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR','SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR'],
         'bel-midcap': [
-          'SOF.BR',    // Sofina
-          'UMI.BR',    // Umicore
-          'DIE.BR',    // D'ieteren
-          'ARGX.BR',   // argenx
-          'MELE.BR',   // Melexis
-          'AED.BR',    // Aedifica
-          'ABI.BR',    // AB InBev
-          'PROX.BR',   // Proximus
-          'AGS.BR',    // Ageas
-          'ACKB.BR',   // Ackermans
           'KIN.BR',    // Kinepolis
-          'XIOR.BR',   // Xior
-          'UCB.BR',    // UCB
-          'BRCR.BR',   // Barco
+          'XIOR.BR',   // Xior Student Housing
+          'BAR.BR',    // Barco
           'CMBT.BR',   // CMB Tech
-          'MONT.BR',   // Montea
-          'WDP.BR',    // WDP
           'FAGR.BR',   // Fagron
-          'SOLB.BR',   // Solvay
-          'SYENS.BR',  // Syensqo
-          'AZE.BR',    // Azelis
+          'PROX.BR',   // Proximus
           'VGP.BR',    // VGP
-          'GBLB.BR',   // GBL
-          'LOTB.BR',   // Lotus Bakeries
-          'ELI.BR',    // Elia
-          'TUBZ.BR',   // Financiere de Tubize
           'COLR.BR',   // Colruyt
+          'TUBZ.BR',   // Financiere de Tubize
           'TITC.BR',   // Titan
           'BEKB.BR',   // Bekaert
           'RET.BR',    // Retail Estates
@@ -623,8 +605,13 @@ export default async function handler(req, res) {
           'RCL.BR',    // Recticel
           'VIOHA.BR',  // Viohalco
           'GIMV.BR',   // GIMV
-          'BPOST.BR',  // bpost
+          'IMMO.BR',   // Immobel
+          'ATEB.BR',   // Atenor
           'CFEB.BR',   // CFE
+          'SIP.BR',    // Sipef
+          'HOMI.BR',   // Home Invest Belgium
+          'INTO.BR',   // Intervest
+          'VASTN.BR',  // Vastned
         ],
         'bel-smallcap': ['COMB.BR','CREI.BR','ESYB.BR','EVOC.BR','IBA.BR','KINB.BR','MELE.BR','NYRB.BR','REC.BR','SHUR.BR','SPAQ.BR','TITAN.BR','VASTB.BR'],
         aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
