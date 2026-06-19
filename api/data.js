@@ -609,6 +609,10 @@ export default async function handler(req, res) {
           'TINC.BR',   // TINC
           'TITC.BR',   // Titan
           'XIOR.BR',   // Xior Student Housing
+          'VIO.BR',    // Viohalco
+          'CMBT.BR',   // CMB Tech
+          'VGP.BR',    // VGP
+          'COLR.BR',   // Colruyt
         ],
         'bel-smallcap': [
           'ACCE.BR',   // Accentis
@@ -617,7 +621,7 @@ export default async function handler(req, res) {
           'EKOP.BR',   // Ekopak
           'EXM.BR',    // Exmar
           'HYL.BR',    // Hyloris Pharmaceuticals
-          'JENS.BR',   // Jensen-Group
+          'JEN.BR',   // Jensen-Group
           'NYR.BR',    // Nyrstar
           'NYXH.BR',   // Nyxoah
           'ONWD.BR',   // ONWARD Medical
@@ -787,7 +791,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'TITC.BR','XIOR.BR','CMBT.BR','VGP.BR','COLR.BR',
         // BEL Small
         'ACCE.BR','CYAD.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
-        'JENS.BR','NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','OXUR.BR',
+        'JEN.BR','NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','OXUR.BR',
         'QRF.BR','ROU.BR','SEQM.BR','TEXF.BR','VAN.BR','VASTN.BR',
         'WEB.BR','WEHB.BR',
       ];
