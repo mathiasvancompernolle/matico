@@ -6,8 +6,8 @@ import {
 // ── Constanten ────────────────────────────────────────────────────────────────
 const REGIO_TABS = [
   { id: 'lokaal',        label: 'Lokaal' },
-  { id: 'europa',        label: 'Europa' },
   { id: 'noord-amerika', label: 'Noord-Amerika' },
+  { id: 'europa',        label: 'Europa' },
   { id: 'azie-pacific',  label: 'Azië-Pacific' },
 ];
 
