@@ -788,7 +788,8 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
         'GIMV.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
         'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
-        'TITC.BR','XIOR.BR','CMBT.BR','VGP.BR','COLR.BR',
+        'TITC.BR','XIOR.BR','CENER.BR','VGP.BR','COLR.BR',
+        'TUB.BR','COFB.BR',
         // BEL Small
         'ACCE.BR','CYAD.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
         'JEN.BR','NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','OXUR.BR',
@@ -843,15 +844,19 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
     // ── Markten overzicht: stijgers/dalers/populair BE + internationaal ────────
     if (endpoint === 'markten-overzicht') {
       const ALLE_BEL = [
+        // BEL20
         'ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR',
         'DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR',
         'SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR',
+        // BEL Mid
         'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BRDB.BR',
         'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
         'GIMV.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
         'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
-        'TITC.BR','XIOR.BR','VIO.BR','CMBT.BR','VGP.BR','COLR.BR',
-        'JEN.BR','DECB.BR','EKOP.BR','EXM.BR','FAGR.BR','HYL.BR',
+        'TITC.BR','XIOR.BR','VIO.BR','CENER.BR','VGP.BR','COLR.BR',
+        'TUB.BR','COFB.BR',
+        // BEL Small
+        'JEN.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
         'NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','QRF.BR','ROU.BR',
         'TEXF.BR','VAN.BR','VASTN.BR','WEB.BR','WEHB.BR',
       ];
