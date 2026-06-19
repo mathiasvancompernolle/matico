@@ -610,7 +610,28 @@ export default async function handler(req, res) {
           'TITC.BR',   // Titan
           'XIOR.BR',   // Xior Student Housing
         ],
-        'bel-smallcap': ['COMB.BR','CREI.BR','ESYB.BR','EVOC.BR','IBA.BR','KINB.BR','MELE.BR','NYRB.BR','REC.BR','SHUR.BR','SPAQ.BR','TITAN.BR','VASTB.BR'],
+        'bel-smallcap': [
+          'ACCE.BR',   // Accentis
+          'CYAD.BR',   // Celyad Oncology
+          'DECB.BR',   // Deceuninck
+          'EKOP.BR',   // Ekopak
+          'EXM.BR',    // Exmar
+          'HYL.BR',    // Hyloris Pharmaceuticals
+          'JENS.BR',   // Jensen-Group
+          'NYR.BR',    // Nyrstar
+          'NYXH.BR',   // Nyxoah
+          'ONWD.BR',   // ONWARD Medical
+          'OPTI.BR',   // Option
+          'OXUR.BR',   // Oxurion
+          'QRF.BR',    // Qrf
+          'ROU.BR',    // Roularta Media Group
+          'SEQM.BR',   // Sequana Medical
+          'TEXF.BR',   // Texaf
+          'VAN.BR',    // Van de Velde
+          'VASTN.BR',  // Vastned
+          'WEB.BR',    // Warehouses Estates Belgium
+          'WEHB.BR',   // Wereldhave Belgium
+        ],
         aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
         sp500: ['AAPL','MSFT','NVDA','AMZN','GOOGL','META','BRK-B','LLY','AVGO','JPM'],
         nasdaq: ['AAPL','MSFT','NVDA','AMZN','GOOGL','META','TSLA','AVGO','ADBE','COST'],
