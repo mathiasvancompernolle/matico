@@ -843,22 +843,15 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
 
     // ── Markten overzicht: stijgers/dalers/populair BE + internationaal ────────
     if (endpoint === 'markten-overzicht') {
+      // Stijgers/dalers BE op de overzichtspagina = BEL Mid componenten (zoals Saxo)
       const ALLE_BEL = [
-        // BEL20
-        'ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR',
-        'DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR',
-        'SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR',
-        // BEL Mid
         'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BREB.BR',
         'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
         'GIMB.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
         'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
         'TITC.BR','XIOR.BR','VIO.BR','CENER.BR','VGP.BR','COLR.BR',
-        'TUB.BR','COFB.BR',
-        // BEL Small
-        'JEN.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
-        'NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','QRF.BR','ROU.BR',
-        'TEXF.BR','VAN.BR','VASTN.BR','WEB.BR','WEHB.BR',
+        'TUB.BR','COFB.BR','CMBT.BR','SOLB.BR','UMI.BR','DIE.BR',
+        'AED.BR','MELE.BR','LOTB.BR','SOF.BR',
       ];
 
       const INTL = [
