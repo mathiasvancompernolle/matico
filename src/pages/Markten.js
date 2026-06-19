@@ -364,10 +364,41 @@ function AandelenTabel({ titel, rijen, laden, kolom, waardeKey }) {
 
 
 // ── Belgisch Marktoverzicht ───────────────────────────────────────────────────
-function MiniTabel({ titel, rijen, laden, kolom1Label, kolom1Key, positief }) {
+const TABEL_UITLEG = {
+  populariteit: 'Gerangschikt op gemiddeld handelsvolume van de afgelopen 3 maanden. Meest verhandelde Belgische aandelen bovenaan, ongeacht of ze stijgen of dalen.',
+  stijgers1M:   'De 5 Belgische aandelen met de hoogste procentuele stijging over de afgelopen maand.',
+  dalers1M:     'De 5 Belgische aandelen met de grootste procentuele daling over de afgelopen maand.',
+  consensus:    'Aandelen met het hoogste verwachte rendement op basis van het gemiddelde analistendoelprijzen (koersdoel vs. huidige koers).',
+  omzetgroei:   'Aandelen met de hoogste omzetgroei over het afgelopen jaar, gebaseerd op de meest recente financiële rapportage.',
+};
+
+function InfoIcoon({ type }) {
+  const [zichtbaar, setZichtbaar] = useState(false);
+  return (
+    <div className="info-icoon-wrap">
+      <button
+        className="info-icoon-knop"
+        onMouseEnter={() => setZichtbaar(true)}
+        onMouseLeave={() => setZichtbaar(false)}
+        onClick={() => setZichtbaar(v => !v)}
+        title="Uitleg"
+      >
+        ℹ
+      </button>
+      {zichtbaar && (
+        <div className="info-tooltip">{TABEL_UITLEG[type]}</div>
+      )}
+    </div>
+  );
+}
+
+function MiniTabel({ titel, rijen, laden, kolom1Label, kolom1Key, uitlegType }) {
   return (
     <div className="belg-tabel-kaart">
-      <div className="belg-tabel-header">{titel}</div>
+      <div className="belg-tabel-header">
+        <span>{titel}</span>
+        <InfoIcoon type={uitlegType} />
+      </div>
       <table className="belg-tabel">
         <thead>
           <tr>
@@ -410,13 +441,11 @@ function BelgischOverzicht() {
   const [cachedLaden, setCachedLaden] = useState(true);
 
   useEffect(() => {
-    // Live data: stijgers/dalers 1D en 1M
     fetch('/api/data?endpoint=belgisch-overzicht')
       .then(r => r.json())
       .then(d => { setData(d); setLaden(false); })
       .catch(() => setLaden(false));
 
-    // Gecachte data: consensusprognose + omzetgroei
     fetch('/api/cron-markten?lees=1')
       .then(r => r.json())
       .then(d => { setCached(d); setCachedLaden(false); })
@@ -426,13 +455,14 @@ function BelgischOverzicht() {
   return (
     <div className="belg-overzicht">
       <div className="markten-divider" style={{ margin: '24px 0 20px' }} />
-      <div className="belg-grid">
+      <div className="belg-grid belg-grid-5">
         <MiniTabel
-          titel="Grootste stijgers (1D)"
-          rijen={data?.stijgers1D || []}
+          titel="Populariteit"
+          rijen={data?.populariteit || []}
           laden={laden}
           kolom1Label="%1D koers"
           kolom1Key="change1D"
+          uitlegType="populariteit"
         />
         <MiniTabel
           titel="Grootste stijgers (1M)"
@@ -440,13 +470,7 @@ function BelgischOverzicht() {
           laden={laden}
           kolom1Label="%1M koers"
           kolom1Key="change1M"
-        />
-        <MiniTabel
-          titel="Grootste dalers (1D)"
-          rijen={data?.dalers1D || []}
-          laden={laden}
-          kolom1Label="%1D koers"
-          kolom1Key="change1D"
+          uitlegType="stijgers1M"
         />
         <MiniTabel
           titel="Grootste dalers (1M)"
@@ -454,6 +478,7 @@ function BelgischOverzicht() {
           laden={laden}
           kolom1Label="%1M koers"
           kolom1Key="change1M"
+          uitlegType="dalers1M"
         />
         <MiniTabel
           titel="Beste consensusprognose"
@@ -461,6 +486,7 @@ function BelgischOverzicht() {
           laden={cachedLaden}
           kolom1Label="Koersdoel-rend."
           kolom1Key="koersdoelRendement"
+          uitlegType="consensus"
         />
         <MiniTabel
           titel="Beste omzetgroei (1J)"
@@ -468,6 +494,7 @@ function BelgischOverzicht() {
           laden={cachedLaden}
           kolom1Label="Omzetgroei 1J"
           kolom1Key="omzetgroei1J"
+          uitlegType="omzetgroei"
         />
       </div>
     </div>

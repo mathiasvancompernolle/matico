@@ -820,19 +820,17 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
 
         const quotes = results.filter(Boolean);
 
-        // Sorteren op gemiddeld volume 3 maanden = populariteit (Saxo-methode)
-        const sortPopulariteit = [...quotes].sort((a, b) => b.avgVol3M - a.avgVol3M);
+        // 1. Populariteit: top 5 op gemiddeld volume 3M (geen filter op richting)
+        const populariteit = [...quotes]
+          .sort((a, b) => b.avgVol3M - a.avgVol3M)
+          .slice(0, 5);
 
-        // Stijgers/dalers 1D: gesorteerd op populariteit, gefilterd op richting
-        const stijgers1D = sortPopulariteit.filter(q => q.change1D > 0).slice(0, 5);
-        const dalers1D   = sortPopulariteit.filter(q => q.change1D < 0).slice(0, 5);
-
-        // Stijgers/dalers 1M: gesorteerd op echte %1M prestatie
+        // 2. Stijgers/dalers 1M: gesorteerd op echte %1M prestatie
         const sort1M = [...quotes].sort((a, b) => b.change1M - a.change1M);
         const stijgers1M = sort1M.slice(0, 5);
         const dalers1M   = sort1M.slice(-5).reverse();
 
-        return res.json({ stijgers1D, dalers1D, stijgers1M, dalers1M });
+        return res.json({ populariteit, stijgers1M, dalers1M });
       } catch (e) {
         return res.json({ stijgers1D: [], dalers1D: [], stijgers1M: [], dalers1M: [] });
       }
