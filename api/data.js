@@ -578,7 +578,54 @@ export default async function handler(req, res) {
 
       const componenten = {
         bel20: ['ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR','DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR','SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR'],
-        'bel-midcap': ['IMMO.BR','KIN.BR','ATEB.BR','TITC.BR','SHUR.BR','IBAB.BR','BPOST.BR','CFEB.BR','JENS.BR','RET.BR','HOMI.BR','INTO.BR','COMB.BR','MOURY.BR','TINC.BR','AZE.BR','WEB.BR','ROU.BR','MELE.BR','ONTEX.BR'],
+        'bel-midcap': [
+          'SOF.BR',    // Sofina
+          'UMI.BR',    // Umicore
+          'DIE.BR',    // D'ieteren
+          'ARGX.BR',   // argenx
+          'MELE.BR',   // Melexis
+          'AED.BR',    // Aedifica
+          'ABI.BR',    // AB InBev
+          'PROX.BR',   // Proximus
+          'AGS.BR',    // Ageas
+          'ACKB.BR',   // Ackermans
+          'KIN.BR',    // Kinepolis
+          'XIOR.BR',   // Xior
+          'UCB.BR',    // UCB
+          'BRCR.BR',   // Barco
+          'CMBT.BR',   // CMB Tech
+          'MONT.BR',   // Montea
+          'WDP.BR',    // WDP
+          'FAGR.BR',   // Fagron
+          'SOLB.BR',   // Solvay
+          'SYENS.BR',  // Syensqo
+          'AZE.BR',    // Azelis
+          'VGP.BR',    // VGP
+          'GBLB.BR',   // GBL
+          'LOTB.BR',   // Lotus Bakeries
+          'ELI.BR',    // Elia
+          'TUBZ.BR',   // Financiere de Tubize
+          'COLR.BR',   // Colruyt
+          'TITC.BR',   // Titan
+          'BEKB.BR',   // Bekaert
+          'RET.BR',    // Retail Estates
+          'COFB.BR',   // Cofinimmo
+          'EXM.BR',    // Exmar
+          'OBEL.BR',   // Orange Belgium
+          'TINC.BR',   // TINC
+          'TESS.BR',   // Tessenderlo
+          'CENE.BR',   // Cenergy
+          'JENS.BR',   // Jensen-Group
+          'COMB.BR',   // Compagnie du Bois Sauvage
+          'WEHB.BR',   // Wereldhave Belgium
+          'SHUR.BR',   // Shurgard
+          'IBAB.BR',   // Ion Beam Applications
+          'RCL.BR',    // Recticel
+          'VIOHA.BR',  // Viohalco
+          'GIMV.BR',   // GIMV
+          'BPOST.BR',  // bpost
+          'CFEB.BR',   // CFE
+        ],
         'bel-smallcap': ['COMB.BR','CREI.BR','ESYB.BR','EVOC.BR','IBA.BR','KINB.BR','MELE.BR','NYRB.BR','REC.BR','SHUR.BR','SPAQ.BR','TITAN.BR','VASTB.BR'],
         aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
         sp500: ['AAPL','MSFT','NVDA','AMZN','GOOGL','META','BRK-B','LLY','AVGO','JPM'],
