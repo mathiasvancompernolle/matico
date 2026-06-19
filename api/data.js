@@ -864,8 +864,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
       ];
 
       const INTL = [
-        'NVDA','AAPL','MSFT','AMZN','GOOGL','META','TSLA','AVGO','WMT','AMD',
-        'ASML','MU','INTC','AMAT','CSCO','NFLX','PLTR','TXN','COST','ARM',
+        'SPCX','NVDA','AAPL','MSFT','AMZN','GOOGL','META','TSLA','AVGO','WMT',
+        'AMD','ASML','MU','INTC','AMAT','CSCO','NFLX','PLTR','TXN','COST',
+        'ARM','CRWV','JPM','V','MA','UNH','XOM','BAC','HD',
       ];
 
       try {
