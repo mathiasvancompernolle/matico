@@ -811,20 +811,21 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const change1M = prev1m ? ((prijs - prev1m) / prev1m) * 100 : 0;
             const naamRaw = meta1d.longName || meta1d.shortName || sym;
             const naam = naamRaw.length > 24 ? naamRaw.slice(0, 23) + '…' : naamRaw;
-            const marketCap = meta1d.marketCap || 0;
+            // Gemiddeld dagvolume 3 maanden → maat voor populariteit (zoals Saxo)
+            const avgVol3M = meta1d.averageDailyVolume3Month || meta1d.averageDailyVolume10Day || 0;
             if (!prijs) return null;
-            return { symbol: sym, naam, prijs, change1D, change1M, marketCap, valuta: meta1d.currency || 'EUR' };
+            return { symbol: sym, naam, prijs, change1D, change1M, avgVol3M, valuta: meta1d.currency || 'EUR' };
           } catch { return null; }
         }));
 
         const quotes = results.filter(Boolean);
 
-        // Sorteren op marktkapitalisatie (zoals Saxo) → grootste bedrijven bovenaan
-        const sortMktCap = [...quotes].sort((a, b) => b.marketCap - a.marketCap);
+        // Sorteren op gemiddeld volume 3 maanden = populariteit (Saxo-methode)
+        const sortPopulariteit = [...quotes].sort((a, b) => b.avgVol3M - a.avgVol3M);
 
-        // Stijgers/dalers 1D: top 5 op marktkapitalisatie maar toon hun 1D %
-        const stijgers1D = sortMktCap.filter(q => q.change1D > 0).slice(0, 5);
-        const dalers1D   = sortMktCap.filter(q => q.change1D < 0).slice(0, 5);
+        // Stijgers/dalers 1D: gesorteerd op populariteit, gefilterd op richting
+        const stijgers1D = sortPopulariteit.filter(q => q.change1D > 0).slice(0, 5);
+        const dalers1D   = sortPopulariteit.filter(q => q.change1D < 0).slice(0, 5);
 
         // Stijgers/dalers 1M: gesorteerd op echte %1M prestatie
         const sort1M = [...quotes].sort((a, b) => b.change1M - a.change1M);
