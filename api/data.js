@@ -1,4 +1,4 @@
-// v14-alle-fixes
+// v15-nasdaq-fix
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -633,7 +633,7 @@ export default async function handler(req, res) {
           'WEHB.BR',   // Wereldhave Belgium
         ],
         aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
-        sp500: ['AAPL','MSFT','NVDA','AMZN','GOOGL','META','BRK-B','LLY','AVGO','JPM'],
+        sp500: [], // niet in gebruik
         nasdaq: [
           'NVDA','AAPL','MSFT','AMZN','GOOGL','GOOG','AVGO','TSLA','META','MU',
           'WMT','AMD','ASML','INTC','AMAT','LRCX','CSCO','ARM','COST','KLAC',
