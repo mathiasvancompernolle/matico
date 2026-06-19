@@ -22,7 +22,7 @@ const CATEGORIEEN = [
 const SUBINDICES = {
   lokaal:        [{ id: 'bel20', label: 'BEL20 Index' }, { id: 'bel-midcap', label: 'BEL Midcap Index' }, { id: 'bel-smallcap', label: 'BEL Smallcap Index' }],
   europa:        [{ id: 'aex',   label: 'AEX Index' }],
-  'noord-amerika': [{ id: 'sp500', label: 'S&P 500' }, { id: 'nasdaq', label: 'Nasdaq 100' }],
+  'noord-amerika': [{ id: 'nasdaq', label: 'Nasdaq 100' }],
   'azie-pacific':  [{ id: 'nikkei', label: 'Nikkei 225' }, { id: 'hangseng', label: 'Hang Seng' }],
 };
 
