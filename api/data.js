@@ -585,14 +585,14 @@ export default async function handler(req, res) {
           'BAR.BR',    // Barco
           'BEKB.BR',   // Bekaert
           'BPOST.BR',  // Bpost
-          'BRDB.BR',   // Brederode
+          'BREB.BR',   // Brederode
           'CPINV.BR',  // Care Property Invest
           'CFEB.BR',   // CFE
           'COMB.BR',   // Compagnie du Bois Sauvage
           'ECONB.BR',  // Econocom
           'EVS.BR',    // EVS Broadcast Equipment
           'FAGR.BR',   // Fagron
-          'GIMV.BR',   // GIMV
+          'GIMB.BR',   // GIMV
           'HOMI.BR',   // Home Invest Belgium
           'IMMO.BR',   // Immobel
           'IBAB.BR',   // Ion Beam Applications
@@ -784,9 +784,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR',
         'SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR',
         // BEL Mid
-        'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BRDB.BR',
+        'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BREB.BR',
         'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
-        'GIMV.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
+        'GIMB.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
         'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
         'TITC.BR','XIOR.BR','CENER.BR','VGP.BR','COLR.BR',
         'TUB.BR','COFB.BR',
@@ -849,9 +849,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR',
         'SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR',
         // BEL Mid
-        'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BRDB.BR',
+        'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BREB.BR',
         'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
-        'GIMV.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
+        'GIMB.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
         'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
         'TITC.BR','XIOR.BR','VIO.BR','CENER.BR','VGP.BR','COLR.BR',
         'TUB.BR','COFB.BR',
