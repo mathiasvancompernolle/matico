@@ -2020,6 +2020,12 @@ body.dark .top-nav {
   border-bottom: 2px solid var(--border);
 }
 
+.etf-toon-alles-balk {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 14px 0;
+}
+
 .etf-toon-alles-knop {
   background: none;
   border: none;
@@ -2028,7 +2034,7 @@ body.dark .top-nav {
   font-size: 13px;
   font-weight: 600;
   font-family: 'DM Sans', sans-serif;
-  padding: 0 0 10px;
+  padding: 0;
   white-space: nowrap;
 }
 

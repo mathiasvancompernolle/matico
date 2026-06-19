@@ -656,14 +656,16 @@ function EtfPagina({ onTerug }) {
             </button>
           ))}
         </div>
-        {!toonAlles && !laden && (
-          <button className="etf-toon-alles-knop" onClick={handleToonAlles}>
-            Toon alles
-          </button>
-        )}
       </div>
 
       <div className="etf-tabel-wrap">
+        {!toonAlles && !laden && (
+          <div className="etf-toon-alles-balk">
+            <button className="etf-toon-alles-knop" onClick={handleToonAlles}>
+              Toon alles
+            </button>
+          </div>
+        )}
         <table className="etf-tabel">
           <thead>
             <tr>
