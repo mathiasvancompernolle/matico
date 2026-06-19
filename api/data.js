@@ -786,7 +786,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         // BEL Mid
         'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BREB.BR',
         'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
-        'GIMB.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
+        'GIMB.BR','IBAB.BR','KIN.BR','ONTEX.BR',
         'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
         'TITC.BR','XIOR.BR','CENER.BR','VGP.BR','COLR.BR',
         'TUB.BR','COFB.BR',
@@ -847,7 +847,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
       const ALLE_BEL = [
         'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BREB.BR',
         'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
-        'GIMB.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
+        'GIMB.BR','IBAB.BR','KIN.BR','ONTEX.BR',
         'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
         'TITC.BR','XIOR.BR','VIO.BR','CENER.BR','VGP.BR','COLR.BR',
         'TUB.BR','COFB.BR','CMBT.BR','SOLB.BR','UMI.BR','DIE.BR',
