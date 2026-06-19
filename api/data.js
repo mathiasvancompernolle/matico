@@ -579,39 +579,36 @@ export default async function handler(req, res) {
       const componenten = {
         bel20: ['ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR','DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR','SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR'],
         'bel-midcap': [
-          'KIN.BR',    // Kinepolis
-          'XIOR.BR',   // Xior Student Housing
-          'BAR.BR',    // Barco
-          'CMBT.BR',   // CMB Tech
-          'FAGR.BR',   // Fagron
-          'PROX.BR',   // Proximus
-          'VGP.BR',    // VGP
-          'COLR.BR',   // Colruyt
-          'TUBZ.BR',   // Financiere de Tubize
-          'TITC.BR',   // Titan
-          'BEKB.BR',   // Bekaert
-          'RET.BR',    // Retail Estates
-          'COFB.BR',   // Cofinimmo
-          'EXM.BR',    // Exmar
-          'OBEL.BR',   // Orange Belgium
-          'TINC.BR',   // TINC
-          'TESS.BR',   // Tessenderlo
-          'CENE.BR',   // Cenergy
-          'JENS.BR',   // Jensen-Group
-          'COMB.BR',   // Compagnie du Bois Sauvage
-          'WEHB.BR',   // Wereldhave Belgium
-          'SHUR.BR',   // Shurgard
-          'IBAB.BR',   // Ion Beam Applications
-          'RCL.BR',    // Recticel
-          'VIOHA.BR',  // Viohalco
-          'GIMV.BR',   // GIMV
-          'IMMO.BR',   // Immobel
+          'AGFB.BR',   // Agfa-Gevaert
           'ATEB.BR',   // Atenor
+          'AZE.BR',    // Azelis
+          'BAR.BR',    // Barco
+          'BEKB.BR',   // Bekaert
+          'BPOST.BR',  // Bpost
+          'BRDB.BR',   // Brederode
+          'CPINV.BR',  // Care Property Invest
           'CFEB.BR',   // CFE
-          'SIP.BR',    // Sipef
+          'COMB.BR',   // Compagnie du Bois Sauvage
+          'ECONB.BR',  // Econocom
+          'EVS.BR',    // EVS Broadcast Equipment
+          'FAGR.BR',   // Fagron
+          'GIMV.BR',   // GIMV
           'HOMI.BR',   // Home Invest Belgium
-          'INTO.BR',   // Intervest
-          'VASTN.BR',  // Vastned
+          'IMMO.BR',   // Immobel
+          'IBAB.BR',   // Ion Beam Applications
+          'KIN.BR',    // Kinepolis
+          'LOTB.BR',   // Lotus Bakeries
+          'MELE.BR',   // Melexis
+          'MONT.BR',   // Montea
+          'ONTEX.BR',  // Ontex
+          'OBEL.BR',   // Orange Belgium
+          'RET.BR',    // Retail Estates
+          'SHUR.BR',   // Shurgard
+          'SIP.BR',    // Sipef
+          'TESS.BR',   // Tessenderlo
+          'TINC.BR',   // TINC
+          'TITC.BR',   // Titan
+          'XIOR.BR',   // Xior Student Housing
         ],
         'bel-smallcap': ['COMB.BR','CREI.BR','ESYB.BR','EVOC.BR','IBA.BR','KINB.BR','MELE.BR','NYRB.BR','REC.BR','SHUR.BR','SPAQ.BR','TITAN.BR','VASTB.BR'],
         aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
