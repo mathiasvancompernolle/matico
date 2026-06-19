@@ -811,21 +811,27 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const change1M = prev1m ? ((prijs - prev1m) / prev1m) * 100 : 0;
             const naamRaw = meta1d.longName || meta1d.shortName || sym;
             const naam = naamRaw.length > 24 ? naamRaw.slice(0, 23) + '…' : naamRaw;
+            const marketCap = meta1d.marketCap || 0;
             if (!prijs) return null;
-            return { symbol: sym, naam, prijs, change1D, change1M, valuta: meta1d.currency || 'EUR' };
+            return { symbol: sym, naam, prijs, change1D, change1M, marketCap, valuta: meta1d.currency || 'EUR' };
           } catch { return null; }
         }));
 
         const quotes = results.filter(Boolean);
-        const sort1D = [...quotes].sort((a, b) => b.change1D - a.change1D);
-        const sort1M = [...quotes].sort((a, b) => b.change1M - a.change1M);
 
-        return res.json({
-          stijgers1D: sort1D.slice(0, 5),
-          dalers1D:   sort1D.slice(-5).reverse(),
-          stijgers1M: sort1M.slice(0, 5),
-          dalers1M:   sort1M.slice(-5).reverse(),
-        });
+        // Sorteren op marktkapitalisatie (zoals Saxo) → grootste bedrijven bovenaan
+        const sortMktCap = [...quotes].sort((a, b) => b.marketCap - a.marketCap);
+
+        // Stijgers/dalers 1D: top 5 op marktkapitalisatie maar toon hun 1D %
+        const stijgers1D = sortMktCap.filter(q => q.change1D > 0).slice(0, 5);
+        const dalers1D   = sortMktCap.filter(q => q.change1D < 0).slice(0, 5);
+
+        // Stijgers/dalers 1M: gesorteerd op echte %1M prestatie
+        const sort1M = [...quotes].sort((a, b) => b.change1M - a.change1M);
+        const stijgers1M = sort1M.slice(0, 5);
+        const dalers1M   = sort1M.slice(-5).reverse();
+
+        return res.json({ stijgers1D, dalers1D, stijgers1M, dalers1M });
       } catch (e) {
         return res.json({ stijgers1D: [], dalers1D: [], stijgers1M: [], dalers1M: [] });
       }
