@@ -843,15 +843,24 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
 
     // ── Markten overzicht: stijgers/dalers/populair BE + internationaal ────────
     if (endpoint === 'markten-overzicht') {
-      // Stijgers/dalers BE op de overzichtspagina = BEL Mid componenten (zoals Saxo)
+      // Alle publieke Belgische aandelen: BEL20 + BEL Mid + BEL Small
       const ALLE_BEL = [
+        // BEL20
+        'ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR',
+        'DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR',
+        'SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR',
+        // BEL Mid
         'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BREB.BR',
         'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
-        'GIMB.BR','IBAB.BR','KIN.BR','ONTEX.BR',
+        'GIMB.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
         'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
         'TITC.BR','XIOR.BR','VIO.BR','CENER.BR','VGP.BR','COLR.BR',
-        'TUB.BR','COFB.BR','CMBT.BR','SOLB.BR','UMI.BR','DIE.BR',
-        'AED.BR','MELE.BR','LOTB.BR','SOF.BR',
+        'TUB.BR','COFB.BR','CMBT.BR',
+        // BEL Small
+        'ACCE.BR','CYAD.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
+        'JEN.BR','NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','OXUR.BR',
+        'QRF.BR','ROU.BR','SEQM.BR','TEXF.BR','VAN.BR','VASTN.BR',
+        'WEB.BR','WEHB.BR',
       ];
 
       const INTL = [
@@ -883,23 +892,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         const belQuotes = belResults.filter(Boolean);
         const sort1D = [...belQuotes].sort((a, b) => b.change1D - a.change1D);
 
-        // Stop-bij-5-grote logica: toon alles tot er 5 aandelen ≥700m marktcap zijn
-        const GROOT_DREMPEL = 700_000_000; // 700 miljoen EUR
-
-        const bouwLijst = (gesorteerd) => {
-          const lijst = [];
-          let aantalGroot = 0;
-          for (const q of gesorteerd) {
-            const isGroot = (q.marketCap || 0) >= GROOT_DREMPEL;
-            lijst.push({ ...q, isGroot });
-            if (isGroot) aantalGroot++;
-            if (aantalGroot >= 5) break;
-          }
-          return lijst;
-        };
-
-        const stijgersBE = bouwLijst(sort1D.filter(q => q.change1D > 0));
-        const dalersBE = bouwLijst([...sort1D].reverse().filter(q => q.change1D < 0));
+        // Pure top 5 op %1D change van alle Belgische aandelen
+        const stijgersBE = sort1D.filter(q => q.change1D > 0).slice(0, 5);
+        const dalersBE = [...sort1D].reverse().filter(q => q.change1D < 0).slice(0, 5);
         const populairBE = [...belQuotes].sort((a, b) => b.avgVol3M - a.avgVol3M).slice(0, 5);
 
         // Internationale aandelen: populair op volume
