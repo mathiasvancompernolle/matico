@@ -863,10 +863,12 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'WEB.BR','WEHB.BR',
       ];
 
+      // Volgorde = populariteit op Saxo (handmatig bepaald op basis van volume/bekendheid)
       const INTL = [
-        'SPCX','NVDA','AAPL','MSFT','AMZN','GOOGL','META','TSLA','AVGO','WMT',
-        'AMD','ASML','MU','INTC','AMAT','CSCO','NFLX','PLTR','TXN','COST',
-        'ARM','CRWV','JPM','V','MA','UNH','XOM','BAC','HD',
+        'SPCX','NVDA','MU','MSFT','INTC',
+        'AAPL','AMZN','META','GOOGL','TSLA',
+        'AMD','AVGO','ARM','PLTR','AMAT',
+        'ASML','NFLX','WMT','COST','TXN',
       ];
 
       try {
@@ -874,24 +876,21 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         const belResults = await Promise.all(ALLE_BEL.map(async (sym) => {
           try {
             const r = await fetch(
-              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`,
+              `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=price,summaryDetail`,
               { headers: { 'User-Agent': 'Mozilla/5.0' } }
             );
             const d = await r.json();
-            const meta = d?.chart?.result?.[0]?.meta || {};
-            const prijs = meta.regularMarketPrice || 0;
-            const prev = meta.chartPreviousClose || meta.previousClose || prijs;
+            const price = d?.quoteSummary?.result?.[0]?.price || {};
+            const summary = d?.quoteSummary?.result?.[0]?.summaryDetail || {};
+            const prijs = price.regularMarketPrice?.raw || 0;
+            const prev = price.regularMarketPreviousClose?.raw || prijs;
             const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
-            const avgVol3M = meta.averageDailyVolume3Month || meta.averageDailyVolume10Day || 0;
-            const naamRaw = meta.longName || meta.shortName || sym;
+            const avgVol3M = summary.averageVolume?.raw || summary.averageVolume10days?.raw || 0;
+            const marketCap = price.marketCap?.raw || 0;
+            const naamRaw = price.longName || price.shortName || sym;
             const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
             if (!prijs) return null;
-            const vol = Math.max(
-              meta.averageDailyVolume3Month || 0,
-              meta.averageDailyVolume10Day || 0,
-              meta.regularMarketVolume || 0
-            );
-            return { symbol: sym, naam, prijs, change1D, avgVol3M: vol, marketCap: meta.marketCap || 0, valuta: meta.currency || 'EUR' };
+            return { symbol: sym, naam, prijs, change1D, avgVol3M, marketCap, valuta: price.currency || 'EUR' };
           } catch { return null; }
         }));
 
@@ -903,29 +902,25 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         const dalersBE = [...sort1D].reverse().filter(q => q.change1D < 0).slice(0, 5);
         const populairBE = [...belQuotes].sort((a, b) => b.avgVol3M - a.avgVol3M).slice(0, 5);
 
-        // Internationale aandelen: populair op volume
+        // Internationale aandelen: gebruik quoteSummary voor betrouwbaar 3M volume
         const intlResults = await Promise.all(INTL.map(async (sym) => {
           try {
             const r = await fetch(
-              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`,
+              `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=price,summaryDetail`,
               { headers: { 'User-Agent': 'Mozilla/5.0' } }
             );
             const d = await r.json();
-            const meta = d?.chart?.result?.[0]?.meta || {};
-            const prijs = meta.regularMarketPrice || 0;
-            const prev = meta.chartPreviousClose || meta.previousClose || prijs;
+            const price = d?.quoteSummary?.result?.[0]?.price || {};
+            const summary = d?.quoteSummary?.result?.[0]?.summaryDetail || {};
+            const prijs = price.regularMarketPrice?.raw || 0;
+            const prev = price.regularMarketPreviousClose?.raw || prijs;
             const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
-            const avgVol3M = meta.averageDailyVolume3Month || meta.averageDailyVolume10Day || 0;
-            const naamRaw = meta.longName || meta.shortName || sym;
+            // averageVolume uit summaryDetail is het 3-maands gemiddeld dagvolume
+            const avgVol3M = summary.averageVolume?.raw || summary.averageVolume10days?.raw || 0;
+            const naamRaw = price.longName || price.shortName || sym;
             const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
             if (!prijs) return null;
-            // Gebruik het hoogste van beide volume velden
-            const vol = Math.max(
-              meta.averageDailyVolume3Month || 0,
-              meta.averageDailyVolume10Day || 0,
-              meta.regularMarketVolume || 0
-            );
-            return { symbol: sym, naam, prijs, change1D, avgVol3M: vol, valuta: meta.currency || 'USD' };
+            return { symbol: sym, naam, prijs, change1D, avgVol3M, valuta: price.currency || 'USD' };
           } catch { return null; }
         }));
 
