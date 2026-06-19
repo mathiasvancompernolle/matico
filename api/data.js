@@ -876,14 +876,30 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const naamRaw = meta.longName || meta.shortName || sym;
             const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
             if (!prijs) return null;
-            return { symbol: sym, naam, prijs, change1D, avgVol3M, valuta: meta.currency || 'EUR' };
+            return { symbol: sym, naam, prijs, change1D, avgVol3M, marketCap: meta.marketCap || 0, valuta: meta.currency || 'EUR' };
           } catch { return null; }
         }));
 
         const belQuotes = belResults.filter(Boolean);
         const sort1D = [...belQuotes].sort((a, b) => b.change1D - a.change1D);
-        const stijgersBE = sort1D.slice(0, 5);
-        const dalersBE = sort1D.slice(-5).reverse();
+
+        // Stop-bij-5-grote logica: toon alles tot er 5 aandelen ≥700m marktcap zijn
+        const GROOT_DREMPEL = 700_000_000; // 700 miljoen EUR
+
+        const bouwLijst = (gesorteerd) => {
+          const lijst = [];
+          let aantalGroot = 0;
+          for (const q of gesorteerd) {
+            const isGroot = (q.marketCap || 0) >= GROOT_DREMPEL;
+            lijst.push({ ...q, isGroot });
+            if (isGroot) aantalGroot++;
+            if (aantalGroot >= 5) break;
+          }
+          return lijst;
+        };
+
+        const stijgersBE = bouwLijst(sort1D.filter(q => q.change1D > 0));
+        const dalersBE = bouwLijst([...sort1D].reverse().filter(q => q.change1D < 0));
         const populairBE = [...belQuotes].sort((a, b) => b.avgVol3M - a.avgVol3M).slice(0, 5);
 
         // Internationale aandelen: populair op volume

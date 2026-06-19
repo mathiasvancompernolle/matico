@@ -552,6 +552,7 @@ function MarktenOverzichtTabellen() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span className="markt-cat-badge-sm" style={{ background: '#f59e0b' }}>EQ</span>
                     <span>{r.naam}</span>
+                    {r.isGroot === false && <span className="klein-label">Klein</span>}
                   </div>
                 </td>
                 <td>{fmtPrijs(r.prijs)}</td>
