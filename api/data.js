@@ -977,104 +977,47 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
 
       // ETFs gesorteerd op beheerd vermogen (AUM) — grootste eerst
       // Alle genoteerd op Euronext Amsterdam (.AS) voor Belgische beleggers
-      // ETF lijsten: alle ETFs van Saxo Investor per categorie
-      // Gesorteerd op beheerd vermogen (grootste eerst)
+      // ETF lijsten: ALLE aandelen ETFs van Saxo Investor
       const ETF_LIJSTEN = {
         aandelen: [
-          // Core wereldwijde ETFs
-          'VWCE.DE',    // Vanguard FTSE All-World Acc
-          'IWDA.AS',    // iShares Core MSCI World
-          'CSPX.AS',    // iShares Core S&P 500
-          'EMIM.AS',    // iShares Core MSCI EM IMI (EUR)
-          'EIMI.AS',    // iShares Core MSCI EM IMI (GBp)
-          'SWRD.AS',    // SPDR MSCI World
-          'VUSA.AS',    // Vanguard S&P 500 Dist
-          'VWRL.AS',    // Vanguard FTSE All-World Dist
-          'VUAA.AS',    // Vanguard S&P 500 Acc
-          'LCUW.AS',    // Amundi Core MSCI World
-          'XDWD.DE',    // Xtrackers MSCI World ESG / Amundi Core MSCI World
-          'PRAW.DE',    // Amundi Prime Global
-          // Europa ETFs
-          'MEUD.AS',    // Amundi Core Stoxx Europe 600
-          'MEU.AS',     // Amundi Core Stoxx Europe 600
-          'ESE.AS',     // BNP Paribas Easy Stoxx Europe 600
-          'SMEA.AS',    // iShares Core MSCI Europe EUR
-          'CSE6.AS',    // Amundi STOXX Europe 600 ESG
-          'CSSX5E.AS',  // iShares Core EURO STOXX 50
-          // Opkomende markten
-          'SAEM.AS',    // iShares MSCI EM ESG Enhanced
-          'AEEM.AS',    // Amundi MSCI EM Swap
-          'VFEM.AS',    // Vanguard FTSE Emerging Markets
-          // VS gerichte ETFs
-          'IUES.AS',    // iShares MSCI USA ESG Enhanced
-          'PAPU.AS',    // Amundi S&P 500 Climate Paris
-          'NASL.AS',    // BNP Paribas Easy Nasdaq 100
-          'ACWI.AS',    // SPDR MSCI All Country World
-          // Factor ETFs
-          'IWVL.AS',    // iShares Edge MSCI World Value
-          'MVOL.AS',    // iShares Edge MSCI World Min Volatility
-          'MVEA.AS',    // iShares Edge MSCI World Min Volatile Adv
-          // Sector ETFs
-          'SEMI.AS',    // iShares MSCI Global Semiconductors
-          'SMH.AS',     // VanEck Semiconductor
-          'IITU.AS',    // iShares S&P 500 Info Technology
-          'LCLE.AS',    // L&G Clean Energy
-          'WDEF.DE',    // WisdomTree Europe Defence
-          'XDWU.DE',    // Xtrackers MSCI World Utilities
-          'AGED.AS',    // iShares Ageing Population
-          'SPAG.AS',    // iShares Agribusiness
-          // Japan / Pacific
-          'IJPA.AS',    // iShares Core MSCI Japan IMI
-          // Overige
-          'VUKE.AS',    // Vanguard FTSE 100
-          'IWDH.AS',    // iShares MSCI World EUR Hedged
-          'PAEP.AS',    // Amundi S&P Eurozone Climate Paris
+          'MMLP.MI','AMLP','LCUW.DE','CNDX.PA','CSP1.SW','MEU.PA','AEEM.PA','TNOW.PA',
+          'MWRD.PA','PAEEM.PA','PAASI.PA','PANXG.PA','PRIW.DE','PRAW.DE','PAPU.MI','PAEP.L',
+          'CSE6.SW','STOXX.PA','NASL.MI','SP5C.PA','ESE.PA','CEUD.MI','EBLU.DE','BPAC.PA',
+          'BINFG.MI','EMQQ.DE','FSKY.MI','CIBR.MI','GRID.MI','COPX','COPX.DE','SILV.DE',
+          'URA','H50E.SW','BCHN.MI','FWIA.DE','IGDA.DE','IGAE.DE','MLPX.MI','EQQQ.MI',
+          'QQQ','CHDVD.SW','IAEX.AS','AGED.MI','SPAG.MI','RBOT.DE','EUE.AS','EXW1.DE',
+          'CUKX.SW','EMIM.AS','EIMI.MI','IS3N.DE','SMEA.AS','SMEA.MI','IEUA.AS',
+          'IJPA.MI','EXS2.DE','IWDA.AS','SWDA.MI','EUNL.DE','CSPX.AS','SXR8.DE','CSPX.L',
+          'IUSA.AS','IVV','MVEA.DE','MVOL.DE','IWMO.DE','IS3Q.DE','IWVL.MI','IWVL.DE',
+          'ECAR.MI','IGV','ICLN','CLEA.MI','IGF','INFR.MI','IAUP.DE','IPRV.SW',
+          'IUSQ.DE','AAXJ','ICGA.AS','SAEM.DE','SAEM.MI','EMUE.DE','QDVA.DE',
+          'EUSC.DE','IESE.DE','SEMI.DE','SEMI.MI','SEMI.AS','INDA','IIND.DE','IJSE.DE',
+          'IJPN.AS','EWY','IUES.DE','IESH.MI','IWDE.DE','IWDH.MI','WQDE.DE','XDWD.DE',
+          'WSML.DE','CNDX.AS','CNX1.L','IITU.DE','IITU.SW','SOXX',
+          'EXV1.DE','EXH1.DE','EXSA.DE','IHI','IYW','JPCT.MI','JPCS.MI','JREU.MI',
+          'BATT.MI','RENW.MI','GLGG.MI','SCHD','GLRE.L','ACWD.PA','SPYX.DE','XLE',
+          'XLI','SWRD.AS','SWRD.DE','WTCH.AS','SPXS.DE','SPY','SPY5.AS','GREP.SW',
+          'EWLD.L','JPSR.SW','PCSR.AS','CHSR.SW','UKSR.L','SP5H.MI','VAEX.AS','DAPP.DE',
+          'DFNS.DE','DFNS.MI','TRET.AS','GDX.DE','GDX.MI','TDIV.AS','REMX.DE',
+          'TMET.MI','SMH.DE','SMH.MI','SMH','SPCE.DE','NUCL.DE','ESPO.MI','TGET.AS',
+          'V3AA.AS','VUKE.L','VHYL.AS','VWCE.DE','VWCE.AS','VWCE.MI','VWRL.AS','VEA',
+          'VWO','VFEM.AS','VGK','VPL','VNQ','VUAA.DE','VUSA.L','VUSA.AS',
+          'VOO','VXUS','VTI','VT','WDEF.DE','XAIX.MI','XAIX.DE','XMJP.DE',
+          'XNET.MI','XZWD.DE','XDWU.DE','XEQW.DE','XSPX.DE',
         ],
         obligaties: [
-          // Core obligatie ETFs
-          'AGGH.AS',    // iShares Core Global Aggregate Bond
-          'IEAG.AS',    // iShares EUR Aggregate Bond
-          'IEGA.AS',    // iShares Core EUR Govt Bond
-          'XGSH.AS',    // Xtrackers II EUR Short Duration
-          'IBGL.AS',    // iShares Global Govt Bond
-          'EUNH.AS',    // iShares EUR Govt Bond
-          'IBTS.AS',    // iShares EUR Govt Bond 1-3yr
-          'IEAC.AS',    // iShares EUR Corp Bond
-          'IUSB.AS',    // iShares Core US Aggregate Bond
-          'SUZE.AS',    // iShares EUR Ultrashort Bond
-          'IBCI.AS',    // iShares EUR Inflation Linked
-          'VGOV.AS',    // Vanguard UK Gilt
-          'SEGA.AS',    // SPDR Bloomberg Euro Govt Bond
-          'EUNA.AS',    // iShares Core EUR Corp Bond
-          // High Yield
-          'IHYG.AS',    // iShares EUR High Yield Corp Bond
-          'SHYG.AS',    // iShares USD Short Duration HY
-          // EM Obligaties
-          'IEMB.AS',    // iShares J.P. Morgan USD EM Bond
-          'VDEA.AS',    // Vanguard USD EM Govt Bond
-          // Inflation linked
-          'ITPS.AS',    // iShares $ TIPS
-          'IBCI.AS',    // iShares EUR Inflation Linked
+          'AGGH.AS','IEAG.AS','IEGA.AS','XGSH.AS','IBGL.AS','EUNH.AS',
+          'IBTS.AS','IEAC.AS','IUSB.AS','SUZE.AS','IBCI.AS','VGOV.AS','SEGA.AS','EUNA.AS',
+          'IHYG.AS','SHYG.AS','IEMB.AS','VDEA.AS','ITPS.AS','AGGU.AS','FLOT.AS',
+          'GOVS.AS','CORP.AS','HYLD.AS','EMBE.AS','XUHY.AS','IBTE.AS',
         ],
         gemengd: [
-          'VNGA80.AS',  // Vanguard LifeStrategy 80%
-          'VNGA60.AS',  // Vanguard LifeStrategy 60%
-          'VNGA40.AS',  // Vanguard LifeStrategy 40%
-          'VNGA20.AS',  // Vanguard LifeStrategy 20%
-          'IMAP.AS',    // iShares MAP
-          'FLXA.AS',    // Franklin LibertyQ
+          'VNGA80.AS','VNGA60.AS','VNGA40.AS','VNGA20.AS','IMAP.AS','FLXA.AS',
+          'XDEB.DE','MACK.DE',
         ],
         valuta: [
-          'SGLD.AS',    // Invesco Physical Gold
-          'PHGP.AS',    // WisdomTree Physical Gold
-          'VZLD.AS',    // WisdomTree Physical Swiss Gold
-          '4GLD.AS',    // Xtrackers Physical Gold
-          'SSLV.AS',    // WisdomTree Physical Silver
-          'PHPT.AS',    // WisdomTree Physical Platinum
-          'PHPM.AS',    // WisdomTree Physical Palladium
-          'LCOP.AS',    // L&G Copper Mining
-          'ICOM.AS',    // iShares Diversified Commodity
-          'CMOD.AS',    // Amundi Bloomberg Equal-weight Commodities
+          'SGLD.AS','PHGP.AS','VZLD.AS','4GLD.AS','SSLV.AS','PHPT.AS',
+          'PHPM.AS','ICOM.AS','CMOD.AS','LCOP.AS','GLDM','GLD','SLV','PPLT',
         ],
       };
 
