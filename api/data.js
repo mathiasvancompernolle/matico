@@ -970,6 +970,91 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         return res.json({ stijgersBE: [], dalersBE: [], populairBE: [], populairIntl: [] });
       }
     }
+
+    // ── ETF pagina ────────────────────────────────────────────────────────────
+    if (endpoint === 'etfs') {
+      const { categorie = 'aandelen' } = req.query;
+
+      // ETFs gesorteerd op beheerd vermogen (AUM) — grootste eerst
+      // Alle genoteerd op Euronext Amsterdam (.AS) voor Belgische beleggers
+      const ETF_LIJSTEN = {
+        aandelen: [
+          'VWCE.DE','IWDA.AS','CSPX.AS','EMIM.AS','SWRD.AS','IUSQ.AS',
+          'VUAA.AS','VUSA.AS','EUNL.AS','MEUD.AS','IQQW.DE','WSML.AS',
+          'IEMA.AS','VEUR.AS','DJMC.AS','IQQH.DE','QDVE.DE','IBCX.AS',
+          'XDWD.DE','VWRL.AS',
+        ],
+        obligaties: [
+          'AGGH.AS','IEAG.AS','IEGA.AS','XGSH.AS','IBGL.AS','SEGA.AS',
+          'IEAC.AS','IUSB.AS','SUZE.AS','SYBJ.AS','IBCI.AS','EUNH.AS',
+          'IBTS.AS','EUNA.AS','VGOV.AS',
+        ],
+        gemengd: [
+          'VNGA80.AS','VNGA60.AS','VNGA40.AS','VNGA20.AS',
+          'IMAP.AS','GSPC.AS','XDEB.DE','FLXA.AS',
+        ],
+        valuta: [
+          'SGLD.AS','PHGP.AS','VZLD.AS','ISLN.AS','4GLD.AS',
+          'SSLV.AS','PHPT.AS','PHPM.AS','RUSS.AS','LCOP.AS',
+        ],
+      };
+
+      const syms = ETF_LIJSTEN[categorie] || ETF_LIJSTEN['aandelen'];
+
+      try {
+        const results = await Promise.all(syms.map(async (sym) => {
+          try {
+            // Haal meerdere periodes op: 1D, 1M, 3M, 1J, 5J
+            const [r1d, r1m, r3m, r1j, r5j] = await Promise.all([
+              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=3mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1wk&range=1y`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1mo&range=5y`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+            ]);
+
+            const [d1d, d1m, d3m, d1j, d5j] = await Promise.all([r1d.json(), r1m.json(), r3m.json(), r1j.json(), r5j.json()]);
+
+            const meta = d1d?.chart?.result?.[0]?.meta || {};
+            const prijs = meta.regularMarketPrice || 0;
+            if (!prijs) return null;
+
+            const pct = (d) => {
+              const m = d?.chart?.result?.[0]?.meta || {};
+              const p = m.regularMarketPrice || 0;
+              const ref = m.chartPreviousClose || m.previousClose || p;
+              return ref ? ((p - ref) / ref) * 100 : 0;
+            };
+
+            const pctLang = (d) => {
+              const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+              const valids = closes.filter(v => v !== null && v !== undefined);
+              if (valids.length < 2) return null;
+              return ((valids[valids.length-1] - valids[0]) / valids[0]) * 100;
+            };
+
+            const naamRaw = meta.longName || meta.shortName || sym;
+            const naam = naamRaw.length > 30 ? naamRaw.slice(0, 29) + '…' : naamRaw;
+
+            return {
+              symbol: sym,
+              naam,
+              prijs,
+              valuta: meta.currency || 'EUR',
+              pct1D: pct(d1d),
+              pct1M: pctLang(d1m),
+              pct3M: pctLang(d3m),
+              pct1J: pctLang(d1j),
+              pct5J: pctLang(d5j),
+            };
+          } catch { return null; }
+        }));
+
+        return res.json(results.filter(Boolean));
+      } catch (e) {
+        return res.json([]);
+      }
+    }
     return res.status(400).json({ error: 'Onbekend endpoint' });
   } catch (err) {
     console.error(err);

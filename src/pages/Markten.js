@@ -592,6 +592,107 @@ function MarktenOverzichtTabellen() {
   );
 }
 
+
+// ── ETF Pagina ────────────────────────────────────────────────────────────────
+const ETF_TABS = [
+  { id: 'aandelen',   label: 'Aandelen ETFs' },
+  { id: 'obligaties', label: 'Obligatie ETFs' },
+  { id: 'gemengd',    label: 'Gemengde ETFs' },
+  { id: 'valuta',     label: 'Valuta fondsen' },
+];
+
+function fmtPctEtf(v) {
+  if (v === null || v === undefined) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+  const kleur = v >= 0 ? 'var(--green)' : 'var(--red)';
+  return <span style={{ color: kleur, fontWeight: 600 }}>{(v >= 0 ? '+' : '') + v.toFixed(2) + '%'}</span>;
+}
+
+function EtfPagina({ onTerug }) {
+  const [actieveTab, setActieveTab] = useState('aandelen');
+  const [etfs, setEtfs] = useState([]);
+  const [laden, setLaden] = useState(true);
+
+  useEffect(() => {
+    setLaden(true);
+    setEtfs([]);
+    fetch(`/api/data?endpoint=etfs&categorie=${actieveTab}`)
+      .then(r => r.json())
+      .then(d => { setEtfs(Array.isArray(d) ? d : []); setLaden(false); })
+      .catch(() => setLaden(false));
+  }, [actieveTab]);
+
+  const fmtKoers = (v, val) => {
+    if (!v) return '—';
+    return v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  return (
+    <div className="markten-pagina">
+      <div className="aandelen-topbalk">
+        <button className="aandelen-terug-knop" onClick={onTerug}>← Markten</button>
+        <h2 className="aandelen-titel">ETFs</h2>
+      </div>
+
+      <div className="etf-tabs">
+        {ETF_TABS.map(tab => (
+          <button
+            key={tab.id}
+            className={`etf-tab ${actieveTab === tab.id ? 'actief' : ''}`}
+            onClick={() => setActieveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="etf-tabel-wrap">
+        <table className="etf-tabel">
+          <thead>
+            <tr>
+              <th>Instrument</th>
+              <th className="rechts">Koers</th>
+              <th className="rechts">%1D koers</th>
+              <th className="rechts">% 1M</th>
+              <th className="rechts">% 3M</th>
+              <th className="rechts">% 1J</th>
+              <th className="rechts">% 5J</th>
+              <th className="rechts">Valuta</th>
+            </tr>
+          </thead>
+          <tbody>
+            {laden ? Array(10).fill(null).map((_, i) => (
+              <tr key={i}>
+                {Array(8).fill(null).map((_, j) => (
+                  <td key={j}><div className="tabel-skeleton" style={{ width: j === 0 ? '80%' : 50 }} /></td>
+                ))}
+              </tr>
+            )) : etfs.map((e, i) => (
+              <tr key={i}>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="etf-badge">ETF</span>
+                    <span className="etf-naam">{e.naam}</span>
+                  </div>
+                </td>
+                <td className="rechts">{fmtKoers(e.prijs, e.valuta)}</td>
+                <td className="rechts">{fmtPctEtf(e.pct1D)}</td>
+                <td className="rechts">{fmtPctEtf(e.pct1M)}</td>
+                <td className="rechts">{fmtPctEtf(e.pct3M)}</td>
+                <td className="rechts">{fmtPctEtf(e.pct1J)}</td>
+                <td className="rechts">{fmtPctEtf(e.pct5J)}</td>
+                <td className="rechts" style={{ color: 'var(--text-muted)', fontSize: 12 }}>{e.valuta}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!laden && etfs.length === 0 && (
+          <p style={{ padding: '24px', color: 'var(--text-muted)', textAlign: 'center' }}>Geen ETFs gevonden.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Hoofd Markten component ───────────────────────────────────────────────────
 export default function Markten() {
   const [actieveRegio, setActieveRegio] = useState('lokaal');
@@ -636,6 +737,10 @@ export default function Markten() {
   }, [actieveCat, laadNieuws]);
 
   // Als een categorie actief is, toon die subpagina
+  if (actieveCat === 'etfs') {
+    return <EtfPagina onTerug={() => setActieveCat(null)} />;
+  }
+
   if (actieveCat === 'aandelen') {
     return (
       <div className="markten-pagina">
@@ -693,9 +798,9 @@ export default function Markten() {
           <button
             key={cat.id}
             className={`markten-cat-knop ${actieveCat === cat.id ? 'actief' : ''}`}
-            onClick={() => cat.id === 'aandelen' ? setActieveCat('aandelen') : null}
-            title={cat.id !== 'aandelen' ? 'Binnenkort beschikbaar' : ''}
-            style={{ opacity: cat.id !== 'aandelen' ? 0.6 : 1, cursor: cat.id !== 'aandelen' ? 'default' : 'pointer' }}
+            onClick={() => ['aandelen','etfs'].includes(cat.id) ? setActieveCat(cat.id) : null}
+            title={!['aandelen','etfs'].includes(cat.id) ? 'Binnenkort beschikbaar' : ''}
+            style={{ opacity: !['aandelen','etfs'].includes(cat.id) ? 0.6 : 1, cursor: !['aandelen','etfs'].includes(cat.id) ? 'default' : 'pointer' }}
           >
             <span className="markten-cat-badge" style={{ background: cat.kleur }}>{cat.afk}</span>
             {cat.label}
