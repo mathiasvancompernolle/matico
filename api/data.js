@@ -839,6 +839,83 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         return res.json({ stijgers1D: [], dalers1D: [], stijgers1M: [], dalers1M: [] });
       }
     }
+
+    // ── Markten overzicht: stijgers/dalers/populair BE + internationaal ────────
+    if (endpoint === 'markten-overzicht') {
+      const ALLE_BEL = [
+        'ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR',
+        'DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR',
+        'SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR',
+        'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BRDB.BR',
+        'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
+        'GIMV.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
+        'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
+        'TITC.BR','XIOR.BR','VIO.BR','CMBT.BR','VGP.BR','COLR.BR',
+        'JEN.BR','DECB.BR','EKOP.BR','EXM.BR','FAGR.BR','HYL.BR',
+        'NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','QRF.BR','ROU.BR',
+        'TEXF.BR','VAN.BR','VASTN.BR','WEB.BR','WEHB.BR',
+      ];
+
+      const INTL = [
+        'NVDA','AAPL','MSFT','AMZN','GOOGL','META','TSLA','AVGO','WMT','AMD',
+        'ASML','MU','INTC','AMAT','CSCO','NFLX','PLTR','TXN','COST','ARM',
+      ];
+
+      try {
+        // Belgische aandelen: haal 1D data op
+        const belResults = await Promise.all(ALLE_BEL.map(async (sym) => {
+          try {
+            const r = await fetch(
+              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`,
+              { headers: { 'User-Agent': 'Mozilla/5.0' } }
+            );
+            const d = await r.json();
+            const meta = d?.chart?.result?.[0]?.meta || {};
+            const prijs = meta.regularMarketPrice || 0;
+            const prev = meta.chartPreviousClose || meta.previousClose || prijs;
+            const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
+            const avgVol3M = meta.averageDailyVolume3Month || meta.averageDailyVolume10Day || 0;
+            const naamRaw = meta.longName || meta.shortName || sym;
+            const naam = naamRaw.length > 22 ? naamRaw.slice(0, 21) + '…' : naamRaw;
+            if (!prijs) return null;
+            return { symbol: sym, naam, prijs, change1D, avgVol3M, valuta: meta.currency || 'EUR' };
+          } catch { return null; }
+        }));
+
+        const belQuotes = belResults.filter(Boolean);
+        const sort1D = [...belQuotes].sort((a, b) => b.change1D - a.change1D);
+        const stijgersBE = sort1D.slice(0, 5);
+        const dalersBE = sort1D.slice(-5).reverse();
+        const populairBE = [...belQuotes].sort((a, b) => b.avgVol3M - a.avgVol3M).slice(0, 5);
+
+        // Internationale aandelen: populair op volume
+        const intlResults = await Promise.all(INTL.map(async (sym) => {
+          try {
+            const r = await fetch(
+              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`,
+              { headers: { 'User-Agent': 'Mozilla/5.0' } }
+            );
+            const d = await r.json();
+            const meta = d?.chart?.result?.[0]?.meta || {};
+            const prijs = meta.regularMarketPrice || 0;
+            const prev = meta.chartPreviousClose || meta.previousClose || prijs;
+            const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
+            const avgVol3M = meta.averageDailyVolume3Month || meta.averageDailyVolume10Day || 0;
+            const naamRaw = meta.longName || meta.shortName || sym;
+            const naam = naamRaw.length > 22 ? naamRaw.slice(0, 21) + '…' : naamRaw;
+            if (!prijs) return null;
+            return { symbol: sym, naam, prijs, change1D, avgVol3M, valuta: meta.currency || 'USD' };
+          } catch { return null; }
+        }));
+
+        const intlQuotes = intlResults.filter(Boolean);
+        const populairIntl = [...intlQuotes].sort((a, b) => b.avgVol3M - a.avgVol3M).slice(0, 5);
+
+        return res.json({ stijgersBE, dalersBE, populairBE, populairIntl });
+      } catch (e) {
+        return res.json({ stijgersBE: [], dalersBE: [], populairBE: [], populairIntl: [] });
+      }
+    }
     return res.status(400).json({ error: 'Onbekend endpoint' });
   } catch (err) {
     console.error(err);

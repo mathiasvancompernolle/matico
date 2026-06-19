@@ -501,6 +501,97 @@ function BelgischOverzicht() {
   );
 }
 
+
+// ── Markten overzicht tabellen ────────────────────────────────────────────────
+function MarktenOverzichtTabellen() {
+  const [data, setData] = useState(null);
+  const [laden, setLaden] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/data?endpoint=markten-overzicht')
+      .then(r => r.json())
+      .then(d => { setData(d); setLaden(false); })
+      .catch(() => setLaden(false));
+  }, []);
+
+  const fmtPrijs = (v) => v ? v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+  const fmtPct = (v) => v !== undefined ? (v >= 0 ? '+' : '') + v.toFixed(2) + '%' : '—';
+
+  const OverzichtTabel = ({ titel, rijen, kleurKey, uitleg }) => {
+    const [tooltip, setTooltip] = useState(false);
+    return (
+      <div className="overzicht-tabel-kaart">
+        <div className="overzicht-tabel-header">
+          <span>{titel}</span>
+          <div className="info-icoon-wrap">
+            <button className="info-icoon-knop"
+              onMouseEnter={() => setTooltip(true)}
+              onMouseLeave={() => setTooltip(false)}
+            >ℹ</button>
+            {tooltip && <div className="info-tooltip">{uitleg}</div>}
+          </div>
+        </div>
+        <table className="overzicht-tabel">
+          <thead>
+            <tr>
+              <th>Instrument</th>
+              <th>Laatste verh.</th>
+              <th>%1D koers</th>
+            </tr>
+          </thead>
+          <tbody>
+            {laden ? Array(5).fill(null).map((_, i) => (
+              <tr key={i}>
+                <td><div className="tabel-skeleton" style={{ width: '60%' }} /></td>
+                <td><div className="tabel-skeleton" style={{ width: 50 }} /></td>
+                <td><div className="tabel-skeleton" style={{ width: 50 }} /></td>
+              </tr>
+            )) : (rijen || []).map((r, i) => (
+              <tr key={i}>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="markt-cat-badge-sm" style={{ background: '#f59e0b' }}>EQ</span>
+                    <span>{r.naam}</span>
+                  </div>
+                </td>
+                <td>{fmtPrijs(r.prijs)}</td>
+                <td className={r.change1D >= 0 ? 'cel-groen' : 'cel-rood'} style={{ fontWeight: 600 }}>
+                  {fmtPct(r.change1D)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  return (
+    <div className="markten-overzicht-grid">
+      <OverzichtTabel
+        titel="Stijgers BE"
+        rijen={data?.stijgersBE}
+        uitleg="De 5 Belgische aandelen met de hoogste procentuele stijging vandaag."
+      />
+      <OverzichtTabel
+        titel="Dalers BE"
+        rijen={data?.dalersBE}
+        uitleg="De 5 Belgische aandelen met de grootste procentuele daling vandaag."
+      />
+      <OverzichtTabel
+        titel="Meest populair BE"
+        rijen={data?.populairBE}
+        uitleg="De meest verhandelde Belgische aandelen op basis van gemiddeld dagvolume over de afgelopen 3 maanden."
+      />
+      <OverzichtTabel
+        titel="Meest populair internationaal"
+        rijen={data?.populairIntl}
+        uitleg="De meest verhandelde internationale aandelen op basis van gemiddeld dagvolume over de afgelopen 3 maanden."
+      />
+    </div>
+  );
+}
+
 // ── Hoofd Markten component ───────────────────────────────────────────────────
 export default function Markten() {
   const [actieveRegio, setActieveRegio] = useState('lokaal');
@@ -638,6 +729,9 @@ export default function Markten() {
           </div>
         )}
       </div>
+
+      <div className="markten-divider" style={{ margin: '28px 0 20px' }} />
+      <MarktenOverzichtTabellen />
     </div>
   );
 }

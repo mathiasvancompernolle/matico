@@ -1809,3 +1809,61 @@ body.dark .top-nav {
   box-shadow: var(--shadow-md);
   z-index: 100;
 }
+
+/* ===== MARKTEN OVERZICHT TABELLEN ===== */
+.markten-overzicht-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1100px) {
+  .markten-overzicht-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .markten-overzicht-grid { grid-template-columns: 1fr; }
+}
+
+.overzicht-tabel-kaart {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.overzicht-tabel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.overzicht-tabel {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.overzicht-tabel thead tr { background: var(--bg-subtle); }
+
+.overzicht-tabel th {
+  padding: 6px 10px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.overzicht-tabel td {
+  padding: 8px 10px;
+  border-top: 1px solid var(--border-light);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
