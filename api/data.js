@@ -771,6 +771,65 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         return res.json({ grafiek: [], prevClose: 0, huidigePrijs: 0, stijgers: [], dalers: [], alleQuotes: [] });
       }
     }
+
+    // ── Belgisch marktoverzicht: stijgers/dalers 1D en 1M ────────────────────
+    if (endpoint === 'belgisch-overzicht') {
+      const ALLE_BEL_SYMS = [
+        // BEL20
+        'ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR',
+        'DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR',
+        'SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR',
+        // BEL Mid
+        'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BRDB.BR',
+        'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
+        'GIMV.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
+        'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
+        'TITC.BR','XIOR.BR','CMBT.BR','VGP.BR','COLR.BR',
+        // BEL Small
+        'ACCE.BR','CYAD.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
+        'JENS.BR','NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','OXUR.BR',
+        'QRF.BR','ROU.BR','SEQM.BR','TEXF.BR','VAN.BR','VASTN.BR',
+        'WEB.BR','WEHB.BR',
+      ];
+
+      try {
+        // Haal 1D en 1M data parallel op per aandeel
+        const nuSec = Math.floor(Date.now() / 1000);
+        const results = await Promise.all(ALLE_BEL_SYMS.map(async (sym) => {
+          try {
+            const [r1d, r1m] = await Promise.all([
+              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+            ]);
+            const [d1d, d1m] = await Promise.all([r1d.json(), r1m.json()]);
+            const meta1d = d1d?.chart?.result?.[0]?.meta || {};
+            const meta1m = d1m?.chart?.result?.[0]?.meta || {};
+            const prijs = meta1d.regularMarketPrice || 0;
+            const prev1d = meta1d.chartPreviousClose || meta1d.previousClose || prijs;
+            const prev1m = meta1m.chartPreviousClose || meta1m.previousClose || prijs;
+            const change1D = prev1d ? ((prijs - prev1d) / prev1d) * 100 : 0;
+            const change1M = prev1m ? ((prijs - prev1m) / prev1m) * 100 : 0;
+            const naamRaw = meta1d.longName || meta1d.shortName || sym;
+            const naam = naamRaw.length > 24 ? naamRaw.slice(0, 23) + '…' : naamRaw;
+            if (!prijs) return null;
+            return { symbol: sym, naam, prijs, change1D, change1M, valuta: meta1d.currency || 'EUR' };
+          } catch { return null; }
+        }));
+
+        const quotes = results.filter(Boolean);
+        const sort1D = [...quotes].sort((a, b) => b.change1D - a.change1D);
+        const sort1M = [...quotes].sort((a, b) => b.change1M - a.change1M);
+
+        return res.json({
+          stijgers1D: sort1D.slice(0, 5),
+          dalers1D:   sort1D.slice(-5).reverse(),
+          stijgers1M: sort1M.slice(0, 5),
+          dalers1M:   sort1M.slice(-5).reverse(),
+        });
+      } catch (e) {
+        return res.json({ stijgers1D: [], dalers1D: [], stijgers1M: [], dalers1M: [] });
+      }
+    }
     return res.status(400).json({ error: 'Onbekend endpoint' });
   } catch (err) {
     console.error(err);

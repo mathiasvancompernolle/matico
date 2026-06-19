@@ -1690,3 +1690,61 @@ body.dark .top-nav {
   color: var(--accent);
   background: var(--accent-bg);
 }
+
+/* ===== BELGISCH MARKTOVERZICHT ===== */
+.belg-overzicht {
+  margin-top: 8px;
+}
+
+.belg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+@media (max-width: 700px) {
+  .belg-grid { grid-template-columns: 1fr; }
+}
+
+.belg-tabel-kaart {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.belg-tabel-header {
+  padding: 12px 16px 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.belg-tabel {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.belg-tabel thead tr {
+  background: var(--bg-subtle);
+}
+
+.belg-tabel th {
+  padding: 6px 12px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.belg-tabel td {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-light);
+  color: var(--text-primary);
+  white-space: nowrap;
+}

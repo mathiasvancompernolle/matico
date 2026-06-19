@@ -5,7 +5,7 @@ import {
 
 // ── Constanten ────────────────────────────────────────────────────────────────
 const REGIO_TABS = [
-  { id: 'lokaal',        label: 'Lokaal' },
+  { id: 'lokaal',        label: 'België' },
   { id: 'noord-amerika', label: 'Noord-Amerika' },
   { id: 'europa',        label: 'Europa' },
   { id: 'azie-pacific',  label: 'Azië-Pacific' },
@@ -378,6 +378,118 @@ function AandelenTabel({ titel, rijen, laden, kolom, waardeKey }) {
   );
 }
 
+
+// ── Belgisch Marktoverzicht ───────────────────────────────────────────────────
+function MiniTabel({ titel, rijen, laden, kolom1Label, kolom1Key, positief }) {
+  return (
+    <div className="belg-tabel-kaart">
+      <div className="belg-tabel-header">{titel}</div>
+      <table className="belg-tabel">
+        <thead>
+          <tr>
+            <th>Instrument</th>
+            <th>Laatste</th>
+            <th>{kolom1Label}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {laden ? Array(5).fill(null).map((_, i) => (
+            <tr key={i}>
+              <td><div className="tabel-skeleton" style={{ width: '70%' }} /></td>
+              <td><div className="tabel-skeleton" style={{ width: 50 }} /></td>
+              <td><div className="tabel-skeleton" style={{ width: 50 }} /></td>
+            </tr>
+          )) : rijen.map((r, i) => (
+            <tr key={i}>
+              <td>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span className="markt-cat-badge-sm" style={{ background: '#f59e0b' }}>EQ</span>
+                  <span style={{ fontSize: 12 }}>{r.naam}</span>
+                </div>
+              </td>
+              <td style={{ fontSize: 12 }}>{r.prijs ? r.prijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</td>
+              <td className={r[kolom1Key] >= 0 ? 'cel-groen' : 'cel-rood'} style={{ fontSize: 12, fontWeight: 600 }}>
+                {r[kolom1Key] !== undefined ? (r[kolom1Key] >= 0 ? '+' : '') + r[kolom1Key].toFixed(2) + '%' : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BelgischOverzicht() {
+  const [data, setData] = useState(null);
+  const [laden, setLaden] = useState(true);
+  const [cached, setCached] = useState(null);
+  const [cachedLaden, setCachedLaden] = useState(true);
+
+  useEffect(() => {
+    // Live data: stijgers/dalers 1D en 1M
+    fetch('/api/data?endpoint=belgisch-overzicht')
+      .then(r => r.json())
+      .then(d => { setData(d); setLaden(false); })
+      .catch(() => setLaden(false));
+
+    // Gecachte data: consensusprognose + omzetgroei
+    fetch('/api/cron-markten?lees=1')
+      .then(r => r.json())
+      .then(d => { setCached(d); setCachedLaden(false); })
+      .catch(() => setCachedLaden(false));
+  }, []);
+
+  return (
+    <div className="belg-overzicht">
+      <div className="markten-divider" style={{ margin: '24px 0 20px' }} />
+      <div className="belg-grid">
+        <MiniTabel
+          titel="Grootste stijgers (1D)"
+          rijen={data?.stijgers1D || []}
+          laden={laden}
+          kolom1Label="%1D koers"
+          kolom1Key="change1D"
+        />
+        <MiniTabel
+          titel="Grootste stijgers (1M)"
+          rijen={data?.stijgers1M || []}
+          laden={laden}
+          kolom1Label="%1M koers"
+          kolom1Key="change1M"
+        />
+        <MiniTabel
+          titel="Grootste dalers (1D)"
+          rijen={data?.dalers1D || []}
+          laden={laden}
+          kolom1Label="%1D koers"
+          kolom1Key="change1D"
+        />
+        <MiniTabel
+          titel="Grootste dalers (1M)"
+          rijen={data?.dalers1M || []}
+          laden={laden}
+          kolom1Label="%1M koers"
+          kolom1Key="change1M"
+        />
+        <MiniTabel
+          titel="Beste consensusprognose"
+          rijen={cached?.consensusprognose || []}
+          laden={cachedLaden}
+          kolom1Label="Koersdoel-rend."
+          kolom1Key="koersdoelRendement"
+        />
+        <MiniTabel
+          titel="Beste omzetgroei (1J)"
+          rijen={cached?.omzetgroei || []}
+          laden={cachedLaden}
+          kolom1Label="Omzetgroei 1J"
+          kolom1Key="omzetgroei1J"
+        />
+      </div>
+    </div>
+  );
+}
+
 // ── Hoofd Markten component ───────────────────────────────────────────────────
 export default function Markten() {
   const [actieveRegio, setActieveRegio] = useState('lokaal');
@@ -444,6 +556,7 @@ export default function Markten() {
           ))}
         </div>
         <AandelenPagina actieveRegio={actieveRegio} />
+        {actieveRegio === 'lokaal' && <BelgischOverzicht />}
       </div>
     );
   }
