@@ -1852,40 +1852,42 @@ body.dark .top-nav {
 
 .overzicht-tabel thead tr { background: var(--bg-subtle); }
 
+.overzicht-tabel {
+  table-layout: fixed;
+  width: 100%;
+}
+
 .overzicht-tabel th {
-  padding: 5px 8px;
+  padding: 5px 6px;
   text-align: left;
   font-weight: 500;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 10px;
   white-space: nowrap;
+  overflow: hidden;
 }
 
-.overzicht-tabel th:last-child,
-.overzicht-tabel td:last-child {
-  text-align: right;
-}
-
-.overzicht-tabel th:nth-child(2),
-.overzicht-tabel td:nth-child(2) {
-  text-align: right;
-}
+.overzicht-tabel th:first-child { width: 46%; }
+.overzicht-tabel th:nth-child(2) { width: 28%; text-align: right; }
+.overzicht-tabel th:last-child { width: 26%; text-align: right; }
 
 .overzicht-tabel td {
-  padding: 7px 8px;
+  padding: 7px 6px;
   border-top: 1px solid var(--border-light);
   color: var(--text-primary);
-  white-space: nowrap;
-}
-
-/* Naam kolom mag afkappen zodat prijs/% zichtbaar blijft */
-.overzicht-tabel td:first-child {
-  max-width: 140px;
+  font-size: 12px;
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
+.overzicht-tabel td:nth-child(2) { text-align: right; }
+.overzicht-tabel td:last-child { text-align: right; font-weight: 600; }
+
 .overzicht-tabel td:first-child > div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   overflow: hidden;
 }
 
@@ -1893,7 +1895,5 @@ body.dark .top-nav {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 110px;
-  display: inline-block;
-  vertical-align: middle;
+  min-width: 0;
 }

@@ -333,7 +333,7 @@ function AandelenTabel({ titel, rijen, laden, kolom, waardeKey }) {
         <thead>
           <tr>
             <th>Instrument</th>
-            <th>Laatste verh.</th>
+            <th>Laatste</th>
             <th>{kolom}</th>
           </tr>
         </thead>
@@ -535,8 +535,8 @@ function MarktenOverzichtTabellen() {
           <thead>
             <tr>
               <th>Instrument</th>
-              <th>Laatste verh.</th>
-              <th>%1D koers</th>
+              <th>Laatste</th>
+              <th>%1D</th>
             </tr>
           </thead>
           <tbody>
