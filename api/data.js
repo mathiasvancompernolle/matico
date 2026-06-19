@@ -843,6 +843,8 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
 
     // ── Markten overzicht: stijgers/dalers/populair BE + internationaal ────────
     if (endpoint === 'markten-overzicht') {
+      const BLOB_KEY_OVERZICHT = 'markten-overzicht-cache.json';
+
       // Alle publieke Belgische aandelen: BEL20 + BEL Mid + BEL Small
       const ALLE_BEL = [
         // BEL20
@@ -872,63 +874,96 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
       ];
 
       try {
-        // Belgische aandelen: haal 1D data op
-        const belResults = await Promise.all(ALLE_BEL.map(async (sym) => {
+        // Probeer live data op te halen
+        const haaldataOp = async () => {
+          const belResults = await Promise.all(ALLE_BEL.map(async (sym) => {
+            try {
+              const r = await fetch(
+                `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=price,summaryDetail`,
+                { headers: { 'User-Agent': 'Mozilla/5.0' } }
+              );
+              const d = await r.json();
+              const price = d?.quoteSummary?.result?.[0]?.price || {};
+              const summary = d?.quoteSummary?.result?.[0]?.summaryDetail || {};
+              const prijs = price.regularMarketPrice?.raw || 0;
+              const prev = price.regularMarketPreviousClose?.raw || prijs;
+              const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
+              const avgVol3M = summary.averageVolume?.raw || summary.averageVolume10days?.raw || 0;
+              const marketCap = price.marketCap?.raw || 0;
+              const naamRaw = price.longName || price.shortName || sym;
+              const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
+              if (!prijs) return null;
+              return { symbol: sym, naam, prijs, change1D, avgVol3M, marketCap, valuta: price.currency || 'EUR' };
+            } catch { return null; }
+          }));
+
+          const belQuotes = belResults.filter(Boolean);
+          const sort1D = [...belQuotes].sort((a, b) => b.change1D - a.change1D);
+          const stijgersBE = sort1D.filter(q => q.change1D > 0).slice(0, 5);
+          const dalersBE = [...sort1D].reverse().filter(q => q.change1D < 0).slice(0, 5);
+          const populairBE = [...belQuotes].sort((a, b) => b.avgVol3M - a.avgVol3M).slice(0, 5);
+
+          const intlResults = await Promise.all(INTL.map(async (sym) => {
+            try {
+              const r = await fetch(
+                `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=price,summaryDetail`,
+                { headers: { 'User-Agent': 'Mozilla/5.0' } }
+              );
+              const d = await r.json();
+              const price = d?.quoteSummary?.result?.[0]?.price || {};
+              const summary = d?.quoteSummary?.result?.[0]?.summaryDetail || {};
+              const prijs = price.regularMarketPrice?.raw || 0;
+              const prev = price.regularMarketPreviousClose?.raw || prijs;
+              const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
+              const avgVol3M = summary.averageVolume?.raw || summary.averageVolume10days?.raw || 0;
+              const naamRaw = price.longName || price.shortName || sym;
+              const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
+              if (!prijs) return null;
+              return { symbol: sym, naam, prijs, change1D, avgVol3M, valuta: price.currency || 'USD' };
+            } catch { return null; }
+          }));
+
+          const intlQuotes = intlResults.filter(Boolean);
+          const populairIntl = [...intlQuotes].sort((a, b) => b.avgVol3M - a.avgVol3M).slice(0, 5);
+
+          return { stijgersBE, dalersBE, populairBE, populairIntl };
+        };
+
+        const nieuweData = await haaldataOp();
+
+        // Controleer of we geldige data hebben (niet leeg)
+        const heeftData = nieuweData.stijgersBE.length > 0 || nieuweData.dalersBE.length > 0;
+
+        if (heeftData) {
+          // Sla op in Blob cache met timestamp
+          const payload = { ...nieuweData, bijgewerkt: new Date().toISOString() };
           try {
-            const r = await fetch(
-              `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=price,summaryDetail`,
-              { headers: { 'User-Agent': 'Mozilla/5.0' } }
-            );
-            const d = await r.json();
-            const price = d?.quoteSummary?.result?.[0]?.price || {};
-            const summary = d?.quoteSummary?.result?.[0]?.summaryDetail || {};
-            const prijs = price.regularMarketPrice?.raw || 0;
-            const prev = price.regularMarketPreviousClose?.raw || prijs;
-            const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
-            const avgVol3M = summary.averageVolume?.raw || summary.averageVolume10days?.raw || 0;
-            const marketCap = price.marketCap?.raw || 0;
-            const naamRaw = price.longName || price.shortName || sym;
-            const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
-            if (!prijs) return null;
-            return { symbol: sym, naam, prijs, change1D, avgVol3M, marketCap, valuta: price.currency || 'EUR' };
-          } catch { return null; }
-        }));
-
-        const belQuotes = belResults.filter(Boolean);
-        const sort1D = [...belQuotes].sort((a, b) => b.change1D - a.change1D);
-
-        // Pure top 5 op %1D change van alle Belgische aandelen
-        const stijgersBE = sort1D.filter(q => q.change1D > 0).slice(0, 5);
-        const dalersBE = [...sort1D].reverse().filter(q => q.change1D < 0).slice(0, 5);
-        const populairBE = [...belQuotes].sort((a, b) => b.avgVol3M - a.avgVol3M).slice(0, 5);
-
-        // Internationale aandelen: gebruik quoteSummary voor betrouwbaar 3M volume
-        const intlResults = await Promise.all(INTL.map(async (sym) => {
+            const { put } = require('@vercel/blob');
+            await put(BLOB_KEY_OVERZICHT, JSON.stringify(payload), { access: 'public', addRandomSuffix: false });
+          } catch (e) { /* blob opslaan mislukt, geen probleem */ }
+          return res.json(nieuweData);
+        } else {
+          // Geen live data → lees cache
           try {
-            const r = await fetch(
-              `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=price,summaryDetail`,
-              { headers: { 'User-Agent': 'Mozilla/5.0' } }
-            );
-            const d = await r.json();
-            const price = d?.quoteSummary?.result?.[0]?.price || {};
-            const summary = d?.quoteSummary?.result?.[0]?.summaryDetail || {};
-            const prijs = price.regularMarketPrice?.raw || 0;
-            const prev = price.regularMarketPreviousClose?.raw || prijs;
-            const change1D = prev ? ((prijs - prev) / prev) * 100 : 0;
-            // averageVolume uit summaryDetail is het 3-maands gemiddeld dagvolume
-            const avgVol3M = summary.averageVolume?.raw || summary.averageVolume10days?.raw || 0;
-            const naamRaw = price.longName || price.shortName || sym;
-            const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
-            if (!prijs) return null;
-            return { symbol: sym, naam, prijs, change1D, avgVol3M, valuta: price.currency || 'USD' };
-          } catch { return null; }
-        }));
-
-        const intlQuotes = intlResults.filter(Boolean);
-        const populairIntl = [...intlQuotes].sort((a, b) => b.avgVol3M - a.avgVol3M).slice(0, 5);
-
-        return res.json({ stijgersBE, dalersBE, populairBE, populairIntl });
+            const { get } = require('@vercel/blob');
+            const blob = await get(BLOB_KEY_OVERZICHT);
+            if (blob) {
+              const cached = JSON.parse(await blob.text());
+              return res.json({ ...cached, uitCache: true });
+            }
+          } catch (e) { /* geen cache beschikbaar */ }
+          return res.json({ stijgersBE: [], dalersBE: [], populairBE: [], populairIntl: [] });
+        }
       } catch (e) {
+        // Fout → probeer cache
+        try {
+          const { get } = require('@vercel/blob');
+          const blob = await get(BLOB_KEY_OVERZICHT);
+          if (blob) {
+            const cached = JSON.parse(await blob.text());
+            return res.json({ ...cached, uitCache: true });
+          }
+        } catch (e2) { /* geen cache */ }
         return res.json({ stijgersBE: [], dalersBE: [], populairBE: [], populairIntl: [] });
       }
     }
