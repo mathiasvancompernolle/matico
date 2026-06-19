@@ -886,7 +886,12 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const naamRaw = meta.longName || meta.shortName || sym;
             const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
             if (!prijs) return null;
-            return { symbol: sym, naam, prijs, change1D, avgVol3M, marketCap: meta.marketCap || 0, valuta: meta.currency || 'EUR' };
+            const vol = Math.max(
+              meta.averageDailyVolume3Month || 0,
+              meta.averageDailyVolume10Day || 0,
+              meta.regularMarketVolume || 0
+            );
+            return { symbol: sym, naam, prijs, change1D, avgVol3M: vol, marketCap: meta.marketCap || 0, valuta: meta.currency || 'EUR' };
           } catch { return null; }
         }));
 
@@ -914,7 +919,13 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const naamRaw = meta.longName || meta.shortName || sym;
             const naam = naamRaw.length > 16 ? naamRaw.slice(0, 15) + '…' : naamRaw;
             if (!prijs) return null;
-            return { symbol: sym, naam, prijs, change1D, avgVol3M, valuta: meta.currency || 'USD' };
+            // Gebruik het hoogste van beide volume velden
+            const vol = Math.max(
+              meta.averageDailyVolume3Month || 0,
+              meta.averageDailyVolume10Day || 0,
+              meta.regularMarketVolume || 0
+            );
+            return { symbol: sym, naam, prijs, change1D, avgVol3M: vol, valuta: meta.currency || 'USD' };
           } catch { return null; }
         }));
 
