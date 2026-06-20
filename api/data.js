@@ -1286,6 +1286,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             };
 
             const naamRaw = meta.longName || meta.shortName || sym;
+            const naamVolledig = naamRaw;
             const naam = naamRaw.length > 40 ? naamRaw.slice(0, 39) + '…' : naamRaw;
 
             // TER en TOB via hardcoded lookup tabel
@@ -1307,7 +1308,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const marktOpen = meta.marketState === 'REGULAR';
 
             return {
-              symbol: sym, naam, prijs,
+              symbol: sym, naam, naamVolledig, prijs,
               valuta: meta.currency || 'EUR',
               totalAssets, ter, tob, beurs, marktOpen,
               pct1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
