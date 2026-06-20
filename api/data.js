@@ -1326,8 +1326,11 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             let finnhubChange1D = pct1D;
             if (!prijs) {
               try {
-                const fhSym = sym.replace('.', ':').replace('DE', 'XETR').replace('MI', 'MIL').replace('PA', 'XPAR').replace('AS', 'AMS');
-                const fhR = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${process.env.FINNHUB_API_KEY}`);
+                // Finnhub gebruikt format zoals EENG:MIL voor Milan-genoteerde ETFs
+                const parts = sym.split('.');
+                const exchMap = {'DE':'XETR','MI':'MIL','PA':'XPAR','AS':'AMS','L':'LSE','SW':'SWX'};
+                const fhSym = parts.length === 2 ? `${parts[0]}:${exchMap[parts[1]] || parts[1]}` : sym;
+                const fhR = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(fhSym)}&token=${process.env.FINNHUB_API_KEY}`);
                 const fhD = await fhR.json();
                 if (fhD.c) {
                   finnhubPrijs = fhD.c;
