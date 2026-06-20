@@ -964,7 +964,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'IWDA.AS','EUNL.DE','SWDA.MI','CSPX.AS','SXR8.DE','VWCE.DE','VWCE.AS',
           'VWO','VUSA.AS','VUSA.L','VUAA.DE','IS3N.DE','EMIM.AS','EIMI.MI',
           'VXUS','VGK','VNQ','VPL','VWRL.AS','SCHD','VT',
-          'IUSA.AS','IVV','CSPX.L','SPY5.AS','SPXS.DE','SWRD.AS','SWRD.DE',
+          'IUSA.AS','IVV','CSPX.L','SPY5.AS','SWRD.AS','SWRD.DE',
           // Medium AUM (1-10 mld)
           'CNDX.AS','CNDX.PA','CNX1.L','NASL.MI','PRIW.DE','PRAW.DE',
           'LYMS.DE','LCUW.DE','ACWD.PA','SPYX.DE','FWIA.DE','PRIW.DE',
@@ -1208,7 +1208,6 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'BINFG.MI': { ter: 0.40, tob: 0.12 },
         'XMJP.DE':  { ter: 0.20, tob: 0.12 },
         'XZWD.DE':  { ter: 0.20, tob: 0.12 },
-        'SPXS.DE':  { ter: 0.03, tob: 0.12 },
         'SPY5.AS':  { ter: 0.03, tob: 0.12 },
         'VNGA80.AS':{ ter: 0.25, tob: 0.12 },
         'VNGA60.AS':{ ter: 0.25, tob: 0.12 },
