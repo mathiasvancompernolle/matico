@@ -725,7 +725,6 @@ function EtfPagina({ onTerug }) {
               <th className="rechts" onClick={() => handleSort('pct5J')} style={{ cursor: toonAlles ? 'pointer' : 'default' }}>
                 % 5J{toonAlles && <SortIcoon col="pct5J" />}
               </th>
-              <th className="rechts">Valuta</th>
               <th className="rechts" onClick={() => handleSort('ter')} style={{ cursor: toonAlles ? 'pointer' : 'default' }}>
                 Lopende k.{toonAlles && <SortIcoon col="ter" />}
               </th>
@@ -747,7 +746,10 @@ function EtfPagina({ onTerug }) {
                     <span className="etf-naam">{e.naam}</span>
                   </div>
                 </td>
-                <td className="rechts">{fmtKoers(e.prijs, e.valuta)}</td>
+                <td className="rechts">
+                  {fmtKoers(e.prijs, e.valuta)}
+                  <span style={{ color: 'var(--text-muted)', fontSize: 11, marginLeft: 4 }}>{e.valuta}</span>
+                </td>
                 <td className="rechts">{fmtPctEtf(e.pct1D)}</td>
                 <td className="rechts">{fmtPctEtf(e.pct1M)}</td>
                 <td className="rechts">{fmtPctEtf(e.pct3M)}</td>
