@@ -960,7 +960,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // Mega AUM (>100 mld USD)
           'IVV','SPY','VOO','VTI','QQQ','VEA','IUSQ.DE',
           // Large AUM (10-100 mld)
-          'MMLP.MI','JMLP.DE','AMLP',
+          'MMLP.MI','AMLP',
           'IWDA.AS','EUNL.DE','SWDA.MI','CSPX.AS','SXR8.DE','VWCE.DE','VWCE.AS',
           'VWO','VUSA.AS','VUSA.L','VUAA.DE','IS3N.DE','EMIM.AS','EIMI.MI',
           'VXUS','VGK','VNQ','VPL','VWRL.AS','SCHD','VT',
