@@ -745,6 +745,7 @@ function EtfPagina({ onTerug }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span className="etf-badge">ETF</span>
                     <span className="etf-naam" title={e.naamVolledig || e.naam}>{e.naam}</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 10, marginLeft: 4 }}>{e.symbol}</span>
                   </div>
                 </td>
                 <td className="rechts">
