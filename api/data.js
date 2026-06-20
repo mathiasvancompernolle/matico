@@ -1193,7 +1193,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'PAEEM.PA': { ter: 0.17, tob: 0.12 },
         'PAASI.PA': { ter: 0.25, tob: 0.12 },
         'PANXG.PA': { ter: 0.15, tob: 0.12 },
-        'UST.PA':   { ter: 0.22, tob: 0.12 },
+        'ANX.MI':   { ter: 0.22, tob: 0.12 },
         'CNDX.PA':  { ter: 0.10, tob: 0.12 },
         'MWRD.PA':  { ter: 0.12, tob: 0.12 },
         'TNOW.PA':  { ter: 0.18, tob: 0.12 },
