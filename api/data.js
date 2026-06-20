@@ -1321,11 +1321,27 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const beurs = exchangeMap[exchCode] || meta.fullExchangeName || meta.exchangeName || '—';
             const marktOpen = meta.marketState === 'REGULAR';
 
+            // Als Yahoo geen prijs geeft, probeer Finnhub als fallback
+            let finnhubPrijs = prijs;
+            let finnhubChange1D = pct1D;
+            if (!prijs) {
+              try {
+                const fhSym = sym.replace('.', ':').replace('DE', 'XETR').replace('MI', 'MIL').replace('PA', 'XPAR').replace('AS', 'AMS');
+                const fhR = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${process.env.FINNHUB_API_KEY}`);
+                const fhD = await fhR.json();
+                if (fhD.c) {
+                  finnhubPrijs = fhD.c;
+                  finnhubChange1D = fhD.pc ? ((fhD.c - fhD.pc) / fhD.pc) * 100 : 0;
+                }
+              } catch {}
+            }
+            if (!finnhubPrijs) return null;
+
             return {
-              symbol: sym, naam, naamVolledig, prijs,
+              symbol: sym, naam, naamVolledig, prijs: finnhubPrijs,
               valuta: meta.currency || 'EUR',
               totalAssets, ter, tob, beurs, marktOpen,
-              pct1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
+              pct1D: finnhubChange1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
               pct1J: pctLang(d1j), pct5J: pctLang(d5j),
             };
           } catch { return null; }
