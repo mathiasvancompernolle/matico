@@ -960,6 +960,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // Mega AUM (>100 mld USD)
           'IVV','SPY','VOO','VTI','QQQ','VEA','IUSQ.DE',
           // Large AUM (10-100 mld)
+          'MMLP.MI','JMLP.DE','AMLP',
           'IWDA.AS','EUNL.DE','SWDA.MI','CSPX.AS','SXR8.DE','VWCE.DE','VWCE.AS',
           'VWO','VUSA.AS','VUSA.L','VUAA.DE','IS3N.DE','EMIM.AS','EIMI.MI',
           'VXUS','VGK','VNQ','VPL','VWRL.AS','SCHD','VT',
@@ -998,7 +999,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'SP5C.PA','PAEEM.PA','CSP1.SW','CSE6.SW','PAEP.L',
           'STOXX.PA','EBLU.DE','BPAC.PA','CEUD.MI','BINFG.MI',
           'JPCT.MI','JPCS.MI','JREU.MI',
-          'IHI','AMLP','JMLP.DE','MLPX.MI',
+          'IHI','MLPX.MI',
           'V3AA.AS','VFEM.AS','GREP.SW','EWLD.L',
           'JPSR.SW','PCSR.AS','CHSR.SW','UKSR.L','SP5H.MI',
           'IGAE.DE','IGDA.DE','EQQQ.MI',
