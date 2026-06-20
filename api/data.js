@@ -967,7 +967,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'IUSA.AS','IVV','CSPX.L','SPY5.AS','SPXS.DE','SWRD.AS','SWRD.DE',
           // Medium AUM (1-10 mld)
           'CNDX.AS','CNDX.PA','CNX1.L','NASL.MI','PRIW.DE','PRAW.DE',
-          'LCUW.DE','ACWD.PA','SPYX.DE','FWIA.DE','PRIW.DE',
+          'LYMS.DE','LCUW.DE','ACWD.PA','SPYX.DE','FWIA.DE','PRIW.DE',
           'SMEA.AS','SMEA.MI','IEUA.AS','VHYL.AS','VFEM.AS',
           'SAEM.DE','SAEM.MI','AEEM.PA','PAEEM.PA',
           'IWVL.DE','IWVL.MI','IWMO.DE','IS3Q.DE','MVOL.DE','MVEA.DE',
@@ -1077,6 +1077,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'VUSA.L':   { ter: 0.07, tob: 0.12 },
         'VUAA.DE':  { ter: 0.07, tob: 0.12 },
         'VWRL.AS':  { ter: 0.22, tob: 0.12 },
+        'LYMS.DE':  { ter: 0.22, tob: 0.12 },
         'LCUW.DE':  { ter: 0.12, tob: 0.12 },
         'ACWD.PA':  { ter: 0.17, tob: 0.12 },
         'PRIW.DE':  { ter: 0.05, tob: 0.12 },
