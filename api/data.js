@@ -966,7 +966,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'VXUS','VGK','VNQ','VPL','VWRL.AS','SCHD','VT',
           'IUSA.AS','IVV','CSPX.L','SPY5.AS','SPXS.DE','SWRD.AS','SWRD.DE',
           // Medium AUM (1-10 mld)
-          'CNDX.AS','CNX1.L','NASL.MI','PRIW.DE','PRAW.DE',
+          'CNDX.AS','CNDX.PA','CNX1.L','NASL.MI','PRIW.DE','PRAW.DE',
           'LCUW.DE','ACWD.PA','SPYX.DE','FWIA.DE','PRIW.DE',
           'SMEA.AS','SMEA.MI','IEUA.AS','VHYL.AS','VFEM.AS',
           'SAEM.DE','SAEM.MI','AEEM.PA','PAEEM.PA',
