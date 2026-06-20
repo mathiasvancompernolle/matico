@@ -938,35 +938,11 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         const heeftData = nieuweData.stijgersBE.length > 0 || nieuweData.dalersBE.length > 0;
 
         if (heeftData) {
-          // Sla op in Blob cache met timestamp
-          const payload = { ...nieuweData, bijgewerkt: new Date().toISOString() };
-          try {
-            const { put } = require('@vercel/blob');
-            await put(BLOB_KEY_OVERZICHT, JSON.stringify(payload), { access: 'public', addRandomSuffix: false });
-          } catch (e) { /* blob opslaan mislukt, geen probleem */ }
           return res.json(nieuweData);
         } else {
-          // Geen live data → lees cache
-          try {
-            const { get } = require('@vercel/blob');
-            const blob = await get(BLOB_KEY_OVERZICHT);
-            if (blob) {
-              const cached = JSON.parse(await blob.text());
-              return res.json({ ...cached, uitCache: true });
-            }
-          } catch (e) { /* geen cache beschikbaar */ }
           return res.json({ stijgersBE: [], dalersBE: [], populairBE: [], populairIntl: [] });
         }
       } catch (e) {
-        // Fout → probeer cache
-        try {
-          const { get } = require('@vercel/blob');
-          const blob = await get(BLOB_KEY_OVERZICHT);
-          if (blob) {
-            const cached = JSON.parse(await blob.text());
-            return res.json({ ...cached, uitCache: true });
-          }
-        } catch (e2) { /* geen cache */ }
         return res.json({ stijgersBE: [], dalersBE: [], populairBE: [], populairIntl: [] });
       }
     }
@@ -1029,7 +1005,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'CHDVD.SW','SPAG.MI','EMUE.DE',
           'XMJP.DE','XZWD.DE','XMUS.L','XMUK.L',
           'IESE.DE','IWY','SCHD',
-        ],,
+        ],
         obligaties: [
           'AGGH.AS','IEAG.AS','IEGA.AS','XGSH.AS','IBGL.AS','EUNH.AS',
           'IBTS.AS','IEAC.AS','IUSB.AS','SUZE.AS','IBCI.AS','VGOV.AS','SEGA.AS','EUNA.AS',
