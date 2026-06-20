@@ -747,7 +747,10 @@ function EtfPagina({ onTerug }) {
                     <span className="etf-naam" title={e.naamVolledig || e.naam}>{e.naam}</span>
                   </div>
                 </td>
-                <td className="rechts">{fmtKoers(e.prijs, e.valuta)}</td>
+                <td className="rechts">
+                  {fmtKoers(e.prijs, e.valuta)}
+                  <span style={{ color: 'var(--text-muted)', fontSize: 11, marginLeft: 4 }}>{e.valuta}</span>
+                </td>
                 <td className="rechts">{fmtPctEtf(e.pct1D)}</td>
                 <td className="rechts">{fmtPctEtf(e.pct1M)}</td>
                 <td className="rechts">{fmtPctEtf(e.pct3M)}</td>
