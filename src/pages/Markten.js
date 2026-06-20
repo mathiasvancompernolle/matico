@@ -755,7 +755,7 @@ function EtfPagina({ onTerug }) {
                 <td className="rechts">{fmtPctEtf(e.pct5J)}</td>
                 <td className="rechts" style={{ color: 'var(--text-muted)', fontSize: 12 }}>{e.valuta}</td>
                 <td className="rechts" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {e.ter != null ? (e.ter * 100).toFixed(2) + '%' : '—'}
+                  {e.ter != null ? e.ter.toFixed(2) + '%' : '—'}
                 </td>
                 <td className="rechts" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   {e.tob != null ? e.tob.toFixed(2) + '%' : '0,12%'}
