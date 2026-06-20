@@ -1321,20 +1321,21 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const beurs = exchangeMap[exchCode] || meta.fullExchangeName || meta.exchangeName || '—';
             const marktOpen = meta.marketState === 'REGULAR';
 
-            // Als Yahoo geen prijs geeft, probeer v7 quote API als fallback
+            // Als Yahoo geen prijs geeft, probeer EODHD als fallback
             let eindPrijs = prijs;
             let eindChange1D = pct1D;
             if (!prijs) {
               try {
-                const r7 = await fetch(
-                  `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(sym)}`,
-                  { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } }
+                // EODHD format: EENG.MI → EENG.MI
+                const eoSym = sym.replace('.DE', '.XETRA').replace('.MI', '.MI').replace('.PA', '.PA').replace('.AS', '.AS');
+                const eoR = await fetch(
+                  `https://eodhd.com/api/real-time/${encodeURIComponent(sym)}?api_token=${process.env.EODHD_API_KEY}&fmt=json`,
+                  { headers: { 'User-Agent': 'Mozilla/5.0' } }
                 );
-                const d7 = await r7.json();
-                const q = d7?.quoteResponse?.result?.[0];
-                if (q?.regularMarketPrice) {
-                  eindPrijs = q.regularMarketPrice;
-                  eindChange1D = q.regularMarketChangePercent || 0;
+                const eoD = await eoR.json();
+                if (eoD?.close) {
+                  eindPrijs = eoD.close;
+                  eindChange1D = eoD.change_p || 0;
                 }
               } catch {}
             }
