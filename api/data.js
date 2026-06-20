@@ -1063,10 +1063,23 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const naamRaw = meta.longName || meta.shortName || sym;
             const naam = naamRaw.length > 40 ? naamRaw.slice(0, 39) + '…' : naamRaw;
 
+            // TER via quoteSummary
+            const ter = dAum?.quoteSummary?.result?.[0]?.summaryDetail?.annualReportExpenseRatio?.raw
+              || dAum?.quoteSummary?.result?.[0]?.fundProfile?.feesExpensesInvestment?.annualReportExpenseRatio?.raw
+              || null;
+
+            // TOB: 0.12% voor buitenlandse UCITS (Ierland IE, Luxemburg LU domicilie)
+            //      0.35% voor Belgische fondsen
+            //      Bepaal op basis van ISIN prefix of naam
+            const isin = dAum?.quoteSummary?.result?.[0]?.fundProfile?.categoryId || '';
+            const countryCode = meta.market || '';
+            let tob = 0.12; // default voor UCITS ETFs
+            if (countryCode === 'be_market') tob = 0.35;
+
             return {
               symbol: sym, naam, prijs,
               valuta: meta.currency || 'EUR',
-              totalAssets,
+              totalAssets, ter, tob,
               pct1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
               pct1J: pctLang(d1j), pct5J: pctLang(d5j),
             };

@@ -2045,3 +2045,11 @@ body.dark .top-nav {
   background: var(--bg-subtle);
   color: var(--text-primary);
 }
+
+/* ETF extra kolommen TER en TOB */
+.etf-tabel th:nth-child(8),
+.etf-tabel td:nth-child(8),
+.etf-tabel th:nth-child(9),
+.etf-tabel td:nth-child(9) {
+  white-space: nowrap;
+}
