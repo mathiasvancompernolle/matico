@@ -988,7 +988,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // Sector & thema
           'XLE','XLI','WTCH.AS','COPX','4COP.DE','COPX.DE',
           'NUCL.DE','URA','SLVR.DE','SILV.DE','REMX.DE','TMET.MI',
-          'DAPP.DE','BCHN.MI','EMQP.L','EMQQ.DE',
+          'DAPP.DE','BCHS.L','BCHN.MI','EMQP.L','EMQQ.DE',
           'ESPO.MI','SPCE.DE','XNET.MI',
           'FCBR.L','CIBR.MI','FSKY.L','FSKY.MI','FGRD.L','GRID.DE','GRID.MI',
           'IGF','INFR.MI','IPRV.SW','GLRE.L',
@@ -1146,6 +1146,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'REMX.DE':  { ter: 0.57, tob: 0.12 },
         'TMET.MI':  { ter: 0.50, tob: 0.12 },
         'DAPP.DE':  { ter: 0.65, tob: 0.12 },
+        'BCHS.L':   { ter: 0.65, tob: 0.12 },
         'BCHN.MI':  { ter: 0.65, tob: 0.12 },
         'EMQP.L':   { ter: 0.86, tob: 0.12 },
         'EMQQ.DE':  { ter: 0.86, tob: 0.12 },
