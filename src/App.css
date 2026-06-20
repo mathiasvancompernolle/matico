@@ -2039,3 +2039,9 @@ body.dark .top-nav {
 }
 
 .etf-toon-alles-knop:hover { text-decoration: underline; }
+
+/* ===== ETF TABEL SORTEERBARE KOLOMMEN ===== */
+.etf-tabel th:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}

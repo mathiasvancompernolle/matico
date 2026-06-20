@@ -612,11 +612,15 @@ function EtfPagina({ onTerug }) {
   const [etfs, setEtfs] = useState([]);
   const [laden, setLaden] = useState(true);
   const [toonAlles, setToonAlles] = useState(false);
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState('desc');
 
   useEffect(() => {
     setLaden(true);
     setEtfs([]);
     setToonAlles(false);
+    setSortCol(null);
+    setSortDir('desc');
     fetch(`/api/data?endpoint=etfs&categorie=${actieveTab}&toonAlles=false`)
       .then(r => r.json())
       .then(d => { setEtfs(Array.isArray(d) ? d : []); setLaden(false); })
@@ -630,6 +634,37 @@ function EtfPagina({ onTerug }) {
       .then(r => r.json())
       .then(d => { setEtfs(Array.isArray(d) ? d : []); setLaden(false); })
       .catch(() => setLaden(false));
+  };
+
+  const handleSort = (col) => {
+    if (!toonAlles) return; // alleen sorteren bij toon alles
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('desc');
+    }
+  };
+
+  const gesorteerdeEtfs = () => {
+    if (!sortCol) return etfs;
+    return [...etfs].sort((a, b) => {
+      let va = a[sortCol];
+      let vb = b[sortCol];
+      if (sortCol === 'naam') {
+        va = va || '';
+        vb = vb || '';
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+      va = va ?? -Infinity;
+      vb = vb ?? -Infinity;
+      return sortDir === 'asc' ? va - vb : vb - va;
+    });
+  };
+
+  const SortIcoon = ({ col }) => {
+    if (sortCol !== col) return <span style={{ color: 'var(--border)', marginLeft: 3 }}>↕</span>;
+    return <span style={{ marginLeft: 3 }}>{sortDir === 'asc' ? '↑' : '↓'}</span>;
   };
 
   const fmtKoers = (v, val) => {
@@ -669,13 +704,27 @@ function EtfPagina({ onTerug }) {
         <table className="etf-tabel">
           <thead>
             <tr>
-              <th>Instrument</th>
-              <th className="rechts">Koers</th>
-              <th className="rechts">%1D koers</th>
-              <th className="rechts">% 1M</th>
-              <th className="rechts">% 3M</th>
-              <th className="rechts">% 1J</th>
-              <th className="rechts">% 5J</th>
+              <th onClick={() => handleSort('naam')} style={{ cursor: toonAlles ? 'pointer' : 'default' }}>
+                Instrument{toonAlles && <SortIcoon col="naam" />}
+              </th>
+              <th className="rechts" onClick={() => handleSort('prijs')} style={{ cursor: toonAlles ? 'pointer' : 'default' }}>
+                Koers{toonAlles && <SortIcoon col="prijs" />}
+              </th>
+              <th className="rechts" onClick={() => handleSort('pct1D')} style={{ cursor: toonAlles ? 'pointer' : 'default' }}>
+                %1D koers{toonAlles && <SortIcoon col="pct1D" />}
+              </th>
+              <th className="rechts" onClick={() => handleSort('pct1M')} style={{ cursor: toonAlles ? 'pointer' : 'default' }}>
+                % 1M{toonAlles && <SortIcoon col="pct1M" />}
+              </th>
+              <th className="rechts" onClick={() => handleSort('pct3M')} style={{ cursor: toonAlles ? 'pointer' : 'default' }}>
+                % 3M{toonAlles && <SortIcoon col="pct3M" />}
+              </th>
+              <th className="rechts" onClick={() => handleSort('pct1J')} style={{ cursor: toonAlles ? 'pointer' : 'default' }}>
+                % 1J{toonAlles && <SortIcoon col="pct1J" />}
+              </th>
+              <th className="rechts" onClick={() => handleSort('pct5J')} style={{ cursor: toonAlles ? 'pointer' : 'default' }}>
+                % 5J{toonAlles && <SortIcoon col="pct5J" />}
+              </th>
               <th className="rechts">Valuta</th>
             </tr>
           </thead>
@@ -686,7 +735,7 @@ function EtfPagina({ onTerug }) {
                   <td key={j}><div className="tabel-skeleton" style={{ width: j === 0 ? '80%' : 50 }} /></td>
                 ))}
               </tr>
-            )) : etfs.map((e, i) => (
+            )) : gesorteerdeEtfs().map((e, i) => (
               <tr key={i}>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
