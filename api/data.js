@@ -1321,31 +1321,13 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const beurs = exchangeMap[exchCode] || meta.fullExchangeName || meta.exchangeName || '—';
             const marktOpen = meta.marketState === 'REGULAR';
 
-            // Als Yahoo geen prijs geeft, probeer EODHD als fallback
-            let eindPrijs = prijs;
-            let eindChange1D = pct1D;
-            if (!prijs) {
-              try {
-                // EODHD format: EENG.MI → EENG.MI
-                const eoSym = sym.replace('.DE', '.XETRA').replace('.MI', '.MI').replace('.PA', '.PA').replace('.AS', '.AS');
-                const eoR = await fetch(
-                  `https://eodhd.com/api/real-time/${encodeURIComponent(sym)}?api_token=${process.env.EODHD_API_KEY}&fmt=json`,
-                  { headers: { 'User-Agent': 'Mozilla/5.0' } }
-                );
-                const eoD = await eoR.json();
-                if (eoD?.close) {
-                  eindPrijs = eoD.close;
-                  eindChange1D = eoD.change_p || 0;
-                }
-              } catch {}
-            }
-            if (!eindPrijs) return null;
+            if (!prijs) return null;
 
             return {
-              symbol: sym, naam, naamVolledig, prijs: eindPrijs,
+              symbol: sym, naam, naamVolledig, prijs,
               valuta: meta.currency || 'EUR',
               totalAssets, ter, tob, beurs, marktOpen,
-              pct1D: eindChange1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
+              pct1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
               pct1J: pctLang(d1j), pct5J: pctLang(d5j),
             };
           } catch { return null; }
