@@ -980,31 +980,56 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
       // ETF lijsten: ALLE aandelen ETFs van Saxo Investor
       const ETF_LIJSTEN = {
         aandelen: [
-          'MMLP.MI','AMLP','LCUW.DE','CNDX.PA','CSP1.SW','MEU.PA','AEEM.PA','TNOW.PA',
-          'MWRD.PA','PAEEM.PA','PAASI.PA','PANXG.PA','PRIW.DE','PRAW.DE','PAPU.MI','PAEP.L',
-          'CSE6.SW','STOXX.PA','NASL.MI','SP5C.PA','ESE.PA','CEUD.MI','EBLU.DE','BPAC.PA',
-          'BINFG.MI','EMQQ.DE','FSKY.MI','CIBR.MI','GRID.MI','COPX','COPX.DE','SILV.DE',
-          'URA','H50E.SW','BCHN.MI','FWIA.DE','IGDA.DE','IGAE.DE','MLPX.MI','EQQQ.MI',
-          'QQQ','CHDVD.SW','IAEX.AS','AGED.MI','SPAG.MI','RBOT.DE','EUE.AS','EXW1.DE',
-          'CUKX.SW','EMIM.AS','EIMI.MI','IS3N.DE','SMEA.AS','SMEA.MI','IEUA.AS',
-          'IJPA.MI','EXS2.DE','IWDA.AS','SWDA.MI','EUNL.DE','CSPX.AS','SXR8.DE','CSPX.L',
-          'IUSA.AS','IVV','MVEA.DE','MVOL.DE','IWMO.DE','IS3Q.DE','IWVL.MI','IWVL.DE',
-          'ECAR.MI','IGV','ICLN','CLEA.MI','IGF','INFR.MI','IAUP.DE','IPRV.SW',
-          'IUSQ.DE','AAXJ','ICGA.AS','SAEM.DE','SAEM.MI','EMUE.DE','QDVA.DE',
-          'EUSC.DE','IESE.DE','SEMI.DE','SEMI.MI','SEMI.AS','INDA','IIND.DE','IJSE.DE',
-          'IJPN.AS','EWY','IUES.DE','IESH.MI','IWDE.DE','IWDH.MI','WQDE.DE','XDWD.DE',
-          'WSML.DE','CNDX.AS','CNX1.L','IITU.DE','IITU.SW','SOXX',
-          'EXV1.DE','EXH1.DE','EXSA.DE','IHI','IYW','JPCT.MI','JPCS.MI','JREU.MI',
-          'BATT.MI','RENW.MI','GLGG.MI','SCHD','GLRE.L','ACWD.PA','SPYX.DE','XLE',
-          'XLI','SWRD.AS','SWRD.DE','WTCH.AS','SPXS.DE','SPY','SPY5.AS','GREP.SW',
-          'EWLD.L','JPSR.SW','PCSR.AS','CHSR.SW','UKSR.L','SP5H.MI','VAEX.AS','DAPP.DE',
-          'DFNS.DE','DFNS.MI','TRET.AS','GDX.DE','GDX.MI','TDIV.AS','REMX.DE',
-          'TMET.MI','SMH.DE','SMH.MI','SMH','SPCE.DE','NUCL.DE','ESPO.MI','TGET.AS',
-          'V3AA.AS','VUKE.L','VHYL.AS','VWCE.DE','VWCE.AS','VWCE.MI','VWRL.AS','VEA',
-          'VWO','VFEM.AS','VGK','VPL','VNQ','VUAA.DE','VUSA.L','VUSA.AS',
-          'VOO','VXUS','VTI','VT','WDEF.DE','XAIX.MI','XAIX.DE','XMJP.DE',
-          'XNET.MI','XZWD.DE','XDWU.DE','XEQW.DE','XSPX.DE',
-        ],
+          // Gesorteerd op beheerd vermogen (AUM) - grootste eerst
+          // Mega AUM (>100 mld USD)
+          'IVV','SPY','VOO','VTI','QQQ','VEA','IUSQ.DE',
+          // Large AUM (10-100 mld)
+          'IWDA.AS','EUNL.DE','SWDA.MI','CSPX.AS','SXR8.DE','VWCE.DE','VWCE.AS',
+          'VWO','VUSA.AS','VUSA.L','VUAA.DE','IS3N.DE','EMIM.AS','EIMI.MI',
+          'VXUS','VGK','VNQ','VPL','VWRL.AS','SCHD','VT',
+          'IUSA.AS','IVV','CSPX.L','SPY5.AS','SPXS.DE','SWRD.AS','SWRD.DE',
+          // Medium AUM (1-10 mld)
+          'CNDX.AS','CNX1.L','NASL.MI','PRIW.DE','PRAW.DE',
+          'LCUW.DE','ACWD.PA','SPYX.DE','FWIA.DE','PRIW.DE',
+          'SMEA.AS','SMEA.MI','IEUA.AS','VHYL.AS','VFEM.AS',
+          'SAEM.DE','SAEM.MI','AEEM.PA','PAEEM.PA',
+          'IWVL.DE','IWVL.MI','IWMO.DE','IS3Q.DE','MVOL.DE','MVEA.DE',
+          'SEMI.DE','SEMI.MI','SEMI.AS','SMH','SMH.DE','SMH.MI','SOXX',
+          'XDWD.DE','XZWD.DE','XSPX.DE','XEQW.DE','XDWU.DE',
+          'EXW1.DE','EXSA.DE','EXV1.DE','EXH1.DE',
+          'IITU.DE','IITU.SW','IYW','IGV',
+          'WSML.DE','IUSQ.DE','ICLN','CLEA.MI',
+          'GDX.DE','GDX.MI','IAUP.DE',
+          'DFNS.DE','DFNS.MI','WDEF.DE',
+          'RBOT.DE','ECAR.MI','AGED.MI',
+          'BATT.MI','RENW.MI','GLGG.MI',
+          'XAIX.DE','XAIX.MI','INDA','IIND.DE',
+          'IJPA.MI','EXS2.DE','IJSE.DE','IJPN.AS',
+          'EUE.AS','EXW1.DE','CUKX.SW','H50E.SW',
+          'TDIV.AS','TGET.AS','TRET.AS','VAEX.AS','IAEX.AS',
+          'VUKE.L','VGK','IEUA.AS','EUSC.DE','IESE.DE',
+          // Sector & thema
+          'XLE','XLI','WTCH.AS','COPX','COPX.DE',
+          'NUCL.DE','URA','SILV.DE','REMX.DE','TMET.MI',
+          'DAPP.DE','BCHN.MI','EMQQ.DE',
+          'ESPO.MI','SPCE.DE','XNET.MI',
+          'CIBR.MI','FSKY.MI','GRID.MI',
+          'IGF','INFR.MI','IPRV.SW','GLRE.L',
+          'ICGA.AS','AAXJ','EWY','IESH.MI',
+          'QDVA.DE','EMUE.DE','WQDE.DE','IWDE.DE','IWDH.MI',
+          'TNOW.PA','MWRD.PA','CNDX.PA',
+          'MEU.PA','ESE.PA','PAPU.MI','PAASI.PA','PANXG.PA',
+          'SP5C.PA','PAEEM.PA','CSP1.SW','CSE6.SW','PAEP.L',
+          'STOXX.PA','EBLU.DE','BPAC.PA','CEUD.MI','BINFG.MI',
+          'JPCT.MI','JPCS.MI','JREU.MI',
+          'IHI','AMLP','MMLP.MI','MLPX.MI',
+          'V3AA.AS','VFEM.AS','GREP.SW','EWLD.L',
+          'JPSR.SW','PCSR.AS','CHSR.SW','UKSR.L','SP5H.MI',
+          'IGAE.DE','IGDA.DE','EQQQ.MI',
+          'CHDVD.SW','SPAG.MI','EMUE.DE',
+          'XMJP.DE','XZWD.DE','XMUS.L','XMUK.L',
+          'IESE.DE','IWY','SCHD',
+        ],,
         obligaties: [
           'AGGH.AS','IEAG.AS','IEGA.AS','XGSH.AS','IBGL.AS','EUNH.AS',
           'IBTS.AS','IEAC.AS','IUSB.AS','SUZE.AS','IBCI.AS','VGOV.AS','SEGA.AS','EUNA.AS',
@@ -1072,7 +1097,12 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         }));
 
         // Sorteer op beheerd vermogen (grootste eerst)
-        const gesorteerd = results.filter(Boolean).sort((a, b) => b.totalAssets - a.totalAssets);
+        // Als totalAssets beschikbaar is → gebruik die, anders behoud volgorde van de lijst (al gesorteerd op AUM)
+        const filtered = results.filter(Boolean);
+        const heeftAum = filtered.some(e => e.totalAssets > 0);
+        const gesorteerd = heeftAum
+          ? filtered.sort((a, b) => b.totalAssets - a.totalAssets)
+          : filtered; // lijst staat al in AUM volgorde
 
         // Top 10 of alles tonen
         const output = toonAlles === 'true' ? gesorteerd : gesorteerd.slice(0, 10);
