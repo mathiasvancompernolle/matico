@@ -1321,30 +1321,30 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const beurs = exchangeMap[exchCode] || meta.fullExchangeName || meta.exchangeName || '—';
             const marktOpen = meta.marketState === 'REGULAR';
 
-            // Als Yahoo geen prijs geeft, probeer Finnhub als fallback
-            let finnhubPrijs = prijs;
-            let finnhubChange1D = pct1D;
+            // Als Yahoo geen prijs geeft, probeer v7 quote API als fallback
+            let eindPrijs = prijs;
+            let eindChange1D = pct1D;
             if (!prijs) {
               try {
-                // Finnhub gebruikt format zoals EENG:MIL voor Milan-genoteerde ETFs
-                const parts = sym.split('.');
-                const exchMap = {'DE':'XETR','MI':'MIL','PA':'XPAR','AS':'AMS','L':'LSE','SW':'SWX'};
-                const fhSym = parts.length === 2 ? `${parts[0]}:${exchMap[parts[1]] || parts[1]}` : sym;
-                const fhR = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(fhSym)}&token=${process.env.FINNHUB_API_KEY}`);
-                const fhD = await fhR.json();
-                if (fhD.c) {
-                  finnhubPrijs = fhD.c;
-                  finnhubChange1D = fhD.pc ? ((fhD.c - fhD.pc) / fhD.pc) * 100 : 0;
+                const r7 = await fetch(
+                  `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(sym)}`,
+                  { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } }
+                );
+                const d7 = await r7.json();
+                const q = d7?.quoteResponse?.result?.[0];
+                if (q?.regularMarketPrice) {
+                  eindPrijs = q.regularMarketPrice;
+                  eindChange1D = q.regularMarketChangePercent || 0;
                 }
               } catch {}
             }
-            if (!finnhubPrijs) return null;
+            if (!eindPrijs) return null;
 
             return {
-              symbol: sym, naam, naamVolledig, prijs: finnhubPrijs,
+              symbol: sym, naam, naamVolledig, prijs: eindPrijs,
               valuta: meta.currency || 'EUR',
               totalAssets, ter, tob, beurs, marktOpen,
-              pct1D: finnhubChange1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
+              pct1D: eindChange1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
               pct1J: pctLang(d1j), pct5J: pctLang(d5j),
             };
           } catch { return null; }
