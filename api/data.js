@@ -880,7 +880,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             try {
               // Gebruik chart API met range=5d → geeft altijd data, ook buiten beursurenre
               const r = await fetch(
-                `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`,
+                `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d`,
                 { headers: { 'User-Agent': 'Mozilla/5.0' } }
               );
               const d = await r.json();
@@ -908,7 +908,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           const intlResults = await Promise.all(INTL.map(async (sym) => {
             try {
               const r = await fetch(
-                `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`,
+                `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d`,
                 { headers: { 'User-Agent': 'Mozilla/5.0' } }
               );
               const d = await r.json();
@@ -1269,7 +1269,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         const results = await Promise.all(syms.map(async (sym) => {
           try {
             const [r1d, r1m, r3m, r1j, r5j, rAum] = await Promise.all([
-              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
               fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
               fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=3mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
               fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1wk&range=1y`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
