@@ -1219,7 +1219,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'EBLU.DE':  { ter: 0.30, tob: 0.12 },
         'EPEJ.PA':  { ter: 0.15, tob: 0.12 },
         'BPAC.PA':  { ter: 0.15, tob: 0.12 },
-        'EENG.MI':  { ter: 0.40, tob: 0.12 },
+        'EENG.MI':  { ter: 0.31, tob: 0.12 },
         'BINFG.MI': { ter: 0.40, tob: 0.12 },
         'XMJP.DE':  { ter: 0.20, tob: 0.12 },
         'XZWD.DE':  { ter: 0.20, tob: 0.12 },
