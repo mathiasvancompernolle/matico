@@ -1,4 +1,4 @@
-// v15-nasdaq-fix  
+// v16-etf-beurs
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -995,7 +995,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'ICGA.AS','AAXJ','EWY','IESH.MI',
           'QDVA.DE','EMUE.DE','WQDE.DE','IWDE.DE','IWDH.MI',
           'TNOW.PA','MWRD.PA','CNDX.PA',
-          'MEUD.L','MEUD.PA','MEU.PA','ESE.PA','PAPU.MI','PAASI.PA','PANXG.PA',
+          'MEUD.L','MEUD.PA','LYP6.DE','MEU.PA','ESE.PA','PAPU.MI','PAASI.PA','PANXG.PA',
           'PAEEM.PA','LYSP5.SW','CSE6.SW','PAEP.L',
           'STOXX.PA','EBLU.DE','BPAC.PA','CEUD.MI','BINFG.MI',
           'JPCT.MI','JPCS.MI','JREU.MI',
@@ -1166,6 +1166,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'NASL.MI':  { ter: 0.14, tob: 0.12 },
         'MEUD.L':   { ter: 0.07, tob: 0.12 },
         'MEUD.PA':  { ter: 0.07, tob: 0.12 },
+        'LYP6.DE':  { ter: 0.07, tob: 0.12 },
         'MEU.PA':   { ter: 0.07, tob: 0.12 },
         'ESE.PA':   { ter: 0.19, tob: 0.12 },
         'PAPU.MI':  { ter: 0.07, tob: 0.12 },
