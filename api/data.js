@@ -1292,10 +1292,23 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const ter = metaLookup.ter ?? null;
             const tob = metaLookup.tob ?? 0.12;
 
+            // Beurs naam en status
+            const exchangeMap = {
+              'AMS': 'Euronext Amsterdam', 'EPA': 'Euronext Paris', 'PAR': 'Euronext Paris',
+              'ETR': 'Xetra', 'XETR': 'Xetra', 'GER': 'Xetra',
+              'MIL': 'Euronext Milan', 'BIT': 'Euronext Milan',
+              'LSE': 'London SE', 'IOB': 'London SE',
+              'SWX': 'SIX Swiss', 'VTX': 'SIX Swiss',
+              'NMS': 'Nasdaq', 'NGM': 'Nasdaq', 'PCX': 'NYSE Arca', 'NYQ': 'NYSE',
+            };
+            const exchCode = (meta.exchangeName || meta.fullExchangeName || '').toUpperCase();
+            const beurs = exchangeMap[exchCode] || meta.fullExchangeName || meta.exchangeName || '—';
+            const marktOpen = meta.marketState === 'REGULAR';
+
             return {
               symbol: sym, naam, prijs,
               valuta: meta.currency || 'EUR',
-              totalAssets, ter, tob,
+              totalAssets, ter, tob, beurs, marktOpen,
               pct1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
               pct1J: pctLang(d1j), pct5J: pctLang(d5j),
             };

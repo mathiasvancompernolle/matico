@@ -729,6 +729,7 @@ function EtfPagina({ onTerug }) {
                 Lopende k.{toonAlles && <SortIcoon col="ter" />}
               </th>
               <th className="rechts">Beurstaks</th>
+              <th>Beurs</th>
             </tr>
           </thead>
           <tbody>
@@ -761,6 +762,14 @@ function EtfPagina({ onTerug }) {
                 </td>
                 <td className="rechts" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   {e.tob != null ? e.tob.toFixed(2) + '%' : '0,12%'}
+                </td>
+                <td style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
+                  <span style={{
+                    display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                    background: e.marktOpen ? '#10b981' : '#ef4444',
+                    marginRight: 5, verticalAlign: 'middle'
+                  }} />
+                  {e.beurs || '—'}
                 </td>
               </tr>
             ))}
