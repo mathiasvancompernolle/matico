@@ -992,7 +992,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'ESPO.MI','SPCE.DE','XNET.MI',
           'FCBR.L','CIBR.MI','FSKY.L','FSKY.MI','FGRD.L','GRID.DE','GRID.MI',
           'IGF','INFR.MI','GLRE.L',
-          'IPRV.SW','IPRV.SW','ICGA.AS','AAXJ','EWY','IESH.MI',
+          'IPRV.SW','IPRV.SW','AAXJ','ICGA.AS','AAXJ','EWY','IESH.MI',
           'QDVA.DE','EMUE.DE','WQDE.DE','IWDE.DE','IWDH.MI',
           'TNOW.PA','CW8.PA','MWRD.PA','CNDX.PA',
           'MEUD.L','MEUD.PA','LYP6.DE','DEFS.PA','ETZ.PA','ESE.PA','PABUS.MI','PAPU.MI','PAEEM.PA','PAASI.PA','PUST.PA','PANXG.PA',
