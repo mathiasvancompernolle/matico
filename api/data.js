@@ -968,7 +968,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // Medium AUM (1-10 mld)
           'CNDX.AS','CNDX.PA','CNX1.L','ANAV.DE','PRIW.DE','WEBN.DE','F50A.DE',
           'LYMS.DE','ACWD.PA','SPYX.DE','FWIA.DE','PRIW.DE',
-          'IMEA.SW','IMAE.AS','EUNK.DE','SMEA.AS','SMEA.MI','IEUA.AS','VHYL.AS','VFEM.AS',
+          'IMEA.SW','IMAE.AS','EUNK.DE','SMEA.AS','SMEA.MI','IMEU.AS','IEUA.AS','VHYL.AS','VFEM.AS',
           'SAEM.DE','SAEM.MI','AEEM.PA',
           'IWVL.DE','IWVL.MI','IWMO.DE','IS3Q.DE','MVOL.DE','MVEA.DE',
           'SEMI.DE','SEMI.MI','SEMI.AS','SMH','SMH.DE','SMH.MI','SOXX',
@@ -984,7 +984,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'IJPA.MI','EXS2.DE','IJSE.DE','IJPN.AS',
           'IAEX.AS','EUEA.AS','SXRT.DE','CSSX5E.MI','EXV1.DE','ISF.SW','CUKX.SW','H50E.SW',
           'TDIV.AS','TGET.AS','TRET.AS',
-          'VUKE.L','VGK','IEUA.AS','EUSC.DE','IESE.DE',
+          'VUKE.L','VGK','IMEU.AS','IEUA.AS','EUSC.DE','IESE.DE',
           // Sector & thema
           'XLE','XLI','WTCH.AS','COPX','4COP.DE','COPX.DE',
           'NUCL.DE','URA','SLVR.DE','SILV.DE','REMX.DE','TMET.MI',
@@ -1089,6 +1089,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'EUNK.DE':  { ter: 0.12, tob: 0.12 },
         'SMEA.AS':  { ter: 0.12, tob: 0.12 },
         'SMEA.MI':  { ter: 0.12, tob: 0.12 },
+        'IMEU.AS':  { ter: 0.12, tob: 0.12 },
         'IEUA.AS':  { ter: 0.12, tob: 0.12 },
         'VHYL.AS':  { ter: 0.29, tob: 0.12 },
         'VFEM.AS':  { ter: 0.22, tob: 0.12 },
