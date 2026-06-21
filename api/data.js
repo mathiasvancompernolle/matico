@@ -961,7 +961,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'IVV','SPY','VOO','VTI','QQQ','VEA','IUSQ.DE',
           // Large AUM (10-100 mld)
           'MMLP.MI','AMLP',
-          'SWDA.SW','IWDA.L','IWDG.L','IWDA.AS','EUNL.DE','SWDA.MI','CSPX.AS','SXR8.DE','VWCE.DE','VWCE.AS',
+          'SWDA.SW','IWDA.L','IWDG.L','IWDA.AS','EUNL.DE','SWDA.MI','CSSPX.MI','CSPX.AS','VWCE.DE','VWCE.AS',
           'VWO','VUSA.AS','VUSA.L','VUAA.DE','IS3N.DE','EMIM.L','EIMI.SW','EMIM.AS','EIMI.MI',
           'VXUS','VGK','VNQ','VPL','VWRL.AS','SCHD','VT',
           'IUSA.AS','IVV','CSPX.L','SPY5.AS','SWRD.AS','SWRD.DE',
@@ -1067,8 +1067,8 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'IWDA.AS':  { ter: 0.20, tob: 0.12 },
         'EUNL.DE':  { ter: 0.20, tob: 0.12 },
         'SWDA.MI':  { ter: 0.20, tob: 0.12 },
+        'CSSPX.MI': { ter: 0.07, tob: 0.12 },
         'CSPX.AS':  { ter: 0.07, tob: 0.12 },
-        'SXR8.DE':  { ter: 0.07, tob: 0.12 },
         'CSPX.L':   { ter: 0.07, tob: 0.12 },
         'IUSA.AS':  { ter: 0.07, tob: 0.12 },
         'EMIM.L':   { ter: 0.18, tob: 0.12 },
