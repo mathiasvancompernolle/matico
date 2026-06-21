@@ -958,7 +958,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         aandelen: [
           // Gesorteerd op beheerd vermogen (AUM) - grootste eerst
           // Mega AUM (>100 mld USD)
-          'SPY','VOO','VTI','QQQ','VEA','IUSQ.DE',
+          'SPY','VOO','VTI','QQQ','VEA',
           // Large AUM (10-100 mld)
           'MMLP.MI','AMLP',
           'SWDA.SW','IWDA.L','IWDG.L','IWDA.AS','EUNL.DE','SWDA.MI','IVV','CSSPX.MI','CSSPX.SW','CSPX.AS','VWCE.DE','VWCE.AS',
@@ -975,8 +975,8 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'XDWD.DE','XZWD.DE','XSPX.DE','XEQW.DE','XDWU.DE',
           'EXV1.DE','EXSA.DE',
           'IITU.DE','IITU.SW','IYW','IGV',
-          'WSML.DE','IUSQ.DE','ICLN','IQQH.DE','INRG.MI','CLEA.MI',
-          'IAUP.SW','GDX.MI',
+          'WSML.DE','ICLN','IQQH.DE','INRG.MI','CLEA.MI',
+          'IAUP.SW','IS0E.DE','GDX.MI',
           'DFNS.DE','DFNS.MI','WDEF.DE',
           '2B76.DE','RBOT.SW','RBOT.DE','GCAR.L','ECAR.MI','AGED.MI',
           'BATT.MI','RENW.MI','GLGG.MI',
@@ -1132,6 +1132,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'INRG.MI':  { ter: 0.65, tob: 0.12 },
         'CLEA.MI':  { ter: 0.65, tob: 0.12 },
         'IAUP.SW':  { ter: 0.55, tob: 0.12 },
+        'IS0E.DE':  { ter: 0.55, tob: 0.12 },
         'GDX.MI':   { ter: 0.51, tob: 0.12 },
         'DFNS.DE':  { ter: 0.49, tob: 0.12 },
         'DFNS.MI':  { ter: 0.49, tob: 0.12 },
