@@ -982,7 +982,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'BATT.MI','RENW.MI','GLGG.MI',
           'XAIX.DE','XAIX.MI','INDA','QDV5.DE','IIND.DE',
           'EUNN.DE','SJPA.MI','SJPA.L','CJPA.SW','JPNH.SW','IJPN.AS','IJPA.MI','EXS2.DE','IJSE.DE','IJPN.AS',
-          'IAEX.AS','EUEA.AS','SXRT.DE','CSSX5E.MI','EXV1.DE','ISF.SW','CUKX.SW','H50E.SW',
+          'IAEX.AS','IUES.SW','EUEA.AS','SXRT.DE','CSSX5E.MI','EXV1.DE','ISF.SW','CUKX.SW','H50E.SW',
           'TDIV.AS','TGET.AS','TRET.AS',
           'VUKE.L','VGK','IEUA.AS','EUSC.DE','SLMC.DE','IUSK.DE','SLUS.DE','GPSA.L','SGAS.DE','IESE.DE',
           // Sector & thema
@@ -1176,6 +1176,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'IJPN.AS':  { ter: 0.12, tob: 0.12 },
 
         'IAEX.AS':  { ter: 0.30, tob: 0.12 },
+        'IUES.SW':  { ter: 0.15, tob: 0.12 },
         'EUEA.AS':  { ter: 0.10, tob: 0.12 },
         'SXRT.DE':  { ter: 0.10, tob: 0.12 },
         'CSSX5E.MI':{ ter: 0.10, tob: 0.12 },
