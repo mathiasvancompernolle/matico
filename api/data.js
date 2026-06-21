@@ -958,13 +958,13 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         aandelen: [
           // Gesorteerd op beheerd vermogen (AUM) - grootste eerst
           // Mega AUM (>100 mld USD)
-          'IVV','SPY','VOO','VTI','QQQ','VEA','IUSQ.DE',
+          'SPY','VOO','VTI','QQQ','VEA','IUSQ.DE',
           // Large AUM (10-100 mld)
           'MMLP.MI','AMLP',
-          'SWDA.SW','IWDA.L','IWDG.L','IWDA.AS','EUNL.DE','SWDA.MI','CSSPX.MI','CSSPX.SW','CSPX.AS','VWCE.DE','VWCE.AS',
+          'SWDA.SW','IWDA.L','IWDG.L','IWDA.AS','EUNL.DE','SWDA.MI','IVV','CSSPX.MI','CSSPX.SW','CSPX.AS','VWCE.DE','VWCE.AS',
           'VWO','VUSA.AS','VUSA.L','VUAA.DE','IS3N.DE','EMIM.L','EIMI.SW','EMIM.AS','EIMI.MI',
           'VXUS','VGK','VNQ','VPL','VWRL.AS','SCHD','VT',
-          'IUSA.AS','IVV','CSPX.L','SPY5.AS','SWRD.AS','SWRD.DE',
+          'IUSA.AS','CSPX.L','SPY5.AS','SWRD.AS','SWRD.DE',
           // Medium AUM (1-10 mld)
           'CNDX.AS','CNDX.PA','CNX1.L','ANAV.DE','PRIW.DE','WEBN.DE','F50A.DE',
           'LYMS.DE','ACWD.PA','SPYX.DE','FWIA.DE','PRIW.DE',
@@ -1029,7 +1029,6 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
       //      1.32% voor niet-UCITS US ETFs (SPY, IVV, VOO, QQQ, VTI etc.)
       const ETF_META = {
         // Mega cap US ETFs (niet-UCITS → TOB 1.32%)
-        'IVV':    { ter: 0.03, tob: 0.35 },
         'SPY':    { ter: 0.09, tob: 0.35 },
         'VOO':    { ter: 0.03, tob: 0.35 },
         'VTI':    { ter: 0.03, tob: 0.35 },
@@ -1067,6 +1066,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'IWDA.AS':  { ter: 0.20, tob: 0.12 },
         'EUNL.DE':  { ter: 0.20, tob: 0.12 },
         'SWDA.MI':  { ter: 0.20, tob: 0.12 },
+        'IVV':      { ter: 0.03, tob: 0.35 },
         'CSSPX.MI': { ter: 0.07, tob: 0.12 },
         'CSSPX.SW': { ter: 0.07, tob: 0.12 },
         'CSPX.AS':  { ter: 0.07, tob: 0.12 },
