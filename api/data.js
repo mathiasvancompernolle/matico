@@ -984,7 +984,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'EUNN.DE','SJPA.MI','SJPA.L','CJPA.SW','JPNH.SW','IJPA.MI','EXS2.DE','IJSE.DE','IJPN.AS',
           'IAEX.AS','EUEA.AS','SXRT.DE','CSSX5E.MI','EXV1.DE','ISF.SW','CUKX.SW','H50E.SW',
           'TDIV.AS','TGET.AS','TRET.AS',
-          'VUKE.L','VGK','IEUA.AS','EUSC.DE','IESE.DE',
+          'VUKE.L','VGK','IEUA.AS','EUSC.DE','SLMC.DE','IESE.DE',
           // Sector & thema
           'XLE','XLI','WTCH.AS','COPX','4COP.DE','COPX.DE',
           'NUCL.DE','URA','SLVR.DE','SILV.DE','REMX.DE','TMET.MI',
@@ -1005,7 +1005,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'LVLC.L','LVLC.F','IGDA.DE','IQSA.MI','IQSA.DE','IGAE.DE','NESG.MI','EQQQ.MI',
           'CHDVD.SW','SPAG.L','ISAG.MI','SPAG.MI','EMUE.DE',
           'XMJP.DE','XZWD.DE','XMUS.L','XMUK.L',
-          'IESE.DE','IWY','SCHD',
+          'SLMC.DE','IESE.DE','IWY','SCHD',
         ],
         obligaties: [
           'AGGH.AS','IEAG.AS','IEGA.AS','XGSH.AS','IBGL.AS','EUNH.AS',
@@ -1177,6 +1177,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'TRET.AS':  { ter: 0.25, tob: 0.12 },
         'VUKE.L':   { ter: 0.09, tob: 0.12 },
         'EUSC.DE':  { ter: 0.20, tob: 0.12 },
+        'SLMC.DE':  { ter: 0.20, tob: 0.12 },
         'IESE.DE':  { ter: 0.20, tob: 0.12 },
         '4COP.DE':  { ter: 0.65, tob: 0.12 },
         'COPX.DE':  { ter: 0.65, tob: 0.12 },
