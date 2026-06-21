@@ -1188,6 +1188,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'FGRD.L':   { ter: 0.60, tob: 0.12 },
         'GRID.DE':  { ter: 0.60, tob: 0.12 },
         'GRID.MI':  { ter: 0.60, tob: 0.12 },
+        'IGF':      { ter: 0.40, tob: 0.35 },
         'INFR.MI':  { ter: 0.65, tob: 0.12 },
         'IPRV.SW':  { ter: 0.75, tob: 0.12 },
         'ICGA.AS':  { ter: 0.65, tob: 0.12 },
