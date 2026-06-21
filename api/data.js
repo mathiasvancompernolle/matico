@@ -1004,7 +1004,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'JPSR.SW','PCSR.AS','CHSR.SW','UKSR.L','SP5H.MI',
           'LVLC.L','LVLC.F','IGDA.DE','IQSA.MI','IQSA.DE','IGAE.DE','NESG.MI','EQQQ.MI',
           'CHDVD.SW','SPAG.L','ISAG.MI','SPAG.MI','EMUE.DE',
-          'XMJP.DE','XZWD.DE','XMUS.L','XMUK.L',
+          'SGAJ.DE','XMJP.DE','XZWD.DE','XMUS.L','XMUK.L',
           'SLMC.DE','IUSK.DE','IESE.DE','IWY','SCHD',
         ],
         obligaties: [
@@ -1287,6 +1287,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'ENG.PA':   { ter: 0.31, tob: 0.12 },
         'EENG.MI':  { ter: 0.31, tob: 0.12 },
         'BINFG.MI': { ter: 0.40, tob: 0.12 },
+        'SGAJ.DE':  { ter: 0.20, tob: 0.12 },
         'XMJP.DE':  { ter: 0.20, tob: 0.12 },
         'XZWD.DE':  { ter: 0.20, tob: 0.12 },
         'SPY5.AS':  { ter: 0.03, tob: 0.12 },
