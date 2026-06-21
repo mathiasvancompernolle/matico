@@ -982,7 +982,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'BATT.MI','RENW.MI','GLGG.MI',
           'XAIX.DE','XAIX.MI','INDA','IIND.DE',
           'IJPA.MI','EXS2.DE','IJSE.DE','IJPN.AS',
-          'IAEX.AS','EUEA.AS','SXRT.DE','CSSX5E.MI','EXV1.DE','CUKX.SW','H50E.SW',
+          'IAEX.AS','EUEA.AS','SXRT.DE','CSSX5E.MI','EXV1.DE','ISF.SW','CUKX.SW','H50E.SW',
           'TDIV.AS','TGET.AS','TRET.AS',
           'VUKE.L','VGK','IEUA.AS','EUSC.DE','IESE.DE',
           // Sector & thema
