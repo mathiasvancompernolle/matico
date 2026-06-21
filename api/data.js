@@ -1127,6 +1127,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'IITU.DE':  { ter: 0.15, tob: 0.12 },
         'IITU.SW':  { ter: 0.15, tob: 0.12 },
         'WSML.DE':  { ter: 0.35, tob: 0.12 },
+        'IUSQ.AS':  { ter: 0.20, tob: 0.12 },
         'IUSQ.DE':  { ter: 0.20, tob: 0.12 },
         'IQQH.DE':  { ter: 0.65, tob: 0.12 },
         'INRG.MI':  { ter: 0.65, tob: 0.12 },
