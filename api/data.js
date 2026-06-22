@@ -1,4 +1,4 @@
-// v16-etf-beurs  
+// v16-etf-beurs
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -979,7 +979,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'IAUP.SW','IS0E.DE','GDX.MI',
           'DFNS.DE','DFNS.MI','WDEF.DE',
           '2B76.DE','RBOT.SW','RBOT.DE','GCAR.L','ECAR.MI','AGED.MI',
-          'BATG.L','BATT.MI','RENW.MI','GLGG.MI',
+          'BATG.L','BATT.MI','RENG.L','RENW.MI','GLGG.MI',
           'XAIX.DE','XAIX.MI','INDA','QDV5.DE','IIND.DE',
           'EUNN.DE','SJPA.MI','SJPA.L','CJPA.SW','JPNH.SW','IJPN.AS','IJPA.MI','EXS2.DE','IJSE.DE','IJPN.AS',
           'IAEX.AS','IUES.SW','IUSE.MI','EXH1.DE','EUEA.AS','SXRT.DE','CSSX5E.MI','EXV1.DE','ISF.SW','CUKX.SW','H50E.SW',
@@ -1159,6 +1159,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'AGED.MI':  { ter: 0.40, tob: 0.12 },
         'BATG.L':   { ter: 0.49, tob: 0.12 },
         'BATT.MI':  { ter: 0.49, tob: 0.12 },
+        'RENG.L':   { ter: 0.49, tob: 0.12 },
         'RENW.MI':  { ter: 0.49, tob: 0.12 },
         'GLGG.MI':  { ter: 0.49, tob: 0.12 },
         'XAIX.DE':  { ter: 0.35, tob: 0.12 },
