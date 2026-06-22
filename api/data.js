@@ -957,8 +957,8 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
       const ETF_LIJSTEN = {
         aandelen: [
           // Nieuw toegevoegd (vooraan zodat ze zeker worden opgehaald)
-          'MWRE.DE','MWRD.MI','ZPA5.MI','LYPG.PA','ETSZ.DE',
-          'GLUG.MI','GLGG.L','JURE.MI','SPYIG.DE','SPPY.AS',
+          'MWRE.DE','MWRD.MI','PABUS.MI','LYPG.DE','ETSZ.DE',
+          'GLUG.MI','GLGG.L','JREU.MI','SPYI.DE','SPPY.DE',
           'ICHD.AS','QUTM.DE','QNTM.MI',
           // Gesorteerd op beheerd vermogen (AUM) - grootste eerst
           // Mega AUM (>100 mld USD)
@@ -1295,14 +1295,14 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         // Nieuw toegevoegd
         'MWRE.DE':  { ter: 0.12, tob: 0.12 },
         'MWRD.MI':  { ter: 0.12, tob: 0.12 },
-        'ZPA5.MI':  { ter: 0.07, tob: 0.12 },
-        'LYPG.PA':  { ter: 0.30, tob: 0.12 },
+        'PABUS.MI':  { ter: 0.07, tob: 0.12 },
+        'LYPG.DE':  { ter: 0.30, tob: 0.12 },
         'ETSZ.DE':  { ter: 0.19, tob: 0.12 },
         'GLUG.MI':  { ter: 0.49, tob: 0.12 },
         'GLGG.L':   { ter: 0.49, tob: 0.12 },
-        'JURE.MI':  { ter: 0.20, tob: 0.12 },
-        'SPYIG.DE': { ter: 0.17, tob: 0.12 },
-        'SPPY.AS':  { ter: 0.03, tob: 0.12 },
+        'JREU.MI':  { ter: 0.20, tob: 0.12 },
+        'SPYI.DE': { ter: 0.17, tob: 0.12 },
+        'SPPY.DE':  { ter: 0.03, tob: 0.12 },
         'ICHD.AS':  { ter: 0.40, tob: 0.12 },
         'QUTM.DE':  { ter: 0.55, tob: 0.12 },
         'QNTM.MI':  { ter: 0.55, tob: 0.12 },
