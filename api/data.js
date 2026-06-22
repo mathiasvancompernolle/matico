@@ -1293,6 +1293,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'JPCS.MI':  { ter: 0.55, tob: 0.12 },
         'JREU.MI':  { ter: 0.25, tob: 0.12 },
         // Nieuw toegevoegd
+        'IAGB.SW':  { ter: 0.15, tob: 0.35 },
+        'ISAG.L':   { ter: 0.55, tob: 0.12 },
+        'NUCL.MI':  { ter: 0.55, tob: 0.12 },
         'MWRE.DE':  { ter: 0.12, tob: 0.12 },
         'MWRD.MI':  { ter: 0.12, tob: 0.12 },
         'PABUS.MI':  { ter: 0.07, tob: 0.12 },

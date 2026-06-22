@@ -778,6 +778,17 @@ function EtfPagina({ onTerug }) {
         {!laden && etfs.length === 0 && (
           <p style={{ padding: '24px', color: 'var(--text-muted)', textAlign: 'center' }}>Geen ETFs gevonden.</p>
         )}
+        {toonAlles && !laden && etfs.length > 0 && (
+          <div style={{
+            textAlign: 'right',
+            padding: '12px 16px',
+            color: 'var(--text-muted)',
+            fontSize: 12,
+            borderTop: '1px solid var(--border)',
+          }}>
+            {etfs.length} ETFs in de lijst
+          </div>
+        )}
       </div>
     </div>
   );
