@@ -1006,6 +1006,17 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'CHDVD.SW','SPAG.L','ISAG.MI','SPAG.MI','CBUC.DE','EDMU.DE','SAUA.MI','EMND.DE','EMUE.DE',
           'SGAJ.DE','XMJP.DE','XZWD.DE','XMUS.L','XMUK.L',
           'SLMC.DE','IUSK.DE','SLUS.DE','GPSA.L','SGAS.DE','IESE.DE','IWY','SCHD',
+          // Nieuw toegevoegd
+          'MWRE.DE','MWRD.MI',       // Amundi Core MSCI World Acc
+          'ZPA5.MI',                  // Amundi S&P 500 Climate Paris Aligned Acc
+          'LYPG.PA',                  // Amundi MSCI World Info Technology EUR Acc
+          'ETSZ.DE',                  // BNP Paribas Easy Stoxx Europe 600
+          'GLUG.MI','GLGG.L',         // L&G Clean Water UCITS ETF
+          'JURE.MI',                  // JPM US Research Enhanced Index Equity Active
+          'SPYIG.DE',                 // SPDR MSCI All Country World Investable Market
+          'SPPY.AS',                  // SPDR S&P 500 Leaders UCITS ETF
+          'ICHD.AS',                  // iShares MSCI China UCITS ETF Dist
+          'QUTM.DE','QNTM.MI',        // VanEck Quantum Computing UCITS ETF
         ],
         obligaties: [
           'AGGH.AS','IEAG.AS','IEGA.AS','XGSH.AS','IBGL.AS','EUNH.AS',
@@ -1288,6 +1299,20 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'TEMP.MI':  { ter: 0.55, tob: 0.12 },
         'JPCS.MI':  { ter: 0.55, tob: 0.12 },
         'JREU.MI':  { ter: 0.25, tob: 0.12 },
+        // Nieuw toegevoegd
+        'MWRE.DE':  { ter: 0.12, tob: 0.12 },
+        'MWRD.MI':  { ter: 0.12, tob: 0.12 },
+        'ZPA5.MI':  { ter: 0.07, tob: 0.12 },
+        'LYPG.PA':  { ter: 0.30, tob: 0.12 },
+        'ETSZ.DE':  { ter: 0.19, tob: 0.12 },
+        'GLUG.MI':  { ter: 0.49, tob: 0.12 },
+        'GLGG.L':   { ter: 0.49, tob: 0.12 },
+        'JURE.MI':  { ter: 0.20, tob: 0.12 },
+        'SPYIG.DE': { ter: 0.17, tob: 0.12 },
+        'SPPY.AS':  { ter: 0.03, tob: 0.12 },
+        'ICHD.AS':  { ter: 0.40, tob: 0.12 },
+        'QUTM.DE':  { ter: 0.55, tob: 0.12 },
+        'QNTM.MI':  { ter: 0.55, tob: 0.12 },
         'H50E.SW':  { ter: 0.05, tob: 0.12 },
         'ISEH.MI':  { ter: 0.20, tob: 0.12 },
         'PAEEM.PA': { ter: 0.17, tob: 0.12 },
