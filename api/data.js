@@ -1379,83 +1379,129 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
       const { toonAlles = 'false' } = req.query;
       const syms = ETF_LIJSTEN[categorie] || ETF_LIJSTEN['aandelen'];
 
+      const exchangeMap = {
+        'AMS': 'Euronext Amsterdam', 'EPA': 'Euronext Paris', 'PAR': 'Euronext Paris',
+        'ETR': 'Xetra', 'XETR': 'Xetra', 'GER': 'Xetra',
+        'MIL': 'Euronext Milan', 'BIT': 'Euronext Milan',
+        'LSE': 'London SE', 'IOB': 'London SE',
+        'SWX': 'SIX Swiss', 'VTX': 'SIX Swiss',
+        'NMS': 'Nasdaq', 'NGM': 'Nasdaq', 'PCX': 'NYSE Arca', 'NYQ': 'NYSE',
+      };
+
+      // Helper: haal historische koers op voor één ticker (1 call per periode)
+      async function fetchSpark(sym, range, interval) {
+        try {
+          const r = await fetch(
+            `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}`,
+            { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } }
+          );
+          return await r.json();
+        } catch { return null; }
+      }
+
+      // Bereken % rendement uit chart data
+      function pctUitData(d) {
+        const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+        const valids = closes.filter(v => v != null);
+        if (valids.length < 2) return null;
+        return ((valids[valids.length - 1] - valids[0]) / valids[0]) * 100;
+      }
+
       try {
-        const results = await Promise.all(syms.map(async (sym) => {
+        // Stap 1: Haal basisdata op voor ALLE tickers via Yahoo Finance quotes batch
+        // Yahoo ondersteunt batch quotes via spark endpoint met meerdere symbolen
+        const BATCH = 50; // max per batch request
+        const alleData = {};
+
+        // Splits tickers in batches van 50
+        const batches = [];
+        for (let i = 0; i < syms.length; i += BATCH) {
+          batches.push(syms.slice(i, i + BATCH));
+        }
+
+        // Haal quotes op voor alle batches parallel
+        await Promise.all(batches.map(async (batch) => {
           try {
-            const [r1d, r1m, r3m, r1j, r5j, rAum] = await Promise.all([
-              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=3mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1wk&range=1y`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-              fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1mo&range=5y`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-              fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=summaryDetail`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-            ]);
-
-            const [d1d, d1m, d3m, d1j, d5j, dAum] = await Promise.all([r1d.json(), r1m.json(), r3m.json(), r1j.json(), r5j.json(), rAum.json()]);
-
-            const meta = d1d?.chart?.result?.[0]?.meta || {};
-            const prijs = meta.regularMarketPrice || 0;
-            if (!prijs) return null;
-
-            // Beheerd vermogen via quoteSummary
-            const totalAssets = dAum?.quoteSummary?.result?.[0]?.summaryDetail?.totalAssets?.raw || 0;
-
-            const pct1D = (() => {
-              const p = meta.regularMarketPrice || 0;
-              const ref = meta.chartPreviousClose || meta.previousClose || p;
-              return ref ? ((p - ref) / ref) * 100 : 0;
-            })();
-
-            const pctLang = (d) => {
-              const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
-              const valids = closes.filter(v => v !== null && v !== undefined);
-              if (valids.length < 2) return null;
-              return ((valids[valids.length-1] - valids[0]) / valids[0]) * 100;
-            };
-
-            const naamRaw = meta.longName || meta.shortName || sym;
-            const naamVolledig = naamRaw;
-            const naam = naamRaw.length > 40 ? naamRaw.slice(0, 39) + '…' : naamRaw;
-
-            // TER en TOB via hardcoded lookup tabel
-            const metaLookup = ETF_META[sym] || {};
-            const ter = metaLookup.ter ?? null;
-            const tob = metaLookup.tob ?? 0.12;
-
-            // Beurs naam en status
-            const exchangeMap = {
-              'AMS': 'Euronext Amsterdam', 'EPA': 'Euronext Paris', 'PAR': 'Euronext Paris',
-              'ETR': 'Xetra', 'XETR': 'Xetra', 'GER': 'Xetra',
-              'MIL': 'Euronext Milan', 'BIT': 'Euronext Milan',
-              'LSE': 'London SE', 'IOB': 'London SE',
-              'SWX': 'SIX Swiss', 'VTX': 'SIX Swiss',
-              'NMS': 'Nasdaq', 'NGM': 'Nasdaq', 'PCX': 'NYSE Arca', 'NYQ': 'NYSE',
-            };
-            const exchCode = (meta.exchangeName || meta.fullExchangeName || '').toUpperCase();
-            const beurs = exchangeMap[exchCode] || meta.fullExchangeName || meta.exchangeName || '—';
-            const marktOpen = meta.marketState === 'REGULAR';
-
-            if (!prijs) return null;
-
-            return {
-              symbol: sym, naam, naamVolledig, prijs,
-              valuta: meta.currency || 'EUR',
-              totalAssets, ter, tob, beurs, marktOpen,
-              pct1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
-              pct1J: pctLang(d1j), pct5J: pctLang(d5j),
-            };
-          } catch { return null; }
+            const symbolsParam = batch.map(s => encodeURIComponent(s)).join(',');
+            const r = await fetch(
+              `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbolsParam}&fields=regularMarketPrice,regularMarketPreviousClose,regularMarketOpen,currency,longName,shortName,exchangeTimezoneName,marketState,fullExchangeName,exchangeName,totalAssets`,
+              { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } }
+            );
+            const d = await r.json();
+            const quotes = d?.quoteResponse?.result || [];
+            for (const q of quotes) {
+              if (q.regularMarketPrice) {
+                alleData[q.symbol] = q;
+              }
+            }
+          } catch {}
         }));
 
-        // Sorteer op beheerd vermogen (grootste eerst)
-        // Als totalAssets beschikbaar is → gebruik die, anders behoud volgorde van de lijst (al gesorteerd op AUM)
-        const filtered = results.filter(Boolean);
-        const heeftAum = filtered.some(e => e.totalAssets > 0);
-        const gesorteerd = heeftAum
-          ? filtered.sort((a, b) => b.totalAssets - a.totalAssets)
-          : filtered; // lijst staat al in AUM volgorde
+        // Stap 2: Voor elk ticker met geldige basisdata, haal historische data op
+        // Maar gebruik concurrency limiet om timeout te vermijden
+        const geldigeSyms = syms.filter(s => alleData[s]);
 
-        // Top 10 of alles tonen
+        // Historische data parallel maar in batches van 30
+        const historisch = {};
+        const HIST_BATCH = 30;
+        for (let i = 0; i < geldigeSyms.length; i += HIST_BATCH) {
+          const batch = geldigeSyms.slice(i, i + HIST_BATCH);
+          await Promise.all(batch.map(async (sym) => {
+            try {
+              const [d1m, d3m, d1j, d5j] = await Promise.all([
+                fetchSpark(sym, '1mo', '1d'),
+                fetchSpark(sym, '3mo', '1d'),
+                fetchSpark(sym, '1y', '1wk'),
+                fetchSpark(sym, '5y', '1mo'),
+              ]);
+              historisch[sym] = { d1m, d3m, d1j, d5j };
+            } catch {}
+          }));
+        }
+
+        // Stap 3: Bouw resultaten
+        const results = syms.map(sym => {
+          const q = alleData[sym];
+          if (!q) return null;
+
+          const prijs = q.regularMarketPrice || 0;
+          if (!prijs) return null;
+
+          const pct1D = (() => {
+            const ref = q.regularMarketPreviousClose || prijs;
+            return ref ? ((prijs - ref) / ref) * 100 : 0;
+          })();
+
+          const hist = historisch[sym] || {};
+          const naamRaw = q.longName || q.shortName || sym;
+          const naam = naamRaw.length > 40 ? naamRaw.slice(0, 39) + '…' : naamRaw;
+
+          const metaLookup = ETF_META[sym] || {};
+          const ter = metaLookup.ter ?? null;
+          const tob = metaLookup.tob ?? 0.12;
+
+          const exchCode = (q.exchangeName || q.fullExchangeName || '').toUpperCase();
+          const beurs = exchangeMap[exchCode] || q.fullExchangeName || q.exchangeName || '—';
+          const marktOpen = q.marketState === 'REGULAR';
+
+          return {
+            symbol: sym, naam, naamVolledig: naamRaw, prijs,
+            valuta: q.currency || 'EUR',
+            totalAssets: q.totalAssets || 0,
+            ter, tob, beurs, marktOpen,
+            pct1D,
+            pct1M: pctUitData(hist.d1m),
+            pct3M: pctUitData(hist.d3m),
+            pct1J: pctUitData(hist.d1j),
+            pct5J: pctUitData(hist.d5j),
+          };
+        }).filter(Boolean);
+
+        const heeftAum = results.some(e => e.totalAssets > 0);
+        const gesorteerd = heeftAum
+          ? results.sort((a, b) => b.totalAssets - a.totalAssets)
+          : results;
+
         const output = toonAlles === 'true' ? gesorteerd : gesorteerd.slice(0, 10);
         return res.json(output);
       } catch (e) {
