@@ -956,6 +956,10 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
       // ETF lijsten: ALLE aandelen ETFs van Saxo Investor
       const ETF_LIJSTEN = {
         aandelen: [
+          // Nieuw toegevoegd (vooraan zodat ze zeker worden opgehaald)
+          'MWRE.DE','MWRD.MI','ZPA5.MI','LYPG.PA','ETSZ.DE',
+          'GLUG.MI','GLGG.L','JURE.MI','SPYIG.DE','SPPY.AS',
+          'ICHD.AS','QUTM.DE','QNTM.MI',
           // Gesorteerd op beheerd vermogen (AUM) - grootste eerst
           // Mega AUM (>100 mld USD)
           'SPY','VOO','VTI','QQQ','VEA',
@@ -1006,17 +1010,6 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'CHDVD.SW','SPAG.L','ISAG.MI','SPAG.MI','CBUC.DE','EDMU.DE','SAUA.MI','EMND.DE','EMUE.DE',
           'SGAJ.DE','XMJP.DE','XZWD.DE','XMUS.L','XMUK.L',
           'SLMC.DE','IUSK.DE','SLUS.DE','GPSA.L','SGAS.DE','IESE.DE','IWY','SCHD',
-          // Nieuw toegevoegd
-          'MWRE.DE','MWRD.MI',       // Amundi Core MSCI World Acc
-          'ZPA5.MI',                  // Amundi S&P 500 Climate Paris Aligned Acc
-          'LYPG.PA',                  // Amundi MSCI World Info Technology EUR Acc
-          'ETSZ.DE',                  // BNP Paribas Easy Stoxx Europe 600
-          'GLUG.MI','GLGG.L',         // L&G Clean Water UCITS ETF
-          'JURE.MI',                  // JPM US Research Enhanced Index Equity Active
-          'SPYIG.DE',                 // SPDR MSCI All Country World Investable Market
-          'SPPY.AS',                  // SPDR S&P 500 Leaders UCITS ETF
-          'ICHD.AS',                  // iShares MSCI China UCITS ETF Dist
-          'QUTM.DE','QNTM.MI',        // VanEck Quantum Computing UCITS ETF
         ],
         obligaties: [
           'AGGH.AS','IEAG.AS','IEGA.AS','XGSH.AS','IBGL.AS','EUNH.AS',
