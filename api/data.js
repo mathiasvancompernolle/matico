@@ -1731,30 +1731,36 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'NMS': 'Nasdaq', 'NGM': 'Nasdaq', 'PCX': 'NYSE Arca', 'NYQ': 'NYSE',
       };
 
-      async function fetchEtf(sym) {
+      // Haal basisdata (prijs, naam, beurs) op via 1d chart - 1 call per ticker
+      async function fetchEtfBasis(sym) {
         try {
-          const [r1d, r1m, r3m, r1j, r5j] = await Promise.all([
-            fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-            fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-            fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=3mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-            fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1wk&range=1y`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-            fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1mo&range=5y`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-          ]);
-          const [d1d, d1m, d3m, d1j, d5j] = await Promise.all([r1d.json(), r1m.json(), r3m.json(), r1j.json(), r5j.json()]);
-          const meta = d1d?.chart?.result?.[0]?.meta || {};
+          const r = await fetch(
+            `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5y`,
+            { headers: { 'User-Agent': 'Mozilla/5.0' } }
+          );
+          const d = await r.json();
+          const meta = d?.chart?.result?.[0]?.meta || {};
           const prijs = meta.regularMarketPrice || 0;
           if (!prijs) return null;
+
+          // Haal alle periodes uit dezelfde 5y data
+          const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+          const timestamps = d?.chart?.result?.[0]?.timestamp || [];
+          const valids = closes.map((c, i) => c != null ? { c, t: timestamps[i] } : null).filter(Boolean);
+
+          const pctOver = (days) => {
+            if (valids.length < 2) return null;
+            const now = valids[valids.length - 1].c;
+            const cutoff = Date.now() / 1000 - days * 86400;
+            const past = valids.find(v => v.t >= cutoff);
+            return past ? ((now - past.c) / past.c) * 100 : null;
+          };
 
           const pct1D = (() => {
             const ref = meta.chartPreviousClose || meta.previousClose || prijs;
             return ref ? ((prijs - ref) / ref) * 100 : 0;
           })();
-          const pctLang = (d) => {
-            const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
-            const valids = closes.filter(v => v != null);
-            if (valids.length < 2) return null;
-            return ((valids[valids.length-1] - valids[0]) / valids[0]) * 100;
-          };
+
           const naamRaw = meta.longName || meta.shortName || sym;
           const naam = naamRaw.length > 40 ? naamRaw.slice(0, 39) + '…' : naamRaw;
           const metaLookup = ETF_META[sym] || {};
@@ -1767,22 +1773,18 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             tob: metaLookup.tob ?? 0.12,
             beurs: exchangeMap[exchCode] || meta.fullExchangeName || meta.exchangeName || '—',
             marktOpen: meta.marketState === 'REGULAR',
-            pct1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
-            pct1J: pctLang(d1j), pct5J: pctLang(d5j),
+            pct1D,
+            pct1M: pctOver(30),
+            pct3M: pctOver(90),
+            pct1J: pctOver(365),
+            pct5J: pctOver(1825),
           };
         } catch { return null; }
       }
 
       try {
-        // Verwerk in batches van 40 concurrent om timeout te vermijden
-        const CONCURRENT = 40;
-        const allResults = [];
-        for (let i = 0; i < teOphalen.length; i += CONCURRENT) {
-          const batch = teOphalen.slice(i, i + CONCURRENT);
-          const batchResults = await Promise.all(batch.map(sym => fetchEtf(sym)));
-          allResults.push(...batchResults);
-        }
-
+        // Alle tickers parallel ophalen - 1 call per ticker = veel sneller
+        const allResults = await Promise.all(teOphalen.map(sym => fetchEtfBasis(sym)));
         const filtered = allResults.filter(Boolean);
         const output = toonAlles === 'true' ? filtered : filtered.slice(0, 10);
         return res.json(output);
