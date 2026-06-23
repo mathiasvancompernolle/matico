@@ -1191,14 +1191,14 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // === CORRECTE YAHOO TICKERS VOOR ONTBREKENDE OBLIGATIE ETFs ===
           // iShares Xetra - EUN* serie (Eurozone Govt Bond maturity buckets)
           'EUN6.DE',   // iShares EUR Govt Bond 0-1yr XETR (= IBGZ.DE)
-          'EUN7.DE',   // iShares EUR Govt Bond 1-3yr XETR Acc (= IBGE.DE)
+                    // EUN7.DE geeft geen volledige data
           'EUN8.DE',   // iShares EUR Govt Bond 10-15yr XETR (= IBGX.AS variant)
           'EUNH.AS',   // iShares Core EUR Govt Bond AMS variant
           // iShares Xetra - IS0* serie (Treasury/HY)
           'IS04.DE',   // iShares $ Treasury Bond 20+yr XETR (= IBTL.DE)
           'IS0H.DE',   // iShares EUR Govt Bond 3-5yr XETR (= IBGK.DE)
           'SXRQ.DE',   // iShares EUR Govt Bond 7-10yr ETF Acc XETR (= IBGP/SXRQ)
-          'SXRG.DE',   // iShares EUR Govt Bond 20yr Target Dur XETR (= IDTG.DE)
+                    // SXRG.DE geeft iShares MSCI USA Small Cap op Yahoo - verwijderd
           // iShares Milan varianten
           'IBGZ.MI',   // iShares EUR Govt Bond 10-15yr MIL
           'IBGK.MI',   // iShares EUR Govt Bond 3-5yr MIL
@@ -1211,7 +1211,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'DBZB.MI',   // Xtrackers II EUR Corporate Bond MIL
           'DBXG.DE',   // Xtrackers II Eurozone Govt Bond (= XGSH.DE)
           'DBXR.DE',   // Xtrackers II Eurozone Govt Bond 1-3yr (= XGSG.DE)
-          'DXET.DE',   // Xtrackers II EUR HY Bond (= XHY3.DE)
+                    // DXET.DE geeft Xtrackers Euro Stoxx 50 (aandelen) op Yahoo - verwijderd
           'DXEM.DE',   // Xtrackers II Global Aggregate Swap (= XGAG.DE)
           'XHY3.MI',   // Xtrackers II EUR HY Bond MIL
           'XGSH.MI',   // Xtrackers II Eurozone Govt Bond MIL
@@ -1248,7 +1248,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // L&G
           'EMGB.DE',   // L&G EM Govt Bond USD 0-5yr XETR
           // Amundi extras
-          'USCP.DE',   // Amundi USD Corp Bond PAB XETR
+                    // USCP.DE geeft Ossiam Shiller Barclays op Yahoo - verwijderd
           'GGRE.DE',   // Amundi Global Aggregate Green Bond XETR
           'FLTC.MI',   // Amundi Floating Rate Euro Corp MIL
           'CRPE.MI',   // Amundi Euro Corp Bond ESG MIL
@@ -1280,12 +1280,53 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'IGLB.DE',   // iShares Global Inflation Linked XETR
           'IGIL.MI',   // iShares Global Inflation Linked MIL
           'GHYG.DE',   // iShares Global HY Corp Bond XETR
-          'SUGA.MI',   // iShares Global Aggregate Bond ESG SRI MIL
+                    // SUGA.MI geeft WisdomTree Sugar (grondstoffen) op Yahoo - verwijderd
           'FALE.MI',   // iShares Fallen Angel HY EUR Hedged MIL
           'SUEF.MI',   // iShares EU Corp Bond ex Financials MIL
           'GROE.MI',   // iShares EUR Green Bond MIL variant
           'ERNE.DE',   // iShares EUR Ultrashort Bond XETR
-          'SESG.MI',   // iShares EUR Ultrashort Bond ESG MIL
+                    // SESG.MI geeft Saturna Sustainable ESG (aandelen) op Yahoo - verwijderd
+          // === BATCH 2 - gevonden via searches ===
+          // Xtrackers bond MIL/XETR alternatieven
+          'XHYG.MI',  // Xtrackers II EUR HY Corp Bond MIL (= XHY3.DE variant)
+          'XHYG.DE',  // Xtrackers II EUR HY Corp Bond XETR
+          'XGLE.MI',  // Xtrackers II Eurozone Govt Bond MIL (= XGSH.DE variant)
+          'XGLE.DE',  // Xtrackers II Eurozone Govt Bond XETR
+          'XGIN.MI',  // Xtrackers II Global Inflation-Linked Bond EUR Hedged MIL
+          // SPDR bond varianten
+          'SPFE.DE',  // SPDR Bloomberg Global Aggregate Bond EUR Hedged XETR
+          'SPFE.MI',  // SPDR Bloomberg Global Aggregate Bond EUR Hedged MIL
+          'SYBB.DE',  // SPDR Bloomberg Euro Government Bond XETR
+          'SYBB.MI',  // SPDR Bloomberg Euro Government Bond MIL
+          // Amundi extra varianten
+          'AM3E.DE',  // Amundi Euro Govt Bond 3-5Y XETR
+          'AM3G.DE',  // Amundi Euro Govt Bond 7-10Y XETR
+          'AM3H.MI',  // Amundi Euro Govt Bond 10-15Y MIL
+          'ULCO.MI',  // UBS BBG US Liquid Corp MIL
+          'SDBB.MI',  // UBS Sustainable Dev Bank Bonds MIL
+          'EMSU.MI',  // UBS BBG USD EM Sovereign MIL
+          // iShares extra varianten
+          'IBGK.AS',  // iShares EUR Govt Bond 3-5yr AMS (nieuwe poging)
+          'IBGN.AS',  // iShares EUR Govt Bond 3-7yr AMS
+          'IBGP.AS',  // iShares EUR Govt Bond 7-10yr AMS
+          'IBGX.MI',  // iShares EUR Govt Bond 3-5yr MIL
+          'IBGM.MI',  // iShares EUR Govt Bond 7-10yr MIL
+          'IBGL.MI',  // iShares EUR Govt Bond 15-30yr MIL
+          'AEMB.MI',  // iShares JP Morgan Advanced EM Bond MIL
+          'EMHE.L',   // iShares JPM USD EM Bond EUR Hedged LSE (was EMHE.L)
+          'GHYG.MI',  // iShares Global HY Corp Bond MIL
+          'IGLB.MI',  // iShares Global Inflation Linked MIL
+          'IGIL.DE',  // iShares Global Inflation Linked XETR
+          // VanEck bond varianten
+          'CORP2.MI', // VanEck iBoxx EUR Corporates MIL
+          'TSOV.MI',  // VanEck iBoxx EUR Sovereign MIL
+          'TSOV2.MI', // VanEck iBoxx EUR Sov Capped AAA-AA 1-5 MIL
+          // BNPP bond
+          'SRPE.DE',  // BNPP Easy EUR Corp Bond SRI PAB XETR
+          // JPMorgan bond
+          'JPMF.DE',  // JP Morgan EUR Ultra-Short Income XETR (hertest)
+          // Amundi Inflation-Linked
+          'INFL.DE',  // Amundi EUR Govt Inflation-Linked Bond XETR
           // Ontbrekende tickers
           'AHYG2.DE','CGBH.PA','AM3A.MI',                   // Amundi extras
           'USCP.L',                                           // Amundi USD Corp Bond PAB
@@ -1806,6 +1847,19 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'FALE.MI': { ter: 0.50, tob: 0.12 }, 'SUEF.MI': { ter: 0.20, tob: 0.12 },
         'GROE.MI': { ter: 0.20, tob: 0.12 }, 'ERNE.DE': { ter: 0.09, tob: 0.12 },
         'SESG.MI': { ter: 0.09, tob: 0.12 },
+        'XHYG.MI': { ter: 0.35, tob: 0.12 }, 'XHYG.DE': { ter: 0.35, tob: 0.12 },
+        'XGLE.MI': { ter: 0.15, tob: 0.12 }, 'XGLE.DE': { ter: 0.15, tob: 0.12 },
+        'XGIN.MI': { ter: 0.25, tob: 0.12 }, 'SPFE.DE': { ter: 0.10, tob: 0.12 },
+        'SPFE.MI': { ter: 0.10, tob: 0.12 }, 'SYBB.DE': { ter: 0.15, tob: 0.12 },
+        'SYBB.MI': { ter: 0.15, tob: 0.12 }, 'AM3E.DE': { ter: 0.05, tob: 0.12 },
+        'AM3G.DE': { ter: 0.05, tob: 0.12 }, 'AM3H.MI': { ter: 0.05, tob: 0.12 },
+        'ULCO.MI': { ter: 0.18, tob: 0.12 }, 'SDBB.MI': { ter: 0.20, tob: 0.12 },
+        'EMSU.MI': { ter: 0.47, tob: 0.12 }, 'IBGX.MI': { ter: 0.20, tob: 0.12 },
+        'IBGM.MI': { ter: 0.20, tob: 0.12 }, 'IBGL.MI': { ter: 0.20, tob: 0.12 },
+        'AEMB.MI': { ter: 0.45, tob: 0.12 }, 'GHYG.MI': { ter: 0.50, tob: 0.12 },
+        'IGLB.MI': { ter: 0.20, tob: 0.12 }, 'CORP2.MI': { ter: 0.10, tob: 0.12 },
+        'TSOV.MI': { ter: 0.10, tob: 0.12 }, 'TSOV2.MI': { ter: 0.10, tob: 0.12 },
+        'SRPE.DE': { ter: 0.18, tob: 0.12 }, 'INFL.DE': { ter: 0.09, tob: 0.12 },
         'EUNA.DE': { ter: 0.1, tob: 0.12 },
         'EUN5.DE': { ter: 0.09, tob: 0.12 },
         'EUNW.DE': { ter: 0.5, tob: 0.12 },
