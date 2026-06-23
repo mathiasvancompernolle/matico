@@ -1185,6 +1185,10 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // Invesco
           // AT1.DE geeft Aroundtown SA aandeel op Yahoo - verwijderd
           'IBGE2.DE',                                       // Invesco Euro Govt Bond 1-3 Year
+          // Correcte Yahoo tickers voor iShares Xetra obligaties
+          'EUNA.DE','EUN5.DE','EUNW.DE','IUS7.DE','EUN3.DE',
+          'EUNH.DE','IUSM.DE','EUN4.DE','IS0R.DE','HYLE.DE',
+          'IEAC.MI',
           // Ontbrekende tickers
           'AHYG2.DE','CGBH.PA','AM3A.MI',                   // Amundi extras
           'USCP.L',                                           // Amundi USD Corp Bond PAB
@@ -1662,6 +1666,18 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'EMGB.MI':  { ter: 0.35, tob: 0.12 },
         'COCO.MI':  { ter: 0.35, tob: 0.12 },
         'AT1.DE':   { ter: 0.39, tob: 0.12 }, 'IBGE2.DE': { ter: 0.10, tob: 0.12 },
+        // Correcte Yahoo Xetra obligatie tickers
+        'EUNA.DE': { ter: 0.1, tob: 0.12 },
+        'EUN5.DE': { ter: 0.09, tob: 0.12 },
+        'EUNW.DE': { ter: 0.5, tob: 0.12 },
+        'IUS7.DE': { ter: 0.45, tob: 0.12 },
+        'EUN3.DE': { ter: 0.2, tob: 0.12 },
+        'EUNH.DE': { ter: 0.09, tob: 0.12 },
+        'IUSM.DE': { ter: 0.2, tob: 0.12 },
+        'EUN4.DE': { ter: 0.17, tob: 0.12 },
+        'IS0R.DE': { ter: 0.5, tob: 0.12 },
+        'HYLE.DE': { ter: 0.5, tob: 0.12 },
+        'IEAC.MI': { ter: 0.09, tob: 0.12 },
         // Ontbrekende obligatie ETFs
         'AHYG2.DE': { ter: 0.25, tob: 0.12 }, 'CGBH.PA':  { ter: 0.10, tob: 0.12 },
         'AM3A.MI':  { ter: 0.05, tob: 0.12 }, 'USCP.L':   { ter: 0.10, tob: 0.12 },
