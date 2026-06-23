@@ -1051,7 +1051,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'IE3E.DE',                                        // iShares EUR Corp Bond 0-3yr ESG SRI Acc
           'PAAC.DE',                                        // iShares EUR Corp Bond ESG Paris Aligned
           'SUAE.DE',                                        // iShares EUR Corp Bond ESG SRI
-          'SRHE.DE','SRHE.AS','SRHE.L',                    // iShares EUR HY Corp Bond ESG SRI
+                    // iShares EUR HY Corp Bond ESG SRI - SRHE tickers geven aandelen ETF op Yahoo
           'AYE2.DE',                                        // iShares EUR HY Corp Bond ESG SRI Acc
           // iShares USD HY & Corp
           'HYG',                                            // iShares iBoxx USD HY Corp Bond ETF
@@ -1066,7 +1066,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'SHYG.L',                                         // iShares USD HY Corp Bond ESG
           'IEGE.DE',                                        // iShares Treasury Bond 7-10yr EUR Hedged
           'FLOT.L',                                         // iShares USD Floating Rate Bond
-          'IUSU.L',                                         // iShares USD Ultrashort Bond
+                    // iShares USD Ultrashort Bond - IUSU.L is S&P 500 Utilities op Yahoo
           'SUDA.DE',                                        // iShares USD Development Bank Bonds
           'IBTE.DE',                                        // iShares USD Treasury 1-3yr EUR Hedged
           // iShares EM Bond
@@ -1113,14 +1113,14 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'AM3E.PA','AM3E.MI',                             // Amundi Euro Govt Bond 3-5Y
           'AM3G.PA','AM3G.MI',                             // Amundi Euro Govt Bond 7-10Y
           'AM3H.PA',                                        // Amundi Euro Govt Bond 10-15Y
-          'SHC.MI','SHC.PA','SHC.DE',                     // Amundi Euro Corp Bond 0-3Y ESG
+                    // Amundi Euro Corp Bond 0-3Y ESG - SHC tickers zijn foute Yahoo mappings
           'ULTE.MI','ULTE.DE',                             // Amundi Euro Corp Bond 0-1Y ESG
           'CRPE.PA',                                        // Amundi Euro Corporate Bond ESG
           'EGBG.MI','EGBG.PA',                             // Amundi Euro Govt Tilted Green Bond
           'AHYG.MI',                                        // Amundi EUR High Yield Corp Bond ESG
           'INFL.MI','INFL.PA',                             // Amundi EUR Govt Inflation-Linked Bond
           'SHT.MI',                                         // Amundi US Treasury Bond 1-3Y
-          'AMEU.L','AMEU.DE','AMEU.MI',                   // Amundi US Treasury 7-10Y
+                    // Amundi US Treasury 7-10Y - AMEU tickers geven foutieve data op Yahoo
           'TIPU.L',                                         // Amundi US Tips Inflation-Linked Bond
           'HYLD2.L',                                        // Amundi USD High Yield Corp Bond ESG
           'HYLDE.MI',                                       // Amundi USD HY Corp Bond EUR Hedged
@@ -1179,7 +1179,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // L&G
           'EMGB.MI',                                        // L&G EM Govt Bond USD 0-5 Year Screened
           // WisdomTree
-          'COCO.MI',                                        // WisdomTree AT1 CoCo Bond Hedged
+                    // WisdomTree AT1 CoCo Bond - COCO.MI is cacao op Yahoo, foute ticker
           // Invesco
           'AT1.DE',                                         // Invesco USD AT1 Coco Bond
           'IBGE2.DE',                                       // Invesco Euro Govt Bond 1-3 Year
@@ -1190,7 +1190,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'VETY.SW','VAGS.DE',                               // Vanguard extras
           'XGCB.MI','XGIG3.SW','XGIG2.L',                  // Xtrackers extras
           'SDBU.DE','SUHY.DE',                               // iShares USD HY ESG SRI XETR
-          'ISAC.MI','ISAC.DE',                               // iShares Core EUR Corp Bond
+                    // iShares Core EUR Corp Bond XETR/MIL - ISAC tickers geven aandelen ETF op Yahoo
           'CSBGU0.MI',                                       // iShares Core EUR Govt Bond MIL
           'AGGU.L','AGGG.L','AGGH.SW',                      // iShares Core Global Aggregate Bond
           'CRHE.L','IS15.L',                                 // iShares Corp Bond extras
@@ -1199,7 +1199,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'EUGR.DE',                                         // iShares EUR Green Bond XETR
           'SE06.DE','ERNS.DE',                               // iShares EUR Ultrashort extras
           'IBCI.MI',                                         // iShares Euro Inflation Linked MIL
-          'IGLS.L','GHYS.L',                                 // iShares Global extras
+                    'GHYS.L',                                 // iShares Global HY Bond Acc LSE
           'SEMB.L','EMLB.DE','EMCB.L',                      // iShares EM Bond extras
           'IBTF.L','SLQD.L',                                 // iShares USD Corp/Treasury extras
           'STIP.L','IBTA2.L',                                // iShares TIPS/Treasury extras
