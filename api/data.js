@@ -1012,10 +1012,200 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'SLMC.DE','IUSK.DE','SLUS.DE','GPSA.L','SGAS.DE','IESE.DE','IWY','SCHD',
         ],
         obligaties: [
-          'AGGH.AS','IEAG.AS','IEGA.AS','XGSH.AS','IBGL.AS','EUNH.AS',
-          'IBTS.AS','IEAC.AS','IUSB.AS','SUZE.AS','IBCI.AS','VGOV.AS','SEGA.AS','EUNA.AS',
-          'IHYG.AS','SHYG.AS','IEMB.AS','VDEA.AS','ITPS.AS','AGGU.AS','FLOT.AS',
-          'GOVS.AS','CORP.AS','HYLD.AS','EMBE.AS','XUHY.AS','IBTE.AS',
+          // iShares Core obligaties (hoge AUM, meest verhandeld)
+          'AGGH.AS','AGGH.DE','AGGH.L','AGGH.MI',          // iShares Core Global Aggregate Bond
+          'IEGA.AS','SXRM.DE',                              // iShares Core EUR Govt Bond
+          'IEAC.AS','IEAC.DE','IEAC.L',                    // iShares Core EUR Corp Bond
+          'IBCI.AS','IBCI.DE',                              // iShares EUR Inflation Linked Govt Bond
+          'IHYG.DE','IHYG.L','IHYG.MI',                    // iShares EUR High Yield Corp Bond
+          'IBTS.AS','IBTS.DE','IBTS.MI',                   // iShares USD Treasury Bond 1-3yr
+          'IBGL.AS',                                        // iShares EUR Govt Bond 15-30yr
+          'IEAG.AS',                                        // iShares EUR Aggregate Bond ESG SRI
+          // iShares USD Treasury
+          'SHY','IEF','TLT',                                // US Treasury ETFs (Nasdaq/NYSE)
+          'TIP',                                            // iShares TIPS Bond ETF
+          'ITPE.DE','IBC5.DE',                              // iShares $ TIPS EUR Hedged
+          'IDTL.L','IBTL.DE',                              // iShares USD Treasury 20+yr
+          'IBTM.L',                                         // iShares USD Treasury 3-7yr
+          'IBTD.L',                                         // iShares USD Treasury 7-10yr
+          'IBTA.L',                                         // iShares USD Treasury 0-1yr
+          'IBTS.L',                                         // iShares USD Treasury 1-3yr LSE
+          'IBTE.DE',                                        // iShares USD Treasury 1-3yr EUR Hedged
+          'STIP.AS',                                        // iShares $ TIPS 0-5
+          'ITPG.L','ITPS.L',                               // iShares $ TIPS LSE
+          // iShares EUR Govt maturity buckets
+          'IBGS.AS','IBGS.L',                              // iShares EUR Govt Bond 1-3yr
+          'IBGE.DE','IBGE.MI',                             // iShares EUR Govt Bond 1-3yr Acc
+          'IBGK.AS','IBGK.DE',                             // iShares EUR Govt Bond 3-5yr
+          'IBGN.AS',                                        // iShares EUR Govt Bond 3-7yr
+          'IBGM.AS',                                        // iShares EUR Govt Bond 5-7yr
+          'IBGP.AS',                                        // iShares EUR Govt Bond 7-10yr
+          'IBGX.AS',                                        // iShares EUR Govt Bond 10-15yr
+          'IBGL.AS',                                        // iShares EUR Govt Bond 15-30yr
+          'IBGO.AS',                                        // iShares EUR Govt Bond 15-30yr Acc
+          'IDTG.DE',                                        // iShares EUR Govt Bond 20yr Target Dur
+          'IGBE.DE',                                        // iShares EUR Govt Bond Climate
+          'IBGZ.DE',                                        // iShares EUR Govt Bond 0-1yr
+          // iShares EUR Corp ESG
+          'QDVL.DE','QDVL.MI',                             // iShares EUR Corp Bond 0-3yr ESG SRI Dist
+          'IE3E.DE',                                        // iShares EUR Corp Bond 0-3yr ESG SRI Acc
+          'PAAC.DE',                                        // iShares EUR Corp Bond ESG Paris Aligned
+          'SUAE.DE',                                        // iShares EUR Corp Bond ESG SRI
+          'SRHE.DE','SRHE.AS','SRHE.L',                    // iShares EUR HY Corp Bond ESG SRI
+          'AYE2.DE',                                        // iShares EUR HY Corp Bond ESG SRI Acc
+          // iShares USD HY & Corp
+          'HYG',                                            // iShares iBoxx USD HY Corp Bond ETF
+          'AGG',                                            // iShares Core US Aggregate Bond ETF
+          'IHYU.DE','IHYU.MI','IHYU.L',                    // iShares USD High Yield Corp Bond
+          'HYLD.DE',                                        // iShares USD HY Corp Bond EUR Hedged
+          'SDHY.L',                                         // iShares USD Short Duration HY
+          'SDIG.L','SDCB.L',                               // iShares USD Short Duration Corp Bond
+          'LQDA.L','LQDE.L',                               // iShares USD Corp Bond
+          'SUDE.DE',                                        // iShares $ Corp Bond ESG SRI
+          'LQDH.L',                                         // iShares USD Corp Bond Interest Rate Hedged
+          'SHYG.L',                                         // iShares USD HY Corp Bond ESG
+          'IEGE.DE',                                        // iShares Treasury Bond 7-10yr EUR Hedged
+          'FLOT.L',                                         // iShares USD Floating Rate Bond
+          'IUSU.L',                                         // iShares USD Ultrashort Bond
+          'SUDA.DE',                                        // iShares USD Development Bank Bonds
+          'IBTE.DE',                                        // iShares USD Treasury 1-3yr EUR Hedged
+          // iShares EM Bond
+          'IEMB.DE','IEMB.MI','IEMB.L',                   // iShares J.P. Morgan USD EM Bond
+          'EMB',                                            // iShares JP Morgan USD EM Bond ETF
+          'LEMB',                                           // iShares JP Morgan EM Local Currency Bond ETF
+          'EMHE.DE','EMHE.MI','EMHE.L',                    // iShares JPM USD EM Bond EUR Hedged
+          'SEML.MI','SEML.L',                               // iShares JP Morgan EM Local Govt Bond
+          'AEMB.L',                                         // iShares JP Morgan Advanced EM Bond
+          // iShares Global
+          'IGLO.DE','IGLO.L',                              // iShares Global Govt Bond
+          'IGLG.L',                                         // iShares Global Govt Bond GBP
+          'CORP.L','CORP.MI',                              // iShares Global Corp Bond
+          'CRPH.DE',                                        // iShares Global Corp Bond EUR Hedged
+          'IGLB.L',                                         // iShares Global Inflation Linked
+          'IGIL.DE',                                        // iShares Global Inflation Linked XETR
+          'IUAG.L',                                         // iShares US Aggregate Bond
+          'IMBS.L',                                         // iShares US Mortgage Backed Securities
+          'IGLT.L',                                         // iShares Core UK Gilts
+          'GHYG.DE','GHYG.MI','GHYG.L','GHYG.SW',         // iShares Global HY Corp Bond
+          'SUGA.DE',                                        // iShares Global Aggregate Bond ESG SRI
+          'FALE.DE',                                        // iShares Fallen Angel HY Corp Bond EUR Hedged
+          'SUEF.DE',                                        // iShares EU Corp Bond ex Financials 1-5yr ESG SRI
+          'IITB.MI',                                        // iShares Italy Govt Bond
+          'CNYB.AS',                                        // iShares China CNY Bond
+          'IB27.MI','IB28.MI',                             // iShares iBonds Dec 2027/2028 EUR Corp
+          'GROE.DE',                                        // iShares EUR Green Bond
+          'EUNT.DE',                                        // iShares EUR Ultrashort Bond
+          'ERNE.DE','ERNE.AS',                             // iShares EUR Ultrashort Bond
+          'SESG.DE',                                        // iShares EUR Ultrashort Bond ESG
+          // Vanguard obligaties
+          'BND','BNDX','BSV',                              // Vanguard Bond ETFs US
+          'VGOV.DE','VGGT.DE',                             // Vanguard Global Govt Bond
+          'VAGF.DE','VAGF.MI',                             // Vanguard Global Aggregate Bond
+          'VECP.AS','VECP.DE',                             // Vanguard EUR Corporate Bond
+          'VETY.DE','VETY.AS','VETY.MI',                  // Vanguard EUR Eurozone Govt Bond
+          'VUCP.AS',                                        // Vanguard USD Corporate Bond
+          'VUTY.AS','VUTY.MI',                             // Vanguard USD Treasury Bond
+          'VDEM.AS',                                        // Vanguard USD EM Govt Bond
+          'VGOV.L',                                         // Vanguard UK Gilt
+          'VDST.L',                                         // Vanguard US Treasury 0-1 Year
+          // Amundi obligaties
+          'C3M.MI','AM3A.PA','AM3A.DE',                    // Amundi Euro Govt Bond 1-3Y
+          'AM3E.PA','AM3E.MI',                             // Amundi Euro Govt Bond 3-5Y
+          'AM3G.PA','AM3G.MI',                             // Amundi Euro Govt Bond 7-10Y
+          'AM3H.PA',                                        // Amundi Euro Govt Bond 10-15Y
+          'SHC.MI','SHC.PA','SHC.DE',                     // Amundi Euro Corp Bond 0-3Y ESG
+          'ULTE.MI','ULTE.DE',                             // Amundi Euro Corp Bond 0-1Y ESG
+          'CRPE.PA',                                        // Amundi Euro Corporate Bond ESG
+          'EGBG.MI','EGBG.PA',                             // Amundi Euro Govt Tilted Green Bond
+          'AHYG.MI',                                        // Amundi EUR High Yield Corp Bond ESG
+          'INFL.MI','INFL.PA',                             // Amundi EUR Govt Inflation-Linked Bond
+          'SHT.MI',                                         // Amundi US Treasury Bond 1-3Y
+          'AMEU.L','AMEU.DE','AMEU.MI',                   // Amundi US Treasury 7-10Y
+          'TIPU.L',                                         // Amundi US Tips Inflation-Linked Bond
+          'HYLD2.L',                                        // Amundi USD High Yield Corp Bond ESG
+          'HYLDE.MI',                                       // Amundi USD HY Corp Bond EUR Hedged
+          'GGRE.L',                                         // Amundi Global Aggregate Green Bond
+          'AGGH2.PA',                                       // Amundi Core Global Govt Bond EUR Hedged
+          'PRAM.DE','PRAD.DE','PRAA.DE',                  // Amundi Prime Euro Govt Bond
+          'FLTC.PA',                                        // Amundi Floating Rate Euro Corporate ESG
+          // Xtrackers obligaties
+          'XBLR.DE','XBLR.MI',                             // Xtrackers II EUR Corporate Bond
+          'XHY1.DE','XHY1.SW',                             // Xtrackers II EUR HY Corporate Bond
+          'XHY3.DE',                                        // Xtrackers II EUR HY Corporate Bond Acc
+          'XGSH.DE',                                        // Xtrackers II Eurozone Govt Bond
+          'XGSG.DE',                                        // Xtrackers II Eurozone Govt Bond 1-3yr
+          'XGIG.MI',                                        // Xtrackers II Eurozone Inflation Linked Bond
+          'XGGB.L','XGGB.SW',                              // Xtrackers II Global Govt Bond
+          'XGGG.MI','XGGG.DE',                             // Xtrackers II Global Govt Bond EUR Hedged
+          'XGAG.DE',                                        // Xtrackers II Global Aggregate Bond Swap
+          'XUTD.DE',                                        // Xtrackers II US Treasuries
+          'XJSE.DE',                                        // Xtrackers II Japan Govt Bond
+          'XESR.DE',                                        // Xtrackers ESG EUR Corp Bond SRI PAB
+          'XZGE.DE',                                        // Xtrackers Eurozone Govt Bond ESG Tilted
+          'XHY7.MI',                                        // Xtrackers Rolling Target Mat EUR HY
+          // State Street SPDR
+          'BIL',                                            // State Street SPDR BBG 1-3 Month T-Bill ETF
+          'JNK',                                            // State Street SPDR BBG High Yield Bond ETF
+          'SPXB.DE','SPXB.SW',                             // SPDR Bloomberg 1-3 Month T-Bill UCITS
+          'GLAG.DE','GLAE.DE',                             // SPDR BBG Global Aggregate Bond
+          'GLGE.MI','GLGE.DE',                             // SPDR BBG 1-3Y EUR Govt Bond
+          'GLGG2.MI',                                       // SPDR BBG 10+ Y Euro Govt Bond
+          'GLTL.L',                                         // SPDR BBG 15+Y Gilt
+          'GLSC.L',                                         // SPDR BBG Sterling Corp Bond
+          'GLUK.L',                                         // SPDR BBG UK Gilt
+          'SEMG.MI',                                        // State St SPDR ICE BofA 0-5Y EM USD Govt Bond
+          'EMDL.MI',                                        // State Street SPDR BBG EM Local Bond
+          // UBS
+          'TIPS.SW',                                        // UBS BBG TIPS 1-10
+          'ULCO.SW',                                        // UBS BBG US Liquid Corp
+          'SDBB.SW',                                        // UBS Sustainable Development Bank Bonds
+          'EMSU.SW',                                        // UBS BBG USD EM Sovereign
+          'SULCO.SW',                                       // UBS BBG MSCI US Liquid Corp Sustainable
+          'SEURC.SW',                                       // UBS BBG MSCI Euro Area Liquid Corp Sustainable
+          // VanEck
+          'CORP2.AS',                                       // VanEck iBoxx EUR Corporates
+          'TSOV.AS',                                        // VanEck iBoxx EUR Sovereign 1-10
+          'TSOV2.AS',                                       // VanEck iBoxx EUR Sov Capped AAA-AA 1-5
+          // BNPP
+          'SRPE.MI',                                        // BNPP Easy EUR Corp Bond SRI PAB
+          // PIMCO
+          'STHS.L',                                         // PIMCO ShTerm HY Corp Bond
+          'STYLD.L','STYLD.MI',                            // PIMCO Advtge US Short-Term HY Corp Bond
+          'STHS2.MI',                                       // PIMCO US Short-Term HY Corp Bond
+          // JPMorgan
+          'JGHY.L',                                         // JPM Global HY Corp Bond
+          'BBIL.L',                                         // JPM BetaBuilders US Treasury 0-3M
+          'JPMF.MI','JPMF.DE',                             // JP Morgan EUR Ultra-Short Income Active
+          // L&G
+          'EMGB.MI',                                        // L&G EM Govt Bond USD 0-5 Year Screened
+          // WisdomTree
+          'COCO.MI',                                        // WisdomTree AT1 CoCo Bond Hedged
+          // Invesco
+          'AT1.DE',                                         // Invesco USD AT1 Coco Bond
+          'IBGE2.DE',                                       // Invesco Euro Govt Bond 1-3 Year
+          // Ontbrekende tickers
+          'AHYG2.DE','CGBH.PA','AM3A.MI',                   // Amundi extras
+          'USCP.L',                                           // Amundi USD Corp Bond PAB
+          'BIL','JNK','SHY','IEF','TLT','AGG','HYG','TIP','EMB','LEMB','BSV', // US ETFs
+          'VETY.SW','VAGS.DE',                               // Vanguard extras
+          'XGCB.MI','XGIG3.SW','XGIG2.L',                  // Xtrackers extras
+          'SDBU.DE','SUHY.DE',                               // iShares USD HY ESG SRI XETR
+          'ISAC.MI','ISAC.DE',                               // iShares Core EUR Corp Bond
+          'CSBGU0.MI',                                       // iShares Core EUR Govt Bond MIL
+          'AGGU.L','AGGG.L','AGGH.SW',                      // iShares Core Global Aggregate Bond
+          'CRHE.L','IS15.L',                                 // iShares Corp Bond extras
+          'SUIA.DE','SE15.DE','SUA0.DE',                    // iShares EUR Corp Bond ESG extras
+          'IBGE.L',                                          // iShares EUR Govt Bond 1-3yr Acc LSE
+          'EUGR.DE',                                         // iShares EUR Green Bond XETR
+          'SE06.DE','ERNS.DE',                               // iShares EUR Ultrashort extras
+          'IBCI.MI',                                         // iShares Euro Inflation Linked MIL
+          'IGLS.L','GHYS.L',                                 // iShares Global extras
+          'SEMB.L','EMLB.DE','EMCB.L',                      // iShares EM Bond extras
+          'IBTF.L','SLQD.L',                                 // iShares USD Corp/Treasury extras
+          'STIP.L','IBTA2.L',                                // iShares TIPS/Treasury extras
+          'IBTL.L','DTLA.DE',                                // iShares USD Treasury 20+yr
+          'CBU7.AS',                                         // iShares USD Treasury 3-7yr AMS
+          'IB28X.MI',                                        // iShares iBonds Dec 2028 Crossover
         ],
         gemengd: [
           'VNGA80.AS','VNGA60.AS','VNGA40.AS','VNGA20.AS','IMAP.AS','FLXA.AS',
@@ -1341,17 +1531,167 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'VNGA40.AS':{ ter: 0.25, tob: 0.12 },
         'VNGA20.AS':{ ter: 0.25, tob: 0.12 },
         // Obligatie ETFs
-        'AGGH.AS':  { ter: 0.10, tob: 0.12 },
+        // iShares Core
+        'AGGH.AS':  { ter: 0.10, tob: 0.12 }, 'AGGH.DE':  { ter: 0.10, tob: 0.12 },
+        'AGGH.L':   { ter: 0.10, tob: 0.12 }, 'AGGH.MI':  { ter: 0.10, tob: 0.12 },
         'IEAG.AS':  { ter: 0.17, tob: 0.12 },
-        'IEGA.AS':  { ter: 0.09, tob: 0.12 },
-        'XGSH.AS':  { ter: 0.15, tob: 0.12 },
+        'IEGA.AS':  { ter: 0.09, tob: 0.12 }, 'SXRM.DE':  { ter: 0.09, tob: 0.12 },
+        'IEAC.AS':  { ter: 0.20, tob: 0.12 }, 'IEAC.DE':  { ter: 0.20, tob: 0.12 }, 'IEAC.L': { ter: 0.20, tob: 0.12 },
+        'IBCI.AS':  { ter: 0.09, tob: 0.12 }, 'IBCI.DE':  { ter: 0.09, tob: 0.12 },
+        'IHYG.DE':  { ter: 0.50, tob: 0.12 }, 'IHYG.L':   { ter: 0.50, tob: 0.12 }, 'IHYG.MI': { ter: 0.50, tob: 0.12 },
+        'IBTS.AS':  { ter: 0.20, tob: 0.12 }, 'IBTS.DE':  { ter: 0.20, tob: 0.12 }, 'IBTS.MI': { ter: 0.20, tob: 0.12 },
         'IBGL.AS':  { ter: 0.20, tob: 0.12 },
+        // iShares USD Treasury
+        'SHY':      { ter: 0.15, tob: 0.35 }, 'IEF':      { ter: 0.15, tob: 0.35 }, 'TLT': { ter: 0.15, tob: 0.35 },
+        'TIP':      { ter: 0.19, tob: 0.35 },
+        'ITPE.DE':  { ter: 0.12, tob: 0.12 }, 'IBC5.DE':  { ter: 0.12, tob: 0.12 },
+        'IDTL.L':   { ter: 0.20, tob: 0.12 }, 'IBTL.DE':  { ter: 0.20, tob: 0.12 },
+        'IBTM.L':   { ter: 0.20, tob: 0.12 }, 'IBTD.L':   { ter: 0.20, tob: 0.12 },
+        'IBTA.L':   { ter: 0.07, tob: 0.12 }, 'IBTS.L':   { ter: 0.20, tob: 0.12 },
+        'IBTE.DE':  { ter: 0.25, tob: 0.12 },
+        'STIP.AS':  { ter: 0.10, tob: 0.12 }, 'ITPG.L':   { ter: 0.10, tob: 0.12 }, 'ITPS.L': { ter: 0.10, tob: 0.12 },
+        // iShares EUR Govt maturity
+        'IBGS.AS':  { ter: 0.20, tob: 0.12 }, 'IBGS.L':   { ter: 0.20, tob: 0.12 },
+        'IBGE.DE':  { ter: 0.20, tob: 0.12 }, 'IBGE.MI':  { ter: 0.20, tob: 0.12 },
+        'IBGK.AS':  { ter: 0.20, tob: 0.12 }, 'IBGK.DE':  { ter: 0.20, tob: 0.12 },
+        'IBGN.AS':  { ter: 0.20, tob: 0.12 }, 'IBGM.AS':  { ter: 0.20, tob: 0.12 },
+        'IBGP.AS':  { ter: 0.20, tob: 0.12 }, 'IBGX.AS':  { ter: 0.20, tob: 0.12 },
+        'IBGO.AS':  { ter: 0.20, tob: 0.12 },
+        'IDTG.DE':  { ter: 0.35, tob: 0.12 }, 'IGBE.DE':  { ter: 0.09, tob: 0.12 },
+        'IBGZ.DE':  { ter: 0.09, tob: 0.12 },
+        // iShares EUR Corp ESG
+        'QDVL.DE':  { ter: 0.12, tob: 0.12 }, 'QDVL.MI':  { ter: 0.12, tob: 0.12 },
+        'IE3E.DE':  { ter: 0.12, tob: 0.12 }, 'PAAC.DE':  { ter: 0.15, tob: 0.12 },
+        'SUAE.DE':  { ter: 0.20, tob: 0.12 },
+        'SRHE.DE':  { ter: 0.25, tob: 0.12 }, 'SRHE.AS':  { ter: 0.25, tob: 0.12 }, 'SRHE.L': { ter: 0.25, tob: 0.12 },
+        'AYE2.DE':  { ter: 0.25, tob: 0.12 },
+        // iShares USD HY & Corp
+        'HYG':      { ter: 0.49, tob: 0.35 }, 'AGG':      { ter: 0.03, tob: 0.35 },
+        'IHYU.DE':  { ter: 0.50, tob: 0.12 }, 'IHYU.MI':  { ter: 0.50, tob: 0.12 }, 'IHYU.L': { ter: 0.50, tob: 0.12 },
+        'HYLD.DE':  { ter: 0.50, tob: 0.12 }, 'SDHY.L':   { ter: 0.45, tob: 0.12 },
+        'SDIG.L':   { ter: 0.20, tob: 0.12 }, 'SDCB.L':   { ter: 0.20, tob: 0.12 },
+        'LQDA.L':   { ter: 0.20, tob: 0.12 }, 'LQDE.L':   { ter: 0.20, tob: 0.12 },
+        'SUDE.DE':  { ter: 0.25, tob: 0.12 }, 'LQDH.L':   { ter: 0.25, tob: 0.12 },
+        'SHYG.L':   { ter: 0.50, tob: 0.12 }, 'IEGE.DE':  { ter: 0.25, tob: 0.12 },
+        'FLOT.L':   { ter: 0.10, tob: 0.12 }, 'IUSU.L':   { ter: 0.09, tob: 0.12 },
+        'SUDA.DE':  { ter: 0.15, tob: 0.12 },
+        // iShares EM Bond
+        'IEMB.DE':  { ter: 0.45, tob: 0.12 }, 'IEMB.MI':  { ter: 0.45, tob: 0.12 }, 'IEMB.L': { ter: 0.45, tob: 0.12 },
+        'EMB':      { ter: 0.40, tob: 0.35 }, 'LEMB':     { ter: 0.30, tob: 0.35 },
+        'EMHE.DE':  { ter: 0.50, tob: 0.12 }, 'EMHE.MI':  { ter: 0.50, tob: 0.12 }, 'EMHE.L': { ter: 0.50, tob: 0.12 },
+        'SEML.MI':  { ter: 0.50, tob: 0.12 }, 'SEML.L':   { ter: 0.50, tob: 0.12 },
+        'AEMB.L':   { ter: 0.45, tob: 0.12 },
+        // iShares Global
+        'IGLO.DE':  { ter: 0.20, tob: 0.12 }, 'IGLO.L':   { ter: 0.20, tob: 0.12 }, 'IGLG.L': { ter: 0.20, tob: 0.12 },
+        'CORP.L':   { ter: 0.20, tob: 0.12 }, 'CORP.MI':  { ter: 0.20, tob: 0.12 },
+        'CRPH.DE':  { ter: 0.25, tob: 0.12 }, 'IGLB.L':   { ter: 0.20, tob: 0.12 },
+        'IGIL.DE':  { ter: 0.20, tob: 0.12 }, 'IUAG.L':   { ter: 0.25, tob: 0.12 },
+        'IMBS.L':   { ter: 0.25, tob: 0.12 }, 'IGLT.L':   { ter: 0.07, tob: 0.12 },
+        'GHYG.DE':  { ter: 0.50, tob: 0.12 }, 'GHYG.MI':  { ter: 0.50, tob: 0.12 },
+        'GHYG.L':   { ter: 0.50, tob: 0.12 }, 'GHYG.SW':  { ter: 0.50, tob: 0.12 },
+        'SUGA.DE':  { ter: 0.10, tob: 0.12 }, 'FALE.DE':  { ter: 0.50, tob: 0.12 },
+        'SUEF.DE':  { ter: 0.20, tob: 0.12 }, 'IITB.MI':  { ter: 0.09, tob: 0.12 },
+        'CNYB.AS':  { ter: 0.35, tob: 0.12 },
+        'IB27.MI':  { ter: 0.12, tob: 0.12 }, 'IB28.MI':  { ter: 0.12, tob: 0.12 },
+        'GROE.DE':  { ter: 0.20, tob: 0.12 }, 'EUNT.DE':  { ter: 0.09, tob: 0.12 },
+        'ERNE.DE':  { ter: 0.09, tob: 0.12 }, 'ERNE.AS':  { ter: 0.09, tob: 0.12 },
+        'SESG.DE':  { ter: 0.09, tob: 0.12 },
+        // Vanguard
+        'BND':      { ter: 0.03, tob: 0.35 }, 'BNDX':     { ter: 0.07, tob: 0.35 }, 'BSV': { ter: 0.04, tob: 0.35 },
+        'VGOV.DE':  { ter: 0.10, tob: 0.12 }, 'VGGT.DE':  { ter: 0.10, tob: 0.12 },
+        'VAGF.DE':  { ter: 0.10, tob: 0.12 }, 'VAGF.MI':  { ter: 0.10, tob: 0.12 },
+        'VECP.AS':  { ter: 0.09, tob: 0.12 }, 'VECP.DE':  { ter: 0.09, tob: 0.12 },
+        'VETY.DE':  { ter: 0.07, tob: 0.12 }, 'VETY.AS':  { ter: 0.07, tob: 0.12 }, 'VETY.MI': { ter: 0.07, tob: 0.12 },
+        'VUCP.AS':  { ter: 0.09, tob: 0.12 },
+        'VUTY.AS':  { ter: 0.07, tob: 0.12 }, 'VUTY.MI':  { ter: 0.07, tob: 0.12 },
+        'VDEM.AS':  { ter: 0.25, tob: 0.12 }, 'VGOV.L':   { ter: 0.07, tob: 0.12 },
+        'VDST.L':   { ter: 0.07, tob: 0.12 },
+        // Amundi
+        'C3M.MI':   { ter: 0.05, tob: 0.12 }, 'AM3A.PA':  { ter: 0.05, tob: 0.12 }, 'AM3A.DE': { ter: 0.05, tob: 0.12 },
+        'AM3E.PA':  { ter: 0.05, tob: 0.12 }, 'AM3E.MI':  { ter: 0.05, tob: 0.12 },
+        'AM3G.PA':  { ter: 0.05, tob: 0.12 }, 'AM3G.MI':  { ter: 0.05, tob: 0.12 },
+        'AM3H.PA':  { ter: 0.05, tob: 0.12 },
+        'SHC.MI':   { ter: 0.12, tob: 0.12 }, 'SHC.PA':   { ter: 0.12, tob: 0.12 }, 'SHC.DE': { ter: 0.12, tob: 0.12 },
+        'ULTE.MI':  { ter: 0.12, tob: 0.12 }, 'ULTE.DE':  { ter: 0.12, tob: 0.12 },
+        'CRPE.PA':  { ter: 0.14, tob: 0.12 },
+        'EGBG.MI':  { ter: 0.14, tob: 0.12 }, 'EGBG.PA':  { ter: 0.14, tob: 0.12 },
+        'AHYG.MI':  { ter: 0.45, tob: 0.12 },
+        'INFL.MI':  { ter: 0.09, tob: 0.12 }, 'INFL.PA':  { ter: 0.09, tob: 0.12 },
+        'SHT.MI':   { ter: 0.07, tob: 0.12 },
+        'AMEU.L':   { ter: 0.07, tob: 0.12 }, 'AMEU.DE':  { ter: 0.15, tob: 0.12 }, 'AMEU.MI': { ter: 0.07, tob: 0.12 },
+        'TIPU.L':   { ter: 0.09, tob: 0.12 }, 'HYLD2.L':  { ter: 0.45, tob: 0.12 }, 'HYLDE.MI': { ter: 0.45, tob: 0.12 },
+        'GGRE.L':   { ter: 0.10, tob: 0.12 }, 'AGGH2.PA': { ter: 0.10, tob: 0.12 },
+        'PRAM.DE':  { ter: 0.05, tob: 0.12 }, 'PRAD.DE':  { ter: 0.05, tob: 0.12 }, 'PRAA.DE': { ter: 0.05, tob: 0.12 },
+        'FLTC.PA':  { ter: 0.10, tob: 0.12 },
+        // Xtrackers
+        'XBLR.DE':  { ter: 0.16, tob: 0.12 }, 'XBLR.MI':  { ter: 0.16, tob: 0.12 },
+        'XHY1.DE':  { ter: 0.35, tob: 0.12 }, 'XHY1.SW':  { ter: 0.35, tob: 0.12 },
+        'XHY3.DE':  { ter: 0.35, tob: 0.12 },
+        'XGSH.DE':  { ter: 0.15, tob: 0.12 }, 'XGSG.DE':  { ter: 0.15, tob: 0.12 },
+        'XGIG.MI':  { ter: 0.20, tob: 0.12 },
+        'XGGB.L':   { ter: 0.20, tob: 0.12 }, 'XGGB.SW':  { ter: 0.20, tob: 0.12 },
+        'XGGG.MI':  { ter: 0.25, tob: 0.12 }, 'XGGG.DE':  { ter: 0.25, tob: 0.12 },
+        'XGAG.DE':  { ter: 0.20, tob: 0.12 }, 'XUTD.DE':  { ter: 0.15, tob: 0.12 },
+        'XJSE.DE':  { ter: 0.15, tob: 0.12 }, 'XESR.DE':  { ter: 0.16, tob: 0.12 },
+        'XZGE.DE':  { ter: 0.15, tob: 0.12 }, 'XHY7.MI':  { ter: 0.35, tob: 0.12 },
+        // State Street SPDR
+        'BIL':      { ter: 0.14, tob: 0.35 }, 'JNK':      { ter: 0.40, tob: 0.35 },
+        'SPXB.DE':  { ter: 0.10, tob: 0.12 }, 'SPXB.SW':  { ter: 0.10, tob: 0.12 },
+        'GLAG.DE':  { ter: 0.10, tob: 0.12 }, 'GLAE.DE':  { ter: 0.10, tob: 0.12 },
+        'GLGE.MI':  { ter: 0.15, tob: 0.12 }, 'GLGE.DE':  { ter: 0.15, tob: 0.12 },
+        'GLGG2.MI': { ter: 0.20, tob: 0.12 }, 'GLTL.L':   { ter: 0.15, tob: 0.12 },
+        'GLSC.L':   { ter: 0.20, tob: 0.12 }, 'GLUK.L':   { ter: 0.15, tob: 0.12 },
+        'SEMG.MI':  { ter: 0.55, tob: 0.12 }, 'EMDL.MI':  { ter: 0.55, tob: 0.12 },
+        // UBS
+        'TIPS.SW':  { ter: 0.20, tob: 0.12 }, 'ULCO.SW':  { ter: 0.18, tob: 0.12 },
+        'SDBB.SW':  { ter: 0.20, tob: 0.12 }, 'EMSU.SW':  { ter: 0.47, tob: 0.12 },
+        'SULCO.SW': { ter: 0.18, tob: 0.12 }, 'SEURC.SW': { ter: 0.18, tob: 0.12 },
+        // VanEck
+        'CORP2.AS': { ter: 0.10, tob: 0.12 }, 'TSOV.AS':  { ter: 0.10, tob: 0.12 }, 'TSOV2.AS': { ter: 0.10, tob: 0.12 },
+        // BNPP
+        'SRPE.MI':  { ter: 0.18, tob: 0.12 },
+        // PIMCO
+        'STHS.L':   { ter: 0.55, tob: 0.12 }, 'STYLD.L':  { ter: 0.75, tob: 0.12 }, 'STYLD.MI': { ter: 0.75, tob: 0.12 },
+        'STHS2.MI': { ter: 0.55, tob: 0.12 },
+        // JPMorgan
+        'JGHY.L':   { ter: 0.40, tob: 0.12 }, 'BBIL.L':   { ter: 0.07, tob: 0.12 },
+        'JPMF.MI':  { ter: 0.18, tob: 0.12 }, 'JPMF.DE':  { ter: 0.18, tob: 0.12 },
+        // L&G, WisdomTree, Invesco
+        'EMGB.MI':  { ter: 0.35, tob: 0.12 },
+        'COCO.MI':  { ter: 0.35, tob: 0.12 },
+        'AT1.DE':   { ter: 0.39, tob: 0.12 }, 'IBGE2.DE': { ter: 0.10, tob: 0.12 },
+        // Ontbrekende obligatie ETFs
+        'AHYG2.DE': { ter: 0.25, tob: 0.12 }, 'CGBH.PA':  { ter: 0.10, tob: 0.12 },
+        'AM3A.MI':  { ter: 0.05, tob: 0.12 }, 'USCP.L':   { ter: 0.10, tob: 0.12 },
+        'BIL':      { ter: 0.14, tob: 0.35 }, 'JNK':      { ter: 0.40, tob: 0.35 },
+        'SHY':      { ter: 0.15, tob: 0.35 }, 'IEF':      { ter: 0.15, tob: 0.35 },
+        'TLT':      { ter: 0.15, tob: 0.35 }, 'AGG':      { ter: 0.03, tob: 0.35 },
+        'HYG':      { ter: 0.49, tob: 0.35 }, 'TIP':      { ter: 0.19, tob: 0.35 },
+        'EMB':      { ter: 0.40, tob: 0.35 }, 'LEMB':     { ter: 0.30, tob: 0.35 },
+        'BSV':      { ter: 0.04, tob: 0.35 },
+        'VETY.SW':  { ter: 0.07, tob: 0.12 }, 'VAGS.DE':  { ter: 0.10, tob: 0.12 },
+        'XGCB.MI':  { ter: 0.15, tob: 0.12 }, 'XGIG3.SW': { ter: 0.25, tob: 0.12 },
+        'XGIG2.L':  { ter: 0.25, tob: 0.12 }, 'SDBU.DE':  { ter: 0.25, tob: 0.12 },
+        'SUHY.DE':  { ter: 0.50, tob: 0.12 }, 'ISAC.MI':  { ter: 0.09, tob: 0.12 },
+        'ISAC.DE':  { ter: 0.09, tob: 0.12 }, 'CSBGU0.MI':{ ter: 0.09, tob: 0.12 },
+        'AGGU.L':   { ter: 0.10, tob: 0.12 }, 'AGGG.L':   { ter: 0.10, tob: 0.12 },
+        'AGGH.SW':  { ter: 0.10, tob: 0.12 }, 'CRHE.L':   { ter: 0.25, tob: 0.12 },
+        'IS15.L':   { ter: 0.20, tob: 0.12 }, 'SUIA.DE':  { ter: 0.20, tob: 0.12 },
+        'SE15.DE':  { ter: 0.12, tob: 0.12 }, 'SUA0.DE':  { ter: 0.14, tob: 0.12 },
+        'IBGE.L':   { ter: 0.20, tob: 0.12 }, 'EUGR.DE':  { ter: 0.20, tob: 0.12 },
+        'SE06.DE':  { ter: 0.09, tob: 0.12 }, 'ERNS.DE':  { ter: 0.14, tob: 0.12 },
+        'IBCI.MI':  { ter: 0.09, tob: 0.12 }, 'IGLS.L':   { ter: 0.20, tob: 0.12 },
+        'GHYS.L':   { ter: 0.50, tob: 0.12 }, 'SEMB.L':   { ter: 0.45, tob: 0.12 },
+        'EMLB.DE':  { ter: 0.50, tob: 0.12 }, 'EMCB.L':   { ter: 0.50, tob: 0.12 },
+        'IBTF.L':   { ter: 0.07, tob: 0.12 }, 'SLQD.L':   { ter: 0.20, tob: 0.12 },
+        'STIP.L':   { ter: 0.10, tob: 0.12 }, 'IBTA2.L':  { ter: 0.07, tob: 0.12 },
+        'IBTL.L':   { ter: 0.20, tob: 0.12 }, 'DTLA.DE':  { ter: 0.20, tob: 0.12 },
+        'CBU7.AS':  { ter: 0.07, tob: 0.12 }, 'IB28X.MI': { ter: 0.15, tob: 0.12 },
+        // Oud
+        'XGSH.AS':  { ter: 0.15, tob: 0.12 },
         'EUNH.AS':  { ter: 0.09, tob: 0.12 },
-        'IBTS.AS':  { ter: 0.20, tob: 0.12 },
-        'IEAC.AS':  { ter: 0.20, tob: 0.12 },
         'IUSB.AS':  { ter: 0.25, tob: 0.12 },
         'SUZE.AS':  { ter: 0.09, tob: 0.12 },
-        'IBCI.AS':  { ter: 0.09, tob: 0.12 },
         'VGOV.AS':  { ter: 0.07, tob: 0.12 },
         'SEGA.AS':  { ter: 0.15, tob: 0.12 },
         'EUNA.AS':  { ter: 0.20, tob: 0.12 },
