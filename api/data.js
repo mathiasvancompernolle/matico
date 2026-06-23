@@ -1185,7 +1185,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // AT1.DE geeft Aroundtown SA aandeel op Yahoo - verwijderd
           'IBGE2.DE',                                       // Invesco Euro Govt Bond 1-3 Year
           // === BATCH 6 - Resterende Saxo tickers ===
-          'AMEU.L','AMEU.DE','AMEU.MI',   // Amundi US Treasury 7-10Y
+          'AMEU.L','AMEU.DE',   // Amundi US Treasury 7-10Y (AMEU.MI geeft S&P Europe 350 aandelen)
           'CLIM.DE',   // iShares EUR Govt Bond Climate XETR
           'GHYS2.L',   // iShares Global HY Corp Bond Acc LSE
           'GROE2.DE',  // iShares EUR Green Bond XETR variant
@@ -1193,9 +1193,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'IBTB.L','IBTU.L',   // iShares USD Treasury 1-3yr LSE varianten
           'IGLS.L','IGLV.L',   // iShares Global Govt Bond LSE USD2
           'IHYH.L',    // iShares USD HY Corp Bond LSE variant
-          'INFL.MI','INFL.PA', // Amundi EUR Govt Inflation-Linked Bond
+                    // INFL.MI/PA geeft Amundi Euro Inflation Expectations (swap ETF) - verwijderd
           'ISAC.DE',   // iShares Core EUR Corp Bond XETR
-          'PRAM.DE',   // Amundi Prime Euro Govt Bond Acc
+                    // PRAM.DE geeft Amundi Prime Emerging Markets (aandelen) - verwijderd
           'SHC.DE','SHC.MI',   // Amundi Euro Corp Bond 0-3Y ESG
           'SHYU.L','SHYU2.L',  // iShares USD HY Corp Bond LSE varianten
           'SRHE.AS',   // iShares EUR HY Corp Bond ESG SRI AMS
