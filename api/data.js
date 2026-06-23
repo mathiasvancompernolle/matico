@@ -1189,6 +1189,63 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'EUNH.DE','IUSM.DE','EUN4.DE','IS0R.DE','HYLE.DE',
           'IEAC.MI',
           // === CORRECTE YAHOO TICKERS VOOR ONTBREKENDE OBLIGATIE ETFs ===
+          // === BATCH 4 ===
+          // Amundi Euro Govt Bond - correcte PAR tickers (MT* serie)
+          'MTA.PA',    // Amundi Euro Govt Bond 1-3Y PAR (= AM3A.PA variant)
+          'MTC.PA',    // Amundi Euro Govt Bond 5-7Y PAR
+          'MTF.PA',    // Amundi Euro Govt Bond 15+Y PAR
+          'MTH.PA',    // Amundi Euro Govt Bond 25+Y PAR
+          'MTI.PA',    // Amundi Euro Govt Inflation-Linked Bond PAR
+          'AHYE.PA',   // Amundi EUR HY Bond ESG PAR (= AHYG.MI variant)
+          // iShares ESG bond - correcte Yahoo tickers (SUOE/OM3F/UEEF serie)
+          'SUOE.L',    // iShares EUR Corp Bond ESG SRI Dist LSE (= SUAE.DE variant)
+          'OM3F.DE',   // iShares EUR Corp Bond ESG SRI Dist XETR (= SUAE.DE variant)
+          'UEEF.DE',   // iShares $ HY Corp Bond ESG SRI EUR Hedged XETR (= SUHY.DE variant)
+          'SUOA.AS',   // iShares $ Corp Bond ESG SRI Acc AMS (= SUDE.DE variant)
+          'SUSE.MI',   // iShares EUR Corp Bond 0-3yr ESG SRI Dist MIL
+          'SUSE.SW',   // iShares EUR Corp Bond 0-3yr ESG SRI Dist SWX
+          'SUSU.L',    // iShares $ Corp Bond 0-3yr ESG SRI Dist LSE (= SDBU.DE variant)
+          // Amundi extra MIL/XETR
+          'EGBG.DE',   // Amundi Euro Govt Tilted Green Bond XETR
+          'CRPE.PA',   // Amundi EUR Corp Bond ESG PAR (al in lijst als CRPE.MI)
+          'AHYG.PA',   // Amundi EUR HY Corp Bond ESG PAR
+          'ULTE.PA',   // Amundi Euro Corp Bond 0-1Y ESG PAR
+          'SHT.PA',    // Amundi US Treasury Bond 1-3Y PAR
+          // iShares Fallen Angel / Global Infl
+          'FALE.L',    // iShares Fallen Angel HY Corp Bond EUR Hedged LSE
+          'SUEF.MI',   // iShares EU Corp Bond ex Financials MIL
+          'IGIL.MI',   // iShares Global Inflation Linked MIL (hertest)
+          'IGIL.L',    // iShares Global Inflation Linked LSE
+          // iShares EUR Green Bond
+          'GROE.L',    // iShares EUR Green Bond LSE
+          'EUGR.L',    // iShares EUR Green Bond LSE variant
+          // iShares Ultrashort/USD extras
+          'ERNE.DE',   // iShares EUR Ultrashort Bond XETR
+          'SESG.L',    // iShares EUR Ultrashort Bond ESG LSE
+          'SLQD.MI',   // iShares USD Short Duration Corp Bond MIL
+          'SDBU.MI',   // iShares $ Corp Bond ESG SRI MIL
+          // VanEck
+          'TSOV2.DE',  // VanEck iBoxx EUR Sov Capped AAA-AA XETR
+          // SPDR extra varianten
+          'GLGE.L',    // SPDR BBG 1-3Y EUR Govt Bond LSE
+          'GLGG2.L',   // SPDR BBG 10+Y Euro Govt Bond LSE
+          'GLSC.MI',   // SPDR BBG Sterling Corp Bond MIL
+          'GLUK.MI',   // SPDR BBG UK Gilt MIL
+          'SPXB.MI',   // SPDR Bloomberg 1-3M T-Bill MIL
+          // JPMorgan
+          'JPMF.PA',   // JP Morgan EUR Ultra-Short Income PAR
+          // iShares iBonds extra
+          'IB28X.MI',  // iShares iBonds Dec 2028 Crossover MIL (hertest)
+          'IB28X.DE',  // iShares iBonds Dec 2028 Crossover XETR
+          // Xtrackers ESG/Tilted
+          'XESR.MI',   // Xtrackers ESG EUR Corp Bond SRI PAB MIL
+          'XZGE.MI',   // Xtrackers Eurozone Govt Bond ESG Tilted MIL
+          'XGIG.DE',   // Xtrackers II Eurozone Inflation Linked XETR
+          'XGAG.MI',   // Xtrackers II Global Aggregate Bond MIL
+          'XGGG.L',    // Xtrackers II Global Govt Bond EUR Hedged LSE
+          'XBLR.L',    // Xtrackers II EUR Corp Bond LSE
+          'XHY1.MI',   // Xtrackers II Rolling Target Mat EUR HY MIL
+          'XHY3.MI',   // Xtrackers II EUR HY Corp Bond Acc MIL
           // === BATCH 3 ===
           // Xtrackers alternatieven (Acc versies)
           'XHYA.DE',   // Xtrackers II EUR HY Corp Bond Acc XETR
@@ -1208,9 +1265,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // iShares Amundi Xetra alternatieven
           'CRPE.DE',   // Amundi EUR Corp Bond ESG XETR
           'EGBG.DE',   // Amundi Euro Govt Tilted Green Bond XETR
-          'AHYG.DE',   // Amundi EUR HY Corp Bond ESG XETR
+                    // AHYG.DE geeft Amundi Index Solutions Amundi Global (foute naam) - verwijderd
           'SHT.DE',    // Amundi US Treasury Bond 1-3Y XETR
-          'ULTE.L',    // Amundi Euro Corp Bond 0-1Y LSE
+                    // ULTE.L toont geen data - verwijderd
           // iShares extra varianten
           'IGLB.L',    // iShares Global Inflation Linked LSE
           'CRPH.MI',   // iShares Global Corp Bond EUR Hedged MIL
@@ -1245,7 +1302,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // Amundi PAR & MIL varianten
           'AM3E.DE',   // Amundi Euro Govt Bond 3-5Y XETR
           'AM3G.DE',   // Amundi Euro Govt Bond 7-10Y XETR
-          'GGRE.MI',   // Amundi Global Aggregate Green Bond MIL
+                    // GGRE.MI geeft WisdomTree Global Quality Dividend Growth (aandelen) - verwijderd
           'FLTC.MI',   // Amundi Floating Rate Euro Corp MIL
           'AGGH2.MI',  // Amundi Core Global Govt Bond EUR Hedged MIL
           // iShares Xetra - EUN* serie (Eurozone Govt Bond maturity buckets)
