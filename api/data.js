@@ -1099,7 +1099,8 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'SESG.DE',                                        // iShares EUR Ultrashort Bond ESG
           // Vanguard obligaties
           'BND','BNDX','BSV',                              // Vanguard Bond ETFs US
-          'VGOV.DE','VGGT.DE',                             // Vanguard Global Govt Bond
+          'VGGT.DE',                                        // Vanguard Global Govt Bond
+          // VGOV.DE geeft verkeerde data op Yahoo
           'VAGF.DE','VAGF.MI',                             // Vanguard Global Aggregate Bond
           'VECP.AS','VECP.DE',                             // Vanguard EUR Corporate Bond
           'VETY.DE','VETY.AS','VETY.MI',                  // Vanguard EUR Eurozone Govt Bond
@@ -1118,7 +1119,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'CRPE.PA',                                        // Amundi Euro Corporate Bond ESG
           'EGBG.MI','EGBG.PA',                             // Amundi Euro Govt Tilted Green Bond
           'AHYG.MI',                                        // Amundi EUR High Yield Corp Bond ESG
-          'INFL.MI','INFL.PA',                             // Amundi EUR Govt Inflation-Linked Bond
+          // INFL.MI/PA geeft Amundi Euro Inflation Expectations (inflatie swap) op Yahoo
           'SHT.MI',                                         // Amundi US Treasury Bond 1-3Y
                     // Amundi US Treasury 7-10Y - AMEU tickers geven foutieve data op Yahoo
           'TIPU.L',                                         // Amundi US Tips Inflation-Linked Bond
@@ -1126,7 +1127,8 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'HYLDE.MI',                                       // Amundi USD HY Corp Bond EUR Hedged
           'GGRE.L',                                         // Amundi Global Aggregate Green Bond
           'AGGH2.PA',                                       // Amundi Core Global Govt Bond EUR Hedged
-          'PRAM.DE','PRAD.DE','PRAA.DE',                  // Amundi Prime Euro Govt Bond
+          // PRAM.DE geeft Amundi Prime Emerging Markets (aandelen) op Yahoo
+          //'PRAD.DE','PRAA.DE',                  // Amundi Prime Euro Govt Bond
           'FLTC.PA',                                        // Amundi Floating Rate Euro Corporate ESG
           // Xtrackers obligaties
           'XBLR.DE','XBLR.MI',                             // Xtrackers II EUR Corporate Bond
@@ -1181,12 +1183,12 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // WisdomTree
                     // WisdomTree AT1 CoCo Bond - COCO.MI is cacao op Yahoo, foute ticker
           // Invesco
-          'AT1.DE',                                         // Invesco USD AT1 Coco Bond
+          // AT1.DE geeft Aroundtown SA aandeel op Yahoo - verwijderd
           'IBGE2.DE',                                       // Invesco Euro Govt Bond 1-3 Year
           // Ontbrekende tickers
           'AHYG2.DE','CGBH.PA','AM3A.MI',                   // Amundi extras
           'USCP.L',                                           // Amundi USD Corp Bond PAB
-          'BIL','JNK','SHY','IEF','TLT','AGG','HYG','TIP','EMB','LEMB','BSV', // US ETFs
+          // BIL/JNK/SHY/IEF/TLT/AGG/HYG/TIP/EMB/LEMB/BSV - staan al hoger in de lijst
           'VETY.SW','VAGS.DE',                               // Vanguard extras
           'XGCB.MI','XGIG3.SW','XGIG2.L',                  // Xtrackers extras
           'SDBU.DE','SUHY.DE',                               // iShares USD HY ESG SRI XETR
