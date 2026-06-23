@@ -1041,8 +1041,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'IBGM.AS',                                        // iShares EUR Govt Bond 5-7yr
           'IBGP.AS',                                        // iShares EUR Govt Bond 7-10yr
           'IBGX.AS',                                        // iShares EUR Govt Bond 10-15yr
-          'IBGL.AS',                                        // iShares EUR Govt Bond 15-30yr
-          'IBGO.AS',                                        // iShares EUR Govt Bond 15-30yr Acc
+          // IBGO.AS geeft zelfde data als IBGL.AS op Yahoo - verwijderd
           'IDTG.DE',                                        // iShares EUR Govt Bond 20yr Target Dur
           'IGBE.DE',                                        // iShares EUR Govt Bond Climate
           'IBGZ.DE',                                        // iShares EUR Govt Bond 0-1yr
@@ -1078,7 +1077,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'AEMB.L',                                         // iShares JP Morgan Advanced EM Bond
           // iShares Global
           'IGLO.DE','IGLO.L',                              // iShares Global Govt Bond
-          'IGLG.L',                                         // iShares Global Govt Bond GBP
+          // IGLG.L geeft Physical Gold op Yahoo - verwijderd
           'CORP.L','CORP.MI',                              // iShares Global Corp Bond
           'CRPH.DE',                                        // iShares Global Corp Bond EUR Hedged
           'IGLB.L',                                         // iShares Global Inflation Linked
