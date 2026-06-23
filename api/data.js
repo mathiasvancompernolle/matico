@@ -1184,6 +1184,24 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // Invesco
           // AT1.DE geeft Aroundtown SA aandeel op Yahoo - verwijderd
           'IBGE2.DE',                                       // Invesco Euro Govt Bond 1-3 Year
+          // === BATCH 6 - Resterende Saxo tickers ===
+          'AMEU.L','AMEU.DE','AMEU.MI',   // Amundi US Treasury 7-10Y
+          'CLIM.DE',   // iShares EUR Govt Bond Climate XETR
+          'GHYS2.L',   // iShares Global HY Corp Bond Acc LSE
+          'GROE2.DE',  // iShares EUR Green Bond XETR variant
+          'IBGO.AS',   // iShares EUR Govt Bond 15-30yr Acc AMS
+          'IBTB.L','IBTU.L',   // iShares USD Treasury 1-3yr LSE varianten
+          'IGLS.L','IGLV.L',   // iShares Global Govt Bond LSE USD2
+          'IHYH.L',    // iShares USD HY Corp Bond LSE variant
+          'INFL.MI','INFL.PA', // Amundi EUR Govt Inflation-Linked Bond
+          'ISAC.DE',   // iShares Core EUR Corp Bond XETR
+          'PRAM.DE',   // Amundi Prime Euro Govt Bond Acc
+          'SHC.DE','SHC.MI',   // Amundi Euro Corp Bond 0-3Y ESG
+          'SHYU.L','SHYU2.L',  // iShares USD HY Corp Bond LSE varianten
+          'SRHE.AS',   // iShares EUR HY Corp Bond ESG SRI AMS
+          'SUSE.DE',   // iShares EUR Corp Bond 0-3yr ESG SRI XETR
+          'VGOV.DE',   // Vanguard Global Govt Bond XETR
+          'XCB1.DE','XCB1.MI', // Xtrackers II EUR Corporate Bond alternatieven
           // Correcte Yahoo tickers voor iShares Xetra obligaties
           'EUNA.DE','EUN5.DE','EUNW.DE','IUS7.DE','EUN3.DE',
           'EUNH.DE','IUSM.DE','EUN4.DE','IS0R.DE','HYLE.DE',
