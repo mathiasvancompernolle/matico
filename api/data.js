@@ -1189,6 +1189,56 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'EUNH.DE','IUSM.DE','EUN4.DE','IS0R.DE','HYLE.DE',
           'IEAC.MI',
           // === CORRECTE YAHOO TICKERS VOOR ONTBREKENDE OBLIGATIE ETFs ===
+          // === BATCH 5 ===
+          // iShares Fallen Angel correcte Yahoo ticker
+          'WNGE.L',    // iShares Fallen Angels HY Corp Bond EUR Hedged LSE (= FALE.DE/MI)
+          'WIGG.L',    // iShares Fallen Angels HY Corp Bond GBP Hedged LSE
+          // Amundi extra MIL varianten
+          'AM3E.MI',   // Amundi Euro Govt Bond 3-5Y MIL (hertest)
+          'AM3G.MI',   // Amundi Euro Govt Bond 7-10Y MIL (hertest)
+          'EGBG.MI',   // Amundi Euro Govt Tilted Green Bond MIL (hertest)
+          'AHYG.MI',   // Amundi EUR HY Corp Bond ESG MIL (hertest)
+          'SHT.MI',    // Amundi US Treasury Bond 1-3Y MIL (hertest)
+          'ULTE.MI',   // Amundi Euro Corp Bond 0-1Y MIL (hertest)
+          // iShares Global Inflation Linked extra
+          'IGIL.DE',   // iShares Global Inflation Linked Govt Bond XETR
+          'IGLB.DE',   // iShares Global Inflation Linked Bond XETR
+          // iShares EUR Green Bond
+          'GROE.DE',   // iShares EUR Green Bond XETR
+          'EUGR.DE',   // iShares EUR Green Bond XETR variant
+          // iShares EU Corp Bond ex Financials
+          'SUEF.L',    // iShares EU Corp Bond ex Financials LSE
+          // iShares Ultrashort
+          'ERNE.DE',   // iShares EUR Ultrashort Bond XETR (hertest)
+          // SPDR extra
+          'GLAG.DE',   // SPDR BBG Global Aggregate XETR (hertest)
+          'GLAE.DE',   // SPDR BBG Global Aggregate EUR Dist XETR (hertest)
+          'GLGE.MI',   // SPDR BBG 1-3Y EUR Govt Bond MIL (hertest)
+          'GLGE.DE',   // SPDR BBG 1-3Y EUR Govt Bond XETR (hertest)
+          'GLGG2.DE',  // SPDR BBG 10+Y Euro Govt Bond XETR (hertest)
+          'GLSC.MI',   // SPDR BBG Sterling Corp Bond MIL (hertest)
+          'SEMG.MI',   // SPDR ICE BofA 0-5Y EM Govt Bond MIL (hertest)
+          'EMDL.MI',   // SPDR BBG EM Local Bond MIL (hertest)
+          // Xtrackers extra
+          'XESR.MI',   // Xtrackers ESG EUR Corp Bond SRI PAB MIL (hertest)
+          'XZGE.MI',   // Xtrackers Eurozone Govt Bond ESG Tilted MIL (hertest)
+          'XGAG.MI',   // Xtrackers II Global Aggregate Bond MIL (hertest)
+          'XGGG.L',    // Xtrackers II Global Govt Bond EUR Hedged LSE (hertest)
+          'XBLR.L',    // Xtrackers II EUR Corp Bond LSE (hertest)
+          'XHY3.MI',   // Xtrackers II EUR HY Corp Bond Acc MIL (hertest)
+          // VanEck
+          'TSOV.DE',   // VanEck iBoxx EUR Sovereign XETR (hertest)
+          'CORP2.DE',  // VanEck iBoxx EUR Corporates XETR (hertest)
+          'TSOV2.DE',  // VanEck iBoxx EUR Sov Capped XETR (hertest)
+          // JPMorgan
+          'JPMF.PA',   // JPMorgan EUR Ultra-Short Income PAR (hertest)
+          // L&G
+          'EMGB.DE',   // L&G EM Govt Bond USD XETR (hertest)
+          'EMGB.MI',   // L&G EM Govt Bond USD MIL (hertest)
+          // UBS
+          'ULCO.DE',   // UBS BBG US Liquid Corp XETR (hertest)
+          'SDBB.DE',   // UBS Sustainable Dev Bank Bonds XETR (hertest)
+          'EMSU.MI',   // UBS BBG USD EM Sovereign MIL (hertest)
           // === BATCH 4 ===
           // Amundi Euro Govt Bond - correcte PAR tickers (MT* serie)
           'MTA.PA',    // Amundi Euro Govt Bond 1-3Y PAR (= AM3A.PA variant)
@@ -1206,10 +1256,10 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'SUSE.SW',   // iShares EUR Corp Bond 0-3yr ESG SRI Dist SWX
           'SUSU.L',    // iShares $ Corp Bond 0-3yr ESG SRI Dist LSE (= SDBU.DE variant)
           // Amundi extra MIL/XETR
-          'EGBG.DE',   // Amundi Euro Govt Tilted Green Bond XETR
+                    // EGBG.DE al eerder verwijderd - skip
           'CRPE.PA',   // Amundi EUR Corp Bond ESG PAR (al in lijst als CRPE.MI)
           'AHYG.PA',   // Amundi EUR HY Corp Bond ESG PAR
-          'ULTE.PA',   // Amundi Euro Corp Bond 0-1Y ESG PAR
+                    // ULTE.PA geeft YieldMax ULTY (compleet fout) - verwijderd
           'SHT.PA',    // Amundi US Treasury Bond 1-3Y PAR
           // iShares Fallen Angel / Global Infl
           'FALE.L',    // iShares Fallen Angel HY Corp Bond EUR Hedged LSE
@@ -1221,7 +1271,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'EUGR.L',    // iShares EUR Green Bond LSE variant
           // iShares Ultrashort/USD extras
           'ERNE.DE',   // iShares EUR Ultrashort Bond XETR
-          'SESG.L',    // iShares EUR Ultrashort Bond ESG LSE
+                    // SESG.L geeft Saturna Sustainable ESG Equity (aandelen) - verwijderd
           'SLQD.MI',   // iShares USD Short Duration Corp Bond MIL
           'SDBU.MI',   // iShares $ Corp Bond ESG SRI MIL
           // VanEck
@@ -1264,7 +1314,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           'XGIN.DE',   // Xtrackers II Global Inflation Linked EUR Hedged XETR
           // iShares Amundi Xetra alternatieven
           'CRPE.DE',   // Amundi EUR Corp Bond ESG XETR
-          'EGBG.DE',   // Amundi Euro Govt Tilted Green Bond XETR
+                    // EGBG.DE al eerder verwijderd - skip
                     // AHYG.DE geeft Amundi Index Solutions Amundi Global (foute naam) - verwijderd
           'SHT.DE',    // Amundi US Treasury Bond 1-3Y XETR
                     // ULTE.L toont geen data - verwijderd
