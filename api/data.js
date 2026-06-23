@@ -1790,7 +1790,14 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
 
       try {
         // Alle tickers tegelijk parallel - geen sequentiële batches
-        const allResults = await Promise.all(teOphalen.map(sym => fetchEtf(sym)));
+        // Verwerk in batches van 40 concurrent om timeout te vermijden
+        const CONCURRENT = 40;
+        const allResults = [];
+        for (let i = 0; i < teOphalen.length; i += CONCURRENT) {
+          const batch = teOphalen.slice(i, i + CONCURRENT);
+          const batchResults = await Promise.all(batch.map(sym => fetchEtf(sym)));
+          allResults.push(...batchResults);
+        }
         const filtered = allResults.filter(Boolean);
         const output = toonAlles === 'true' ? filtered : filtered.slice(0, 10);
         return res.json(output);
