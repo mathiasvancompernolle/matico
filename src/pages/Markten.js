@@ -138,19 +138,17 @@ function GrafiekTooltip({ active, payload, periode }) {
 }
 
 // ── Aandelen subpagina ────────────────────────────────────────────────────────
-function AandelenPagina({ actieveRegio }) {
+function AandelenPagina({ actieveRegio, onToonAlles }) {
   const subindices = SUBINDICES[actieveRegio] || SUBINDICES['lokaal'];
   const [actieveSub, setActieveSub] = useState(subindices[0].id);
   const [periode, setPeriode] = useState('1d');
   const [data, setData] = useState(null);
   const [laden, setLaden] = useState(true);
-  const [volledigeLijst, setVolledigeLijst] = useState(null); // { titel, omgekeerd }
 
   // Reset subindex als regio wisselt
   useEffect(() => {
     const subs = SUBINDICES[actieveRegio] || SUBINDICES['lokaal'];
     setActieveSub(subs[0].id);
-    setVolledigeLijst(null);
   }, [actieveRegio]);
 
   const laadData = useCallback(async (regio, sub, per) => {
@@ -173,19 +171,6 @@ function AandelenPagina({ actieveRegio }) {
   const subLabel = subindices.find(s => s.id === actieveSub)?.label || '';
   const positief = data ? (data.huidigePrijs >= data.prevClose) : true;
   const grafiekKleur = positief ? '#3b82f6' : 'var(--red)';
-
-  // Volledige lijst pagina
-  if (volledigeLijst) {
-    return (
-      <VolledigeLijstPagina
-        titel={volledigeLijst.titel}
-        rijen={data?.alleQuotes || []}
-        periode={periode}
-        omgekeerd={volledigeLijst.omgekeerd}
-        onTerug={() => setVolledigeLijst(null)}
-      />
-    );
-  }
 
   return (
     <div className="aandelen-pagina">
@@ -281,7 +266,7 @@ function AandelenPagina({ actieveRegio }) {
             laden={laden}
             periode={periode}
             omgekeerd={false}
-            onToonAlles={() => setVolledigeLijst({ titel: 'Best presterend', omgekeerd: false })}
+            onToonAlles={() => onToonAlles('Best presterend', data?.alleQuotes || [], periode, false)}
           />
           <RankingTabel
             titel="Minst presterend"
@@ -290,7 +275,7 @@ function AandelenPagina({ actieveRegio }) {
             laden={laden}
             periode={periode}
             omgekeerd={true}
-            onToonAlles={() => setVolledigeLijst({ titel: 'Minst presterend', omgekeerd: true })}
+            onToonAlles={() => onToonAlles('Minst presterend', data?.alleQuotes || [], periode, true)}
           />
         </div>
       </div>
@@ -1025,6 +1010,7 @@ export default function Markten() {
   const [nieuws, setNieuws] = useState([]);
   const [ladenIndices, setLadenIndices] = useState(true);
   const [ladenNieuws, setLadenNieuws] = useState(true);
+  const [volledigeLijstData, setVolledigeLijstData] = useState(null); // { titel, rijen, periode, omgekeerd }
 
   const laadIndices = useCallback(async (regio) => {
     setLadenIndices(true);
@@ -1061,6 +1047,19 @@ export default function Markten() {
   }, [actieveCat, laadNieuws]);
 
   // Als een categorie actief is, toon die subpagina
+  // Volledige lijst pagina (aparte pagina, geen aandelen tabs/belgisch overzicht erbij)
+  if (volledigeLijstData) {
+    return (
+      <VolledigeLijstPagina
+        titel={volledigeLijstData.titel}
+        rijen={volledigeLijstData.rijen}
+        periode={volledigeLijstData.periode}
+        omgekeerd={volledigeLijstData.omgekeerd}
+        onTerug={() => setVolledigeLijstData(null)}
+      />
+    );
+  }
+
   if (actieveCat === 'etfs') {
     return <EtfPagina onTerug={() => setActieveCat(null)} />;
   }
@@ -1086,7 +1085,10 @@ export default function Markten() {
             </button>
           ))}
         </div>
-        <AandelenPagina actieveRegio={actieveRegio} />
+        <AandelenPagina
+          actieveRegio={actieveRegio}
+          onToonAlles={(titel, rijen, periode, omgekeerd) => setVolledigeLijstData({ titel, rijen, periode, omgekeerd })}
+        />
         {actieveRegio === 'lokaal' && <BelgischOverzicht />}
       </div>
     );
