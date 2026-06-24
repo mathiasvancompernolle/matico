@@ -262,14 +262,18 @@ function AandelenPagina({ actieveRegio }) {
           <RankingTabel
             titel="Best presterend"
             rijen={data?.stijgers || []}
+            alleRijen={data?.alleQuotes || []}
             laden={laden}
             periode={periode}
+            omgekeerd={false}
           />
           <RankingTabel
             titel="Minst presterend"
             rijen={data?.dalers || []}
+            alleRijen={data?.alleQuotes || []}
             laden={laden}
             periode={periode}
+            omgekeerd={true}
           />
         </div>
       </div>
@@ -279,13 +283,35 @@ function AandelenPagina({ actieveRegio }) {
   );
 }
 
-function RankingTabel({ titel, rijen, laden, periode }) {
+function RankingTabel({ titel, rijen, alleRijen, laden, periode, omgekeerd }) {
+  const [toonAlles, setToonAlles] = useState(false);
   const periodeLabels = { '1d':'1D','1w':'1W','1m':'1M','3m':'3M','6m':'6M','1j':'1J','3j':'3J','5j':'5J','ytd':'YTD','max':'Max' };
   const pLabel = periodeLabels[periode] || '1D';
+  const changeKey = periode === '1d' ? 'change' : `change${pLabel}`;
+
+  // Bij toon alles: alle quotes gesorteerd op change (beste of slechtste bovenaan)
+  const getoondRijen = toonAlles
+    ? [...(alleRijen || [])].sort((a, b) => omgekeerd
+        ? (a.change ?? 0) - (b.change ?? 0)   // minst presterende: laagste bovenaan
+        : (b.change ?? 0) - (a.change ?? 0)   // best presterende: hoogste bovenaan
+      )
+    : rijen;
+
   return (
     <div className="ranking-tabel-kaart">
       <div className="ranking-tabel-header">
         <span className="ranking-tabel-titel">{titel}</span>
+        {!laden && (alleRijen?.length > 5) && (
+          <button
+            onClick={() => setToonAlles(v => !v)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--accent)', fontSize: 12, fontWeight: 600, padding: 0,
+            }}
+          >
+            {toonAlles ? 'Toon minder' : 'Toon alles'}
+          </button>
+        )}
       </div>
       <table className="ranking-tabel">
         <thead>
@@ -304,7 +330,7 @@ function RankingTabel({ titel, rijen, laden, periode }) {
               <td><div className="tabel-skeleton" style={{ width: 40 }} /></td>
               <td><div className="tabel-skeleton" style={{ width: 30 }} /></td>
             </tr>
-          )) : rijen.map((r, i) => (
+          )) : getoondRijen.map((r, i) => (
             <tr key={i}>
               <td>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -319,15 +345,40 @@ function RankingTabel({ titel, rijen, laden, periode }) {
           ))}
         </tbody>
       </table>
+      {toonAlles && !laden && (
+        <div style={{ textAlign: 'right', padding: '8px 16px', fontSize: 11, color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
+          {getoondRijen.length} aandelen
+        </div>
+      )}
     </div>
   );
 }
 
-function AandelenTabel({ titel, rijen, laden, kolom, waardeKey }) {
+function AandelenTabel({ titel, rijen, alleRijen, laden, kolom, waardeKey, omgekeerd }) {
+  const [toonAlles, setToonAlles] = useState(false);
+
+  const getoondRijen = toonAlles
+    ? [...(alleRijen || [])].sort((a, b) => omgekeerd
+        ? (a[waardeKey] ?? 0) - (b[waardeKey] ?? 0)
+        : (b[waardeKey] ?? 0) - (a[waardeKey] ?? 0)
+      )
+    : rijen;
+
   return (
     <div className="aandelen-tabel-kaart">
       <div className="aandelen-tabel-header">
         <span className="aandelen-tabel-titel">{titel}</span>
+        {!laden && (alleRijen?.length > 5) && (
+          <button
+            onClick={() => setToonAlles(v => !v)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--accent)', fontSize: 12, fontWeight: 600, padding: 0,
+            }}
+          >
+            {toonAlles ? 'Toon minder' : 'Toon alles'}
+          </button>
+        )}
       </div>
       <table className="aandelen-tabel">
         <thead>
@@ -344,7 +395,7 @@ function AandelenTabel({ titel, rijen, laden, kolom, waardeKey }) {
               <td><div className="tabel-skeleton" style={{ width: 50 }} /></td>
               <td><div className="tabel-skeleton" style={{ width: 50 }} /></td>
             </tr>
-          )) : rijen.map((r, i) => (
+          )) : getoondRijen.map((r, i) => (
             <tr key={i}>
               <td>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -358,6 +409,11 @@ function AandelenTabel({ titel, rijen, laden, kolom, waardeKey }) {
           ))}
         </tbody>
       </table>
+      {toonAlles && !laden && (
+        <div style={{ textAlign: 'right', padding: '8px 16px', fontSize: 11, color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
+          {getoondRijen.length} aandelen
+        </div>
+      )}
     </div>
   );
 }
