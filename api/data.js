@@ -2314,9 +2314,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
       const { toonAlles = 'false' } = req.query;
       const syms = ETF_LIJSTEN[categorie] || ETF_LIJSTEN['aandelen'];
 
-      // Bij toonAlles=false: eerste 10 ophalen
+      // Bij toonAlles=false: eerste 80 ophalen, sorteren op volume → top 10 teruggeven
       // Bij toonAlles=true: alles in batches van 40 concurrent ophalen
-      const teOphalen = toonAlles === 'true' ? syms : syms.slice(0, 10);
+      const teOphalen = toonAlles === 'true' ? syms : syms.slice(0, 80);
 
       const exchangeMap = {
         'AMS': 'Euronext Amsterdam', 'EPA': 'Euronext Paris', 'PAR': 'Euronext Paris',
@@ -2357,6 +2357,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           return {
             symbol: sym, naam, naamVolledig: naamRaw, prijs,
             valuta: meta.currency || 'EUR',
+            volume: meta.regularMarketVolume || 0,
             totalAssets: 0,
             ter: metaLookup.ter ?? null,
             tob: metaLookup.tob ?? 0.12,
@@ -2379,7 +2380,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           allResults.push(...batchResults);
         }
         const filtered = allResults.filter(Boolean);
-        const output = toonAlles === 'true' ? filtered : filtered.slice(0, 10);
+        const output = toonAlles === 'true'
+          ? filtered
+          : [...filtered].sort((a, b) => (b.volume || 0) - (a.volume || 0)).slice(0, 10);
         return res.json(output);
       } catch (e) {
         return res.json([]);
