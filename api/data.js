@@ -609,10 +609,6 @@ module.exports = async function handler(req, res) {
           'TINC.BR',   // TINC
           'TITC.BR',   // Titan
           'XIOR.BR',   // Xior Student Housing
-          'VIO.BR',    // Viohalco
-          'CMBT.BR',   // CMB Tech
-          'VGP.BR',    // VGP
-          'COLR.BR',   // Colruyt
         ],
         'bel-smallcap': [
           'ACCE.BR',   // Accentis
