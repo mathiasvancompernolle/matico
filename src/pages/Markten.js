@@ -607,6 +607,120 @@ function fmtPctEtf(v) {
   return <span style={{ color: kleur, fontWeight: 600 }}>{(v >= 0 ? '+' : '') + v.toFixed(2) + '%'}</span>;
 }
 
+// Openingstijden per beurs (lokale tijd van de beurs, UTC offset)
+const BEURS_INFO = {
+  'Euronext Amsterdam': { open: '09:00', sluit: '17:30', tz: 'Europe/Amsterdam' },
+  'Euronext Paris':     { open: '09:00', sluit: '17:30', tz: 'Europe/Paris' },
+  'Euronext Milan':     { open: '09:00', sluit: '17:30', tz: 'Europe/Rome' },
+  'Xetra':              { open: '09:00', sluit: '17:30', tz: 'Europe/Berlin' },
+  'London SE':          { open: '08:00', sluit: '16:30', tz: 'Europe/London' },
+  'SIX Swiss':          { open: '09:00', sluit: '17:30', tz: 'Europe/Zurich' },
+  'Nasdaq':             { open: '09:30', sluit: '16:00', tz: 'America/New_York' },
+  'NYSE Arca':          { open: '09:30', sluit: '16:00', tz: 'America/New_York' },
+  'NYSE':               { open: '09:30', sluit: '16:00', tz: 'America/New_York' },
+  'BATS':               { open: '09:30', sluit: '16:00', tz: 'America/New_York' },
+  'Toronto SE':         { open: '09:30', sluit: '16:00', tz: 'America/Toronto' },
+};
+
+function tijdTotOpening(beurs) {
+  const info = BEURS_INFO[beurs];
+  if (!info) return null;
+
+  const nu = new Date();
+  // Huidige tijd in beurszone
+  const nuInBeurs = new Date(nu.toLocaleString('en-US', { timeZone: info.tz }));
+  const dag = nuInBeurs.getDay(); // 0=zo, 6=za
+  const uur = nuInBeurs.getHours();
+  const min = nuInBeurs.getMinutes();
+  const nuMinuten = uur * 60 + min;
+
+  const [openH, openM] = info.open.split(':').map(Number);
+  const [sluitH, sluitM] = info.sluit.split(':').map(Number);
+  const openMinuten = openH * 60 + openM;
+  const sluitMinuten = sluitH * 60 + sluitM;
+
+  // Weekend
+  const isWeekend = dag === 0 || dag === 6;
+  // Open?
+  const isOpen = !isWeekend && nuMinuten >= openMinuten && nuMinuten < sluitMinuten;
+
+  if (isOpen) return null; // geen tooltip nodig bij open
+
+  // Bereken minuten tot volgende opening
+  let minutenTot = 0;
+  if (!isWeekend && nuMinuten < openMinuten) {
+    // Vandaag nog openen
+    minutenTot = openMinuten - nuMinuten;
+  } else {
+    // Morgen of maandag
+    let dagenTot = 1;
+    if (dag === 5) dagenTot = 3; // vrijdag → maandag
+    if (dag === 6) dagenTot = 2; // zaterdag → maandag
+    const minutenRest = 24 * 60 - nuMinuten + openMinuten;
+    minutenTot = minutenRest + (dagenTot - 1) * 24 * 60;
+  }
+
+  const uren = Math.floor(minutenTot / 60);
+  const mins = minutenTot % 60;
+
+  if (isWeekend || dag === 5 && nuMinuten >= sluitMinuten) {
+    return `Weekend gesloten · opent ma ${info.open}`;
+  }
+  return `Opent in ${uren}u ${mins}m · om ${info.open}`;
+}
+
+function BeursBolletje({ marktOpen, beurs, marktState }) {
+  const [tooltip, setTooltip] = React.useState(false);
+  const tijdInfo = !marktOpen ? tijdTotOpening(beurs) : null;
+
+  const stateLabel = marktState === 'PRE'  ? 'Pre-market' :
+                     marktState === 'POST' ? 'Nabeurs' :
+                     marktOpen             ? 'Open' : 'Gesloten';
+
+  return (
+    <div
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, position: 'relative', cursor: 'default' }}
+      onMouseEnter={() => setTooltip(true)}
+      onMouseLeave={() => setTooltip(false)}
+    >
+      <span style={{
+        display: 'inline-block', width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+        background: marktOpen ? '#10b981' : marktState === 'PRE' || marktState === 'POST' ? '#f59e0b' : '#ef4444',
+      }} />
+      <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{beurs || '—'}</span>
+      {tooltip && (
+        <div style={{
+          position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, zIndex: 999,
+          background: '#1e293b', color: '#f1f5f9', borderRadius: 8,
+          padding: '8px 12px', fontSize: 12, whiteSpace: 'nowrap',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+          pointerEvents: 'none',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: tijdInfo ? 4 : 0 }}>
+            <span style={{
+              display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+              background: marktOpen ? '#10b981' : marktState === 'PRE' || marktState === 'POST' ? '#f59e0b' : '#ef4444',
+            }} />
+            <span style={{ fontWeight: 600 }}>{stateLabel}</span>
+            {!marktOpen && (
+              <span
+                style={{ marginLeft: 8, color: '#94a3b8', fontSize: 11, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Toon meer
+              </span>
+            )}
+          </div>
+          {tijdInfo && (
+            <div style={{ color: '#94a3b8', fontSize: 11 }}>
+              Next: {tijdInfo}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EtfPagina({ onTerug }) {
   const [actieveTab, setActieveTab] = useState('aandelen');
   const [etfs, setEtfs] = useState([]);
@@ -764,12 +878,7 @@ function EtfPagina({ onTerug }) {
                   {e.tob != null ? e.tob.toFixed(2) + '%' : '0,12%'}
                 </td>
                 <td style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
-                  <span style={{
-                    display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-                    background: e.marktOpen ? '#10b981' : '#ef4444',
-                    marginRight: 5, verticalAlign: 'middle'
-                  }} />
-                  {e.beurs || '—'}
+                  <BeursBolletje marktOpen={e.marktOpen} beurs={e.beurs} marktState={e.marktState} />
                 </td>
               </tr>
             ))}
