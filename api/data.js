@@ -1638,6 +1638,37 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         gemengd: [
           'VNGA80.AS','VNGA60.AS','VNGA40.AS','VNGA20.AS','IMAP.AS','FLXA.AS',
           'XDEB.DE','MACK.DE',
+          // === BATCH 8 - Gemengde ETFs (juni 2026) ===
+          // Amplify / Invesco US
+          'YYY',       // Amplify CEF High Income ETF NYSE
+          'PCEF',      // Invesco CEF Income Composite ETF NYSE
+          'CVY',       // Invesco Zacks Multi-Asset Income ETF NYSE
+          'AOA',       // iShares Core 80/20 Aggressive Allocation ETF NYSE
+          'IYLD',      // iShares Morningstar Multi Asset Income ETF BATS
+          // Global Balanced Fund
+          'ROE.DE','ROE_NEW.MI', // Global Balanced Fund UCITS ETF XETR + MIL
+          // iShares Portfolio UCITS
+          'MACV.DE','MACV.MI',   // iShares Conservative Portfolio XETR + MIL
+          'MODR.DE','MODR.MI',   // iShares Moderate Portfolio XETR + MIL
+          'MAGR.DE','MAGR.MI',   // iShares Growth Portfolio XETR + MIL
+          // State Street SPDR Multi-Asset
+          'ZPRI.DE',   // State St SPDR MS MultiAst Glbl Infr XETR EUR
+          'MAGI.L',    // State St SPDR MS MultiAst Glbl Infr LSE USD
+          'GIN.L',     // State St SPDR MS MultiAst Glbl Infr LSE GBP
+          // VanEck Multi-Asset
+          'NTM.AS',    // VanEck Multiasset Balanced AMS
+          'DTM.AS',    // VanEck Multiasset Conservative AMS
+          'TOF.AS',    // VanEck Multiasset Growth AMS
+          // Vanguard LifeStrategy - nieuwe varianten
+          'VNGA20.MI','V20A.AS','V20A.DE','V20D.AS','V20D.DE','VNGD20.MI',
+          'VNGA40.MI','V40A.DE','V40D.AS','V40D.DE','VNGD40.MI',
+          'VNGA60.MI','V60A.AS','V60A.DE','V60D.AS','V60D.DE','VNGD60.MI',
+          'VNGA80.MI','V80A.AS','V80A.DE','V80D.AS','V80D.DE','VNGD80.MI',
+          // WisdomTree
+          'NTSG.DE',   // WisdomTree Global Efficient Core XETR
+          // Xtrackers Portfolio
+          'XS7W.DE','XS7W.MI',   // Xtrackers Portfolio Income XETR + MIL
+          'XQUI.DE','XQUI.MI',   // Xtrackers Portfolio XETR + MIL
         ],
         valuta: [
           'SGLD.AS','PHGP.AS','VZLD.AS','4GLD.AS','SSLV.AS','PHPT.AS',
@@ -2134,6 +2165,31 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'XBAE.DE':  { ter: 0.15, tob: 0.12 },
         'XHYG.SW':  { ter: 0.35, tob: 0.12 }, // Xtrackers II EUR HY Corp Bond CHF SWX
         'LDCE.DE':  { ter: 0.39, tob: 0.12 }, // PIMCO Advg Euro Low Duration Corp Bond XETR
+        // === BATCH 8 META - Gemengde ETFs ===
+        'YYY':      { ter: 0.00, tob: 0.35 }, 'PCEF':     { ter: 0.00, tob: 0.35 },
+        'CVY':      { ter: 0.00, tob: 0.35 }, 'AOA':      { ter: 0.08, tob: 0.35 },
+        'IYLD':     { ter: 0.00, tob: 0.35 }, 'GGRO.TO':  { ter: 0.20, tob: 0.12 },
+        'ROE.DE':   { ter: 0.69, tob: 0.12 }, 'ROE_NEW.MI': { ter: 0.69, tob: 0.12 },
+        'MACV.DE':  { ter: 0.29, tob: 0.12 }, 'MACV.MI':  { ter: 0.29, tob: 0.12 },
+        'MODR.DE':  { ter: 0.27, tob: 0.12 }, 'MODR.MI':  { ter: 0.27, tob: 0.12 },
+        'MAGR.DE':  { ter: 0.27, tob: 0.12 }, 'MAGR.MI':  { ter: 0.27, tob: 0.12 },
+        'ZPRI.DE':  { ter: 0.40, tob: 0.12 }, 'MAGI.L':   { ter: 0.40, tob: 0.12 },
+        'GIN.L':    { ter: 0.40, tob: 0.12 }, 'NTM.AS':   { ter: 0.30, tob: 0.12 },
+        'DTM.AS':   { ter: 0.28, tob: 0.12 }, 'TOF.AS':   { ter: 0.32, tob: 0.12 },
+        'VNGA20.MI':{ ter: 0.25, tob: 1.32 }, 'V20A.AS':  { ter: 0.25, tob: 1.32 },
+        'V20A.DE':  { ter: 0.25, tob: 1.32 }, 'V20D.AS':  { ter: 0.25, tob: 0.12 },
+        'V20D.DE':  { ter: 0.25, tob: 0.12 }, 'VNGD20.MI':{ ter: 0.25, tob: 0.12 },
+        'VNGA40.MI':{ ter: 0.25, tob: 1.32 }, 'V40A.DE':  { ter: 0.25, tob: 1.32 },
+        'V40D.AS':  { ter: 0.25, tob: 0.12 }, 'V40D.DE':  { ter: 0.25, tob: 0.12 },
+        'VNGD40.MI':{ ter: 0.25, tob: 0.12 }, 'VNGA60.MI':{ ter: 0.25, tob: 1.32 },
+        'V60A.AS':  { ter: 0.25, tob: 1.32 }, 'V60A.DE':  { ter: 0.25, tob: 1.32 },
+        'V60D.AS':  { ter: 0.25, tob: 0.12 }, 'V60D.DE':  { ter: 0.25, tob: 0.12 },
+        'VNGD60.MI':{ ter: 0.25, tob: 0.12 }, 'VNGA80.MI':{ ter: 0.25, tob: 1.32 },
+        'V80A.AS':  { ter: 0.25, tob: 1.32 }, 'V80A.DE':  { ter: 0.25, tob: 1.32 },
+        'V80D.AS':  { ter: 0.25, tob: 0.12 }, 'V80D.DE':  { ter: 0.25, tob: 0.12 },
+        'VNGD80.MI':{ ter: 0.25, tob: 0.12 }, 'NTSG.DE':  { ter: 0.25, tob: 0.12 },
+        'XS7W.DE':  { ter: 0.65, tob: 0.12 }, 'XS7W.MI':  { ter: 0.65, tob: 0.12 },
+        'XQUI.DE':  { ter: 0.70, tob: 0.12 }, 'XQUI.MI':  { ter: 0.70, tob: 0.12 },
 
         // Correcte Yahoo Xetra obligatie tickers
         // Nieuwe obligatie tickers
