@@ -144,11 +144,13 @@ function AandelenPagina({ actieveRegio }) {
   const [periode, setPeriode] = useState('1d');
   const [data, setData] = useState(null);
   const [laden, setLaden] = useState(true);
+  const [volledigeLijst, setVolledigeLijst] = useState(null); // { titel, omgekeerd }
 
   // Reset subindex als regio wisselt
   useEffect(() => {
     const subs = SUBINDICES[actieveRegio] || SUBINDICES['lokaal'];
     setActieveSub(subs[0].id);
+    setVolledigeLijst(null);
   }, [actieveRegio]);
 
   const laadData = useCallback(async (regio, sub, per) => {
@@ -171,6 +173,19 @@ function AandelenPagina({ actieveRegio }) {
   const subLabel = subindices.find(s => s.id === actieveSub)?.label || '';
   const positief = data ? (data.huidigePrijs >= data.prevClose) : true;
   const grafiekKleur = positief ? '#3b82f6' : 'var(--red)';
+
+  // Volledige lijst pagina
+  if (volledigeLijst) {
+    return (
+      <VolledigeLijstPagina
+        titel={volledigeLijst.titel}
+        rijen={data?.alleQuotes || []}
+        periode={periode}
+        omgekeerd={volledigeLijst.omgekeerd}
+        onTerug={() => setVolledigeLijst(null)}
+      />
+    );
+  }
 
   return (
     <div className="aandelen-pagina">
@@ -266,6 +281,7 @@ function AandelenPagina({ actieveRegio }) {
             laden={laden}
             periode={periode}
             omgekeerd={false}
+            onToonAlles={() => setVolledigeLijst({ titel: 'Best presterend', omgekeerd: false })}
           />
           <RankingTabel
             titel="Minst presterend"
@@ -274,6 +290,7 @@ function AandelenPagina({ actieveRegio }) {
             laden={laden}
             periode={periode}
             omgekeerd={true}
+            onToonAlles={() => setVolledigeLijst({ titel: 'Minst presterend', omgekeerd: true })}
           />
         </div>
       </div>
@@ -283,19 +300,9 @@ function AandelenPagina({ actieveRegio }) {
   );
 }
 
-function RankingTabel({ titel, rijen, alleRijen, laden, periode, omgekeerd }) {
-  const [toonAlles, setToonAlles] = useState(false);
+function RankingTabel({ titel, rijen, alleRijen, laden, periode, omgekeerd, onToonAlles }) {
   const periodeLabels = { '1d':'1D','1w':'1W','1m':'1M','3m':'3M','6m':'6M','1j':'1J','3j':'3J','5j':'5J','ytd':'YTD','max':'Max' };
   const pLabel = periodeLabels[periode] || '1D';
-  const changeKey = periode === '1d' ? 'change' : `change${pLabel}`;
-
-  // Bij toon alles: alle quotes gesorteerd op change (beste of slechtste bovenaan)
-  const getoondRijen = toonAlles
-    ? [...(alleRijen || [])].sort((a, b) => omgekeerd
-        ? (a.change ?? 0) - (b.change ?? 0)   // minst presterende: laagste bovenaan
-        : (b.change ?? 0) - (a.change ?? 0)   // best presterende: hoogste bovenaan
-      )
-    : rijen;
 
   return (
     <div className="ranking-tabel-kaart">
@@ -303,13 +310,13 @@ function RankingTabel({ titel, rijen, alleRijen, laden, periode, omgekeerd }) {
         <span className="ranking-tabel-titel">{titel}</span>
         {!laden && (alleRijen?.length > 5) && (
           <button
-            onClick={() => setToonAlles(v => !v)}
+            onClick={onToonAlles}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: 'var(--accent)', fontSize: 12, fontWeight: 600, padding: 0,
             }}
           >
-            {toonAlles ? 'Toon minder' : 'Toon alles'}
+            Toon alles
           </button>
         )}
       </div>
@@ -330,7 +337,7 @@ function RankingTabel({ titel, rijen, alleRijen, laden, periode, omgekeerd }) {
               <td><div className="tabel-skeleton" style={{ width: 40 }} /></td>
               <td><div className="tabel-skeleton" style={{ width: 30 }} /></td>
             </tr>
-          )) : getoondRijen.map((r, i) => (
+          )) : rijen.map((r, i) => (
             <tr key={i}>
               <td>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -345,11 +352,6 @@ function RankingTabel({ titel, rijen, alleRijen, laden, periode, omgekeerd }) {
           ))}
         </tbody>
       </table>
-      {toonAlles && !laden && (
-        <div style={{ textAlign: 'right', padding: '8px 16px', fontSize: 11, color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
-          {getoondRijen.length} aandelen
-        </div>
-      )}
     </div>
   );
 }
@@ -417,6 +419,62 @@ function AandelenTabel({ titel, rijen, alleRijen, laden, kolom, waardeKey, omgek
     </div>
   );
 }
+
+// ── Volledige aandelen lijst pagina ──────────────────────────────────────────
+function VolledigeLijstPagina({ titel, rijen, periode, omgekeerd, onTerug }) {
+  const periodeLabels = { '1d':'1D','1w':'1W','1m':'1M','3m':'3M','6m':'6M','1j':'1J','3j':'3J','5j':'5J','ytd':'YTD','max':'Max' };
+  const pLabel = periodeLabels[periode] || '1D';
+
+  const gesorteerd = [...rijen].sort((a, b) => omgekeerd
+    ? (a.change ?? 0) - (b.change ?? 0)
+    : (b.change ?? 0) - (a.change ?? 0)
+  );
+
+  return (
+    <div className="markten-pagina">
+      <div className="aandelen-topbalk">
+        <button className="aandelen-terug-knop" onClick={onTerug}>
+          ← Aandelen
+        </button>
+        <h2 className="aandelen-titel">{titel}</h2>
+      </div>
+
+      <div style={{ padding: '0 0 24px' }}>
+        <table className="ranking-tabel" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>Instrument</th>
+              <th style={{ textAlign: 'right', padding: '10px 16px', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{`%${pLabel} koers`}</th>
+              <th style={{ textAlign: 'right', padding: '10px 16px', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>Laatste</th>
+              <th style={{ textAlign: 'right', padding: '10px 16px', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>Valuta</th>
+            </tr>
+          </thead>
+          <tbody>
+            {gesorteerd.map((r, i) => (
+              <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="markt-cat-badge-sm" style={{ background: '#f59e0b' }}>EQ</span>
+                    <span style={{ fontWeight: 500 }}>{r.naam}</span>
+                  </div>
+                </td>
+                <td style={{ textAlign: 'right', padding: '12px 16px', fontWeight: 600, color: r.change >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                  {fmtPct(r.change)}
+                </td>
+                <td style={{ textAlign: 'right', padding: '12px 16px' }}>{fmtPrijs(r.prijs)}</td>
+                <td style={{ textAlign: 'right', padding: '12px 16px', color: 'var(--text-muted)', fontSize: 12 }}>{r.valuta}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div style={{ textAlign: 'right', padding: '10px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
+          {gesorteerd.length} aandelen
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 
 // ── Belgisch Marktoverzicht ───────────────────────────────────────────────────
