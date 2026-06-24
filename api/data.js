@@ -581,7 +581,6 @@ module.exports = async function handler(req, res) {
         'bel-midcap': [
           'AGFB.BR',   // Agfa-Gevaert
           'ATEB.BR',   // Atenor
-          'AZE.BR',    // Azelis
           'BAR.BR',    // Barco
           'BEKB.BR',   // Bekaert
           'BPOST.BR',  // Bpost
@@ -597,9 +596,6 @@ module.exports = async function handler(req, res) {
           'IMMO.BR',   // Immobel
           'IBAB.BR',   // Ion Beam Applications
           'KIN.BR',    // Kinepolis
-          'LOTB.BR',   // Lotus Bakeries
-          'MELE.BR',   // Melexis
-          'MONT.BR',   // Montea
           'ONTEX.BR',  // Ontex
           'OBEL.BR',   // Orange Belgium
           'RET.BR',    // Retail Estates
