@@ -1473,7 +1473,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // === BATCH 2 - gevonden via searches ===
           // Xtrackers bond MIL/XETR alternatieven
           'XHYG.MI',  // Xtrackers II EUR HY Corp Bond MIL (= XHY3.DE variant)
-          'XHYG.DE',  // Xtrackers II EUR HY Corp Bond XETR
+          'XHYG.DE','XHYG.SW', // Xtrackers II EUR HY Corp Bond XETR + CHF SWX
           'XGLE.MI',  // Xtrackers II Eurozone Govt Bond MIL (= XGSH.DE variant)
           'XGLE.DE',  // Xtrackers II Eurozone Govt Bond XETR
           'XGIN.MI',  // Xtrackers II Global Inflation-Linked Bond EUR Hedged MIL
@@ -1601,6 +1601,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           // PIMCO
           'STHE.MI',   // PIMCO Advtge US ST HY Corp Bond EUR MIL
           'STHY.MI',   // PIMCO US ST HY Corp Bond EUR MIL
+          'LDCE.DE',   // PIMCO Advg Euro Low Duration Corp Bond XETR
           // SPDR
           'TBIL.SW',   // SPDR Bloomberg 1-3 Month T-Bill SWX
           // STATE STREET
@@ -2131,6 +2132,8 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'XEZB.DE':  { ter: 0.09, tob: 0.12 }, 'XGSG.L':   { ter: 0.20, tob: 0.12 },
         'DBXP.DE':  { ter: 0.15, tob: 0.12 }, 'XG7G.SW':  { ter: 0.25, tob: 0.12 },
         'XBAE.DE':  { ter: 0.15, tob: 0.12 },
+        'XHYG.SW':  { ter: 0.35, tob: 0.12 }, // Xtrackers II EUR HY Corp Bond CHF SWX
+        'LDCE.DE':  { ter: 0.39, tob: 0.12 }, // PIMCO Advg Euro Low Duration Corp Bond XETR
 
         // Correcte Yahoo Xetra obligatie tickers
         // Nieuwe obligatie tickers
