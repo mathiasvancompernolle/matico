@@ -2363,6 +2363,8 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             tob: metaLookup.tob ?? 0.12,
             beurs: exchangeMap[exchCode] || meta.fullExchangeName || meta.exchangeName || '—',
             marktOpen: meta.marketState === 'REGULAR',
+            marktState: meta.marketState || 'CLOSED',
+            timezone: meta.exchangeTimezoneShortName || meta.exchangeTimezoneName || '',
             pct1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
             pct1J: pctLang(d1j), pct5J: pctLang(d5j),
           };
