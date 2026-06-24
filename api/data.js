@@ -601,10 +601,14 @@ module.exports = async function handler(req, res) {
           'RET.BR',    // Retail Estates
           'SHUR.BR',   // Shurgard
           'SIP.BR',    // Sipef
-          'TESS.BR',   // Tessenderlo
+          'TESB.BR',   // Tessenderlo Chemie
           'TINC.BR',   // TINC
           'TITC.BR',   // Titan
           'XIOR.BR',   // Xior Student Housing
+          'AZE.BR',    // Azelis Group
+          'LOTB.BR',   // Lotus Bakeries
+          'MELE.BR',   // Melexis
+          'MONT.BR',   // Montea
         ],
         'bel-smallcap': [
           'ACCE.BR',   // Accentis
@@ -621,7 +625,6 @@ module.exports = async function handler(req, res) {
           'OXUR.BR',   // Oxurion
           'QRF.BR',    // Qrf
           'ROU.BR',    // Roularta Media Group
-          'SEQM.BR',   // Sequana Medical
           'TEXF.BR',   // Texaf
           'VAN.BR',    // Van de Velde
           'VASTN.BR',  // Vastned
@@ -779,7 +782,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BREB.BR',
         'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
         'GIMB.BR','IBAB.BR','KIN.BR','ONTEX.BR',
-        'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
+        'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESB.BR','TINC.BR',
         'TITC.BR','XIOR.BR','CENER.BR','VGP.BR','COLR.BR',
         'TUB.BR','COFB.BR',
         // BEL Small
@@ -847,7 +850,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'AGFB.BR','ATEB.BR','BAR.BR','BEKB.BR','BPOST.BR','BREB.BR',
         'CPINV.BR','CFEB.BR','COMB.BR','ECONB.BR','EVS.BR','FAGR.BR',
         'GIMB.BR','HOMI.BR','IMMO.BR','IBAB.BR','KIN.BR','ONTEX.BR',
-        'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESS.BR','TINC.BR',
+        'OBEL.BR','RET.BR','SHUR.BR','SIP.BR','TESB.BR','TINC.BR',
         'TITC.BR','XIOR.BR','VIO.BR','CENER.BR','VGP.BR','COLR.BR',
         'TUB.BR','COFB.BR','CMBT.BR',
         // BEL Small
