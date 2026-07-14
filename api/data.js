@@ -1,4 +1,63 @@
 // v16-etf-beurs
+// ── In-memory cache ────────────────────────────────────────────────────────
+// TTL per endpoint type (milliseconden):
+//   Beurs gesloten: data verandert niet → lange TTL
+//   Beurs open: koersen bewegen → korte TTL
+//   Statische data: nieuws, profielen → middellange TTL
+const _cache = {};
+
+function beursIsOpen() {
+  const nu = new Date();
+  const dag = nu.getUTCDay(); // 0=zo, 6=za
+  if (dag === 0 || dag === 6) return false;
+  // Europese beurzen: 07:00-17:30 UTC / US: 13:30-20:00 UTC
+  const uur = nu.getUTCHours();
+  return (uur >= 7 && uur < 20); // ruime range: ergens een beurs open
+}
+
+const TTL = {
+  // Live koersen: kort als beurs open, lang als gesloten
+  quote:            () => beursIsOpen() ? 60_000        : 15 * 60_000,   // 1 min / 15 min
+  forex:            () => beursIsOpen() ? 60_000        : 60 * 60_000,   // 1 min / 1 uur
+  'forex-history':  () => 4 * 60 * 60_000,                              // 4 uur
+  candle:           () => beursIsOpen() ? 2 * 60_000    : 30 * 60_000,  // 2 min / 30 min
+  // Marktoverzichten: iets langer
+  'aandelen-regio': () => beursIsOpen() ? 3 * 60_000    : 20 * 60_000,  // 3 min / 20 min
+  'belgisch-overzicht': () => beursIsOpen() ? 5 * 60_000 : 30 * 60_000, // 5 min / 30 min
+  'markten-overzicht':  () => beursIsOpen() ? 3 * 60_000 : 20 * 60_000, // 3 min / 20 min
+  'market-indices': () => beursIsOpen() ? 2 * 60_000    : 20 * 60_000,  // 2 min / 20 min
+  etfs:             () => beursIsOpen() ? 5 * 60_000    : 30 * 60_000,  // 5 min / 30 min
+  // Statische/langzame data
+  news:             () => 10 * 60_000,   // 10 min
+  'market-news':    () => 10 * 60_000,   // 10 min
+  profile:          () => 24 * 60 * 60_000, // 24 uur
+  metrics:          () => 60 * 60_000,      // 1 uur
+  dividend:         () => 6 * 60 * 60_000,  // 6 uur
+  'etf-holdings':   () => 6 * 60 * 60_000,  // 6 uur
+  search:           () => 5 * 60_000,        // 5 min
+  'ai-analyse':     () => 30 * 60_000,       // 30 min (duur endpoint)
+};
+
+function getCached(key) {
+  const entry = _cache[key];
+  if (!entry) return null;
+  if (Date.now() - entry.ts > entry.ttl) {
+    delete _cache[key];
+    return null;
+  }
+  return entry.data;
+}
+
+function setCached(key, data, ttl) {
+  _cache[key] = { data, ts: Date.now(), ttl };
+}
+
+// Cache key op basis van volledige query string
+function cacheKey(req) {
+  const q = req.query;
+  return Object.keys(q).sort().map(k => `${k}=${q[k]}`).join('&');
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -48,6 +107,29 @@ module.exports = async function handler(req, res) {
   const { endpoint } = req.query;
 
   try {
+    // ── Cache check + write-through wrapper ─────────────────────────────────
+    const noCacheEndpoints = ['debug-version'];
+    const _key = cacheKey(req);
+    
+    if (!noCacheEndpoints.includes(endpoint)) {
+      const cached = getCached(_key);
+      if (cached) {
+        res.setHeader('X-Cache', 'HIT');
+        return res.json(cached);
+      }
+      res.setHeader('X-Cache', 'MISS');
+    }
+
+    // Wrap res.json zodat elke response automatisch gecached wordt
+    const _origJson = res.json.bind(res);
+    res.json = (data) => {
+      if (!noCacheEndpoints.includes(endpoint) && data && !data.error) {
+        const ttl = TTL[endpoint] ? TTL[endpoint]() : 5 * 60_000;
+        setCached(_key, data, ttl);
+      }
+      return _origJson(data);
+    };
+
     if (endpoint === 'quote') {
       const { symbol } = req.query;
       const isEuropees = symbol.includes('.DE') || symbol.includes('.PA') || symbol.includes('.AS') || symbol.includes('.BR') || symbol.includes('.L') || symbol.includes('.SW') || symbol.includes('.MI');
