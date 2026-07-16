@@ -11,6 +11,9 @@ import BeleggingToevoegen from './pages/BeleggingToevoegen';
 import ImportBeleggingen from './pages/ImportBeleggingen';
 import Markten from './pages/Markten';
 import './App.css';
+import Landing from './pages/Landing';
+import AuthPage from './pages/AuthPage';
+import { supabase } from './supabaseClient';
 
 function TopNav({ actieveSectie, onSectieWissel }) {
   return (
@@ -147,6 +150,48 @@ function NaamInstellen() {
 }
 
 export default function App() {
+  const [toonLanding, setToonLanding] = React.useState(true);
+  const [gebruiker, setGebruiker] = React.useState(null);
+  const [authLaden, setAuthLaden] = React.useState(true);
+
+  React.useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setGebruiker(session.user);
+        setToonLanding(false);
+      }
+      setAuthLaden(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setGebruiker(session.user);
+        setToonLanding(false);
+      } else {
+        setGebruiker(null);
+        setToonLanding(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (authLaden) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans, sans-serif' }}>
+        <div style={{ color: '#6366f1', fontSize: 16, fontWeight: 600 }}>Matico laden...</div>
+      </div>
+    );
+  }
+
+  if (toonLanding && !gebruiker) {
+    return <Landing onNaarApp={() => setToonLanding(false)} />;
+  }
+
+  if (!gebruiker) {
+    return <AuthPage onIngelogd={(user) => setGebruiker(user)} />;
+  }
+
   return (
     <AppProvider>
       <AppInner />
