@@ -6,6 +6,7 @@ import {
   Check, Trash2, Pencil, X, PiggyBank, Briefcase,
   User, CreditCard, LogOut
 } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 const navItems = [
   { id: 'overzicht', label: 'Overzicht', icon: LayoutDashboard },
@@ -297,11 +298,10 @@ export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
               <div style={{ borderTop: '1px solid var(--border)', margin: '6px 0' }} />
 
               {/* Log out */}
-              <div onClick={() => {
+              <div onClick={async () => {
                 setUserMenuOpen(false);
-                if (window.confirm('Wil je uitloggen?')) {
-                  window.location.reload();
-                }
+                await supabase.auth.signOut();
+                window.location.reload();
               }} style={{
                 padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10,
                 cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#dc2626',
