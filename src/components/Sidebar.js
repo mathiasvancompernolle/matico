@@ -3,7 +3,8 @@ import { useApp } from '../context/AppContext';
 import {
   LayoutDashboard, BarChart2, TrendingUp, DollarSign,
   Receipt, Settings, MoreHorizontal, Plus, ChevronDown,
-  Check, Trash2, Pencil, X, PiggyBank, Briefcase
+  Check, Trash2, Pencil, X, PiggyBank, Briefcase,
+  User, CreditCard, LogOut
 } from 'lucide-react';
 
 const navItems = [
@@ -25,6 +26,8 @@ export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
   } = useApp();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
   const [toevoegenOpen, setToevoegenOpen] = useState(false);
   const [hernoemenId, setHernoemenId] = useState(null);
   const [hernoemenWaarde, setHernoemenWaarde] = useState('');
@@ -35,7 +38,10 @@ export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
 
   // Sluit dropdown bij klik buiten
   useEffect(() => {
-    const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) { setDropdownOpen(false); setToevoegenOpen(false); } };
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) { setDropdownOpen(false); setToevoegenOpen(false); }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) { setUserMenuOpen(false); }
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -241,8 +247,81 @@ export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
       </nav>
 
       {/* Bottom user */}
-      <div className="sidebar-bottom">
-        <div className="sidebar-user">
+      <div className="sidebar-bottom" ref={userMenuRef} style={{ position: 'relative' }}>
+
+        {/* User menu popup */}
+        {userMenuOpen && (
+          <div style={{
+            position: 'absolute', bottom: '100%', left: 8, right: 8, marginBottom: 8,
+            background: 'var(--bg-white)', borderRadius: 12,
+            boxShadow: '0 -4px 24px rgba(0,0,0,0.12)', border: '1px solid var(--border)',
+            overflow: 'hidden', zIndex: 200,
+          }}>
+            {/* Header met naam + email */}
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: ACCENT, color: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, fontWeight: 700, flexShrink: 0,
+              }}>
+                {gebruiker.voornaam?.[0]?.toUpperCase()}{gebruiker.achternaam?.[0]?.toUpperCase()}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {gebruiker.voornaam} {gebruiker.achternaam}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Pro plan</div>
+              </div>
+            </div>
+
+            {/* Menu items */}
+            <div style={{ padding: '6px 0' }}>
+              {[
+                { icon: <User size={14} />, label: 'Account', onClick: () => { onNavigate('instellingen'); setUserMenuOpen(false); } },
+                { icon: <CreditCard size={14} />, label: 'Billing', onClick: () => { onNavigate('instellingen'); setUserMenuOpen(false); } },
+              ].map(({ icon, label, onClick }) => (
+                <div key={label} onClick={onClick} style={{
+                  padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10,
+                  cursor: 'pointer', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)',
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span style={{ color: 'var(--text-muted)' }}>{icon}</span>
+                  {label}
+                </div>
+              ))}
+
+              {/* Divider */}
+              <div style={{ borderTop: '1px solid var(--border)', margin: '6px 0' }} />
+
+              {/* Log out */}
+              <div onClick={() => {
+                setUserMenuOpen(false);
+                if (window.confirm('Wil je uitloggen?')) {
+                  window.location.reload();
+                }
+              }} style={{
+                padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10,
+                cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#dc2626',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <LogOut size={14} />
+                Log out
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* User rij */}
+        <div
+          className="sidebar-user"
+          onClick={() => setUserMenuOpen(v => !v)}
+          style={{ cursor: 'pointer' }}
+        >
           <div className="sidebar-avatar">
             {gebruiker.voornaam?.[0]?.toUpperCase()}{gebruiker.achternaam?.[0]?.toUpperCase()}
           </div>
