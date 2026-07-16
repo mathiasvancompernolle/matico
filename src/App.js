@@ -11,7 +11,6 @@ import BeleggingToevoegen from './pages/BeleggingToevoegen';
 import ImportBeleggingen from './pages/ImportBeleggingen';
 import Markten from './pages/Markten';
 import './App.css';
-import Landing from './pages/Landing';
 
 function TopNav({ actieveSectie, onSectieWissel }) {
   return (
@@ -148,12 +147,6 @@ function NaamInstellen() {
 }
 
 export default function App() {
-  const [toonLanding, setToonLanding] = React.useState(true);
-
-  if (toonLanding) {
-    return <Landing onNaarApp={() => setToonLanding(false)} />;
-  }
-
   return (
     <AppProvider>
       <AppInner />
