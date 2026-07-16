@@ -18,6 +18,9 @@ export default function AuthPage({ onIngelogd }) {
       provider: 'google',
       options: {
         redirectTo: window.location.origin,
+        queryParams: {
+          prompt: 'select_account',
+        },
       },
     });
     if (error) { setFout(error.message); setLaden(false); }
