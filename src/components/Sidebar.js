@@ -1,3 +1,4 @@
+// v2-auth-logout
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
