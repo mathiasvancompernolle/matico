@@ -321,7 +321,7 @@ export default function Onboarding({ gebruiker, onKlaar }) {
                 <div style={{ fontSize: 40, marginBottom: 16 }}>⬆️</div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginBottom: 8 }}>
                   {taal === 'nl' ? 'Drag & drop een exportbestand van eender welke broker hier.' :
-                   taal === 'fr' ? 'Glissez-déposez un fichier d'export de n'importe quel courtier ici.' :
+                   taal === 'fr' ? "Glissez-déposez un fichier d'export de n'importe quel courtier ici." :
                    taal === 'de' ? 'Ziehen Sie eine Exportdatei von einem beliebigen Broker hierher.' :
                    'Drag & drop an export file from any broker here.'}
                 </div>
@@ -363,7 +363,7 @@ export default function Onboarding({ gebruiker, onKlaar }) {
                   {taal === 'nl' ? 'Ik doe dit later' :
                    taal === 'fr' ? 'Je le ferai plus tard' :
                    taal === 'de' ? 'Ich mache das später' :
-                   'I'll do this later'}
+                   "I'll do this later"}
                 </button>
               </div>
             </div>
