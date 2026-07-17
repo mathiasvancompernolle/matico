@@ -550,22 +550,42 @@ export default function Beleggingen({ onToevoegen }) {
                       </div>
 
                       {/* Kostprijs */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{
-                          flex: 1, padding: '5px 10px', border: '1px solid var(--border)',
-                          borderRadius: 7, fontSize: 13, fontFamily: 'DM Mono, monospace',
-                          background: 'var(--bg-white)', color: 'var(--text-primary)',
-                          minWidth: 80
-                        }}>
-                          {b.kostprijs.toFixed(2)}
-                        </span>
-                        <span style={{
-                          padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 7,
-                          fontSize: 12, background: 'var(--bg)', color: 'var(--text-secondary)',
-                          display: 'flex', alignItems: 'center', gap: 4, cursor: 'default'
-                        }}>
-                          {b.munt || 'EUR'} <ChevronDown size={12} />
-                        </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{
+                            flex: 1, padding: '5px 10px', border: '1px solid var(--border)',
+                            borderRadius: 7, fontSize: 13, fontFamily: 'DM Mono, monospace',
+                            background: 'var(--bg-white)', color: 'var(--text-primary)',
+                            minWidth: 80
+                          }}>
+                            {b.kostprijs.toFixed(2)}
+                          </span>
+                          <span style={{
+                            padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 7,
+                            fontSize: 12, background: 'var(--bg)', color: 'var(--text-secondary)',
+                            display: 'flex', alignItems: 'center', gap: 4, cursor: 'default'
+                          }}>
+                            {b.munt || 'EUR'} <ChevronDown size={12} />
+                          </span>
+                        </div>
+                        {/* Kostprijs in EUR */}
+                        {b.munt && b.munt !== 'EUR' && (() => {
+                          const factor = getMuntFactor ? getMuntFactor(b.munt) : (b.munt === 'USD' ? 0.865 : b.munt === 'GBP' ? 1.17 : 1);
+                          const kostprijsEur = b.kostprijs * factor;
+                          return (
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 2 }}>
+                              ≈ €{kostprijsEur.toFixed(2)} per stuk
+                            </div>
+                          );
+                        })()}
+                        {/* Totale kostprijs */}
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 2 }}>
+                          {(() => {
+                            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : (b.munt === 'USD' ? 0.865 : b.munt === 'GBP' ? 1.17 : 1);
+                            const totaal = b.kostprijs * b.aantal * factor + (b.transactiekosten || 0);
+                            return <>Totaal: <strong>€{totaal.toFixed(2)}</strong></>;
+                          })()}
+                        </div>
                       </div>
 
                       {/* Aantal */}
