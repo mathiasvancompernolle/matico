@@ -221,7 +221,7 @@ export default function Onboarding({ gebruiker, onKlaar }) {
                 color: i === stap ? 'white' : 'rgba(255,255,255,0.6)',
               }}>
                 {i === 1 ? (taal === 'nl' ? 'Jouw land' : taal === 'fr' ? 'Votre pays' : taal === 'de' ? 'Dein Land' : 'Your country') :
-                 i === 2 ? (taal === 'nl' ? 'Jouw broker' : taal === 'fr' ? 'Votre courtier' : taal === 'de' ? 'Dein Broker' : 'Your broker') :
+                 i === 2 ? (taal === 'nl' ? 'Beleggingen importeren' : taal === 'fr' ? 'Importer' : taal === 'de' ? 'Importieren' : 'Import') :
                  (taal === 'nl' ? 'Jouw portfolio' : taal === 'fr' ? 'Votre portefeuille' : taal === 'de' ? 'Dein Portfolio' : 'Your portfolio')}
               </div>
             </div>
@@ -239,10 +239,10 @@ export default function Onboarding({ gebruiker, onKlaar }) {
             {taal === 'nl' ? `Stap ${stap} van 3` : taal === 'fr' ? `Étape ${stap} sur 3` : taal === 'de' ? `Schritt ${stap} von 3` : `Step ${stap} of 3`}
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.5px' }}>
-            {stap === 1 ? t.stap1Titel(voornaam) : stap === 2 ? t.stap2Titel : t.stap3Titel}
+            {stap === 1 ? t.stap1Titel(voornaam) : stap === 2 ? (taal === 'nl' ? 'Importeer je beleggingen' : taal === 'fr' ? 'Importez vos investissements' : taal === 'de' ? 'Importiere deine Anlagen' : 'Import your investments') : t.stap3Titel}
           </h1>
           <p style={{ fontSize: 15, color: '#64748b', marginBottom: 36 }}>
-            {stap === 1 ? t.stap1Sub : stap === 2 ? t.stap2Sub : t.stap3Sub}
+            {stap === 1 ? t.stap1Sub : stap === 2 ? (taal === 'nl' ? 'Voeg je bestaande beleggingen toe aan je portfolio' : taal === 'fr' ? 'Ajoutez vos investissements existants à votre portefeuille' : taal === 'de' ? 'Füge deine bestehenden Anlagen zu deinem Portfolio hinzu' : 'Add your existing investments to your portfolio') : t.stap3Sub}
           </p>
 
           {/* STAP 1: Land kiezen */}
@@ -303,30 +303,67 @@ export default function Onboarding({ gebruiker, onKlaar }) {
             </div>
           )}
 
-          {/* STAP 2: Broker kiezen */}
+          {/* STAP 2: Beleggingen importeren */}
           {stap === 2 && (
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 32 }}>
-                {BROKERS.map(b => (
-                  <div key={b} onClick={() => setGekozenBroker(b)} style={{
-                    padding: '14px 16px', borderRadius: 10, cursor: 'pointer',
-                    border: gekozenBroker === b ? '2px solid #6366f1' : '1.5px solid #e2e8f0',
-                    background: gekozenBroker === b ? '#eef2ff' : 'white',
-                    fontSize: 14, fontWeight: 500, color: '#0f172a',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    transition: 'all 0.15s',
-                  }}>
-                    {b}
-                    {gekozenBroker === b && <span style={{ color: '#6366f1' }}>✓</span>}
-                  </div>
-                ))}
+              {/* Drag & drop zone */}
+              <div
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.background = '#eef2ff'; }}
+                onDragLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
+                onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
+                onClick={() => document.getElementById('bestand-input').click()}
+                style={{
+                  border: '2px dashed #e2e8f0', borderRadius: 14, padding: '48px 24px',
+                  textAlign: 'center', cursor: 'pointer', background: 'white',
+                  marginBottom: 16, transition: 'all 0.2s',
+                }}
+              >
+                <div style={{ fontSize: 40, marginBottom: 16 }}>⬆️</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginBottom: 8 }}>
+                  {taal === 'nl' ? 'Drag & drop een exportbestand van eender welke broker hier.' :
+                   taal === 'fr' ? 'Glissez-déposez un fichier d'export de n'importe quel courtier ici.' :
+                   taal === 'de' ? 'Ziehen Sie eine Exportdatei von einem beliebigen Broker hierher.' :
+                   'Drag & drop an export file from any broker here.'}
+                </div>
+                <div style={{ fontSize: 13, color: '#94a3b8' }}>
+                  {taal === 'nl' ? 'Of klik om te bladeren' :
+                   taal === 'fr' ? 'Ou cliquez pour parcourir' :
+                   taal === 'de' ? 'Oder klicken zum Durchsuchen' :
+                   'Or click to browse'} (CSV, XLSX, XLS)
+                </div>
+                <input id="bestand-input" type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} />
               </div>
-              <div style={{ display: 'flex', gap: 12 }}>
+
+              {/* Ondersteunde brokers */}
+              <div style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 16px', marginBottom: 24, fontSize: 13, color: '#64748b' }}>
+                ✓ {taal === 'nl' ? 'Werkt met exports van: Saxo, Bolero, Degiro, Keytrade en meer' :
+                    taal === 'fr' ? 'Fonctionne avec les exports de: Saxo, Bolero, Degiro, Keytrade et plus' :
+                    taal === 'de' ? 'Funktioniert mit Exporten von: Saxo, Bolero, Degiro, Keytrade und mehr' :
+                    'Works with exports from: Saxo, Bolero, Degiro, Keytrade and more'}
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
                 <button onClick={() => setStap(1)} style={btnStijl('#e2e8f0', '#64748b')}>
                   ←
                 </button>
                 <button onClick={() => setStap(3)} style={{ ...btnStijl('#6366f1'), flex: 1 }}>
-                  {t.volgende} →
+                  {taal === 'nl' ? 'Importeer en ga verder' :
+                   taal === 'fr' ? 'Importer et continuer' :
+                   taal === 'de' ? 'Importieren und weiter' :
+                   'Import and continue'} →
+                </button>
+              </div>
+
+              {/* Ik doe dit later */}
+              <div style={{ textAlign: 'center' }}>
+                <button
+                  onClick={() => setStap(3)}
+                  style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", textDecoration: 'underline' }}
+                >
+                  {taal === 'nl' ? 'Ik doe dit later' :
+                   taal === 'fr' ? 'Je le ferai plus tard' :
+                   taal === 'de' ? 'Ich mache das später' :
+                   'I'll do this later'}
                 </button>
               </div>
             </div>
