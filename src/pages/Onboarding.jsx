@@ -195,12 +195,25 @@ export default function Onboarding({ gebruiker, onKlaar }) {
           background: 'rgba(255,255,255,0.15)', borderRadius: 12,
           padding: '16px 20px', marginBottom: 32,
         }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
-            Je proefperiode van 14 dagen is geactiveerd 🎉
-          </div>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-            Geen betaalgegevens nodig
-          </div>
+          {stap < 3 ? (
+            <>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
+                Je proefperiode van 14 dagen is geactiveerd 🎉
+              </div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                Geen betaalgegevens nodig
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
+                {taal === 'nl' ? 'Een duidelijk overzicht rechtstreeks naar je inbox' :
+                 taal === 'fr' ? 'Un aperçu clair directement dans votre boîte mail' :
+                 taal === 'de' ? 'Eine klare Übersicht direkt in deinen Posteingang' :
+                 'A clear overview directly to your inbox'} 📬
+              </div>
+            </>
+          )}
         </div>
 
         {/* Stappen indicator */}
@@ -222,7 +235,7 @@ export default function Onboarding({ gebruiker, onKlaar }) {
               }}>
                 {i === 1 ? (taal === 'nl' ? 'Jouw land' : taal === 'fr' ? 'Votre pays' : taal === 'de' ? 'Dein Land' : 'Your country') :
                  i === 2 ? (taal === 'nl' ? 'Beleggingen importeren' : taal === 'fr' ? 'Importer' : taal === 'de' ? 'Importieren' : 'Import') :
-                 (taal === 'nl' ? 'Jouw portfolio' : taal === 'fr' ? 'Votre portefeuille' : taal === 'de' ? 'Dein Portfolio' : 'Your portfolio')}
+                 (taal === 'nl' ? 'Updates' : taal === 'fr' ? 'Mises à jour' : taal === 'de' ? 'Updates' : 'Updates')}
               </div>
             </div>
           ))}
@@ -239,7 +252,8 @@ export default function Onboarding({ gebruiker, onKlaar }) {
             {taal === 'nl' ? `Stap ${stap} van 3` : taal === 'fr' ? `Étape ${stap} sur 3` : taal === 'de' ? `Schritt ${stap} von 3` : `Step ${stap} of 3`}
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.5px' }}>
-            {stap === 1 ? t.stap1Titel(voornaam) : stap === 2 ? (taal === 'nl' ? 'Importeer je beleggingen' : taal === 'fr' ? 'Importez vos investissements' : taal === 'de' ? 'Importiere deine Anlagen' : 'Import your investments') : t.stap3Titel}
+            {stap === 1 ? t.stap1Titel(voornaam) : stap === 2 ? (taal === 'nl' ? 'Importeer je beleggingen' : taal === 'fr' ? 'Importez vos investissements' : taal === 'de' ? 'Importiere deine Anlagen' : 'Import your investments') :
+                stap === 3 ? (taal === 'nl' ? 'Updates' : 'Updates') : t.stap3Titel}
           </h1>
           <p style={{ fontSize: 15, color: '#64748b', marginBottom: 36 }}>
             {stap === 1 ? t.stap1Sub : stap === 2 ? (taal === 'nl' ? 'Voeg je bestaande beleggingen toe aan je portfolio' : taal === 'fr' ? 'Ajoutez vos investissements existants à votre portefeuille' : taal === 'de' ? 'Füge deine bestehenden Anlagen zu deinem Portfolio hinzu' : 'Add your existing investments to your portfolio') : t.stap3Sub}
@@ -369,56 +383,72 @@ export default function Onboarding({ gebruiker, onKlaar }) {
             </div>
           )}
 
-          {/* STAP 3: Portfolio naam */}
+          {/* STAP 3: Updates */}
           {stap === 3 && (
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>
-                {t.portfolioNaam}
-              </label>
-              <input
-                type="text"
-                value={portfolioNaam}
-                onChange={e => setPortfolioNaam(e.target.value)}
-                placeholder={t.portfolioPlaceholder}
-                style={{
-                  width: '100%', padding: '14px 16px', borderRadius: 10,
-                  border: '1.5px solid #e2e8f0', fontSize: 15, color: '#0f172a',
-                  fontFamily: "'DM Sans', sans-serif", outline: 'none',
-                  marginBottom: 32, boxSizing: 'border-box',
-                }}
-              />
-
-              {/* Samenvatting */}
-              <div style={{
-                background: 'white', borderRadius: 12, padding: '16px 20px',
-                border: '1px solid #e2e8f0', marginBottom: 32,
-              }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#6366f1', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  {taal === 'nl' ? 'Jouw profiel' : taal === 'fr' ? 'Votre profil' : taal === 'de' ? 'Dein Profil' : 'Your profile'}
-                </div>
-                {[
-                  [taal === 'nl' ? 'Land' : taal === 'fr' ? 'Pays' : taal === 'de' ? 'Land' : 'Country', `${land?.vlag} ${land?.naam}`],
-                  [taal === 'nl' ? 'Valuta' : taal === 'fr' ? 'Devise' : taal === 'de' ? 'Währung' : 'Currency', `${land?.valuta} (${land?.valutaSymbool})`],
-                  [taal === 'nl' ? 'Broker' : 'Broker', gekozenBroker || '—'],
-                  [taal === 'nl' ? 'Portfolio' : taal === 'fr' ? 'Portefeuille' : taal === 'de' ? 'Portfolio' : 'Portfolio', portfolioNaam || t.portfolioPlaceholder],
-                ].map(([k, v]) => (
-                  <div key={k} style={{
-                    display: 'flex', justifyContent: 'space-between',
-                    padding: '8px 0', borderBottom: '1px solid #f1f5f9',
-                    fontSize: 13,
-                  }}>
-                    <span style={{ color: '#64748b' }}>{k}</span>
-                    <span style={{ fontWeight: 600 }}>{v}</span>
+              {/* Email toggle */}
+              {[
+                {
+                  key: 'email',
+                  titel: 'Email',
+                  sub: taal === 'nl' ? 'Een dagelijks overzicht van je beleggingsportfolio in je inbox' :
+                       taal === 'fr' ? 'Un aperçu quotidien de votre portefeuille dans votre boîte mail' :
+                       taal === 'de' ? 'Eine tägliche Übersicht deines Portfolios in deinem Posteingang' :
+                       'A daily overview of your investment portfolio in your inbox',
+                  standaard: true,
+                },
+                {
+                  key: 'whatsapp',
+                  titel: 'WhatsApp',
+                  sub: taal === 'nl' ? 'Een dagelijks overzicht van je beleggingsportfolio als WhatsApp-berichtje' :
+                       taal === 'fr' ? 'Un aperçu quotidien de votre portefeuille en message WhatsApp' :
+                       taal === 'de' ? 'Eine tägliche Übersicht deines Portfolios als WhatsApp-Nachricht' :
+                       'A daily overview of your investment portfolio as a WhatsApp message',
+                  standaard: false,
+                },
+              ].map(item => (
+                <div key={item.key} style={{
+                  background: 'white', border: '1px solid #e2e8f0', borderRadius: 12,
+                  padding: '18px 20px', marginBottom: 12,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginBottom: 2 }}>{item.titel}</div>
+                    <div style={{ fontSize: 13, color: '#64748b' }}>{item.sub}</div>
                   </div>
-                ))}
-              </div>
+                  <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0, marginLeft: 16 }}>
+                    <input
+                      type="checkbox"
+                      defaultChecked={item.standaard}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                      onChange={e => {
+                        const slider = e.target.nextSibling;
+                        slider.style.background = e.target.checked ? '#6366f1' : '#e2e8f0';
+                        slider.querySelector('span').style.transform = e.target.checked ? 'translateX(20px)' : 'translateX(0)';
+                      }}
+                    />
+                    <span style={{
+                      position: 'absolute', cursor: 'pointer', inset: 0,
+                      background: item.standaard ? '#6366f1' : '#e2e8f0',
+                      borderRadius: 24, transition: '0.2s',
+                    }}>
+                      <span style={{
+                        position: 'absolute', height: 18, width: 18, left: 3, bottom: 3,
+                        background: 'white', borderRadius: '50%', transition: '0.2s',
+                        transform: item.standaard ? 'translateX(20px)' : 'translateX(0)',
+                        display: 'block',
+                      }} />
+                    </span>
+                  </label>
+                </div>
+              ))}
 
-              <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ marginTop: 32, display: 'flex', gap: 12 }}>
                 <button onClick={() => setStap(2)} style={btnStijl('#e2e8f0', '#64748b')}>
                   ←
                 </button>
                 <button onClick={afronden} disabled={laden} style={{ ...btnStijl('#6366f1'), flex: 1 }}>
-                  {laden ? '...' : t.afronden}
+                  {laden ? '...' : taal === 'nl' ? 'Naar je portfolio →' : taal === 'fr' ? 'Vers votre portefeuille →' : taal === 'de' ? 'Zu deinem Portfolio →' : 'To your portfolio →'}
                 </button>
               </div>
             </div>
