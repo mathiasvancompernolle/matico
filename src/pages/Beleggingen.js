@@ -497,13 +497,13 @@ export default function Beleggingen({ onToevoegen }) {
                 {/* Kolomhoofden */}
                 <div className="belegging-table-header" style={{
                   display: 'grid',
-                  gridTemplateColumns: '2.5fr 1.2fr 1.4fr 0.8fr 40px',
+                  gridTemplateColumns: '2fr 1.1fr 1.2fr 1fr 0.8fr 40px',
                   padding: '8px 24px',
                   borderBottom: '1px solid var(--border-light)',
                   fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
                   alignItems: 'center'
                 }}>
-                  {[['naam','Naam'],['datum','Aankoopdatum'],['kostprijs','Kostprijs per stuk'],['aantal','Aantal']].map(([col,label]) => (
+                  {[['naam','Naam'],['datum','Aankoopdatum'],['kostprijs','Aankoopkoers'],['transactiekosten','Transactiekost'],['aantal','Aantal']].map(([col,label]) => (
                     <span key={col} onClick={() => wisselSort(col)} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
                       {label} <span style={{ color: sortCol === col ? 'var(--accent)' : 'var(--text-muted)' }}>{sortPijl(col)}</span>
                     </span>
@@ -517,7 +517,7 @@ export default function Beleggingen({ onToevoegen }) {
                   return (
                     <div key={b.id} className="belegging-row-grid" style={{
                       display: 'grid',
-                      gridTemplateColumns: '2.5fr 1.2fr 1.4fr 0.8fr 40px',
+                      gridTemplateColumns: '2fr 1.1fr 1.2fr 1fr 0.8fr 40px',
                       padding: '14px 24px',
                       borderBottom: '1px solid var(--border-light)',
                       alignItems: 'center',
@@ -549,41 +549,30 @@ export default function Beleggingen({ onToevoegen }) {
                         <Calendar size={14} style={{ color: 'var(--text-muted)' }} />
                       </div>
 
-                      {/* Kostprijs */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{
-                            flex: 1, padding: '5px 10px', border: '1px solid var(--border)',
-                            borderRadius: 7, fontSize: 13, fontFamily: 'DM Mono, monospace',
-                            background: 'var(--bg-white)', color: 'var(--text-primary)',
-                            minWidth: 80
-                          }}>
-                            {b.kostprijs.toFixed(2)}
-                          </span>
-                          <span style={{
-                            padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 7,
-                            fontSize: 12, background: 'var(--bg)', color: 'var(--text-secondary)',
-                            display: 'flex', alignItems: 'center', gap: 4, cursor: 'default'
-                          }}>
-                            {b.munt || 'EUR'} <ChevronDown size={12} />
-                          </span>
+                      {/* Aankoopkoers */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <div style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 600 }}>
+                          {muntSymbool(b.munt || 'EUR')}{b.kostprijs.toFixed(2)}
                         </div>
-                        {/* Kostprijs in EUR */}
                         {b.munt && b.munt !== 'EUR' && (() => {
                           const factor = getMuntFactor ? getMuntFactor(b.munt) : (b.munt === 'USD' ? 0.865 : b.munt === 'GBP' ? 1.17 : 1);
-                          const kostprijsEur = b.kostprijs * factor;
                           return (
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 2 }}>
-                              ≈ €{kostprijsEur.toFixed(2)} per stuk
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                              ≈ €{(b.kostprijs * factor).toFixed(2)}
                             </div>
                           );
                         })()}
-                        {/* Totale kostprijs */}
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 2 }}>
-                          {(() => {
+                      </div>
+
+                      {/* Transactiekost */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <div style={{ fontSize: 13, fontFamily: 'DM Mono, monospace' }}>
+                          €{(b.transactiekosten || 0).toFixed(2)}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          Totaal: €{(() => {
                             const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : (b.munt === 'USD' ? 0.865 : b.munt === 'GBP' ? 1.17 : 1);
-                            const totaal = b.kostprijs * b.aantal * factor + (b.transactiekosten || 0);
-                            return <>Totaal: <strong>€{totaal.toFixed(2)}</strong></>;
+                            return (b.kostprijs * b.aantal * factor + (b.transactiekosten || 0)).toFixed(2);
                           })()}
                         </div>
                       </div>
