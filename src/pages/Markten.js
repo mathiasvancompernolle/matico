@@ -81,7 +81,7 @@ function Sparkline({ data, positief }) {
 }
 
 // ── Index overzichtskaart ─────────────────────────────────────────────────────
-function IndexKaart({ index, laden }) {
+function IndexKaart({ index, laden, onKlik }) {
   if (laden) {
     return (
       <div className="markt-index-kaart markt-kaart-laden">
@@ -93,7 +93,7 @@ function IndexKaart({ index, laden }) {
   }
   const positief = index.change >= 0;
   return (
-    <div className="markt-index-kaart">
+    <div className="markt-index-kaart" onClick={() => onKlik && onKlik(index)} style={{ cursor: 'pointer' }}>
       <div className="markt-kaart-icon"><span>EQ</span></div>
       <div className="markt-kaart-naam">{index.naam}</div>
       <div className="markt-kaart-sparkline">
@@ -133,6 +133,219 @@ function GrafiekTooltip({ active, payload, periode }) {
     <div style={{ background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
       <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
       <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{fmtPrijs(d.v)}</div>
+    </div>
+  );
+}
+
+
+// ── Index Detail Pagina ───────────────────────────────────────────────────────
+function IndexDetailPagina({ index, onTerug }) {
+  const [periode, setPeriode] = useState('1d');
+  const [grafiekData, setGrafiekData] = useState([]);
+  const [laden, setLaden] = useState(true);
+  const [info, setInfo] = useState(null);
+
+  const PERIODES = [
+    { id: '1d', label: 'Intraday' },
+    { id: '1w', label: '1 W' },
+    { id: '1m', label: '1M' },
+    { id: '3m', label: '3M' },
+    { id: '6m', label: '6M' },
+    { id: '1j', label: '1J' },
+    { id: '3j', label: '3J' },
+    { id: '5j', label: '5J' },
+    { id: 'ytd', label: 'YTD' },
+    { id: 'max', label: 'Max' },
+  ];
+
+  useEffect(() => {
+    const laad = async () => {
+      setLaden(true);
+      try {
+        const r = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(index.symbol)}&periode=${periode}`);
+        const d = await r.json();
+        if (Array.isArray(d)) setGrafiekData(d);
+        else setGrafiekData([]);
+      } catch { setGrafiekData([]); }
+      finally { setLaden(false); }
+    };
+    laad();
+  }, [index.symbol, periode]);
+
+  const positief = index.change >= 0;
+  const grafiekKleur = positief ? '#3b82f6' : 'var(--red)';
+  const min = grafiekData.length ? Math.min(...grafiekData.map(d => d.v)) : 0;
+  const max = grafiekData.length ? Math.max(...grafiekData.map(d => d.v)) : 0;
+
+  return (
+    <div className="markten-pagina">
+      {/* Topbalk */}
+      <div className="aandelen-topbalk">
+        <button className="aandelen-terug-knop" onClick={onTerug}>← Markten</button>
+      </div>
+
+      <div style={{ padding: '0 32px 48px' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 10, background: 'var(--bg-subtle)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
+            border: '1px solid var(--border)'
+          }}>EQ</div>
+          <div style={{ flex: 1 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, marginBottom: 4 }}>{index.naam}</h1>
+            <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+              <span>Symb. <strong style={{ color: 'var(--text-primary)' }}>{index.symbol}</strong></span>
+              {index.isin && <span>ISIN <strong style={{ color: 'var(--text-primary)' }}>{index.isin}</strong></span>}
+              <span>Valuta <strong style={{ color: 'var(--text-primary)' }}>{index.valuta || 'EUR'}</strong></span>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'DM Mono, monospace' }}>
+              {fmtPrijs(index.prijs)}
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: positief ? 'var(--green)' : 'var(--red)' }}>
+              {positief ? '+' : ''}{(index.change || 0).toFixed(2)} / {fmtPct(index.change)}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+              {new Date().toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
+          </div>
+        </div>
+
+        {/* 52W range */}
+        {(index.laag52w || index.hoog52w) && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Evolutie (1 jaar)</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>
+                {fmtPrijs(index.laag52w || min)}
+              </span>
+              <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 2, position: 'relative' }}>
+                <div style={{
+                  position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 2,
+                  background: 'var(--accent)',
+                  width: index.laag52w && index.hoog52w
+                    ? `${((index.prijs - index.laag52w) / (index.hoog52w - index.laag52w)) * 100}%`
+                    : '50%'
+                }} />
+              </div>
+              <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>
+                {fmtPrijs(index.hoog52w || max)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Grafiek kaart */}
+        <div className="card" style={{ padding: '20px 24px', marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>Grafiek</div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button style={{
+                padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 6,
+                background: 'var(--bg-white)', fontSize: 12, fontWeight: 500,
+                color: 'var(--text-muted)', cursor: 'pointer'
+              }}>Koers</button>
+              <button style={{
+                padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 6,
+                background: 'var(--bg)', fontSize: 12, fontWeight: 500,
+                color: 'var(--text-muted)', cursor: 'pointer'
+              }}>Geavanceerde grafiek</button>
+            </div>
+          </div>
+
+          {/* Periode tabs */}
+          <div style={{ display: 'flex', gap: 2, marginBottom: 16, flexWrap: 'wrap' }}>
+            {PERIODES.map(p => (
+              <button key={p.id} onClick={() => setPeriode(p.id)} style={{
+                padding: '6px 12px', border: 'none', borderRadius: 6,
+                background: periode === p.id ? 'var(--accent)' : 'transparent',
+                color: periode === p.id ? 'white' : 'var(--text-muted)',
+                fontSize: 13, fontWeight: periode === p.id ? 600 : 400,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>{p.label}</button>
+            ))}
+          </div>
+
+          {/* Grafiek */}
+          <div style={{ height: 280 }}>
+            {laden ? (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                Laden...
+              </div>
+            ) : grafiekData.length === 0 ? (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                Geen data beschikbaar
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={grafiekData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                  <defs>
+                    <linearGradient id="indexGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={grafiekKleur} stopOpacity={0.15} />
+                      <stop offset="95%" stopColor={grafiekKleur} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="t" hide />
+                  <YAxis domain={['auto', 'auto']} hide />
+                  <Tooltip content={<GrafiekTooltip periode={periode} />} />
+                  <Area
+                    type="monotone" dataKey="v"
+                    stroke={grafiekKleur} strokeWidth={2}
+                    fill="url(#indexGrad)" dot={false} activeDot={{ r: 4 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Min/Max onder grafiek */}
+          {!laden && grafiekData.length > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+              <span>Min: {fmtPrijs(min)}</span>
+              <span>Max: {fmtPrijs(max)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Info grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+          <div className="card" style={{ padding: '20px 24px' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Index informatie</div>
+            {[
+              ['Naam', index.naam],
+              ['Symbool', index.symbol],
+              ['ISIN', index.isin || '—'],
+              ['Valuta', index.valuta || 'EUR'],
+              ['Beurs', index.beurs || 'Euronext Brussels'],
+              ['Type', 'Index'],
+            ].map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 13 }}>
+                <span style={{ color: 'var(--text-muted)' }}>{k}</span>
+                <span style={{ fontWeight: 600, fontFamily: k === 'ISIN' || k === 'Symbool' ? 'DM Mono, monospace' : 'inherit' }}>{v}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="card" style={{ padding: '20px 24px' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Koersgegevens</div>
+            {[
+              ['Laatste koers', fmtPrijs(index.prijs)],
+              ['Wijziging 1D', `${positief ? '+' : ''}${(index.change || 0).toFixed(2)}`],
+              ['Wijziging % 1D', fmtPct(index.change)],
+              ['52W Laag', index.laag52w ? fmtPrijs(index.laag52w) : '—'],
+              ['52W Hoog', index.hoog52w ? fmtPrijs(index.hoog52w) : '—'],
+            ].map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 13 }}>
+                <span style={{ color: 'var(--text-muted)' }}>{k}</span>
+                <span style={{ fontWeight: 600, color: k.includes('Wijziging') ? (positief ? 'var(--green)' : 'var(--red)') : 'var(--text-primary)' }}>{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1011,6 +1224,7 @@ export default function Markten() {
   const [ladenIndices, setLadenIndices] = useState(true);
   const [ladenNieuws, setLadenNieuws] = useState(true);
   const [volledigeLijstData, setVolledigeLijstData] = useState(null); // { titel, rijen, periode, omgekeerd }
+  const [actieveIndex, setActieveIndex] = useState(null); // index detail pagina
 
   const laadIndices = useCallback(async (regio) => {
     setLadenIndices(true);
@@ -1048,6 +1262,15 @@ export default function Markten() {
 
   // Als een categorie actief is, toon die subpagina
   // Volledige lijst pagina (aparte pagina, geen aandelen tabs/belgisch overzicht erbij)
+  if (actieveIndex) {
+    return (
+      <IndexDetailPagina
+        index={actieveIndex}
+        onTerug={() => setActieveIndex(null)}
+      />
+    );
+  }
+
   if (volledigeLijstData) {
     return (
       <VolledigeLijstPagina
@@ -1112,7 +1335,7 @@ export default function Markten() {
       <div className="markten-indices-grid">
         {ladenIndices
           ? Array(5).fill(null).map((_, i) => <IndexKaart key={i} index={{}} laden={true} />)
-          : indices.map(idx => <IndexKaart key={idx.symbol} index={idx} laden={false} />)
+          : indices.map(idx => <IndexKaart key={idx.symbol} index={idx} laden={false} onKlik={setActieveIndex} />)
         }
       </div>
 
