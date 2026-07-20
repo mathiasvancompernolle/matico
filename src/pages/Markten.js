@@ -144,6 +144,9 @@ function IndexDetailPagina({ index, onTerug }) {
   const [grafiekData, setGrafiekData] = useState([]);
   const [laden, setLaden] = useState(true);
   const [info, setInfo] = useState(null);
+  const [aandelenTab, setAandelenTab] = useState('az');
+  const [aandelenData, setAandelenData] = useState([]);
+  const [aandelenLaden, setAandelenLaden] = useState(true);
 
   const PERIODES = [
     { id: '1d', label: 'Intraday' },
@@ -157,6 +160,27 @@ function IndexDetailPagina({ index, onTerug }) {
     { id: 'ytd', label: 'YTD' },
     { id: 'max', label: 'Max' },
   ];
+
+  // Laad aandelen voor deze index
+  useEffect(() => {
+    const subindexMap = {
+      '^BFX': 'bel20', 'BELM.BR': 'bel-midcap', 'BELS.BR': 'bel-smallcap',
+      '^AEX': 'aex', '^FCHI': 'cac40', '^GDAXI': 'dax',
+      '^FTSE': 'ftse100', '^STOXX50E': 'stoxx50',
+      '^GSPC': 'sp500', '^NDX': 'nasdaq100', '^DJI': 'dowjones',
+    };
+    const subindex = subindexMap[index.symbol];
+    if (!subindex) { setAandelenLaden(false); return; }
+    
+    setAandelenLaden(true);
+    fetch(`/api/data?endpoint=aandelen-regio&subindex=${subindex}&periode=1d`)
+      .then(r => r.json())
+      .then(d => {
+        setAandelenData(d?.alleQuotes || []);
+        setAandelenLaden(false);
+      })
+      .catch(() => setAandelenLaden(false));
+  }, [index.symbol]);
 
   // Mapping van periode naar tijdperk voor candle API
   const periodeMap = {
@@ -364,6 +388,115 @@ function IndexDetailPagina({ index, onTerug }) {
             })()}
           </div>
         </div>
+
+        {/* Aandelentabel */}
+        {(aandelenLaden || aandelenData.length > 0) && (
+          <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 24 }}>
+            {/* Tab navigatie */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 24px' }}>
+              {[
+                { id: 'az', label: 'A-Z' },
+                { id: 'stijgers', label: 'Stijgers' },
+                { id: 'dalers', label: 'Dalers' },
+                { id: 'marktkap', label: 'Marktkap.' },
+              ].map(tab => (
+                <button key={tab.id} onClick={() => setAandelenTab(tab.id)} style={{
+                  padding: '12px 16px', border: 'none', background: 'transparent',
+                  fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+                  color: aandelenTab === tab.id ? 'var(--text-primary)' : 'var(--text-muted)',
+                  borderBottom: aandelenTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
+                  cursor: 'pointer', marginBottom: -1,
+                }}>{tab.label}</button>
+              ))}
+            </div>
+
+            {/* Tabelhoofden */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
+              padding: '8px 24px', background: 'var(--bg-subtle)',
+              borderBottom: '1px solid var(--border-light)',
+              fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+              textTransform: 'uppercase', letterSpacing: '0.05em',
+            }}>
+              <span>Instrument</span>
+              <span style={{ textAlign: 'right' }}>Laatst verh.</span>
+              <span style={{ textAlign: 'right' }}>Verschil</span>
+              <span style={{ textAlign: 'right' }}>%1D koers</span>
+              <span style={{ textAlign: 'right' }}>Open</span>
+              <span style={{ textAlign: 'right' }}>Hoog</span>
+              <span style={{ textAlign: 'right' }}>Laag</span>
+              <span style={{ textAlign: 'right' }}>Volume</span>
+              <span style={{ textAlign: 'right' }}>Markt</span>
+            </div>
+
+            {/* Rijen */}
+            {aandelenLaden ? (
+              Array(5).fill(null).map((_, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', padding: '12px 24px', borderBottom: '1px solid var(--border-light)' }}>
+                  {Array(9).fill(null).map((_, j) => (
+                    <div key={j} style={{ height: 14, background: 'var(--bg-subtle)', borderRadius: 4, margin: '0 4px' }} />
+                  ))}
+                </div>
+              ))
+            ) : (() => {
+              const gesorteerd = [...aandelenData].sort((a, b) => {
+                if (aandelenTab === 'az') return a.naam.localeCompare(b.naam, 'nl');
+                if (aandelenTab === 'stijgers') return b.change - a.change;
+                if (aandelenTab === 'dalers') return a.change - b.change;
+                if (aandelenTab === 'marktkap') return (b.marktKap || 0) - (a.marktKap || 0);
+                return 0;
+              });
+              return gesorteerd.map((a, i) => {
+                const pos = a.change >= 0;
+                const fmtVol = v => v >= 1e9 ? (v/1e9).toFixed(2)+'mld.' : v >= 1e6 ? (v/1e6).toFixed(2)+'mln.' : v >= 1e3 ? (v/1e3).toFixed(0)+'k' : v.toString();
+                return (
+                  <div key={a.symbol} style={{
+                    display: 'grid',
+                    gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
+                    padding: '11px 24px',
+                    borderBottom: i < gesorteerd.length - 1 ? '1px solid var(--border-light)' : 'none',
+                    alignItems: 'center', fontSize: 13,
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    {/* Naam */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ background: '#f59e0b', color: 'white', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4 }}>EQ</span>
+                      <span style={{ fontWeight: 500 }}>{a.naam}</span>
+                    </div>
+                    {/* Laatste */}
+                    <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace' }}>{a.prijs?.toFixed(2) || '—'}</div>
+                    {/* Verschil */}
+                    <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace', color: pos ? 'var(--green)' : 'var(--red)', fontWeight: 500 }}>
+                      {a.verschil ? (pos ? '+' : '') + a.verschil.toFixed(2) : '—'}
+                    </div>
+                    {/* % */}
+                    <div style={{ textAlign: 'right', fontWeight: 600, color: pos ? 'var(--green)' : 'var(--red)' }}>
+                      {a.change != null ? (pos ? '+' : '') + a.change.toFixed(2) + '%' : '—'}
+                    </div>
+                    {/* Open */}
+                    <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>{a.open?.toFixed(2) || '—'}</div>
+                    {/* Hoog */}
+                    <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>{a.hoog?.toFixed(2) || '—'}</div>
+                    {/* Laag */}
+                    <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>{a.laag?.toFixed(2) || '—'}</div>
+                    {/* Volume */}
+                    <div style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{a.volume ? fmtVol(a.volume) : '—'}</div>
+                    {/* Markt */}
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
+                        {a.beurs || 'BRU'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        )}
 
         {/* Info grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
