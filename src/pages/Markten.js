@@ -411,7 +411,6 @@ function IndexDetailPagina({ index, onTerug }) {
 
               } else {
                 // Max/3J/5J: gebruik labels direct, haal jaar eruit
-                // Labels van candle zijn bv "1 jan. 2005"
                 const gezienJaar = new Set();
                 const alleJaren = grafiekData.filter(d => {
                   const match = String(d.label).match(/\d{4}/);
@@ -420,7 +419,8 @@ function IndexDetailPagina({ index, onTerug }) {
                   if (gezienJaar.has(j)) return false;
                   gezienJaar.add(j); return true;
                 });
-                const stap = Math.max(1, Math.ceil(alleJaren.length / 7));
+                // Max 6 jaartallen tonen
+                const stap = Math.max(1, Math.ceil(alleJaren.length / 6));
                 xTicks = alleJaren.filter((_, i) => i % stap === 0).map(d => d.label);
                 xTickFormatter = label => {
                   const match = String(label).match(/\d{4}/);
@@ -442,7 +442,8 @@ function IndexDetailPagina({ index, onTerug }) {
                       dataKey="label"
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
                       axisLine={false} tickLine={false}
-                      ticks={xTicks} tickFormatter={xTickFormatter || (v => v)} interval={0}
+                      ticks={xTicks} tickFormatter={xTickFormatter || (v => v)}
+                      interval={0} minTickGap={40}
                     />
                     <YAxis
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
