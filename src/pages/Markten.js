@@ -536,7 +536,9 @@ function IndexDetailPagina({ index, onTerug }) {
                       <span style={{ fontWeight: 500 }}>{a.naam}</span>
                     </div>
                     {/* Laatste */}
-                    <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace' }}>{a.prijs?.toFixed(2) || '—'}</div>
+                    <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace' }}>
+                      {a.prijs != null ? (a.prijs < 0.1 ? a.prijs.toFixed(4) : a.prijs < 1 ? a.prijs.toFixed(3) : a.prijs.toFixed(2)) : '—'}
+                    </div>
                     {/* Verschil */}
                     <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace', color: pos ? 'var(--green)' : 'var(--red)', fontWeight: 500 }}>
                       {a.verschil ? (pos ? '+' : '') + a.verschil.toFixed(2) : '—'}

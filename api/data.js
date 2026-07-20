@@ -719,7 +719,7 @@ module.exports = async function handler(req, res) {
           'MONT.BR',   // Montea
         ],
         'bel-smallcap': [
-          'ACCE.BR',   // Accentis
+          'ACCB.BR',   // Accentis
           'CYAD.BR',   // Celyad Oncology
           'DECB.BR',   // Deceuninck
           'EKOP.BR',   // Ekopak
@@ -735,7 +735,7 @@ module.exports = async function handler(req, res) {
           'ROU.BR',    // Roularta Media Group
           'TEXF.BR',   // Texaf
           'VAN.BR',    // Van de Velde
-          'VASTN.BR',  // Vastned
+          'VASTB.BR',  // Vastned
           'WEB.BR',    // Warehouses Estates Belgium
           'WEHB.BR',   // Wereldhave Belgium
         ],
@@ -902,9 +902,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'TITC.BR','XIOR.BR','CENER.BR','VGP.BR','COLR.BR',
         'TUB.BR','COFB.BR',
         // BEL Small
-        'ACCE.BR','CYAD.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
+        'ACCB.BR','CYAD.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
         'JEN.BR','NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','OXUR.BR',
-        'QRF.BR','ROU.BR','SEQM.BR','TEXF.BR','VAN.BR','VASTN.BR',
+        'QRF.BR','ROU.BR','TEXF.BR','VAN.BR','VASTB.BR',
         'WEB.BR','WEHB.BR',
       ];
 
@@ -970,9 +970,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         'TITC.BR','XIOR.BR','VIO.BR','CENER.BR','VGP.BR','COLR.BR',
         'TUB.BR','COFB.BR','CMBT.BR',
         // BEL Small
-        'ACCE.BR','CYAD.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
+        'ACCB.BR','CYAD.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
         'JEN.BR','NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','OXUR.BR',
-        'QRF.BR','ROU.BR','SEQM.BR','TEXF.BR','VAN.BR','VASTN.BR',
+        'QRF.BR','ROU.BR','TEXF.BR','VAN.BR','VASTB.BR',
         'WEB.BR','WEHB.BR',
       ];
 
