@@ -482,9 +482,9 @@ function IndexDetailPagina({ index, onTerug }) {
               ))
             ) : (() => {
               const gesorteerd = [...aandelenData].sort((a, b) => {
-                if (aandelenTab === 'az') return a.naam.localeCompare(b.naam, 'nl');
-                if (aandelenTab === 'stijgers') return b.change - a.change;
-                if (aandelenTab === 'dalers') return a.change - b.change;
+                if (aandelenTab === 'az') return (a.naam || '').localeCompare(b.naam || '', 'nl');
+                if (aandelenTab === 'stijgers') return (parseFloat(b.change) || 0) - (parseFloat(a.change) || 0);
+                if (aandelenTab === 'dalers') return (parseFloat(a.change) || 0) - (parseFloat(b.change) || 0);
                 if (aandelenTab === 'marktkap') return (b.marktKap || 0) - (a.marktKap || 0);
                 return 0;
               });
