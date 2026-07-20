@@ -258,6 +258,8 @@ module.exports = async function handler(req, res) {
       const yfRange = tijdperk === '1D' ? '5d'
         : tijdperk === '1W' ? '5d'
         : tijdperk === '1M' ? '1mo'
+        : tijdperk === '3M' ? '3mo'
+        : tijdperk === '6M' ? '6mo'
         : tijdperk === '1J' ? '1y'
         : tijdperk === 'YTD' ? 'ytd'
         : tijdperk === '3J' ? '3y'
@@ -267,6 +269,8 @@ module.exports = async function handler(req, res) {
       const yfInterval = tijdperk === '1D' ? '1d'
         : tijdperk === '1W' ? '1d'
         : tijdperk === '1M' ? '1d'
+        : tijdperk === '3M' ? '1d'
+        : tijdperk === '6M' ? '1wk'
         : tijdperk === '1J' ? '1wk'
         : tijdperk === 'YTD' ? '1wk'
         : '1wk';
