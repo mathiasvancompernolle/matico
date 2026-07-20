@@ -397,12 +397,11 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       groepeerFn = d => { const dt = new Date(d.datum); return `${dt.getFullYear()}-${Math.ceil(dt.getDate()/7)}-${dt.getMonth()}`; };
       formatFn = d => { const dt = new Date(d.datum); return `${dt.getDate()} ${maandKort[dt.getMonth()]}`; };
     } else if (dagen <= 400) {
-      // Tot ~1 jaar: elke maand
+      // Tot ~1 jaar: eerste handelsdag van elke maand
       groepeerFn = d => { const dt = new Date(d.datum); return `${dt.getFullYear()}-${dt.getMonth()}`; };
       formatFn = d => {
         const dt = new Date(d.datum);
-        // Bij jaarwisseling jaar erbij
-        if (dt.getMonth() === 0 || dt === eersteD) return `jan '${String(dt.getFullYear()).slice(2)}`;
+        if (dt.getMonth() === 0) return `jan '${String(dt.getFullYear()).slice(2)}`;
         return maandKort[dt.getMonth()];
       };
     } else if (dagen <= 900) {

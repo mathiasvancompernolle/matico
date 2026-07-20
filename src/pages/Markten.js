@@ -321,9 +321,76 @@ function IndexDetailPagina({ index, onTerug }) {
                 yTicks = [];
                 for (let t = axisMin; t <= axisMax + niceStap * 0.01; t += niceStap) yTicks.push(Math.round(t));
               }
-              // X-as ticks: max 6 labels
-              const stap = Math.max(1, Math.floor(grafiekData.length / 6));
-              const xTicks = grafiekData.filter((_, i) => i % stap === 0 || i === grafiekData.length - 1).map(d => d.label);
+              // X-as ticks: slimme groepering op basis van periode
+              const maandKort = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+              let xTicks, xTickFormatter;
+
+              if (['1d', '1w'].includes(periode)) {
+                // 1W: elke dag tonen (alleen handelsdagen aanwezig in data)
+                const gezienDag = new Set();
+                xTicks = grafiekData.filter(d => {
+                  if (!d.t) return false;
+                  const dag = new Date(d.t).toDateString();
+                  if (gezienDag.has(dag)) return false;
+                  gezienDag.add(dag);
+                  return true;
+                }).map(d => d.label);
+                xTickFormatter = (label) => {
+                  const punt = grafiekData.find(d => d.label === label);
+                  if (!punt?.t) return label;
+                  const dt = new Date(punt.t);
+                  return `${dt.getDate()} ${maandKort[dt.getMonth()]}`;
+                };
+              } else if (['1m', '3m'].includes(periode)) {
+                // 1M/3M: elke week
+                const gezienWeek = new Set();
+                xTicks = grafiekData.filter(d => {
+                  if (!d.t) return false;
+                  const dt = new Date(d.t);
+                  const sleutel = `${dt.getFullYear()}-${Math.ceil(dt.getDate()/7)}-${dt.getMonth()}`;
+                  if (gezienWeek.has(sleutel)) return false;
+                  gezienWeek.add(sleutel);
+                  return true;
+                }).map(d => d.label);
+                xTickFormatter = (label) => {
+                  const punt = grafiekData.find(d => d.label === label);
+                  if (!punt?.t) return label;
+                  const dt = new Date(punt.t);
+                  return `${dt.getDate()} ${maandKort[dt.getMonth()]}`;
+                };
+              } else if (['6m', '1j', 'ytd'].includes(periode)) {
+                // 6M/1J: eerste handelsdag van elke maand
+                const gezienMaand = new Set();
+                xTicks = grafiekData.filter(d => {
+                  if (!d.t) return false;
+                  const dt = new Date(d.t);
+                  const sleutel = `${dt.getFullYear()}-${dt.getMonth()}`;
+                  if (gezienMaand.has(sleutel)) return false;
+                  gezienMaand.add(sleutel);
+                  return true; // eerste datapunt per maand = eerste handelsdag
+                }).map(d => d.label);
+                xTickFormatter = (label) => {
+                  const punt = grafiekData.find(d => d.label === label);
+                  if (!punt?.t) return label;
+                  const dt = new Date(punt.t);
+                  // Toon maandnaam, bij januari ook het jaar
+                  return dt.getMonth() === 0 ? `jan '${String(dt.getFullYear()).slice(2)}` : maandKort[dt.getMonth()];
+                };
+              } else {
+                // 3J/5J/Max: elk jaar
+                const gezienJaar = new Set();
+                xTicks = grafiekData.filter(d => {
+                  if (!d.t) return false;
+                  const jaar = new Date(d.t).getFullYear();
+                  if (gezienJaar.has(jaar)) return false;
+                  gezienJaar.add(jaar);
+                  return true;
+                }).map(d => d.label);
+                xTickFormatter = (label) => {
+                  const punt = grafiekData.find(d => d.label === label);
+                  return punt?.t ? String(new Date(punt.t).getFullYear()) : label;
+                };
+              }
 
               return (
                 <ResponsiveContainer width="100%" height="100%">
@@ -339,7 +406,7 @@ function IndexDetailPagina({ index, onTerug }) {
                       dataKey="label"
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
                       axisLine={false} tickLine={false}
-                      ticks={xTicks} tickFormatter={v => v} interval={0}
+                      ticks={xTicks} tickFormatter={xTickFormatter || (v => v)} interval={0}
                     />
                     <YAxis
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
