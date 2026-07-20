@@ -250,13 +250,28 @@ function IndexDetailPagina({ index, onTerug }) {
 
         {/* Grafiek kaart */}
         <div className="card" style={{ padding: '20px 24px', marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>Grafiek</div>
-            <div style={{ display: 'flex', gap: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+            {/* Links: naam + koers + wijziging */}
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>{index.naam}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 22, fontWeight: 700, fontFamily: 'DM Mono, monospace', color: 'var(--text-primary)' }}>
+                  {fmtPrijs(index.prijs)}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: positief ? 'var(--green)' : 'var(--red)' }}>
+                  {positief ? '+' : ''}{(index.change || 0).toFixed(2)} / {fmtPct(index.change)}
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {new Date().toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              </div>
+            </div>
+            {/* Rechts: knoppen */}
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
               <button style={{
                 padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 6,
                 background: 'var(--bg-white)', fontSize: 12, fontWeight: 500,
-                color: 'var(--text-muted)', cursor: 'pointer'
+                color: 'var(--text-primary)', cursor: 'pointer'
               }}>Koers</button>
               <button style={{
                 padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 6,
