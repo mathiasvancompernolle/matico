@@ -158,14 +158,24 @@ function IndexDetailPagina({ index, onTerug }) {
     { id: 'max', label: 'Max' },
   ];
 
+  // Mapping van periode naar tijdperk voor candle API
+  const periodeMap = {
+    '1d': '1D', '1w': '1W', '1m': '1M', '3m': '3M',
+    '6m': '6M', '1j': '1J', '3j': '3J', '5j': '5J',
+    'ytd': 'YTD', 'max': 'Max'
+  };
+
   useEffect(() => {
     const laad = async () => {
       setLaden(true);
       try {
-        const r = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(index.symbol)}&periode=${periode}`);
+        const tijdperk = periodeMap[periode] || '1D';
+        const r = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(index.symbol)}&tijdperk=${tijdperk}`);
         const d = await r.json();
-        if (Array.isArray(d)) setGrafiekData(d);
-        else setGrafiekData([]);
+        // API geeft { punten: [{label, datum, prijs}] } terug
+        const punten = d?.punten || [];
+        // Omzetten naar {t, v} formaat voor recharts
+        setGrafiekData(punten.map(p => ({ t: p.datum, v: p.prijs, label: p.label })));
       } catch { setGrafiekData([]); }
       finally { setLaden(false); }
     };

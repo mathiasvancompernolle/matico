@@ -605,7 +605,12 @@ module.exports = async function handler(req, res) {
             const change = prevClose ? ((prijs - prevClose) / prevClose) * 100 : 0;
             // Sparkline: laatste 20 datapunten
             const sparkline = validCloses.slice(-20).map(v => Math.round(v * 100) / 100);
-            return { symbol: idx.symbol, naam: idx.naam, prijs, change, prevClose, sparkline };
+            const laag52w = meta.fiftyTwoWeekLow || meta.regularMarketDayLow || 0;
+            const hoog52w = meta.fiftyTwoWeekHigh || meta.regularMarketDayHigh || 0;
+            const isin = meta.isin || '';
+            const beurs = meta.fullExchangeName || meta.exchangeName || '';
+            const valuta = meta.currency || 'EUR';
+            return { symbol: idx.symbol, naam: idx.naam, prijs, change, prevClose, sparkline, laag52w, hoog52w, isin, beurs, valuta };
           } catch (e) {
             return { symbol: idx.symbol, naam: idx.naam, prijs: 0, change: 0, prevClose: 0, sparkline: [] };
           }
