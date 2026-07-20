@@ -47,7 +47,8 @@ function fmtPrijs(v, dec = 2) {
 
 function fmtPct(v) {
   if (v === undefined || v === null) return '—';
-  return (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+  if (v === 0 || Object.is(v, 0)) return '0,00%';
+  return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
 }
 
 function fmtTijd(ts) {
@@ -548,8 +549,8 @@ function IndexDetailPagina({ index, onTerug }) {
                       })() : '—'}
                     </div>
                     {/* % */}
-                    <div style={{ textAlign: 'right', fontWeight: 600, color: pos ? 'var(--green)' : 'var(--red)' }}>
-                      {a.change != null ? (pos ? '+' : '') + a.change.toFixed(2) + '%' : '—'}
+                    <div style={{ textAlign: 'right', fontWeight: 600, color: a.change === 0 || Math.abs(a.change || 0) < 0.005 ? 'var(--text-primary)' : pos ? 'var(--green)' : 'var(--red)' }}>
+                      {a.change != null ? (a.change === 0 || Math.abs(a.change) < 0.005 ? '0,00%' : (pos ? '+' : '') + a.change.toFixed(2) + '%') : '—'}
                     </div>
                     {/* Open */}
                     <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>{a.open?.toFixed(2) || '—'}</div>
@@ -1059,7 +1060,11 @@ function MarktenOverzichtTabellen() {
   }, []);
 
   const fmtPrijs = (v) => v ? v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
-  const fmtPct = (v) => v !== undefined ? (v >= 0 ? '+' : '') + v.toFixed(2) + '%' : '—';
+  const fmtPct = (v) => {
+    if (v === undefined || v === null) return '—';
+    if (v === 0 || (Math.abs(v) < 0.005)) return '0,00%';
+    return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+  };
 
   const OverzichtTabel = ({ titel, rijen, kleurKey, uitleg }) => {
     const [tooltip, setTooltip] = useState(false);
@@ -1147,8 +1152,9 @@ const ETF_TABS = [
 
 function fmtPctEtf(v) {
   if (v === null || v === undefined) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
-  const kleur = v >= 0 ? 'var(--green)' : 'var(--red)';
-  return <span style={{ color: kleur, fontWeight: 600 }}>{(v >= 0 ? '+' : '') + v.toFixed(2) + '%'}</span>;
+  if (v === 0 || Math.abs(v) < 0.005) return <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>0,00%</span>;
+  const kleur = v > 0 ? 'var(--green)' : 'var(--red)';
+  return <span style={{ color: kleur, fontWeight: 600 }}>{(v > 0 ? '+' : '') + v.toFixed(2) + '%'}</span>;
 }
 
 // Openingstijden per beurs (lokale tijd van de beurs, UTC offset)
