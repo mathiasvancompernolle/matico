@@ -733,6 +733,7 @@ module.exports = async function handler(req, res) {
           'OXUR.BR',   // Oxurion
           'QRF.BR',    // Qrf
           'ROU.BR',    // Roularta Media Group
+          'SEQUA.BR',  // Sequana Medical
           'TEXF.BR',   // Texaf
           'VAN.BR',    // Van de Velde
           'VASTB.BR',  // Vastned
@@ -904,7 +905,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         // BEL Small
         'ACCB.BR','CYAD.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
         'JEN.BR','NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','OXUR.BR',
-        'QRF.BR','ROU.BR','TEXF.BR','VAN.BR','VASTB.BR',
+        'QRF.BR','ROU.BR','SEQUA.BR','TEXF.BR','VAN.BR','VASTB.BR',
         'WEB.BR','WEHB.BR',
       ];
 
@@ -972,7 +973,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
         // BEL Small
         'ACCB.BR','CYAD.BR','DECB.BR','EKOP.BR','EXM.BR','HYL.BR',
         'JEN.BR','NYR.BR','NYXH.BR','ONWD.BR','OPTI.BR','OXUR.BR',
-        'QRF.BR','ROU.BR','TEXF.BR','VAN.BR','VASTB.BR',
+        'QRF.BR','ROU.BR','SEQUA.BR','TEXF.BR','VAN.BR','VASTB.BR',
         'WEB.BR','WEHB.BR',
       ];
 
