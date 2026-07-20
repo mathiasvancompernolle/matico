@@ -311,28 +311,8 @@ function IndexDetailPagina({ index, onTerug }) {
 
         {/* Grafiek kaart */}
         <div className="card" style={{ padding: '20px 24px', marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-            {/* Links: naam + koers + wijziging */}
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>{index.naam}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 22, fontWeight: 700, fontFamily: 'DM Mono, monospace', color: 'var(--text-primary)' }}>
-                  {fmtPrijs(index.prijs)}
-                </span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: positief ? 'var(--green)' : 'var(--red)' }}>
-                  {positief ? '+' : ''}{(index.change || 0).toFixed(2)} / {fmtPct(index.change)}
-                </span>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {(() => {
-                    const nu = new Date();
-                    nu.setMinutes(nu.getMinutes() - 15);
-                    return nu.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                  })()}
-                </span>
-              </div>
-            </div>
-            {/* Rechts: knoppen */}
-            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 4 }}>
               <button style={{
                 padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 6,
                 background: 'var(--bg-white)', fontSize: 12, fontWeight: 500,
