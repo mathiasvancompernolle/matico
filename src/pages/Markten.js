@@ -410,22 +410,12 @@ function IndexDetailPagina({ index, onTerug }) {
                 };
 
               } else {
-                // Max/3J/5J: numerieke X-as op basis van jaar
-                const gezienJaar = new Set();
-                grafiekData.forEach(d => {
-                  const m = String(d.label).match(/\d{4}/);
-                  if (m) gezienJaar.add(parseInt(m[0]));
-                });
-                const alleJarenArr = [...gezienJaar].sort();
-                const stap = Math.max(1, Math.ceil(alleJarenArr.length / 6));
-                const gefilterdeJaren = alleJarenArr.filter((_, i) => i % stap === 0);
-                // Voeg jaar toe aan elk datapunt
-                grafiekData.forEach(d => {
-                  const m = String(d.label).match(/\d{4}/);
-                  d.jaar = m ? parseInt(m[0]) : null;
-                });
-                xTicks = gefilterdeJaren;
-                xTickFormatter = v => String(v);
+                // Max: gewoon elk jaar tonen via tickFormatter
+                xTicks = undefined;
+                xTickFormatter = lbl => {
+                  const m = String(lbl).match(/\d{4}/);
+                  return m ? m[0] : '';
+                };
               }
 
               return (
@@ -439,13 +429,11 @@ function IndexDetailPagina({ index, onTerug }) {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
                     <XAxis
-                      dataKey={['3j','5j','max'].includes(periode) ? 'jaar' : 'label'}
+                      dataKey="label"
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
                       axisLine={false} tickLine={false}
-                      ticks={xTicks} tickFormatter={xTickFormatter || (v => v)}
-                      type={['3j','5j','max'].includes(periode) ? 'number' : 'category'}
-                      domain={['3j','5j','max'].includes(periode) ? ['dataMin', 'dataMax'] : undefined}
-                      interval={0} minTickGap={30}
+                      tickFormatter={xTickFormatter || (v => v)}
+                      interval={Math.floor(grafiekData.length / 6)}
                     />
                     <YAxis
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
