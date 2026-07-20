@@ -415,14 +415,20 @@ function IndexDetailPagina({ index, onTerug }) {
                 const alleJaren = grafiekData.filter(d => {
                   if (!d.t) return false;
                   const j = new Date(d.t).getFullYear();
-                  if (gezienJaar.has(j)) return false;
+                  if (isNaN(j) || gezienJaar.has(j)) return false;
                   gezienJaar.add(j); return true;
                 });
                 const stap = Math.max(1, Math.ceil(alleJaren.length / 7));
                 xTicks = alleJaren.filter((_, i) => i % stap === 0).map(d => d.label);
                 xTickFormatter = label => {
                   const p = grafiekData.find(d => d.label === label);
-                  return p?.t ? String(new Date(p.t).getFullYear()) : label;
+                  if (!p) return label;
+                  // Probeer jaar uit timestamp, anders uit label string
+                  const jaar = p.t ? new Date(p.t).getFullYear() : null;
+                  if (jaar && !isNaN(jaar)) return String(jaar);
+                  // Fallback: extract jaar uit label (bv "1 jan. 2005" → "2005")
+                  const match = String(label).match(/\d{4}/);
+                  return match ? match[0] : label;
                 };
               }
 
