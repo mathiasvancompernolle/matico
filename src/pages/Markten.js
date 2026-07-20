@@ -148,11 +148,15 @@ function IndexDetailPagina({ index, onTerug }) {
   const [aandelenData, setAandelenData] = useState([]);
   const [aandelenLaden, setAandelenLaden] = useState(true);
 
-  // Voor Mid/Smallcap: enkel intraday, 1W en Max beschikbaar
-  const beperkteSubs = ['bel-midcap', 'bel-smallcap'];
-  const isBeperkteIndex = beperkteSubs.includes(subindex);
+  const subindexMap = {
+    '^BFX': 'bel20', 'BELM.BR': 'bel-midcap', 'BELS.BR': 'bel-smallcap',
+    '^AEX': 'aex', '^FCHI': 'cac40', '^GDAXI': 'dax',
+    '^FTSE': 'ftse100', '^STOXX50E': 'stoxx50',
+    '^GSPC': 'sp500', '^NDX': 'nasdaq100', '^DJI': 'dowjones',
+  };
+  const subindex = subindexMap[index.symbol];
 
-  const PERIODES = isBeperkteIndex ? [
+  const PERIODES = ['bel-midcap','bel-smallcap'].includes(subindex) ? [
     { id: '1d', label: 'Intraday' },
     { id: '1w', label: '1 W' },
     { id: 'max', label: 'Max' },
@@ -168,14 +172,6 @@ function IndexDetailPagina({ index, onTerug }) {
     { id: 'ytd', label: 'YTD' },
     { id: 'max', label: 'Max' },
   ];
-
-  const subindexMap = {
-    '^BFX': 'bel20', 'BELM.BR': 'bel-midcap', 'BELS.BR': 'bel-smallcap',
-    '^AEX': 'aex', '^FCHI': 'cac40', '^GDAXI': 'dax',
-    '^FTSE': 'ftse100', '^STOXX50E': 'stoxx50',
-    '^GSPC': 'sp500', '^NDX': 'nasdaq100', '^DJI': 'dowjones',
-  };
-  const subindex = subindexMap[index.symbol];
 
   // Laad grafiek via aandelen-regio (zelfde endpoint als AandelenPagina)
   useEffect(() => {
@@ -627,7 +623,10 @@ function AandelenPagina({ actieveRegio, onToonAlles }) {
             <div className="aandelen-grafiek-header">
               <span className="aandelen-grafiek-titel">Grafiek</span>
               <div className="aandelen-periode-knoppen">
-                {PERIODES.map(p => (
+                {((['bel-midcap','bel-smallcap'].includes(actieveSub))
+                  ? PERIODES.filter(p => ['1d','1w','max'].includes(p.id))
+                  : PERIODES
+                ).map(p => (
                   <button
                     key={p.id}
                     className={`aandelen-periode-knop ${periode === p.id ? 'actief' : ''}`}
