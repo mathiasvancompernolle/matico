@@ -410,22 +410,22 @@ function IndexDetailPagina({ index, onTerug }) {
                 };
 
               } else {
-                // Max/3J/5J: gebruik labels direct, haal jaar eruit
+                // Max/3J/5J: numerieke X-as op basis van jaar
                 const gezienJaar = new Set();
-                const alleJaren = grafiekData.filter(d => {
-                  const match = String(d.label).match(/\d{4}/);
-                  if (!match) return false;
-                  const j = match[0];
-                  if (gezienJaar.has(j)) return false;
-                  gezienJaar.add(j); return true;
+                grafiekData.forEach(d => {
+                  const m = String(d.label).match(/\d{4}/);
+                  if (m) gezienJaar.add(parseInt(m[0]));
                 });
-                // Max 6 jaartallen tonen
-                const stap = Math.max(1, Math.ceil(alleJaren.length / 6));
-                xTicks = alleJaren.filter((_, i) => i % stap === 0).map(d => d.label);
-                xTickFormatter = label => {
-                  const match = String(label).match(/\d{4}/);
-                  return match ? match[0] : label;
-                };
+                const alleJarenArr = [...gezienJaar].sort();
+                const stap = Math.max(1, Math.ceil(alleJarenArr.length / 6));
+                const gefilterdeJaren = alleJarenArr.filter((_, i) => i % stap === 0);
+                // Voeg jaar toe aan elk datapunt
+                grafiekData.forEach(d => {
+                  const m = String(d.label).match(/\d{4}/);
+                  d.jaar = m ? parseInt(m[0]) : null;
+                });
+                xTicks = gefilterdeJaren;
+                xTickFormatter = v => String(v);
               }
 
               return (
@@ -439,11 +439,13 @@ function IndexDetailPagina({ index, onTerug }) {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
                     <XAxis
-                      dataKey="label"
+                      dataKey={['3j','5j','max'].includes(periode) ? 'jaar' : 'label'}
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
                       axisLine={false} tickLine={false}
                       ticks={xTicks} tickFormatter={xTickFormatter || (v => v)}
-                      interval={0} minTickGap={40}
+                      type={['3j','5j','max'].includes(periode) ? 'number' : 'category'}
+                      domain={['3j','5j','max'].includes(periode) ? ['dataMin', 'dataMax'] : undefined}
+                      interval={0} minTickGap={30}
                     />
                     <YAxis
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
