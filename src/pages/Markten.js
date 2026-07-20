@@ -541,7 +541,11 @@ function IndexDetailPagina({ index, onTerug }) {
                     </div>
                     {/* Verschil */}
                     <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace', color: pos ? 'var(--green)' : 'var(--red)', fontWeight: 500 }}>
-                      {a.verschil ? (pos ? '+' : '') + a.verschil.toFixed(2) : '—'}
+                      {a.verschil != null ? (() => {
+                        const v = Math.abs(a.verschil);
+                        const dec = v === 0 ? 2 : v < 0.001 ? 4 : v < 0.01 ? 4 : v < 0.1 ? 3 : 2;
+                        return (pos ? '+' : '') + a.verschil.toFixed(dec);
+                      })() : '—'}
                     </div>
                     {/* % */}
                     <div style={{ textAlign: 'right', fontWeight: 600, color: pos ? 'var(--green)' : 'var(--red)' }}>
