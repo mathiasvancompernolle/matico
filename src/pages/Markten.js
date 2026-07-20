@@ -410,23 +410,19 @@ function IndexDetailPagina({ index, onTerug }) {
                 };
 
               } else {
-                // Max/3J/5J: elk jaar, max 7 labels
+                // Max/3J/5J: gebruik labels direct, haal jaar eruit
+                // Labels van candle zijn bv "1 jan. 2005"
                 const gezienJaar = new Set();
                 const alleJaren = grafiekData.filter(d => {
-                  if (!d.t) return false;
-                  const j = new Date(d.t).getFullYear();
-                  if (isNaN(j) || gezienJaar.has(j)) return false;
+                  const match = String(d.label).match(/\d{4}/);
+                  if (!match) return false;
+                  const j = match[0];
+                  if (gezienJaar.has(j)) return false;
                   gezienJaar.add(j); return true;
                 });
                 const stap = Math.max(1, Math.ceil(alleJaren.length / 7));
                 xTicks = alleJaren.filter((_, i) => i % stap === 0).map(d => d.label);
                 xTickFormatter = label => {
-                  const p = grafiekData.find(d => d.label === label);
-                  if (!p) return label;
-                  // Probeer jaar uit timestamp, anders uit label string
-                  const jaar = p.t ? new Date(p.t).getFullYear() : null;
-                  if (jaar && !isNaN(jaar)) return String(jaar);
-                  // Fallback: extract jaar uit label (bv "1 jan. 2005" → "2005")
                   const match = String(label).match(/\d{4}/);
                   return match ? match[0] : label;
                 };
@@ -446,8 +442,7 @@ function IndexDetailPagina({ index, onTerug }) {
                       dataKey="label"
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
                       axisLine={false} tickLine={false}
-                      ticks={xTicks} tickFormatter={xTickFormatter || (v => v)}
-                      interval="preserveStartEnd"
+                      ticks={xTicks} tickFormatter={xTickFormatter || (v => v)} interval={0}
                     />
                     <YAxis
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
