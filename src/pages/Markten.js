@@ -294,7 +294,19 @@ function IndexDetailPagina({ index, onTerug }) {
                 if (b.includes('nasdaq') || b.includes('nyse') || b.includes('new york')) return '🇺🇸';
                 return '🇧🇪'; // default Brussel
               })()}</span>
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{index.beurs || 'Brussels'}</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{(() => {
+                const b = (index.beurs || '').toLowerCase();
+                if (b.includes('paris') || b === 'par') return 'Paris';
+                if (b.includes('amsterdam') || b === 'ams') return 'Amsterdam';
+                if (b.includes('london') || b === 'lse') return 'London';
+                if (b.includes('xetra') || b === 'ger' || b === 'xetr') return 'Frankfurt';
+                if (b.includes('milan') || b === 'mil') return 'Milan';
+                if (b.includes('nasdaq')) return 'Nasdaq';
+                if (b.includes('nyse') || b === 'nyse') return 'New York';
+                if (b.includes('brussels') || b === 'bru') return 'Brussels';
+                if (b.includes('swiss') || b === 'swx') return 'Zurich';
+                return index.beurs || 'Brussels';
+              })()}</span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
                 <span style={{ color: 'var(--green)', fontWeight: 500 }}>Open</span>
