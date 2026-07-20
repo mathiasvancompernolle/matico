@@ -280,8 +280,21 @@ function IndexDetailPagina({ index, onTerug }) {
           {/* Meta: beurs + symbool + ISIN + valuta */}
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 13, borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 18 }}>🇧🇪</span>
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{index.beurs || 'BRU'}</span>
+              <span style={{ fontSize: 16 }}>{(() => {
+                const b = (index.beurs || '').toLowerCase();
+                if (b.includes('paris') || b.includes('euronext paris')) return '🇫🇷';
+                if (b.includes('amsterdam')) return '🇳🇱';
+                if (b.includes('london') || b.includes('lse')) return '🇬🇧';
+                if (b.includes('xetra') || b.includes('frankfurt') || b.includes('germany')) return '🇩🇪';
+                if (b.includes('milan') || b.includes('borsa italiana')) return '🇮🇹';
+                if (b.includes('madrid') || b.includes('spain')) return '🇪🇸';
+                if (b.includes('zurich') || b.includes('swiss') || b.includes('six')) return '🇨🇭';
+                if (b.includes('tokyo') || b.includes('japan')) return '🇯🇵';
+                if (b.includes('hong kong')) return '🇭🇰';
+                if (b.includes('nasdaq') || b.includes('nyse') || b.includes('new york')) return '🇺🇸';
+                return '🇧🇪'; // default Brussel
+              })()}</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{index.beurs || 'Brussels'}</span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
                 <span style={{ color: 'var(--green)', fontWeight: 500 }}>Open</span>
