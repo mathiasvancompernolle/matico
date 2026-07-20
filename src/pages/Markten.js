@@ -446,7 +446,8 @@ function IndexDetailPagina({ index, onTerug }) {
                       dataKey="label"
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
                       axisLine={false} tickLine={false}
-                      ticks={xTicks} tickFormatter={xTickFormatter || (v => v)} interval={0}
+                      ticks={xTicks} tickFormatter={xTickFormatter || (v => v)}
+                      interval="preserveStartEnd"
                     />
                     <YAxis
                       tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
