@@ -277,10 +277,20 @@ module.exports = async function handler(req, res) {
 
       try {
         const yfSym = toYahooSymbol(symbol);
-        const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=${yfRange}&interval=${yfInterval}&events=div,splits`;
-        const r = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
-        const data = await r.json();
-        const result = data?.chart?.result?.[0];
+        // Probeer eerst met v8 endpoint
+        let result = null;
+        const urls = [
+          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=${yfRange}&interval=${yfInterval}&events=div,splits`,
+          `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=${yfRange}&interval=${yfInterval}`,
+        ];
+        for (const yfUrl of urls) {
+          try {
+            const r = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'application/json', 'Accept-Language': 'en-US,en;q=0.9' } });
+            const data = await r.json();
+            result = data?.chart?.result?.[0];
+            if (result?.timestamp?.length > 1) break;
+          } catch(e) {}
+        }
 
         if (result?.timestamp?.length > 0) {
           const timestamps = result.timestamp;
