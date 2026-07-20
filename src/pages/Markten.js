@@ -161,17 +161,41 @@ function IndexDetailPagina({ index, onTerug }) {
     { id: 'max', label: 'Max' },
   ];
 
+  const subindexMap = {
+    '^BFX': 'bel20', 'BELM.BR': 'bel-midcap', 'BELS.BR': 'bel-smallcap',
+    '^AEX': 'aex', '^FCHI': 'cac40', '^GDAXI': 'dax',
+    '^FTSE': 'ftse100', '^STOXX50E': 'stoxx50',
+    '^GSPC': 'sp500', '^NDX': 'nasdaq100', '^DJI': 'dowjones',
+  };
+  const subindex = subindexMap[index.symbol];
+
+  // Laad grafiek via aandelen-regio (zelfde endpoint als AandelenPagina)
+  useEffect(() => {
+    const laad = async () => {
+      setLaden(true);
+      try {
+        if (subindex) {
+          // Gebruik aandelen-regio voor Belgische indices (werkt met intraday)
+          const r = await fetch(`/api/data?endpoint=aandelen-regio&subindex=${subindex}&periode=${periode}`);
+          const d = await r.json();
+          const grafiek = d?.grafiek || [];
+          setGrafiekData(grafiek.map(p => ({ t: p.t, v: p.c, label: p.label || p.t })));
+        } else {
+          // Andere indices: candle endpoint
+          const periodeMap = { '1d':'1D','1w':'1W','1m':'1M','3m':'3M','6m':'6M','1j':'1J','3j':'3J','5j':'5J','ytd':'YTD','max':'Max' };
+          const r = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(index.symbol)}&tijdperk=${periodeMap[periode] || '1D'}`);
+          const d = await r.json();
+          setGrafiekData((d?.punten || []).map(p => ({ t: p.datum, v: p.prijs, label: p.label })));
+        }
+      } catch { setGrafiekData([]); }
+      finally { setLaden(false); }
+    };
+    laad();
+  }, [index.symbol, periode]);
+
   // Laad aandelen voor deze index
   useEffect(() => {
-    const subindexMap = {
-      '^BFX': 'bel20', 'BELM.BR': 'bel-midcap', 'BELS.BR': 'bel-smallcap',
-      '^AEX': 'aex', '^FCHI': 'cac40', '^GDAXI': 'dax',
-      '^FTSE': 'ftse100', '^STOXX50E': 'stoxx50',
-      '^GSPC': 'sp500', '^NDX': 'nasdaq100', '^DJI': 'dowjones',
-    };
-    const subindex = subindexMap[index.symbol];
     if (!subindex) { setAandelenLaden(false); return; }
-    
     setAandelenLaden(true);
     fetch(`/api/data?endpoint=aandelen-regio&subindex=${subindex}&periode=1d`)
       .then(r => r.json())
@@ -181,30 +205,6 @@ function IndexDetailPagina({ index, onTerug }) {
       })
       .catch(() => setAandelenLaden(false));
   }, [index.symbol]);
-
-  // Mapping van periode naar tijdperk voor candle API
-  const periodeMap = {
-    '1d': '1D', '1w': '1W', '1m': '1M', '3m': '3M',
-    '6m': '6M', '1j': '1J', '3j': '3J', '5j': '5J',
-    'ytd': 'YTD', 'max': 'Max'
-  };
-
-  useEffect(() => {
-    const laad = async () => {
-      setLaden(true);
-      try {
-        const tijdperk = periodeMap[periode] || '1D';
-        const r = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(index.symbol)}&tijdperk=${tijdperk}`);
-        const d = await r.json();
-        // API geeft { punten: [{label, datum, prijs}] } terug
-        const punten = d?.punten || [];
-        // Omzetten naar {t, v} formaat voor recharts
-        setGrafiekData(punten.map(p => ({ t: p.datum, v: p.prijs, label: p.label })));
-      } catch { setGrafiekData([]); }
-      finally { setLaden(false); }
-    };
-    laad();
-  }, [index.symbol, periode]);
 
   const positief = index.change >= 0;
   const grafiekKleur = positief ? '#3b82f6' : 'var(--red)';
