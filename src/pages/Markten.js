@@ -485,7 +485,12 @@ function IndexDetailPagina({ index, onTerug }) {
                 if (aandelenTab === 'az') return (a.naam || '').localeCompare(b.naam || '', 'nl');
                 if (aandelenTab === 'stijgers') return (parseFloat(b.change) || 0) - (parseFloat(a.change) || 0);
                 if (aandelenTab === 'dalers') return (parseFloat(a.change) || 0) - (parseFloat(b.change) || 0);
-                if (aandelenTab === 'marktkap') return (b.marktKap || 0) - (a.marktKap || 0);
+                if (aandelenTab === 'marktkap') {
+                  // Gebruik marktKap als beschikbaar, anders prijs als proxy
+                  const kapA = a.marktKap > 0 ? a.marktKap : (a.prijs || 0);
+                  const kapB = b.marktKap > 0 ? b.marktKap : (b.prijs || 0);
+                  return kapB - kapA;
+                }
                 return 0;
               });
               return gesorteerd.map((a, i) => {

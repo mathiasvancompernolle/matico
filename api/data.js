@@ -851,7 +851,7 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             const prevClose = meta.previousClose || meta.chartPreviousClose || 0;
             const verschil = prijs - prevClose;
             const volume = meta.regularMarketVolume || 0;
-            const marktKap = meta.marketCap || 0;
+            const marktKap = meta.marketCap || meta.sharesOutstanding * prijs || 0;
             const beurs = meta.fullExchangeName || meta.exchangeName || '—';
             return { symbol: sym, naam, prijs, change: chg, valuta: meta.currency || 'EUR', open, hoog, laag, prevClose, verschil, volume, marktKap, beurs };
           } catch {
