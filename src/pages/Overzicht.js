@@ -393,8 +393,9 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
       groepeerFn = d => new Date(d.datum).toDateString();
       formatFn = d => { const dt = new Date(d.datum); return `${dt.getDate()} ${maandKort[dt.getMonth()]}`; };
     } else if (dagen <= 60) {
-      // Tot 2 maanden: elke week
-      groepeerFn = d => { const dt = new Date(d.datum); return `${dt.getFullYear()}-${Math.ceil(dt.getDate()/7)}-${dt.getMonth()}`; };
+      // Tot 2 maanden: elke 7 dagen op vaste intervallen
+      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+      groepeerFn = d => Math.floor(new Date(d.datum).getTime() / msPerWeek);
       formatFn = d => { const dt = new Date(d.datum); return `${dt.getDate()} ${maandKort[dt.getMonth()]}`; };
     } else if (dagen <= 400) {
       // Tot ~1 jaar: eerste handelsdag van elke maand

@@ -342,12 +342,15 @@ function IndexDetailPagina({ index, onTerug }) {
                   return `${dt.getDate()} ${maandKort[dt.getMonth()]}`;
                 };
               } else if (['1m', '3m'].includes(periode)) {
-                // 1M/3M: elke week
+                // 1M: elke maandag | 3M: elke 2 weken op maandag
+                const intervalDagen = periode === '1m' ? 7 : 14;
                 const gezienWeek = new Set();
                 xTicks = grafiekData.filter(d => {
                   if (!d.t) return false;
                   const dt = new Date(d.t);
-                  const sleutel = `${dt.getFullYear()}-${Math.ceil(dt.getDate()/7)}-${dt.getMonth()}`;
+                  // Bereken weeknummer op basis van interval
+                  const msPerInterval = intervalDagen * 24 * 60 * 60 * 1000;
+                  const sleutel = Math.floor(dt.getTime() / msPerInterval);
                   if (gezienWeek.has(sleutel)) return false;
                   gezienWeek.add(sleutel);
                   return true;
