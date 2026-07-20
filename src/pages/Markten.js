@@ -179,7 +179,14 @@ function IndexDetailPagina({ index, onTerug }) {
           const r = await fetch(`/api/data?endpoint=aandelen-regio&subindex=${subindex}&periode=${periode}`);
           const d = await r.json();
           const grafiek = d?.grafiek || [];
-          setGrafiekData(grafiek.map(p => ({ t: p.t, v: p.c, label: p.label || p.t })));
+          const maandKortG = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+          setGrafiekData(grafiek.map(p => {
+            const dt = new Date(p.t);
+            const label = periode === '1d'
+              ? dt.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' })
+              : `${dt.getDate()} ${maandKortG[dt.getMonth()]}`;
+            return { t: p.t, v: p.v, label };
+          }).filter(p => p.v != null));
         } else {
           // Andere indices: candle endpoint
           const periodeMap = { '1d':'1D','1w':'1W','1m':'1M','3m':'3M','6m':'6M','1j':'1J','3j':'3J','5j':'5J','ytd':'YTD','max':'Max' };
