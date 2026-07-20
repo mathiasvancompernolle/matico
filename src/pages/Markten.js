@@ -174,12 +174,14 @@ function IndexDetailPagina({ index, onTerug }) {
     const laad = async () => {
       setLaden(true);
       try {
-        if (subindex) {
-          // Gebruik aandelen-regio voor Belgische indices (werkt met intraday)
+        const maandKortG = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+        const periodeMap = { '1d':'1D','1w':'1W','1m':'1M','3m':'3M','6m':'6M','1j':'1J','3j':'3J','5j':'5J','ytd':'YTD','max':'Max' };
+
+        if (subindex && ['1d','1w'].includes(periode)) {
+          // Intraday en 1W: gebruik aandelen-regio (heeft 5m/1h data)
           const r = await fetch(`/api/data?endpoint=aandelen-regio&subindex=${subindex}&periode=${periode}`);
           const d = await r.json();
           const grafiek = d?.grafiek || [];
-          const maandKortG = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
           setGrafiekData(grafiek.map(p => {
             const dt = new Date(p.t);
             const label = periode === '1d'
@@ -188,11 +190,15 @@ function IndexDetailPagina({ index, onTerug }) {
             return { t: p.t, v: p.v, label };
           }).filter(p => p.v != null));
         } else {
-          // Andere indices: candle endpoint
-          const periodeMap = { '1d':'1D','1w':'1W','1m':'1M','3m':'3M','6m':'6M','1j':'1J','3j':'3J','5j':'5J','ytd':'YTD','max':'Max' };
-          const r = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(index.symbol)}&tijdperk=${periodeMap[periode] || '1D'}`);
+          // Alle andere periodes (1M+): candle endpoint met Yahoo direct
+          const tijdperk = periodeMap[periode] || '1D';
+          const r = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(index.symbol)}&tijdperk=${tijdperk}`);
           const d = await r.json();
-          setGrafiekData((d?.punten || []).map(p => ({ t: p.datum, v: p.prijs, label: p.label })));
+          setGrafiekData((d?.punten || []).map(p => ({
+            t: new Date(p.datum).getTime(),
+            v: p.prijs,
+            label: p.label
+          })).filter(p => p.v != null));
         }
       } catch { setGrafiekData([]); }
       finally { setLaden(false); }

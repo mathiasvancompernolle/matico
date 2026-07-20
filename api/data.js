@@ -282,10 +282,16 @@ module.exports = async function handler(req, res) {
         const urls = [
           `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=${yfRange}&interval=${yfInterval}&events=div,splits`,
           `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=${yfRange}&interval=${yfInterval}`,
+          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=${yfRange}&interval=${yfInterval}&includePrePost=false`,
         ];
-        for (const yfUrl of urls) {
+        const hdrs = [
+          { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'application/json', 'Accept-Language': 'en-US,en;q=0.9' },
+          { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36', 'Accept': 'application/json' },
+          { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Referer': 'https://finance.yahoo.com' },
+        ];
+        for (let i = 0; i < urls.length; i++) {
           try {
-            const r = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'application/json', 'Accept-Language': 'en-US,en;q=0.9' } });
+            const r = await fetch(urls[i], { headers: hdrs[i] || hdrs[0] });
             const data = await r.json();
             result = data?.chart?.result?.[0];
             if (result?.timestamp?.length > 1) break;
