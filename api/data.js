@@ -614,7 +614,8 @@ module.exports = async function handler(req, res) {
             const isin = meta.isin || '';
             const beurs = meta.fullExchangeName || meta.exchangeName || '';
             const valuta = meta.currency || 'EUR';
-            return { symbol: idx.symbol, naam: idx.naam, prijs, change, prevClose, sparkline, laag52w, hoog52w, isin, beurs, valuta };
+            const verschil = prijs - prevClose;
+            return { symbol: idx.symbol, naam: idx.naam, prijs, change, prevClose, verschil, sparkline, laag52w, hoog52w, isin, beurs, valuta };
           } catch (e) {
             return { symbol: idx.symbol, naam: idx.naam, prijs: 0, change: 0, prevClose: 0, sparkline: [] };
           }

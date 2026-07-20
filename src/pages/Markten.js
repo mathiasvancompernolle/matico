@@ -219,58 +219,95 @@ function IndexDetailPagina({ index, onTerug }) {
       </div>
 
       <div style={{ padding: '0 32px 48px' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 10, background: 'var(--bg-subtle)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
-            border: '1px solid var(--border)'
-          }}>EQ</div>
-          <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, marginBottom: 4 }}>{index.naam}</h1>
-            <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-              <span>Symb. <strong style={{ color: 'var(--text-primary)' }}>{index.symbol}</strong></span>
-              {index.isin && <span>ISIN <strong style={{ color: 'var(--text-primary)' }}>{index.isin}</strong></span>}
-              <span>Valuta <strong style={{ color: 'var(--text-primary)' }}>{index.valuta || 'EUR'}</strong></span>
-            </div>
+        {/* ── Bovenste blok: naam + koers + meta ── */}
+        <div className="card" style={{ padding: '20px 24px', marginBottom: 16 }}>
+          {/* Naam + icoon */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 8, background: 'var(--bg-subtle)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
+              border: '1px solid var(--border)'
+            }}>EQ</div>
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{index.naam}</h1>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'DM Mono, monospace' }}>
+
+          {/* Koers + wijziging + tijdstip */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+            <span style={{ fontSize: 30, fontWeight: 700, fontFamily: 'DM Mono, monospace', color: positief ? 'var(--green)' : 'var(--red)' }}>
               {fmtPrijs(index.prijs)}
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 600, color: positief ? 'var(--green)' : 'var(--red)' }}>
+              {positief ? '+' : ''}{(index.verschil || 0).toFixed(2)} / {fmtPct(index.change)}
+            </span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              {(() => {
+                // Toon tijdstip van de koers (Yahoo heeft ~15 min vertraging)
+                const nu = new Date();
+                nu.setMinutes(nu.getMinutes() - 15);
+                return nu.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+              })()}
+            </span>
+          </div>
+
+          {/* 52W range */}
+          {(index.laag52w || index.hoog52w) && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Evolutie (1 jaar)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)', minWidth: 60 }}>
+                  {fmtPrijs(index.laag52w)}
+                </span>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <div style={{ height: 4, background: 'var(--border)', borderRadius: 2 }} />
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, height: 4, borderRadius: 2,
+                    background: 'var(--accent)',
+                    width: index.laag52w && index.hoog52w && index.hoog52w > index.laag52w
+                      ? `${Math.min(100, Math.max(0, ((index.prijs - index.laag52w) / (index.hoog52w - index.laag52w)) * 100))}%`
+                      : '50%'
+                  }} />
+                  {/* Huidige positie marker */}
+                  {index.laag52w && index.hoog52w && index.hoog52w > index.laag52w && (
+                    <div style={{
+                      position: 'absolute', top: -4, height: 12, width: 2, background: 'var(--accent)',
+                      left: `${Math.min(100, Math.max(0, ((index.prijs - index.laag52w) / (index.hoog52w - index.laag52w)) * 100))}%`,
+                    }} />
+                  )}
+                </div>
+                <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)', minWidth: 60, textAlign: 'right' }}>
+                  {fmtPrijs(index.hoog52w)}
+                </span>
+              </div>
             </div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: positief ? 'var(--green)' : 'var(--red)' }}>
-              {positief ? '+' : ''}{(index.change || 0).toFixed(2)} / {fmtPct(index.change)}
+          )}
+
+          {/* Meta: beurs + symbool + ISIN + valuta */}
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 13, borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 18 }}>🇧🇪</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{index.beurs || 'BRU'}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
+                <span style={{ color: 'var(--green)', fontWeight: 500 }}>Open</span>
+              </span>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-              {new Date().toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            <div style={{ color: 'var(--text-muted)' }}>
+              Symb. <strong style={{ color: 'var(--text-primary)', fontFamily: 'DM Mono, monospace' }}>{index.symbol}</strong>
+            </div>
+            {index.isin && (
+              <div style={{ color: 'var(--text-muted)' }}>
+                ISIN <strong style={{ color: 'var(--text-primary)', fontFamily: 'DM Mono, monospace' }}>{index.isin}</strong>
+              </div>
+            )}
+            <div style={{ color: 'var(--text-muted)' }}>
+              Valuta <strong style={{ color: 'var(--text-primary)' }}>{index.valuta || 'EUR'}</strong>
+            </div>
+            <div style={{ marginLeft: 'auto', color: 'var(--accent)', fontSize: 12, fontWeight: 500 }}>
+              15 minuten vertraging
             </div>
           </div>
         </div>
-
-        {/* 52W range */}
-        {(index.laag52w || index.hoog52w) && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Evolutie (1 jaar)</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>
-                {fmtPrijs(index.laag52w || min)}
-              </span>
-              <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 2, position: 'relative' }}>
-                <div style={{
-                  position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 2,
-                  background: 'var(--accent)',
-                  width: index.laag52w && index.hoog52w
-                    ? `${((index.prijs - index.laag52w) / (index.hoog52w - index.laag52w)) * 100}%`
-                    : '50%'
-                }} />
-              </div>
-              <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>
-                {fmtPrijs(index.hoog52w || max)}
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* Grafiek kaart */}
         <div className="card" style={{ padding: '20px 24px', marginBottom: 24 }}>
@@ -286,7 +323,11 @@ function IndexDetailPagina({ index, onTerug }) {
                   {positief ? '+' : ''}{(index.change || 0).toFixed(2)} / {fmtPct(index.change)}
                 </span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {new Date().toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  {(() => {
+                    const nu = new Date();
+                    nu.setMinutes(nu.getMinutes() - 15);
+                    return nu.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                  })()}
                 </span>
               </div>
             </div>
