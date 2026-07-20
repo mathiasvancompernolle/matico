@@ -352,77 +352,77 @@ function IndexDetailPagina({ index, onTerug }) {
                 yTicks = [];
                 for (let t = axisMin; t <= axisMax + niceStap * 0.01; t += niceStap) yTicks.push(Math.round(t));
               }
-              // X-as ticks: slimme groepering op basis van periode
               const maandKort = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
               let xTicks, xTickFormatter;
 
-              if (['1d', '1w'].includes(periode)) {
-                // 1W: elke dag tonen (alleen handelsdagen aanwezig in data)
+              if (periode === '1d') {
+                // Intraday: toon per uur
+                const gezienUur = new Set();
+                xTicks = grafiekData.filter(d => {
+                  if (!d.t) return false;
+                  const uur = new Date(d.t).getHours();
+                  if (gezienUur.has(uur)) return false;
+                  gezienUur.add(uur); return true;
+                }).map(d => d.label);
+                xTickFormatter = v => v;
+
+              } else if (periode === '1w') {
+                // 1W: elke handelsdag
                 const gezienDag = new Set();
                 xTicks = grafiekData.filter(d => {
                   if (!d.t) return false;
                   const dag = new Date(d.t).toDateString();
                   if (gezienDag.has(dag)) return false;
-                  gezienDag.add(dag);
-                  return true;
+                  gezienDag.add(dag); return true;
                 }).map(d => d.label);
-                xTickFormatter = (label) => {
-                  const punt = grafiekData.find(d => d.label === label);
-                  if (!punt?.t) return label;
-                  const dt = new Date(punt.t);
+                xTickFormatter = v => v;
+
+              } else if (['1m','3m'].includes(periode)) {
+                const ms = (periode === '1m' ? 7 : 14) * 86400000;
+                const gezien = new Set();
+                xTicks = grafiekData.filter(d => {
+                  if (!d.t) return false;
+                  const k = Math.floor(new Date(d.t).getTime() / ms);
+                  if (gezien.has(k)) return false;
+                  gezien.add(k); return true;
+                }).map(d => d.label);
+                xTickFormatter = label => {
+                  const p = grafiekData.find(d => d.label === label);
+                  if (!p?.t) return label;
+                  const dt = new Date(p.t);
                   return `${dt.getDate()} ${maandKort[dt.getMonth()]}`;
                 };
-              } else if (['1m', '3m'].includes(periode)) {
-                // 1M: elke maandag | 3M: elke 2 weken op maandag
-                const intervalDagen = periode === '1m' ? 7 : 14;
-                const gezienWeek = new Set();
+
+              } else if (['6m','1j','ytd'].includes(periode)) {
+                const gezien = new Set();
                 xTicks = grafiekData.filter(d => {
                   if (!d.t) return false;
                   const dt = new Date(d.t);
-                  // Bereken weeknummer op basis van interval
-                  const msPerInterval = intervalDagen * 24 * 60 * 60 * 1000;
-                  const sleutel = Math.floor(dt.getTime() / msPerInterval);
-                  if (gezienWeek.has(sleutel)) return false;
-                  gezienWeek.add(sleutel);
-                  return true;
+                  const k = `${dt.getFullYear()}-${dt.getMonth()}`;
+                  if (gezien.has(k)) return false;
+                  gezien.add(k); return true;
                 }).map(d => d.label);
-                xTickFormatter = (label) => {
-                  const punt = grafiekData.find(d => d.label === label);
-                  if (!punt?.t) return label;
-                  const dt = new Date(punt.t);
-                  return `${dt.getDate()} ${maandKort[dt.getMonth()]}`;
-                };
-              } else if (['6m', '1j', 'ytd'].includes(periode)) {
-                // 6M/1J: eerste handelsdag van elke maand
-                const gezienMaand = new Set();
-                xTicks = grafiekData.filter(d => {
-                  if (!d.t) return false;
-                  const dt = new Date(d.t);
-                  const sleutel = `${dt.getFullYear()}-${dt.getMonth()}`;
-                  if (gezienMaand.has(sleutel)) return false;
-                  gezienMaand.add(sleutel);
-                  return true; // eerste datapunt per maand = eerste handelsdag
-                }).map(d => d.label);
-                xTickFormatter = (label) => {
-                  const punt = grafiekData.find(d => d.label === label);
-                  if (!punt?.t) return label;
-                  const dt = new Date(punt.t);
-                  // Toon maandnaam, bij januari ook het jaar
+                xTickFormatter = label => {
+                  const p = grafiekData.find(d => d.label === label);
+                  if (!p?.t) return label;
+                  const dt = new Date(p.t);
                   return dt.getMonth() === 0 ? `jan '${String(dt.getFullYear()).slice(2)}` : maandKort[dt.getMonth()];
                 };
+
               } else {
-                // 3J/5J/Max: elk jaar
+                // Max/3J/5J: elk jaar, max 7 labels
                 const gezienJaar = new Set();
-                xTicks = grafiekData.filter(d => {
+                const alleJaren = grafiekData.filter(d => {
                   if (!d.t) return false;
-                  const jaar = new Date(d.t).getFullYear();
-                  if (gezienJaar.has(jaar)) return false;
-                  gezienJaar.add(jaar);
-                  return true;
-                }).map(d => d.label);
-                xTickFormatter = (label) => {
-                  const punt = grafiekData.find(d => d.label === label);
-                  return punt?.t ? String(new Date(punt.t).getFullYear()) : label;
+                  const j = new Date(d.t).getFullYear();
+                  if (gezienJaar.has(j)) return false;
+                  gezienJaar.add(j); return true;
+                });
+                const stap = Math.max(1, Math.ceil(alleJaren.length / 7));
+                xTicks = alleJaren.filter((_, i) => i % stap === 0).map(d => d.label);
+                xTickFormatter = label => {
+                  const p = grafiekData.find(d => d.label === label);
+                  return p?.t ? String(new Date(p.t).getFullYear()) : label;
                 };
               }
 
