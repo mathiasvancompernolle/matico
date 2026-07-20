@@ -280,20 +280,30 @@ function IndexDetailPagina({ index, onTerug }) {
           {/* Meta: beurs + symbool + ISIN + valuta */}
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 13, borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 16 }}>{(() => {
+              {(() => {
                 const b = (index.beurs || '').toLowerCase();
-                if (b.includes('paris') || b.includes('euronext paris')) return '🇫🇷';
-                if (b.includes('amsterdam')) return '🇳🇱';
-                if (b.includes('london') || b.includes('lse')) return '🇬🇧';
-                if (b.includes('xetra') || b.includes('frankfurt') || b.includes('germany')) return '🇩🇪';
-                if (b.includes('milan') || b.includes('borsa italiana')) return '🇮🇹';
-                if (b.includes('madrid') || b.includes('spain')) return '🇪🇸';
-                if (b.includes('zurich') || b.includes('swiss') || b.includes('six')) return '🇨🇭';
-                if (b.includes('tokyo') || b.includes('japan')) return '🇯🇵';
-                if (b.includes('hong kong')) return '🇭🇰';
-                if (b.includes('nasdaq') || b.includes('nyse') || b.includes('new york')) return '🇺🇸';
-                return '🇧🇪'; // default Brussel
-              })()}</span>
+                const land =
+                  b.includes('paris') || b === 'par' ? 'fr' :
+                  b.includes('amsterdam') || b === 'ams' ? 'nl' :
+                  b.includes('london') || b === 'lse' ? 'gb' :
+                  b.includes('xetra') || b === 'ger' || b === 'xetr' ? 'de' :
+                  b.includes('milan') || b === 'mil' ? 'it' :
+                  b.includes('madrid') ? 'es' :
+                  b.includes('swiss') || b === 'swx' ? 'ch' :
+                  b.includes('tokyo') ? 'jp' :
+                  b.includes('hong kong') ? 'hk' :
+                  b.includes('nasdaq') || b.includes('nyse') || b.includes('new york') ? 'us' :
+                  'be';
+                return (
+                  <img
+                    src={`https://flagcdn.com/20x15/${land}.png`}
+                    srcSet={`https://flagcdn.com/40x30/${land}.png 2x`}
+                    width="20" height="15"
+                    alt={land.toUpperCase()}
+                    style={{ borderRadius: 2, boxShadow: '0 0 1px rgba(0,0,0,0.2)', flexShrink: 0 }}
+                  />
+                );
+              })()}
               <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{(() => {
                 const b = (index.beurs || '').toLowerCase();
                 if (b.includes('paris') || b === 'par') return 'Paris';
