@@ -194,15 +194,29 @@ function IndexDetailPagina({ index, onTerug }) {
             return { t: p.t, v: p.v, label };
           }).filter(p => p.v != null));
         } else {
-          // Alle andere periodes (1M+): candle endpoint met Yahoo direct
+          // Max en alle andere periodes: candle endpoint
           const tijdperk = periodeMap[periode] || '1D';
           const r = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(index.symbol)}&tijdperk=${tijdperk}`);
           const d = await r.json();
-          setGrafiekData((d?.punten || []).map(p => ({
-            t: new Date(p.datum).getTime(),
-            v: p.prijs,
-            label: p.label
-          })).filter(p => p.v != null));
+          const punten = d?.punten || [];
+          if (punten.length > 1) {
+            setGrafiekData(punten.map(p => ({
+              t: new Date(p.datum).getTime(),
+              v: p.prijs,
+              label: p.label
+            })).filter(p => p.v != null));
+          } else {
+            // Fallback: probeer via aandelen-regio als candle faalt
+            try {
+              const r2 = await fetch(`/api/data?endpoint=aandelen-regio&subindex=${subindex}&periode=${periode}`);
+              const d2 = await r2.json();
+              const grafiek2 = d2?.grafiek || [];
+              setGrafiekData(grafiek2.map(p => ({
+                t: p.t, v: p.v,
+                label: (() => { const dt = new Date(p.t); return `${dt.getDate()} ${maandKortG[dt.getMonth()]}`; })()
+              })).filter(p => p.v != null));
+            } catch { setGrafiekData([]); }
+          }
         }
       } catch { setGrafiekData([]); }
       finally { setLaden(false); }
