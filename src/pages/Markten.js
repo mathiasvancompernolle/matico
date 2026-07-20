@@ -148,7 +148,15 @@ function IndexDetailPagina({ index, onTerug }) {
   const [aandelenData, setAandelenData] = useState([]);
   const [aandelenLaden, setAandelenLaden] = useState(true);
 
-  const PERIODES = [
+  // Voor Mid/Smallcap: enkel intraday, 1W en Max beschikbaar
+  const beperkteSubs = ['bel-midcap', 'bel-smallcap'];
+  const isBeperkteIndex = beperkteSubs.includes(subindex);
+
+  const PERIODES = isBeperkteIndex ? [
+    { id: '1d', label: 'Intraday' },
+    { id: '1w', label: '1 W' },
+    { id: 'max', label: 'Max' },
+  ] : [
     { id: '1d', label: 'Intraday' },
     { id: '1w', label: '1 W' },
     { id: '1m', label: '1M' },
