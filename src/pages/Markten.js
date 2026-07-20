@@ -439,7 +439,6 @@ function IndexDetailPagina({ index, onTerug }) {
                 { id: 'az', label: 'A-Z' },
                 { id: 'stijgers', label: 'Stijgers' },
                 { id: 'dalers', label: 'Dalers' },
-                { id: 'marktkap', label: 'Marktkap.' },
               ].map(tab => (
                 <button key={tab.id} onClick={() => setAandelenTab(tab.id)} style={{
                   padding: '12px 16px', border: 'none', background: 'transparent',
@@ -544,41 +543,7 @@ function IndexDetailPagina({ index, onTerug }) {
           </div>
         )}
 
-        {/* Info grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          <div className="card" style={{ padding: '20px 24px' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Index informatie</div>
-            {[
-              ['Naam', index.naam],
-              ['Symbool', index.symbol],
-              ['ISIN', index.isin || '—'],
-              ['Valuta', index.valuta || 'EUR'],
-              ['Beurs', index.beurs || 'Euronext Brussels'],
-              ['Type', 'Index'],
-            ].map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 13 }}>
-                <span style={{ color: 'var(--text-muted)' }}>{k}</span>
-                <span style={{ fontWeight: 600, fontFamily: k === 'ISIN' || k === 'Symbool' ? 'DM Mono, monospace' : 'inherit' }}>{v}</span>
-              </div>
-            ))}
-          </div>
 
-          <div className="card" style={{ padding: '20px 24px' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Koersgegevens</div>
-            {[
-              ['Laatste koers', fmtPrijs(index.prijs)],
-              ['Wijziging 1D', `${positief ? '+' : ''}${(index.change || 0).toFixed(2)}`],
-              ['Wijziging % 1D', fmtPct(index.change)],
-              ['52W Laag', index.laag52w ? fmtPrijs(index.laag52w) : '—'],
-              ['52W Hoog', index.hoog52w ? fmtPrijs(index.hoog52w) : '—'],
-            ].map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 13 }}>
-                <span style={{ color: 'var(--text-muted)' }}>{k}</span>
-                <span style={{ fontWeight: 600, color: k.includes('Wijziging') ? (positief ? 'var(--green)' : 'var(--red)') : 'var(--text-primary)' }}>{v}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
