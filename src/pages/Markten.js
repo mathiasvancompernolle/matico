@@ -541,11 +541,13 @@ function IndexDetailPagina({ index, onTerug }) {
                       {a.prijs != null ? (a.prijs < 0.1 ? a.prijs.toFixed(4) : a.prijs < 1 ? a.prijs.toFixed(3) : a.prijs.toFixed(2)) : '—'}
                     </div>
                     {/* Verschil */}
-                    <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace', color: pos ? 'var(--green)' : 'var(--red)', fontWeight: 500 }}>
+                    <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace', fontWeight: 500,
+                      color: a.verschil == null || Math.abs(a.verschil) < 0.0005 ? 'var(--text-primary)' : pos ? 'var(--green)' : 'var(--red)' }}>
                       {a.verschil != null ? (() => {
                         const v = Math.abs(a.verschil);
-                        const dec = v === 0 ? 2 : v < 0.001 ? 4 : v < 0.01 ? 4 : v < 0.1 ? 3 : 2;
-                        return (pos ? '+' : '') + a.verschil.toFixed(dec);
+                        if (v < 0.0005) return '0,00';
+                        const dec = v < 0.001 ? 4 : v < 0.01 ? 4 : v < 0.1 ? 3 : 2;
+                        return (a.verschil > 0 ? '+' : '') + a.verschil.toFixed(dec);
                       })() : '—'}
                     </div>
                     {/* % */}
