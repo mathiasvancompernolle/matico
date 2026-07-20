@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 
 // ── Constanten ────────────────────────────────────────────────────────────────
@@ -280,7 +280,7 @@ function IndexDetailPagina({ index, onTerug }) {
           </div>
 
           {/* Grafiek */}
-          <div style={{ height: 280 }}>
+          <div style={{ height: 300 }}>
             {laden ? (
               <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                 Laden...
@@ -289,35 +289,65 @@ function IndexDetailPagina({ index, onTerug }) {
               <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                 Geen data beschikbaar
               </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={grafiekData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                  <defs>
-                    <linearGradient id="indexGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={grafiekKleur} stopOpacity={0.15} />
-                      <stop offset="95%" stopColor={grafiekKleur} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="t" hide />
-                  <YAxis domain={['auto', 'auto']} hide />
-                  <Tooltip content={<GrafiekTooltip periode={periode} />} />
-                  <Area
-                    type="monotone" dataKey="v"
-                    stroke={grafiekKleur} strokeWidth={2}
-                    fill="url(#indexGrad)" dot={false} activeDot={{ r: 4 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+            ) : (() => {
+              // Nette Y-as ticks (zelfde logica als Overzicht)
+              const vals = grafiekData.map(d => d.v).filter(Boolean);
+              const bodem = Math.min(...vals);
+              const top = Math.max(...vals);
+              const bereik = top - bodem;
+              let yDomain, yTicks;
+              if (bereik === 0) {
+                yDomain = [0, top * 1.2];
+                yTicks = undefined;
+              } else {
+                const doelTicks = 5;
+                const ruwStap = bereik / doelTicks;
+                const magnitude = Math.pow(10, Math.floor(Math.log10(ruwStap)));
+                const gen = ruwStap / magnitude;
+                const niceStap = gen < 1.5 ? magnitude : gen < 3.5 ? 2 * magnitude : gen < 7.5 ? 5 * magnitude : 10 * magnitude;
+                const axisMin = Math.floor(bodem / niceStap) * niceStap;
+                const axisMax = Math.ceil(top / niceStap) * niceStap;
+                yDomain = [axisMin, axisMax];
+                yTicks = [];
+                for (let t = axisMin; t <= axisMax + niceStap * 0.01; t += niceStap) yTicks.push(Math.round(t));
+              }
+              // X-as ticks: max 6 labels
+              const stap = Math.max(1, Math.floor(grafiekData.length / 6));
+              const xTicks = grafiekData.filter((_, i) => i % stap === 0 || i === grafiekData.length - 1).map(d => d.label);
 
-          {/* Min/Max onder grafiek */}
-          {!laden && grafiekData.length > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-              <span>Min: {fmtPrijs(min)}</span>
-              <span>Max: {fmtPrijs(max)}</span>
-            </div>
-          )}
+              return (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={grafiekData} margin={{ top: 5, right: 8, bottom: 5, left: 8 }}>
+                    <defs>
+                      <linearGradient id="indexGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={grafiekKleur} stopOpacity={0.15} />
+                        <stop offset="95%" stopColor={grafiekKleur} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                      axisLine={false} tickLine={false}
+                      ticks={xTicks} tickFormatter={v => v} interval={0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                      axisLine={false} tickLine={false}
+                      tickFormatter={v => v.toLocaleString('nl-BE')}
+                      domain={yDomain} ticks={yTicks} width={55}
+                    />
+                    <Tooltip content={<GrafiekTooltip periode={periode} />} />
+                    <Area
+                      type="monotone" dataKey="v"
+                      stroke={grafiekKleur} strokeWidth={2}
+                      fill="url(#indexGrad)" dot={false} activeDot={{ r: 4 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              );
+            })()}
+          </div>
         </div>
 
         {/* Info grid */}
