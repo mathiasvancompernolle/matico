@@ -98,10 +98,22 @@ module.exports = async function handler(req, res) {
 
   // Yahoo Finance symbool omzetten
   function toYahooSymbol(symbol) {
+    if (!symbol) return symbol;
+    // Crypto: BTC → BTC-USD, ETH → ETH-USD (als geen suffix)
+    const cryptoSymbolen = ['BTC','ETH','XRP','ADA','SOL','DOT','DOGE','MATIC','LINK','UNI','AVAX','ATOM','LTC','BCH','XLM','ALGO','VET','FIL','TRX','EOS','XMR','ETC','AAVE','COMP','MKR','SNX','CRV','SUSHI','YFI','1INCH'];
+    const sym = symbol.toUpperCase();
+    // Al in Yahoo formaat (BTC-USD, ETH-EUR etc.)
+    if (sym.includes('-USD') || sym.includes('-EUR') || sym.includes('-USDT')) return sym;
+    // Losse crypto ticker zonder suffix
+    if (cryptoSymbolen.includes(sym)) return sym + '-USD';
+    // Finnhub crypto formaat (BINANCE:BTCUSDT → BTC-USD)
+    if (sym.startsWith('BINANCE:') || sym.startsWith('COINBASE:')) {
+      const basis = sym.split(':')[1].replace('USDT','').replace('USD','').replace('EUR','');
+      return basis + '-USD';
+    }
     return symbol
-      .replace('.DE', '.DE')   // XETRA blijft .DE
-      .replace('.PA', '.PA')   // Paris blijft .PA
-      .replace('VWCE.DE', 'VWCE.DE');
+      .replace('.DE', '.DE')
+      .replace('.PA', '.PA');
   }
 
   const { endpoint } = req.query;
@@ -194,8 +206,41 @@ module.exports = async function handler(req, res) {
 
     if (endpoint === 'search') {
       const { q } = req.query;
-      const r = await fetch(`https://finnhub.io/api/v1/search?q=${q}&token=${FINNHUB_KEY}`);
-      return res.json(await r.json());
+      if (!q) return res.json({ resultaten: [] });
+
+      try {
+        // Yahoo Finance search — dekt aandelen, ETFs én crypto
+        const r = await fetch(
+          `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false`,
+          { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } }
+        );
+        const d = await r.json();
+        const quotes = d?.quotes || [];
+        const resultaten = quotes
+          .filter(q => ['EQUITY','ETF','MUTUALFUND','CRYPTOCURRENCY'].includes(q.quoteType))
+          .map(q => ({
+            naam: q.longname || q.shortname || q.symbol,
+            symbol: q.symbol,
+            beurs: q.exchange || q.fullExchangeName || '',
+            type: q.quoteType === 'CRYPTOCURRENCY' ? 'crypto'
+                : q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND' ? 'etf'
+                : 'aandeel',
+            valuta: q.currency || 'EUR',
+          }));
+        return res.json({ resultaten });
+      } catch (e) {
+        // Fallback: Finnhub
+        try {
+          const r = await fetch(`https://finnhub.io/api/v1/search?q=${q}&token=${FINNHUB_KEY}`);
+          const d = await r.json();
+          const resultaten = (d?.result || []).map(r => ({
+            naam: r.description, symbol: r.symbol, beurs: r.type, type: 'aandeel'
+          }));
+          return res.json({ resultaten });
+        } catch (e2) {
+          return res.json({ resultaten: [] });
+        }
+      }
     }
 
     if (endpoint === 'forex') {
@@ -457,7 +502,7 @@ module.exports = async function handler(req, res) {
         if (meta) {
           const qt = (meta.instrumentType || meta.quoteType || '').toUpperCase();
           if (qt === 'ETF' || qt === 'MUTUALFUND') resultaat.type = 'etf';
-          else if (qt === 'CRYPTOCURRENCY') resultaat.type = 'crypto';
+          else if (qt === 'CRYPTOCURRENCY') { resultaat.type = 'crypto'; resultaat.valuta = 'USD'; }
           else if (qt === 'EQUITY') resultaat.type = 'aandeel';
           else resultaat.type = 'aandeel';
         }

@@ -268,25 +268,34 @@ const inputStyle = {
 export default function Beleggingen({ onToevoegen }) {
   const { beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen, getMuntFactor } = useApp();
 
-  // Haal logo's op voor actieve én verkochte beleggingen zonder logo
+  // Haal logo's en type op voor beleggingen zonder logo OF zonder type
   React.useEffect(() => {
-    const zonderLogo = [
-      ...beleggingen.filter(b => !b.logo),
-      ...(verkochteBeleggingen || []).filter(b => !b.logo)
+    const zonderInfo = [
+      ...beleggingen.filter(b => !b.logo || !b.type),
+      ...(verkochteBeleggingen || []).filter(b => !b.logo || !b.type)
     ];
-    zonderLogo.forEach(async (b) => {
+    // Dedupliceer op symbol
+    const gezien = new Set();
+    const uniek = zonderInfo.filter(b => { if (gezien.has(b.symbol)) return false; gezien.add(b.symbol); return true; });
+    uniek.forEach(async (b) => {
       try {
         const res = await fetch(`/api/data?endpoint=profile&symbol=${encodeURIComponent(b.symbol)}`);
         const data = await res.json();
         const logo = data.logo || data.image || '';
         const type = data.type || '';
-        if (logo || type) {
-          setBeleggingen(prev => prev.map(pb => pb.id === b.id ? { ...pb, ...(logo ? { logo } : {}), ...(type && !pb.type ? { type } : {}) } : pb));
-          setVerkochteBeleggingen(prev => (prev || []).map(pb => pb.id === b.id ? { ...pb, ...(logo ? { logo } : {}), ...(type && !pb.type ? { type } : {}) } : pb));
-        }
+        setBeleggingen(prev => prev.map(pb => pb.symbol === b.symbol ? {
+          ...pb,
+          ...(logo && !pb.logo ? { logo } : {}),
+          ...(type && !pb.type ? { type } : {})
+        } : pb));
+        setVerkochteBeleggingen(prev => (prev || []).map(pb => pb.symbol === b.symbol ? {
+          ...pb,
+          ...(logo && !pb.logo ? { logo } : {}),
+          ...(type && !pb.type ? { type } : {})
+        } : pb));
       } catch (e) {}
     });
-  }, [beleggingen.filter(b => !b.logo).map(b => b.symbol).join(',')]);
+  }, [beleggingen.map(b => b.symbol + (b.type||'')).join(',')]);
   const [tab, setTab] = useState('actief');
   const [detailBelegging, setDetailBelegging] = useState(null);
   const [verkoopModal, setVerkoopModal] = useState(false);
