@@ -55,7 +55,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker }) {
   return (
     <nav className="top-nav" style={{ display: 'flex', alignItems: 'center', padding: '0 16px', gap: 8 }}>
       {/* Logo */}
-      <div onClick={() => navigeerNaar('overzicht')} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginRight: 16, flexShrink: 0 }}>
+      <div onClick={() => { onSectieWissel('portefeuille'); navigeerNaar('overzicht'); }} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginRight: 16, flexShrink: 0 }}>
         <div style={{ width: 28, height: 28, borderRadius: 7, background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 13 }}>M</div>
         <span style={{ fontWeight: 800, fontSize: 15, color: '#6366f1', letterSpacing: '-0.3px' }}>Matico</span>
       </div>
@@ -71,11 +71,11 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker }) {
 
         {/* Zoekbalk */}
         <div ref={zoekRef} style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: zoekOpen ? 'var(--bg-white)' : 'var(--bg)', border: `1px solid ${zoekOpen ? '#6366f1' : 'var(--border)'}`, borderRadius: 8, padding: '5px 10px', transition: 'width 0.2s', width: zoekOpen ? 220 : 34 }}>
-            <svg width="15" height="15" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, cursor: 'pointer' }} onClick={() => { setZoekOpen(true); setTimeout(() => document.getElementById('topnav-zoek')?.focus(), 50); }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-white)', border: `1px solid ${zoekOpen ? '#6366f1' : 'var(--border)'}`, borderRadius: 8, padding: '5px 10px', width: 220 }}>
+            <svg width="15" height="15" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            {zoekOpen && <input id="topnav-zoek" value={zoekQuery} onChange={e => setZoekQuery(e.target.value)} placeholder="Zoeken naam/ISIN..." style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--text-primary)', width: '100%', fontFamily: 'inherit' }} />}
+            <input id="topnav-zoek" value={zoekQuery} onChange={e => { setZoekQuery(e.target.value); setZoekOpen(true); }} onFocus={() => setZoekOpen(true)} placeholder="Zoeken naam/ISIN..." style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--text-primary)', width: '100%', fontFamily: 'inherit' }} />
           </div>
           {zoekOpen && zoekQuery.length >= 2 && (
             <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 300, maxHeight: 340, overflowY: 'auto', zIndex: 300 }}>
