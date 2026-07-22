@@ -142,7 +142,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker }) {
                 ))}
               </div>
               <div style={{ borderTop: '1px solid var(--border)', padding: '6px 0' }}>
-                <div onClick={async () => { setProfielOpen(false); if (window.confirm) { await import('../supabaseClient').then(m => m.supabase.auth.signOut()); window.location.reload(); } }}
+                <div onClick={async () => { setProfielOpen(false); await supabase.auth.signOut(); window.location.reload(); }}
                   style={{ padding: '9px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8 }}
                   onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
