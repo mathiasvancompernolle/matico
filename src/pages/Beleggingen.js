@@ -279,9 +279,10 @@ export default function Beleggingen({ onToevoegen }) {
         const res = await fetch(`/api/data?endpoint=profile&symbol=${encodeURIComponent(b.symbol)}`);
         const data = await res.json();
         const logo = data.logo || data.image || '';
-        if (logo) {
-          setBeleggingen(prev => prev.map(pb => pb.id === b.id ? { ...pb, logo } : pb));
-          setVerkochteBeleggingen(prev => (prev || []).map(pb => pb.id === b.id ? { ...pb, logo } : pb));
+        const type = data.type || '';
+        if (logo || type) {
+          setBeleggingen(prev => prev.map(pb => pb.id === b.id ? { ...pb, ...(logo ? { logo } : {}), ...(type && !pb.type ? { type } : {}) } : pb));
+          setVerkochteBeleggingen(prev => (prev || []).map(pb => pb.id === b.id ? { ...pb, ...(logo ? { logo } : {}), ...(type && !pb.type ? { type } : {}) } : pb));
         }
       } catch (e) {}
     });

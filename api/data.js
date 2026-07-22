@@ -446,6 +446,23 @@ module.exports = async function handler(req, res) {
           resultaat.country = resultaat.country || f.country;
         }
       } catch (e) {}
+      // Bepaal type via Yahoo Finance quoteType
+      try {
+        const yfSym = toYahooSymbol(symbol);
+        const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?interval=1d&range=1d`, {
+          headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' }
+        });
+        const d = await r.json();
+        const meta = d?.chart?.result?.[0]?.meta;
+        if (meta) {
+          const qt = (meta.instrumentType || meta.quoteType || '').toUpperCase();
+          if (qt === 'ETF' || qt === 'MUTUALFUND') resultaat.type = 'etf';
+          else if (qt === 'CRYPTOCURRENCY') resultaat.type = 'crypto';
+          else if (qt === 'EQUITY') resultaat.type = 'aandeel';
+          else resultaat.type = 'aandeel';
+        }
+      } catch (e) {}
+
       return res.json(resultaat);
     }
 
