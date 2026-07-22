@@ -12,8 +12,8 @@ import ImportBeleggingen from './pages/ImportBeleggingen';
 import Markten from './pages/Markten';
 import './App.css';
 import Landing from './pages/Landing';
+import TopNav from './components/TopNav';
 import AuthPage from './pages/AuthPage';
-import Onboarding from './pages/Onboarding';
 import { supabase } from './supabaseClient';
 
 function TopNav({ actieveSectie, onSectieWissel }) {
@@ -155,13 +155,6 @@ export default function App() {
   const [gebruiker, setGebruiker] = React.useState(null);
   const [authLaden, setAuthLaden] = React.useState(true);
 
-  const [onboardingKlaar, setOnboardingKlaar] = React.useState(() => {
-    try {
-      const inst = localStorage.getItem('matico_instellingen');
-      return inst ? JSON.parse(inst).onboardingKlaar === true : false;
-    } catch { return false; }
-  });
-
   React.useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -198,17 +191,6 @@ export default function App() {
 
   if (!gebruiker) {
     return <AuthPage onIngelogd={(user) => setGebruiker(user)} />;
-  }
-
-  if (!onboardingKlaar) {
-    return (
-      <Onboarding
-        gebruiker={gebruiker}
-        onKlaar={(instellingen) => {
-          setOnboardingKlaar(true);
-        }}
-      />
-    );
   }
 
   return (
