@@ -12,7 +12,7 @@ import ImportBeleggingen from './pages/ImportBeleggingen';
 import Markten from './pages/Markten';
 import './App.css';
 import Landing from './pages/Landing';
-import TopNav from './components/TopNav';
+import TopNavBar from './components/TopNav';
 import AuthPage from './pages/AuthPage';
 import { supabase } from './supabaseClient';
 
