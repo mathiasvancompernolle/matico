@@ -4,7 +4,43 @@ import { Plus, ChevronDown, Calendar, MoreVertical, Search, ArrowLeft, X, Trash2
 import BeleggingDetail from '../components/BeleggingDetail';
 
 // ── kleine hulpfuncties ──────────────────────────────────────────
-function Avatar({ symbol, logo }) {
+// ETF uitgever mapping → afkorting + kleur
+const ETF_UITGEVERS = [
+  { match: ['ishares','blackrock'], label: 'iSH', kleur: '#00b140', tekst: 'white' },
+  { match: ['vanguard'], label: 'VG', kleur: '#c8102e', tekst: 'white' },
+  { match: ['amundi'], label: 'AM', kleur: '#0066cc', tekst: 'white' },
+  { match: ['xtrackers','dws'], label: 'XT', kleur: '#003c88', tekst: 'white' },
+  { match: ['invesco'], label: 'IV', kleur: '#00205b', tekst: 'white' },
+  { match: ['spdr','state street'], label: 'SPD', kleur: '#00a651', tekst: 'white' },
+  { match: ['wisdomtree'], label: 'WT', kleur: '#f7941d', tekst: 'white' },
+  { match: ['vaneck'], label: 'VE', kleur: '#003087', tekst: 'white' },
+  { match: ['lyxor'], label: 'LY', kleur: '#e4003a', tekst: 'white' },
+  { match: ['ubs'], label: 'UBS', kleur: '#e3000f', tekst: 'white' },
+  { match: ['pimco'], label: 'PM', kleur: '#00205b', tekst: 'white' },
+  { match: ['franklin','templeton'], label: 'FT', kleur: '#2e5eaa', tekst: 'white' },
+  { match: ['fidelity'], label: 'FID', kleur: '#008a00', tekst: 'white' },
+  { match: ['hsbc'], label: 'HSB', kleur: '#db0011', tekst: 'white' },
+  { match: ['jpmorgan','jpm'], label: 'JPM', kleur: '#003087', tekst: 'white' },
+  { match: ['goldman','gs'], label: 'GS', kleur: '#6699ff', tekst: 'white' },
+];
+
+// Crypto kleur mapping
+const CRYPTO_KLEUREN = {
+  'BTC': { kleur: '#f7931a', tekst: 'white' },
+  'ETH': { kleur: '#627eea', tekst: 'white' },
+  'SOL': { kleur: '#9945ff', tekst: 'white' },
+  'XRP': { kleur: '#00aae4', tekst: 'white' },
+  'ADA': { kleur: '#0033ad', tekst: 'white' },
+  'DOT': { kleur: '#e6007a', tekst: 'white' },
+  'DOGE': { kleur: '#c2a633', tekst: 'white' },
+  'AVAX': { kleur: '#e84142', tekst: 'white' },
+  'LINK': { kleur: '#2a5ada', tekst: 'white' },
+  'MATIC': { kleur: '#8247e5', tekst: 'white' },
+  'SHIB': { kleur: '#f00500', tekst: 'white' },
+  'TON': { kleur: '#0088cc', tekst: 'white' },
+};
+
+function Avatar({ symbol, logo, naam, type }) {
   const [imgFout, setImgFout] = React.useState(false);
   const initials = symbol.split('.')[0].slice(0, 2).toUpperCase();
 
@@ -24,6 +60,42 @@ function Avatar({ symbol, logo }) {
       </div>
     );
   }
+
+  // ETF badge op basis van uitgevende instelling
+  if (type === 'etf' && naam) {
+    const naamLower = naam.toLowerCase();
+    const uitgever = ETF_UITGEVERS.find(u => u.match.some(m => naamLower.includes(m)));
+    if (uitgever) {
+      return (
+        <div style={{
+          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: uitgever.kleur, color: uitgever.tekst,
+          fontWeight: 800, fontSize: 10, letterSpacing: '-0.3px',
+        }}>
+          {uitgever.label}
+        </div>
+      );
+    }
+  }
+
+  // Crypto badge met eigen kleur
+  if (type === 'crypto') {
+    const basis = symbol.replace(/-EUR$|-USD$|-GBP$|-USDT$/,'').toUpperCase();
+    const cryptoKleur = CRYPTO_KLEUREN[basis] || { kleur: '#f7931a', tekst: 'white' };
+    return (
+      <div style={{
+        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: cryptoKleur.kleur, color: cryptoKleur.tekst,
+        fontWeight: 800, fontSize: 12,
+      }}>
+        {basis.slice(0, 3)}
+      </div>
+    );
+  }
+
+  // Standaard fallback
   return (
     <div style={{
       width: 36, height: 36, borderRadius: 10, background: 'var(--accent-bg)',
@@ -174,7 +246,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <Avatar symbol={b.symbol} logo={b.logo} />
+                  <Avatar symbol={b.symbol} logo={b.logo} naam={b.naam} type={b.type} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{b.naam}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -540,7 +612,7 @@ export default function Beleggingen({ onToevoegen }) {
                     >
                       {/* Naam */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Avatar symbol={b.symbol} logo={b.logo} />
+                        <Avatar symbol={b.symbol} logo={b.logo} naam={b.naam} type={b.type} />
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 14 }}>{b.naam}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.symbol}</div>
@@ -692,7 +764,7 @@ export default function Beleggingen({ onToevoegen }) {
                       alignItems: 'center'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Avatar symbol={b.symbol} logo={b.logo} />
+                        <Avatar symbol={b.symbol} logo={b.logo} naam={b.naam} type={b.type} />
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 14 }}>{b.naam}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.symbol}</div>
