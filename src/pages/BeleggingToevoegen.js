@@ -45,7 +45,14 @@ export default function BeleggingToevoegen({ onClose }) {
       try {
         const res = await fetch(`/api/data?endpoint=search&q=${encodeURIComponent(zoekterm)}`);
         const data = await res.json();
-        setZoekResultaten((data.result || []).slice(0, 8));
+        // Nieuwe API geeft { resultaten: [...] }, fallback op oude Finnhub { result: [...] }
+        const resultaten = data.resultaten || (data.result || []).map(r => ({
+          naam: r.description,
+          symbol: r.symbol,
+          beurs: r.type,
+          type: r.type === 'ETF' ? 'etf' : 'aandeel',
+        }));
+        setZoekResultaten(resultaten.slice(0, 8));
       } catch {
         setZoekResultaten([]);
       }
@@ -170,8 +177,8 @@ export default function BeleggingToevoegen({ onClose }) {
             )}
             {zoekResultaten.map(r => (
               <div key={r.symbol} className="zoek-resultaat" onClick={() => kiesAandeel(r)}>
-                <div className="zoek-resultaat-naam">{r.description}</div>
-                <div className="zoek-resultaat-symbol">{r.symbol} · {r.type} · {r.displaySymbol}</div>
+                <div className="zoek-resultaat-naam">{r.naam || r.description}</div>
+                <div className="zoek-resultaat-symbol">{r.symbol} · {r.type || ''} · {r.beurs || r.displaySymbol || ''}</div>
               </div>
             ))}
           </div>
