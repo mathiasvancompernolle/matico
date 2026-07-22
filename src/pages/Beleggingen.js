@@ -7,7 +7,7 @@ import BeleggingDetail from '../components/BeleggingDetail';
 // ETF uitgever mapping → afkorting + kleur
 const ETF_UITGEVERS = [
   { match: ['ishares','blackrock','ish '], label: 'iSH', kleur: '#00b140', tekst: 'white' },
-  { match: ['vanguard','vang ','vang.'], label: 'VG', kleur: '#c8102e', tekst: 'white' },
+  { match: ['vanguard','vang ftse','vang ','vang.'], label: 'VG', kleur: '#c8102e', tekst: 'white' },
   { match: ['amundi','lyx ','lyxor'], label: 'AM', kleur: '#0066cc', tekst: 'white' },
   { match: ['xtrackers','dws','xtr '], label: 'XT', kleur: '#003c88', tekst: 'white' },
   { match: ['invesco','inv '], label: 'IV', kleur: '#00205b', tekst: 'white' },
