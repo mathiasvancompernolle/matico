@@ -7,7 +7,6 @@ import {
   Check, Trash2, Pencil, X, PiggyBank, Briefcase,
   User
 } from 'lucide-react';
- from '../supabaseClient';
 
 const navItems = [
   { id: 'overzicht', label: 'Overzicht', icon: LayoutDashboard },
