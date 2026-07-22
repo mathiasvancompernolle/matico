@@ -554,7 +554,14 @@ module.exports = async function handler(req, res) {
         const meta = d?.chart?.result?.[0]?.meta;
         if (meta) {
           const qt = (meta.instrumentType || meta.quoteType || '').toUpperCase();
-          if (qt === 'ETF' || qt === 'MUTUALFUND') {
+          // Extra check: sommige Europese ETFs worden door Yahoo als EQUITY geclassificeerd
+          // Detecteer via naam of typeDisp
+          const typeDisp = (meta.typeDisp || '').toUpperCase();
+          const naamLower = (resultaat.name || symbol || '').toLowerCase();
+          const ETF_NAMEN = ['ishares','blackrock','vanguard','vang ftse','amundi','xtrackers','invesco','spdr','wisdomtree','vaneck','lyxor','ubs etf','pimco etf','franklin etf','fidelity etf','hsbc etf','jpmorgan etf','ucits etf','etf','tracker','index fund'];
+          const isEtfNaam = ETF_NAMEN.some(n => naamLower.includes(n));
+          const isEtf = qt === 'ETF' || qt === 'MUTUALFUND' || typeDisp === 'ETF' || isEtfNaam;
+          if (isEtf) {
             resultaat.type = 'etf';
             // ETF logo via naam van de uitgever
             if (!resultaat.logo) {
@@ -603,8 +610,8 @@ module.exports = async function handler(req, res) {
               }
             }
           }
-          else if (qt === 'EQUITY') resultaat.type = 'aandeel';
-          else if (!resultaat.type) resultaat.type = 'aandeel';
+          else if (qt === 'EQUITY' && !isEtfNaam) resultaat.type = 'aandeel';
+          else if (!resultaat.type && !isEtfNaam) resultaat.type = 'aandeel';
         }
       } catch (e) {}
 
