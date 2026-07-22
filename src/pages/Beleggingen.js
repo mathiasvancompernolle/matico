@@ -62,9 +62,11 @@ function Avatar({ symbol, logo, naam, type }) {
   }
 
   // ETF badge op basis van uitgevende instelling
-  if (type === 'etf' && naam) {
-    const naamLower = naam.toLowerCase();
-    const uitgever = ETF_UITGEVERS.find(u => u.match.some(m => naamLower.includes(m)));
+  const naamCheck = (naam || symbol || '').toLowerCase();
+  const isEtf = type === 'etf' || (!type && ETF_UITGEVERS.some(u => u.match.some(m => naamCheck.includes(m))));
+  
+  if (isEtf) {
+    const uitgever = ETF_UITGEVERS.find(u => u.match.some(m => naamCheck.includes(m)));
     if (uitgever) {
       return (
         <div style={{
@@ -80,8 +82,10 @@ function Avatar({ symbol, logo, naam, type }) {
   }
 
   // Crypto badge met eigen kleur
-  if (type === 'crypto') {
-    const basis = symbol.replace(/-EUR$|-USD$|-GBP$|-USDT$/,'').toUpperCase();
+  const basis = symbol.replace(/-EUR$|-USD$|-GBP$|-USDT$/,'').toUpperCase();
+  const isCrypto = type === 'crypto' || (!type && CRYPTO_KLEUREN[basis]);
+  
+  if (isCrypto) {
     const cryptoKleur = CRYPTO_KLEUREN[basis] || { kleur: '#f7931a', tekst: 'white' };
     return (
       <div style={{
