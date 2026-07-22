@@ -974,10 +974,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
               <button className="modal-close" onClick={() => setFilterOpen(false)}><X size={16} /></button>
             </div>
             <div style={{ flex: 1, overflow: 'auto' }}>
-              <div className="filter-section">
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--accent)' }}
-                  onClick={() => { setFilterType('alle'); setFilterSymbolen([]); setFilterBezit('alles'); }}>Wis alle filters</button>
-              </div>
+
               <div className="filter-section">
                 <h3>Type belegging</h3>
                 {['alle', 'aandeel', 'etf', 'crypto'].map(t => (
@@ -994,8 +991,19 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     <input type="checkbox"
                       checked={filterSymbolen.length === 0 || filterSymbolen.includes(b.symbol)}
                       onChange={e => {
-                        if (e.target.checked) setFilterSymbolen(prev => prev.filter(s => s !== b.symbol));
-                        else setFilterSymbolen(prev => [...(prev.length === 0 ? beleggingen.map(bb => bb.symbol) : prev)].filter(s => s !== b.symbol));
+                        if (e.target.checked) {
+                          // Toevoegen: als alle anderen al uit zijn → wis filter (toon alles)
+                          const nieuw = filterSymbolen.filter(s => s !== b.symbol);
+                          // Als alle symbolen aangevinkt zijn na toevoegen → reset naar leeg (= alles)
+                          const alles = beleggingen.map(bb => bb.symbol);
+                          const overig = alles.filter(s => s !== b.symbol);
+                          const alleAangevinkt = overig.every(s => nieuw.includes(s) || nieuw.length === 0);
+                          setFilterSymbolen(alleAangevinkt && nieuw.length >= overig.length ? [] : nieuw);
+                        } else {
+                          // Uitvinken: voeg alle andere symbolen toe behalve dit
+                          const huidig = filterSymbolen.length === 0 ? beleggingen.map(bb => bb.symbol) : filterSymbolen;
+                          setFilterSymbolen(huidig.filter(s => s !== b.symbol));
+                        }
                       }} />
                     {b.symbol}
                   </label>
@@ -1013,9 +1021,22 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                 </label>
               </div>
             </div>
-            <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setFilterOpen(false)}>Annuleren</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setFilterOpen(false)}>Toepassen</button>
+            <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                onClick={() => { setFilterType('alle'); setFilterSymbolen([]); setFilterBezit('alles'); }}
+                style={{
+                  width: '100%', padding: '10px 16px', borderRadius: 8,
+                  border: '1.5px solid var(--border)', background: 'var(--bg)',
+                  color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}>
+                ✕ Wis alle filters
+              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setFilterOpen(false)}>Annuleren</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setFilterOpen(false)}>Toepassen</button>
+              </div>
             </div>
           </div>
         </>
