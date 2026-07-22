@@ -544,7 +544,7 @@ module.exports = async function handler(req, res) {
           resultaat.country = resultaat.country || f.country;
         }
       } catch (e) {}
-      // Bepaal type via Yahoo Finance quoteType
+      // Bepaal type + logo via Yahoo Finance quoteType
       try {
         const yfSym = toYahooSymbol(symbol);
         const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?interval=1d&range=1d`, {
@@ -554,10 +554,57 @@ module.exports = async function handler(req, res) {
         const meta = d?.chart?.result?.[0]?.meta;
         if (meta) {
           const qt = (meta.instrumentType || meta.quoteType || '').toUpperCase();
-          if (qt === 'ETF' || qt === 'MUTUALFUND') resultaat.type = 'etf';
-          else if (qt === 'CRYPTOCURRENCY') { resultaat.type = 'crypto'; resultaat.valuta = 'USD'; }
+          if (qt === 'ETF' || qt === 'MUTUALFUND') {
+            resultaat.type = 'etf';
+            // ETF logo via naam van de uitgever
+            if (!resultaat.logo) {
+              const naam = (resultaat.name || symbol).toLowerCase();
+              if (naam.includes('ishares') || naam.includes('blackrock')) resultaat.logo = 'https://logo.clearbit.com/ishares.com';
+              else if (naam.includes('vanguard')) resultaat.logo = 'https://logo.clearbit.com/vanguard.com';
+              else if (naam.includes('amundi')) resultaat.logo = 'https://logo.clearbit.com/amundi.com';
+              else if (naam.includes('xtrackers') || naam.includes('dws')) resultaat.logo = 'https://logo.clearbit.com/dws.com';
+              else if (naam.includes('invesco')) resultaat.logo = 'https://logo.clearbit.com/invesco.com';
+              else if (naam.includes('spdr') || naam.includes('state street')) resultaat.logo = 'https://logo.clearbit.com/ssga.com';
+              else if (naam.includes('wisdomtree')) resultaat.logo = 'https://logo.clearbit.com/wisdomtree.com';
+              else if (naam.includes('vaneck')) resultaat.logo = 'https://logo.clearbit.com/vaneck.com';
+              else if (naam.includes('lyxor')) resultaat.logo = 'https://logo.clearbit.com/lyxor.com';
+              else if (naam.includes('ubs')) resultaat.logo = 'https://logo.clearbit.com/ubs.com';
+              else if (naam.includes('pimco')) resultaat.logo = 'https://logo.clearbit.com/pimco.com';
+              else if (naam.includes('franklin')) resultaat.logo = 'https://logo.clearbit.com/franklintempleton.com';
+              else if (naam.includes('fidelity')) resultaat.logo = 'https://logo.clearbit.com/fidelity.com';
+            }
+          }
+          else if (qt === 'CRYPTOCURRENCY') {
+            resultaat.type = 'crypto';
+            // Crypto logo via CoinGecko (gratis, geen key)
+            if (!resultaat.logo) {
+              const basis = symbol.replace(/-EUR$|-USD$|-GBP$|-USDT$/,'').toLowerCase();
+              const coinMap = {
+                'btc': 'bitcoin', 'eth': 'ethereum', 'sol': 'solana', 'xrp': 'ripple',
+                'ada': 'cardano', 'dot': 'polkadot', 'doge': 'dogecoin', 'avax': 'avalanche-2',
+                'link': 'chainlink', 'matic': 'matic-network', 'uni': 'uniswap', 'ltc': 'litecoin',
+                'bch': 'bitcoin-cash', 'xlm': 'stellar', 'atom': 'cosmos', 'algo': 'algorand',
+                'vet': 'vechain', 'fil': 'filecoin', 'trx': 'tron', 'etc': 'ethereum-classic',
+                'aave': 'aave', 'shib': 'shiba-inu', 'bnb': 'binancecoin', 'ton': 'the-open-network',
+                'near': 'near', 'op': 'optimism', 'arb': 'arbitrum', 'sui': 'sui',
+                'inj': 'injective-protocol', 'rune': 'thorchain', 'pepe': 'pepe',
+                'wld': 'worldcoin-wld', 'bonk': 'bonk', 'apt': 'aptos',
+              };
+              const geckoId = coinMap[basis];
+              if (geckoId) {
+                resultaat.logo = `https://assets.coingecko.com/coins/images/${geckoId}/small/${geckoId}.png`;
+                // Betere aanpak: gebruik CoinGecko API
+                try {
+                  const cgRes = await fetch(`https://api.coingecko.com/api/v3/coins/${geckoId}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false`);
+                  const cgData = await cgRes.json();
+                  if (cgData?.image?.small) resultaat.logo = cgData.image.small;
+                  if (!resultaat.name) resultaat.name = cgData?.name;
+                } catch (e) {}
+              }
+            }
+          }
           else if (qt === 'EQUITY') resultaat.type = 'aandeel';
-          else resultaat.type = 'aandeel';
+          else if (!resultaat.type) resultaat.type = 'aandeel';
         }
       } catch (e) {}
 
