@@ -6,22 +6,22 @@ import BeleggingDetail from '../components/BeleggingDetail';
 // ── kleine hulpfuncties ──────────────────────────────────────────
 // ETF uitgever mapping → afkorting + kleur
 const ETF_UITGEVERS = [
-  { match: ['ishares','blackrock'], label: 'iSH', kleur: '#00b140', tekst: 'white' },
-  { match: ['vanguard'], label: 'VG', kleur: '#c8102e', tekst: 'white' },
-  { match: ['amundi'], label: 'AM', kleur: '#0066cc', tekst: 'white' },
-  { match: ['xtrackers','dws'], label: 'XT', kleur: '#003c88', tekst: 'white' },
-  { match: ['invesco'], label: 'IV', kleur: '#00205b', tekst: 'white' },
-  { match: ['spdr','state street'], label: 'SPD', kleur: '#00a651', tekst: 'white' },
-  { match: ['wisdomtree'], label: 'WT', kleur: '#f7941d', tekst: 'white' },
-  { match: ['vaneck'], label: 'VE', kleur: '#003087', tekst: 'white' },
-  { match: ['lyxor'], label: 'LY', kleur: '#e4003a', tekst: 'white' },
+  { match: ['ishares','blackrock','ish '], label: 'iSH', kleur: '#00b140', tekst: 'white' },
+  { match: ['vanguard','vang ','vang.'], label: 'VG', kleur: '#c8102e', tekst: 'white' },
+  { match: ['amundi','lyx ','lyxor'], label: 'AM', kleur: '#0066cc', tekst: 'white' },
+  { match: ['xtrackers','dws','xtr '], label: 'XT', kleur: '#003c88', tekst: 'white' },
+  { match: ['invesco','inv '], label: 'IV', kleur: '#00205b', tekst: 'white' },
+  { match: ['spdr','state street','spdrs'], label: 'SPD', kleur: '#00a651', tekst: 'white' },
+  { match: ['wisdomtree','wt '], label: 'WT', kleur: '#f7941d', tekst: 'white' },
+  { match: ['vaneck','van eck'], label: 'VE', kleur: '#003087', tekst: 'white' },
   { match: ['ubs'], label: 'UBS', kleur: '#e3000f', tekst: 'white' },
   { match: ['pimco'], label: 'PM', kleur: '#00205b', tekst: 'white' },
   { match: ['franklin','templeton'], label: 'FT', kleur: '#2e5eaa', tekst: 'white' },
   { match: ['fidelity'], label: 'FID', kleur: '#008a00', tekst: 'white' },
   { match: ['hsbc'], label: 'HSB', kleur: '#db0011', tekst: 'white' },
-  { match: ['jpmorgan','jpm'], label: 'JPM', kleur: '#003087', tekst: 'white' },
-  { match: ['goldman','gs'], label: 'GS', kleur: '#6699ff', tekst: 'white' },
+  { match: ['jpmorgan','jpm '], label: 'JPM', kleur: '#003087', tekst: 'white' },
+  { match: ['goldman','gs '], label: 'GS', kleur: '#6699ff', tekst: 'white' },
+  { match: ['msci'], label: 'MS', kleur: '#ff6600', tekst: 'white' },
 ];
 
 // Crypto kleur mapping
@@ -63,9 +63,36 @@ function Avatar({ symbol, logo, naam, type }) {
 
   // ETF badge op basis van uitgevende instelling
   const naamCheck = (naam || symbol || '').toLowerCase();
-  const isEtf = type === 'etf' || (!type && ETF_UITGEVERS.some(u => u.match.some(m => naamCheck.includes(m))));
+  const symCheck = (symbol || '').toUpperCase();
+  
+  // Ticker prefix mapping voor bekende ETF-families
+  const TICKER_MAP = {
+    'VWCE': 'VG', 'VFEM': 'VG', 'VUSA': 'VG', 'VEUR': 'VG', 'VHYL': 'VG',
+    'VWRL': 'VG', 'VXUS': 'VG', 'VEVE': 'VG', 'VJPN': 'VG', 'VFEM': 'VG',
+    'IWDA': 'iSH', 'CSPX': 'iSH', 'EIMI': 'iSH', 'IEMA': 'iSH', 'IMEA': 'iSH',
+    'IUSA': 'iSH', 'IQQQ': 'iSH', 'ISAC': 'iSH', 'SPPW': 'iSH', 'SWRD': 'iSH',
+    'EXSA': 'iSH', 'EXXT': 'iSH', 'EXH': 'iSH',
+    'AMUN': 'AM', 'CW8': 'AM', 'PCEU': 'AM',
+    'XDWD': 'XT', 'XMAW': 'XT', 'XNAS': 'XT', 'XESX': 'XT',
+  };
+  const tickerBase = symCheck.split('.')[0];
+  const tickerLabel = TICKER_MAP[tickerBase];
+
+  const isEtf = type === 'etf' || (!type && (
+    ETF_UITGEVERS.some(u => u.match.some(m => naamCheck.includes(m))) || !!tickerLabel
+  ));
   
   if (isEtf) {
+    // Eerst op ticker
+    if (tickerLabel) {
+      const u = ETF_UITGEVERS.find(u => u.label === tickerLabel) || ETF_UITGEVERS.find(u => u.match[0] === (tickerLabel === 'VG' ? 'vanguard' : tickerLabel === 'iSH' ? 'ishares' : tickerLabel.toLowerCase()));
+      const kleur = tickerLabel === 'VG' ? '#c8102e' : tickerLabel === 'iSH' ? '#00b140' : tickerLabel === 'AM' ? '#0066cc' : tickerLabel === 'XT' ? '#003c88' : '#6366f1';
+      return (
+        <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: kleur, color: 'white', fontWeight: 800, fontSize: 10, letterSpacing: '-0.3px' }}>
+          {tickerLabel}
+        </div>
+      );
+    }
     const uitgever = ETF_UITGEVERS.find(u => u.match.some(m => naamCheck.includes(m)));
     if (uitgever) {
       return (
@@ -79,6 +106,12 @@ function Avatar({ symbol, logo, naam, type }) {
         </div>
       );
     }
+    // Generieke ETF badge
+    return (
+      <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#6366f1', color: 'white', fontWeight: 800, fontSize: 9 }}>
+        ETF
+      </div>
+    );
   }
 
   // Crypto badge met eigen kleur
