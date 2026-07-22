@@ -991,18 +991,17 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
                     <input type="checkbox"
                       checked={filterSymbolen.length === 0 || filterSymbolen.includes(b.symbol)}
                       onChange={e => {
+                        const alleSymbolen = beleggingen.map(bb => bb.symbol);
+                        // Huidig actieve set: lege array = alles aan
+                        const huidigActief = filterSymbolen.length === 0 ? alleSymbolen : [...filterSymbolen];
                         if (e.target.checked) {
-                          // Toevoegen: als alle anderen al uit zijn → wis filter (toon alles)
-                          const nieuw = filterSymbolen.filter(s => s !== b.symbol);
-                          // Als alle symbolen aangevinkt zijn na toevoegen → reset naar leeg (= alles)
-                          const alles = beleggingen.map(bb => bb.symbol);
-                          const overig = alles.filter(s => s !== b.symbol);
-                          const alleAangevinkt = overig.every(s => nieuw.includes(s) || nieuw.length === 0);
-                          setFilterSymbolen(alleAangevinkt && nieuw.length >= overig.length ? [] : nieuw);
+                          // Toevoegen aan actieve set
+                          const nieuw = huidigActief.includes(b.symbol) ? huidigActief : [...huidigActief, b.symbol];
+                          // Als alles aangevinkt → reset naar leeg (= alles)
+                          setFilterSymbolen(nieuw.length === alleSymbolen.length ? [] : nieuw);
                         } else {
-                          // Uitvinken: voeg alle andere symbolen toe behalve dit
-                          const huidig = filterSymbolen.length === 0 ? beleggingen.map(bb => bb.symbol) : filterSymbolen;
-                          setFilterSymbolen(huidig.filter(s => s !== b.symbol));
+                          // Verwijderen uit actieve set
+                          setFilterSymbolen(huidigActief.filter(s => s !== b.symbol));
                         }
                       }} />
                     {b.symbol}
