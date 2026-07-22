@@ -227,7 +227,60 @@ module.exports = async function handler(req, res) {
                 : 'aandeel',
             valuta: q.currency || 'EUR',
           }));
-        return res.json({ resultaten });
+
+        // Volledige crypto EUR lijst
+        const CRYPTO_EUR = {
+          'BTC': 'Bitcoin', 'ETH': 'Ethereum', 'SOL': 'Solana', 'XRP': 'XRP',
+          'ADA': 'Cardano', 'DOT': 'Polkadot', 'DOGE': 'Dogecoin', 'AVAX': 'Avalanche',
+          'LINK': 'Chainlink', 'MATIC': 'Polygon', 'UNI': 'Uniswap', 'LTC': 'Litecoin',
+          'BCH': 'Bitcoin Cash', 'XLM': 'Stellar', 'ATOM': 'Cosmos', 'ALGO': 'Algorand',
+          'VET': 'VeChain', 'FIL': 'Filecoin', 'TRX': 'TRON', 'ETC': 'Ethereum Classic',
+          'AAVE': 'Aave', 'COMP': 'Compound', 'MKR': 'Maker', 'SNX': 'Synthetix',
+          'CRV': 'Curve', 'SUSHI': 'SushiSwap', 'YFI': 'Yearn.finance', 'SAND': 'The Sandbox',
+          'MANA': 'Decentraland', 'AXS': 'Axie Infinity', 'THETA': 'Theta', 'FTM': 'Fantom',
+          'NEAR': 'NEAR Protocol', 'ICP': 'Internet Computer', 'HBAR': 'Hedera',
+          'EOS': 'EOS', 'XMR': 'Monero', 'NEO': 'NEO', 'WAVES': 'Waves',
+          'ZEC': 'Zcash', 'DASH': 'Dash', 'XTZ': 'Tezos', 'BAT': 'Basic Attention Token',
+          'ZIL': 'Zilliqa', 'ENJ': 'Enjin Coin', 'CHZ': 'Chiliz', 'HOT': 'Holo',
+          'OMG': 'OMG Network', 'IOTA': 'IOTA', 'NANO': 'Nano', 'RVN': 'Ravencoin',
+          'ONE': 'Harmony', 'ANKR': 'Ankr', 'CRO': 'Cronos', 'SHIB': 'Shiba Inu',
+          'LUNA': 'Terra Luna', 'APE': 'ApeCoin', 'GMT': 'STEPN', 'OP': 'Optimism',
+          'ARB': 'Arbitrum', 'SUI': 'Sui', 'SEI': 'Sei', 'TIA': 'Celestia',
+          'INJ': 'Injective', 'RUNE': 'THORChain', 'STX': 'Stacks', 'FLOKI': 'Floki',
+          'PEPE': 'Pepe', 'WLD': 'Worldcoin', 'JUP': 'Jupiter', 'PYTH': 'Pyth',
+          'TON': 'Toncoin', 'NOT': 'Notcoin', 'BONK': 'Bonk',
+        };
+
+        // Voor crypto uit zoekresultaten: voeg EUR variant toe
+        const extraCrypto = [];
+        const gezienEur = new Set(resultaten.map(r => r.symbol));
+
+        resultaten.forEach(r => {
+          if (r.type === 'crypto') {
+            const basis = r.symbol.replace(/-USD$|-GBP$|-EUR$|-USDT$/,'');
+            const eurSym = basis + '-EUR';
+            if (!gezienEur.has(eurSym)) {
+              gezienEur.add(eurSym);
+              extraCrypto.push({
+                naam: CRYPTO_EUR[basis] ? CRYPTO_EUR[basis] + ' EUR' : (r.naam || basis) + ' EUR',
+                symbol: eurSym, beurs: 'CCC', type: 'crypto', valuta: 'EUR',
+              });
+            }
+          }
+        });
+
+        // Ook directe EUR match tonen als gebruiker naam van crypto typt
+        const qLower = q.toLowerCase();
+        Object.entries(CRYPTO_EUR).forEach(([sym, naam]) => {
+          const eurSym = sym + '-EUR';
+          if (!gezienEur.has(eurSym) &&
+              (naam.toLowerCase().includes(qLower) || sym.toLowerCase().includes(qLower))) {
+            gezienEur.add(eurSym);
+            extraCrypto.push({ naam: naam + ' EUR', symbol: eurSym, beurs: 'CCC', type: 'crypto', valuta: 'EUR' });
+          }
+        });
+
+        return res.json({ resultaten: [...resultaten, ...extraCrypto] });
       } catch (e) {
         // Fallback: Finnhub
         try {
