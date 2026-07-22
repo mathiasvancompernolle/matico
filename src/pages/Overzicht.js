@@ -1011,18 +1011,18 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
               <div className="filter-section" style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16 }}>
                 <h3>Weergave</h3>
                 <label className="filter-option">
-                  <input type="radio" checked={filterBezit === 'alles'} onChange={() => setFilterBezit('alles')} />
-                  Alles (incl. verkochte effecten)
-                </label>
-                <label className="filter-option">
                   <input type="radio" checked={filterBezit === 'inbezit'} onChange={() => setFilterBezit('inbezit')} />
                   Enkel effecten in bezit
+                </label>
+                <label className="filter-option">
+                  <input type="radio" checked={filterBezit === 'alles'} onChange={() => setFilterBezit('alles')} />
+                  Alles (incl. verkochte effecten)
                 </label>
               </div>
             </div>
             <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button
-                onClick={() => { setFilterType('alle'); setFilterSymbolen([]); setFilterBezit('alles'); }}
+                onClick={() => { setFilterType('alle'); setFilterSymbolen([]); setFilterBezit('inbezit'); }}
                 style={{
                   width: '100%', padding: '10px 16px', borderRadius: 8,
                   border: '1.5px solid var(--border)', background: 'var(--bg)',
