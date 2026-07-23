@@ -18,6 +18,7 @@ function beursIsOpen() {
 const TTL = {
   // Live koersen: kort als beurs open, lang als gesloten
   quote:            () => beursIsOpen() ? 60_000        : 15 * 60_000,   // 1 min / 15 min
+  'quote-detail':   () => beursIsOpen() ? 60_000        : 15 * 60_000,   // 1 min / 15 min
   forex:            () => beursIsOpen() ? 60_000        : 60 * 60_000,   // 1 min / 1 uur
   'forex-history':  () => 4 * 60 * 60_000,                              // 4 uur
   candle:           () => beursIsOpen() ? 2 * 60_000    : 30 * 60_000,  // 2 min / 30 min
@@ -202,6 +203,46 @@ module.exports = async function handler(req, res) {
       } catch (e) {}
 
       return res.json({ c: 0, pc: 0, o: 0, h: 0, l: 0, v: 0 });
+    }
+
+    if (endpoint === 'quote-detail') {
+      // Rijkere koersdata voor de effect-detailpagina: bied/laat, 52w-range, marktkap, beurs.
+      // Aparte endpoint (i.p.v. 'quote' uit te breiden) zodat de veelvuldig gepolde
+      // portfolio-koersen niet trager worden.
+      const { symbol } = req.query;
+      try {
+        const yfSym = toYahooSymbol(symbol);
+        const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=1d&interval=1m`;
+        const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
+        const yfData = await yfRes.json();
+        const result = yfData?.chart?.result?.[0];
+        const meta = result?.meta;
+        if (meta && (meta.regularMarketPrice || meta.previousClose)) {
+          const quotes = result.indicators?.quote?.[0];
+          const closes = quotes?.close?.filter(v => v != null) || [];
+          const huidigeKoers = meta.regularMarketPrice || closes[closes.length - 1] || 0;
+          return res.json({
+            c: huidigeKoers,
+            pc: meta.chartPreviousClose || meta.previousClose || huidigeKoers,
+            o: meta.regularMarketOpen || huidigeKoers,
+            h: meta.regularMarketDayHigh || huidigeKoers,
+            l: meta.regularMarketDayLow || huidigeKoers,
+            v: meta.regularMarketVolume || 0,
+            bid: meta.bid || null,
+            ask: meta.ask || null,
+            bidSize: meta.bidSize || null,
+            askSize: meta.askSize || null,
+            hoog52: meta.fiftyTwoWeekHigh || null,
+            laag52: meta.fiftyTwoWeekLow || null,
+            marktKap: meta.marketCap || null,
+            beurs: meta.fullExchangeName || meta.exchangeName || '',
+            valuta: meta.currency || 'EUR',
+            tijdzone: meta.exchangeTimezoneShortName || meta.exchangeTimezoneName || '',
+            marktOpen: meta.marketState === 'REGULAR',
+          });
+        }
+      } catch (e) { console.error('quote-detail fout:', e); }
+      return res.json({});
     }
 
     if (endpoint === 'search') {

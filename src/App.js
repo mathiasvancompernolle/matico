@@ -10,12 +10,13 @@ import Instellingen from './pages/Instellingen';
 import BeleggingToevoegen from './pages/BeleggingToevoegen';
 import ImportBeleggingen from './pages/ImportBeleggingen';
 import Markten from './pages/Markten';
+import EffectDetail from './pages/EffectDetail';
 import './App.css';
 import Landing from './pages/Landing';
 import AuthPage from './pages/AuthPage';
 import { supabase } from './supabaseClient';
 
-function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker }) {
+function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSelectEffect }) {
   const [zoekOpen, setZoekOpen] = React.useState(false);
   const [zoekQuery, setZoekQuery] = React.useState('');
   const [zoekResultaten, setZoekResultaten] = React.useState([]);
@@ -83,6 +84,10 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker }) {
               : zoekResultaten.length === 0 ? <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Geen resultaten</div>
               : zoekResultaten.map((r, i) => (
                 <div key={i} style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: i < zoekResultaten.length-1 ? '1px solid var(--border-light)' : 'none' }}
+                  onClick={() => {
+                    onSelectEffect && onSelectEffect(r);
+                    setZoekOpen(false); setZoekQuery(''); setZoekResultaten([]);
+                  }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: r.type === 'etf' ? '#eef2ff' : '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: r.type === 'etf' ? '#6366f1' : '#d97706', flexShrink: 0 }}>{r.type === 'etf' ? 'ETF' : 'EQ'}</div>
@@ -165,6 +170,7 @@ function AppInner() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [overzichtResetKey, setOverzichtResetKey] = useState(0);
   const [actieveSectie, setActieveSectie] = useState('portefeuille');
+  const [effectDetail, setEffectDetail] = useState(null); // geselecteerd zoekresultaat, toont EffectDetail pagina
 
   if (!gebruiker.voornaam) {
     return <NaamInstellen />;
@@ -177,6 +183,7 @@ function AppInner() {
   const navigeerNaar = (doel) => {
     setToevoegenOpen(false);
     setImportOpen(false);
+    setEffectDetail(null);
     setActiveNav(doel);
     scrollNaarBoven();
   };
@@ -196,6 +203,7 @@ function AppInner() {
 
   const handleSectieWissel = (sectie) => {
     setActieveSectie(sectie);
+    setEffectDetail(null);
     scrollNaarBoven();
     if (sectie === 'portefeuille') {
       setToevoegenOpen(false);
@@ -204,6 +212,7 @@ function AppInner() {
   };
 
   const renderPage = () => {
+    if (effectDetail) return <EffectDetail effect={effectDetail} onTerug={() => setEffectDetail(null)} />;
     if (actieveSectie === 'markten') return <Markten />;
     if (importOpen) return <ImportBeleggingen onClose={() => setImportOpen(false)} />;
     if (toevoegenOpen) return <BeleggingToevoegen onClose={() => setToevoegenOpen(false)} />;
@@ -220,11 +229,11 @@ function AppInner() {
     }
   };
 
-  const toonSidebar = actieveSectie === 'portefeuille';
+  const toonSidebar = actieveSectie === 'portefeuille' && !effectDetail;
 
   return (
     <div className="app-wrapper">
-      <TopNav actieveSectie={actieveSectie} onSectieWissel={handleSectieWissel} navigeerNaar={navigeerNaar} gebruiker={gebruiker} />
+      <TopNav actieveSectie={actieveSectie} onSectieWissel={handleSectieWissel} navigeerNaar={navigeerNaar} gebruiker={gebruiker} onSelectEffect={setEffectDetail} />
       <div className={`app-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${toonSidebar ? '' : 'zonder-sidebar'}`}>
         {toonSidebar && (
           <Sidebar
