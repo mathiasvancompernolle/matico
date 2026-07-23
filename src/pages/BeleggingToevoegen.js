@@ -85,7 +85,16 @@ export default function BeleggingToevoegen({ onClose }) {
         .catch(() => {})
     ]);
     if (koers?.c) {
-      setForm(f => ({ ...f, kostprijs: koers.c.toFixed(2) }));
+      const munt = (() => {
+      if (geselecteerd?.symbol?.includes('-USD')) return 'USD';
+      if (geselecteerd?.symbol?.includes('-GBP')) return 'GBP';
+      if (geselecteerd?.valuta === 'USD' || koers?.currency === 'USD') return 'USD';
+      if (geselecteerd?.valuta === 'GBP' || koers?.currency === 'GBP') return 'GBP';
+      const us = ['NMS','NYQ','NGM','ASE','PCX','BATS'];
+      if (us.some(e => (geselecteerd?.beurs || '').toUpperCase().includes(e))) return 'USD';
+      return 'EUR';
+    })();
+    setForm(f => ({ ...f, kostprijs: koers.c.toFixed(2), munt }));
     }
   };
 
@@ -104,7 +113,24 @@ export default function BeleggingToevoegen({ onClose }) {
           datum: new Date().toISOString().split('T')[0],
           kostprijs: koers?.c ? koers.c.toFixed(2) : '',
           aantal: '',
-          munt: r.valuta || (r.symbol?.includes('-USD') || r.beurs === 'NMS' || r.beurs === 'NYQ' || r.beurs === 'NGM' ? 'USD' : r.symbol?.includes('-GBP') ? 'GBP' : 'EUR'),
+          munt: (() => {
+            // Crypto
+            if (r.symbol?.includes('-USD')) return 'USD';
+            if (r.symbol?.includes('-GBP')) return 'GBP';
+            if (r.symbol?.includes('-EUR')) return 'EUR';
+            // Via valuta uit zoekresultaat
+            if (r.valuta === 'USD') return 'USD';
+            if (r.valuta === 'GBP') return 'GBP';
+            // US beurzen via exchange code
+            const us = ['NMS','NYQ','NGM','ASE','PCX','BATS','NAS','NYSE'];
+            if (us.some(e => (r.beurs || r.exchange || '').toUpperCase().includes(e))) return 'USD';
+            // UK beurzen
+            if ((r.beurs || '').toUpperCase().includes('LSE') || r.symbol?.endsWith('.L')) return 'GBP';
+            // Koers valuta als beschikbaar
+            if (koers?.currency === 'USD') return 'USD';
+            if (koers?.currency === 'GBP') return 'GBP';
+            return 'EUR';
+          })(),
           transactiekosten: '',
         }
       }));
