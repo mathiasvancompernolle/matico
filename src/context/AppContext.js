@@ -54,7 +54,8 @@ const BEKENDE_NAMEN = {
   'VFEM.DE': 'Vanguard FTSE Emerging Markets UCITS ETF',
 };
 const BEKENDE_LOGOS = {
-  'PRX.AS': 'https://www.prosus.com/favicon.ico',
+  'PRX.AS': 'https://static2.finnhub.io/file/publicdatany/finnhubimage/stock_logo/PRX.png',
+  'PRX': 'https://static2.finnhub.io/file/publicdatany/finnhubimage/stock_logo/PRX.png',
 };
 
 function herstelBelegging(b) {
