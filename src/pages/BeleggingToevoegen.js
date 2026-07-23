@@ -55,7 +55,12 @@ export default function BeleggingToevoegen({ onClose }) {
           beurs: r.type,
           type: r.type === 'ETF' ? 'etf' : 'aandeel',
         }));
-        setZoekResultaten(resultaten.slice(0, 8));
+        setZoekResultaten(resultaten.filter(r => {
+          if (type === 'aandeel') return r.type === 'aandeel' || !r.type;
+          if (type === 'etf') return r.type === 'etf';
+          if (type === 'crypto') return r.type === 'crypto';
+          return true;
+        }).slice(0, 10));
       } catch {
         setZoekResultaten([]);
       }
