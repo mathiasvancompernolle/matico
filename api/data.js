@@ -870,8 +870,17 @@ module.exports = async function handler(req, res) {
       } catch (e) {}
       // FMP als laatste aanvulling
       try {
-        const r2 = await fetch(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`);
-        const d2 = await r2.json();
+        // /api/v3/profile is legacy en gaf stilzwijgend niets meer terug;
+        // /stable/profile is het huidige, actieve endpoint (symbol als query param)
+        let r2 = await fetch(`https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${FMP_KEY}`);
+        let d2 = await r2.json();
+        if (!Array.isArray(d2) || !d2[0]) {
+          try {
+            const rLegacy = await fetch(`https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${FMP_KEY}`);
+            const dLegacy = await rLegacy.json();
+            if (Array.isArray(dLegacy) && dLegacy[0]) d2 = dLegacy;
+          } catch (e) {}
+        }
         if (d2[0]) {
           const f = d2[0];
           resultaat.name = resultaat.name || f.companyName;
@@ -1053,15 +1062,42 @@ module.exports = async function handler(req, res) {
       // Normaliseer symbool voor FMP (verwijder exchange suffix)
       const fmpSym = symbol.split('.')[0];
       try {
-        // FMP ETF sector gewichten
+        // FMP heeft de legacy /api/v3/etf-* endpoints vervangen door /stable/etf/*
+        // met symbol als query parameter i.p.v. pad-parameter. De oude v3-paden
+        // gaven stilzwijgend niets meer terug, waardoor sectorspreiding voor
+        // ETF's altijd leeg bleef.
         const [sectorRes, holdingsRes, countryRes] = await Promise.all([
-          fetch(`https://financialmodelingprep.com/api/v3/etf-sector-weightings/${fmpSym}?apikey=${FMP_KEY}`),
-          fetch(`https://financialmodelingprep.com/api/v3/etf-holder/${fmpSym}?apikey=${FMP_KEY}`),
-          fetch(`https://financialmodelingprep.com/api/v3/etf-country-weightings/${fmpSym}?apikey=${FMP_KEY}`)
+          fetch(`https://financialmodelingprep.com/stable/etf/sector-weightings?symbol=${fmpSym}&apikey=${FMP_KEY}`),
+          fetch(`https://financialmodelingprep.com/stable/etf/holdings?symbol=${fmpSym}&apikey=${FMP_KEY}`),
+          fetch(`https://financialmodelingprep.com/stable/etf/country-weightings?symbol=${fmpSym}&apikey=${FMP_KEY}`)
         ]);
-        const sectoren = await sectorRes.json();
-        const holdings = await holdingsRes.json();
-        const landen = await countryRes.json();
+        let sectoren = await sectorRes.json();
+        let holdings = await holdingsRes.json();
+        let landen = await countryRes.json();
+
+        // Fallback naar de oude legacy-endpoints als /stable/ onverwacht niets geeft
+        // (bv. als FMP dit later weer anders indeelt)
+        if (!Array.isArray(sectoren) || sectoren.length === 0) {
+          try {
+            const r = await fetch(`https://financialmodelingprep.com/api/v3/etf-sector-weightings/${fmpSym}?apikey=${FMP_KEY}`);
+            const d = await r.json();
+            if (Array.isArray(d) && d.length > 0) sectoren = d;
+          } catch (e) {}
+        }
+        if (!Array.isArray(holdings) || holdings.length === 0) {
+          try {
+            const r = await fetch(`https://financialmodelingprep.com/api/v3/etf-holder/${fmpSym}?apikey=${FMP_KEY}`);
+            const d = await r.json();
+            if (Array.isArray(d) && d.length > 0) holdings = d;
+          } catch (e) {}
+        }
+        if (!Array.isArray(landen) || landen.length === 0) {
+          try {
+            const r = await fetch(`https://financialmodelingprep.com/api/v3/etf-country-weightings/${fmpSym}?apikey=${FMP_KEY}`);
+            const d = await r.json();
+            if (Array.isArray(d) && d.length > 0) landen = d;
+          } catch (e) {}
+        }
 
         // Sector data verwerken
         const sectorData = Array.isArray(sectoren) ? sectoren.map(s => ({
