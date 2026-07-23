@@ -619,7 +619,7 @@ function IndexDetailPagina({ index, onTerug }) {
 }
 
 // ── Aandelen subpagina ────────────────────────────────────────────────────────
-function AandelenPagina({ actieveRegio, onToonAlles }) {
+function AandelenPagina({ actieveRegio, onToonAlles, onSelectEffect }) {
   const subindices = SUBINDICES[actieveRegio] || SUBINDICES['lokaal'];
   const [actieveSub, setActieveSub] = useState(subindices[0].id);
   const [periode, setPeriode] = useState('1d');
@@ -751,6 +751,7 @@ function AandelenPagina({ actieveRegio, onToonAlles }) {
             periode={periode}
             omgekeerd={false}
             onToonAlles={() => onToonAlles('Best presterend', data?.alleQuotes || [], periode, false)}
+            onSelectEffect={onSelectEffect}
           />
           <RankingTabel
             titel="Minst presterend"
@@ -760,6 +761,7 @@ function AandelenPagina({ actieveRegio, onToonAlles }) {
             periode={periode}
             omgekeerd={true}
             onToonAlles={() => onToonAlles('Minst presterend', data?.alleQuotes || [], periode, true)}
+            onSelectEffect={onSelectEffect}
           />
         </div>
       </div>
@@ -769,7 +771,7 @@ function AandelenPagina({ actieveRegio, onToonAlles }) {
   );
 }
 
-function RankingTabel({ titel, rijen, alleRijen, laden, periode, omgekeerd, onToonAlles }) {
+function RankingTabel({ titel, rijen, alleRijen, laden, periode, omgekeerd, onToonAlles, onSelectEffect }) {
   const periodeLabels = { '1d':'1D','1w':'1W','1m':'1M','3m':'3M','6m':'6M','1j':'1J','3j':'3J','5j':'5J','ytd':'YTD','max':'Max' };
   const pLabel = periodeLabels[periode] || '1D';
 
@@ -807,7 +809,15 @@ function RankingTabel({ titel, rijen, alleRijen, laden, periode, omgekeerd, onTo
               <td><div className="tabel-skeleton" style={{ width: 30 }} /></td>
             </tr>
           )) : rijen.map((r, i) => (
-            <tr key={i}>
+            <tr
+              key={i}
+              onClick={() => onSelectEffect && r.symbol && onSelectEffect({
+                naam: r.naam, symbol: r.symbol, beurs: r.beurs, type: 'aandeel', valuta: r.valuta,
+              })}
+              style={{ cursor: onSelectEffect && r.symbol ? 'pointer' : 'default' }}
+              onMouseEnter={e => { if (onSelectEffect && r.symbol) e.currentTarget.style.background = 'var(--bg)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
               <td>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span className="markt-cat-badge-sm" style={{ background: '#f59e0b' }}>EQ</span>
@@ -890,7 +900,7 @@ function AandelenTabel({ titel, rijen, alleRijen, laden, kolom, waardeKey, omgek
 }
 
 // ── Volledige aandelen lijst pagina ──────────────────────────────────────────
-function VolledigeLijstPagina({ titel, rijen, periode, omgekeerd, onTerug }) {
+function VolledigeLijstPagina({ titel, rijen, periode, omgekeerd, onTerug, onSelectEffect }) {
   const periodeLabels = { '1d':'1D','1w':'1W','1m':'1M','3m':'3M','6m':'6M','1j':'1J','3j':'3J','5j':'5J','ytd':'YTD','max':'Max' };
   const pLabel = periodeLabels[periode] || '1D';
 
@@ -920,7 +930,15 @@ function VolledigeLijstPagina({ titel, rijen, periode, omgekeerd, onTerug }) {
           </thead>
           <tbody>
             {gesorteerd.map((r, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+              <tr
+                key={i}
+                onClick={() => onSelectEffect && r.symbol && onSelectEffect({
+                  naam: r.naam, symbol: r.symbol, beurs: r.beurs, type: 'aandeel', valuta: r.valuta,
+                })}
+                style={{ borderBottom: '1px solid var(--border)', cursor: onSelectEffect && r.symbol ? 'pointer' : 'default' }}
+                onMouseEnter={e => { if (onSelectEffect && r.symbol) e.currentTarget.style.background = 'var(--bg)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              >
                 <td style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span className="markt-cat-badge-sm" style={{ background: '#f59e0b' }}>EQ</span>
@@ -975,7 +993,7 @@ function InfoIcoon({ type }) {
   );
 }
 
-function MiniTabel({ titel, rijen, laden, kolom1Label, kolom1Key, uitlegType }) {
+function MiniTabel({ titel, rijen, laden, kolom1Label, kolom1Key, uitlegType, onSelectEffect }) {
   return (
     <div className="belg-tabel-kaart">
       <div className="belg-tabel-header">
@@ -998,7 +1016,15 @@ function MiniTabel({ titel, rijen, laden, kolom1Label, kolom1Key, uitlegType }) 
               <td><div className="tabel-skeleton" style={{ width: 50 }} /></td>
             </tr>
           )) : rijen.map((r, i) => (
-            <tr key={i}>
+            <tr
+              key={i}
+              onClick={() => onSelectEffect && r.symbol && onSelectEffect({
+                naam: r.naam, symbol: r.symbol, beurs: r.beurs, type: 'aandeel', valuta: r.valuta,
+              })}
+              style={{ cursor: onSelectEffect && r.symbol ? 'pointer' : 'default' }}
+              onMouseEnter={e => { if (onSelectEffect && r.symbol) e.currentTarget.style.background = 'var(--bg)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
               <td>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span className="markt-cat-badge-sm" style={{ background: '#f59e0b' }}>EQ</span>
@@ -1017,7 +1043,7 @@ function MiniTabel({ titel, rijen, laden, kolom1Label, kolom1Key, uitlegType }) 
   );
 }
 
-function BelgischOverzicht() {
+function BelgischOverzicht({ onSelectEffect }) {
   const [data, setData] = useState(null);
   const [laden, setLaden] = useState(true);
   const [cached, setCached] = useState(null);
@@ -1046,6 +1072,7 @@ function BelgischOverzicht() {
           kolom1Label="%1D koers"
           kolom1Key="change1D"
           uitlegType="populariteit"
+          onSelectEffect={onSelectEffect}
         />
         <MiniTabel
           titel="Grootste stijgers (1M)"
@@ -1054,6 +1081,7 @@ function BelgischOverzicht() {
           kolom1Label="%1M koers"
           kolom1Key="change1M"
           uitlegType="stijgers1M"
+          onSelectEffect={onSelectEffect}
         />
         <MiniTabel
           titel="Grootste dalers (1M)"
@@ -1062,6 +1090,7 @@ function BelgischOverzicht() {
           kolom1Label="%1M koers"
           kolom1Key="change1M"
           uitlegType="dalers1M"
+          onSelectEffect={onSelectEffect}
         />
         <MiniTabel
           titel="Beste consensusprognose"
@@ -1070,6 +1099,7 @@ function BelgischOverzicht() {
           kolom1Label="Koersdoel-rend."
           kolom1Key="koersdoelRendement"
           uitlegType="consensus"
+          onSelectEffect={onSelectEffect}
         />
         <MiniTabel
           titel="Beste omzetgroei (1J)"
@@ -1078,6 +1108,7 @@ function BelgischOverzicht() {
           kolom1Label="Omzetgroei 1J"
           kolom1Key="omzetgroei1J"
           uitlegType="omzetgroei"
+          onSelectEffect={onSelectEffect}
         />
       </div>
     </div>
@@ -1574,6 +1605,7 @@ export default function Markten({ onSelectEffect }) {
         periode={volledigeLijstData.periode}
         omgekeerd={volledigeLijstData.omgekeerd}
         onTerug={() => setVolledigeLijstData(null)}
+        onSelectEffect={onSelectEffect}
       />
     );
   }
@@ -1606,8 +1638,9 @@ export default function Markten({ onSelectEffect }) {
         <AandelenPagina
           actieveRegio={actieveRegio}
           onToonAlles={(titel, rijen, periode, omgekeerd) => setVolledigeLijstData({ titel, rijen, periode, omgekeerd })}
+          onSelectEffect={onSelectEffect}
         />
-        {actieveRegio === 'lokaal' && <BelgischOverzicht />}
+        {actieveRegio === 'lokaal' && <BelgischOverzicht onSelectEffect={onSelectEffect} />}
       </div>
     );
   }
