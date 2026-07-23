@@ -43,6 +43,29 @@ function detecteerType(b) {
   return b.type || 'aandeel';
 }
 
+// Herstel ontbrekende namen
+const BEKENDE_NAMEN = {
+  'PRX.AS': 'Prosus NV', 'SOFI': 'SoFi Technologies Inc',
+  'SOL-EUR': 'Solana EUR', 'SOL-USD': 'Solana USD',
+  'BTC-EUR': 'Bitcoin EUR', 'BTC-USD': 'Bitcoin USD',
+  'ETH-EUR': 'Ethereum EUR', 'ETH-USD': 'Ethereum USD',
+  'ADA-EUR': 'Cardano EUR', 'XRP-EUR': 'XRP EUR',
+  'VWCE.DE': 'Vanguard FTSE All-World UCITS ETF',
+  'VFEM.DE': 'Vanguard FTSE Emerging Markets UCITS ETF',
+};
+const BEKENDE_LOGOS = {
+  'PRX.AS': 'https://logo.clearbit.com/prosus.com',
+};
+
+function herstelBelegging(b) {
+  return {
+    ...b,
+    type: detecteerType(b),
+    naam: b.naam || BEKENDE_NAMEN[b.symbol] || b.symbol,
+    logo: b.logo || BEKENDE_LOGOS[b.symbol] || '',
+  };
+}
+
 export function AppProvider({ children }) {
   const [gebruiker, setGebruiker] = useState(() => {
     const saved = localStorage.getItem('matico_gebruiker');
@@ -81,7 +104,7 @@ export function AppProvider({ children }) {
     const id = laadActiefPortfolioId(ps);
     try {
       const raw = JSON.parse(localStorage.getItem(`matico_beleggingen_${id}`) || '[]');
-      return raw.map(b => ({ ...b, type: detecteerType(b) }));
+      return raw.map(b => herstelBelegging(b));
     } catch { return []; }
   });
 
@@ -101,7 +124,7 @@ export function AppProvider({ children }) {
     localStorage.setItem('matico_actief_portfolio', id);
     setActiefPortfolioId(id);
     setKoersen({});
-    try { setBeleggingen((JSON.parse(localStorage.getItem(`matico_beleggingen_${id}`) || '[]')).map(b => ({ ...b, type: detecteerType(b) }))); } catch { setBeleggingen([]); }
+    try { setBeleggingen((JSON.parse(localStorage.getItem(`matico_beleggingen_${id}`) || '[]')).map(b => herstelBelegging(b))); } catch { setBeleggingen([]); }
     try { setVerkochteBeleggingen(JSON.parse(localStorage.getItem(`matico_verkochte_${id}`) || '[]')); } catch { setVerkochteBeleggingen([]); }
   };
 

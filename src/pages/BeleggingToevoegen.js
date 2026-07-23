@@ -47,7 +47,7 @@ export default function BeleggingToevoegen({ onClose }) {
         const data = await res.json();
         // Nieuwe API geeft { resultaten: [...] }, fallback op oude Finnhub { result: [...] }
         const resultaten = data.resultaten || (data.result || []).map(r => ({
-          naam: r.description,
+          naam: r.naam || r.description,
           symbol: r.symbol,
           beurs: r.type,
           type: r.type === 'ETF' ? 'etf' : 'aandeel',
@@ -97,7 +97,7 @@ export default function BeleggingToevoegen({ onClose }) {
     const nieuw = {
       id: Date.now(),
       symbol: geselecteerd.symbol,
-      naam: geselecteerd.description,
+      naam: geselecteerd.naam || geselecteerd.description || geselecteerd.symbol,
       logo: geselecteerd.logo || '',
       type,
       datum: form.datum,
@@ -205,7 +205,7 @@ export default function BeleggingToevoegen({ onClose }) {
               </div>
               <div className="toevoegen-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{geselecteerd.description}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{geselecteerd.naam || geselecteerd.description || geselecteerd.symbol}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{geselecteerd.symbol}</div>
                 </div>
                 <input type="date" className="form-input" value={form.datum}
