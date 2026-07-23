@@ -426,7 +426,7 @@ module.exports = async function handler(req, res) {
       try {
         // Yahoo Finance search — dekt aandelen, ETFs én crypto
         const r = await fetch(
-          `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false`,
+          `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=20&newsCount=0&enableFuzzyQuery=false`,
           { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } }
         );
         const d = await r.json();
@@ -453,6 +453,10 @@ module.exports = async function handler(req, res) {
         function normaliseerNaam(naam) {
           return (naam || '')
             .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // accenten weg (é→e, ü→u, ...)
+            .replace(/\bgroep\b/g, 'group')   // NL/EN naamvarianten die dezelfde notering betreffen
+            .replace(/\bmaatschappij\b/g, '')
+            .replace(/\bvennootschap\b/g, '')
             .replace(/\b(nv|n\.v\.|sa|s\.a\.|ag|se|plc|inc|inc\.|corp|corporation|ltd|limited|co\.|ord|shs|adr|spon|the)\b/g, '')
             .replace(/[^a-z0-9 ]/g, '')
             .replace(/\s+/g, ' ')
@@ -510,6 +514,24 @@ module.exports = async function handler(req, res) {
           }
         }));
         resultaten = Array.from(voorlopig.values()).map(({ beste }) => beste);
+
+        // ── Extra vangnet ────────────────────────────────────────────────
+        // Als door naamsverschillen (bv. "Group" vs "Groep", accenten) twee
+        // noteringen van hetzelfde bedrijf tóch in aparte groepen belandden,
+        // en één daarvan staat in onze whitelist, dan verwijderen we de
+        // andere (niet-gegarandeerde) als het eerste woord van de naam
+        // overeenkomt — zo kan een dubbelganger nooit naast de juiste
+        // (of in plaats van de juiste) notering blijven staan.
+        const gegarandeerdeEersteWoorden = new Set(
+          resultaten
+            .filter(r => GEKENDE_TICKERS.has(r.symbol.toUpperCase()))
+            .map(r => normaliseerNaam(r.naam).split(' ')[0] + '|' + r.type)
+        );
+        resultaten = resultaten.filter(r => {
+          if (GEKENDE_TICKERS.has(r.symbol.toUpperCase())) return true;
+          const eersteWoord = normaliseerNaam(r.naam).split(' ')[0] + '|' + r.type;
+          return !gegarandeerdeEersteWoorden.has(eersteWoord);
+        });
 
         // Volledige crypto EUR lijst
         const CRYPTO_EUR = {
