@@ -213,7 +213,7 @@ function AppInner() {
 
   const renderPage = () => {
     if (effectDetail) return <EffectDetail effect={effectDetail} onTerug={() => setEffectDetail(null)} />;
-    if (actieveSectie === 'markten') return <Markten />;
+    if (actieveSectie === 'markten') return <Markten onSelectEffect={setEffectDetail} />;
     if (importOpen) return <ImportBeleggingen onClose={() => setImportOpen(false)} />;
     if (toevoegenOpen) return <BeleggingToevoegen onClose={() => setToevoegenOpen(false)} />;
     const openToevoegen = () => setToevoegenOpen(true);

@@ -1320,7 +1320,7 @@ function BeursBolletje({ marktOpen, beurs, marktState }) {
   );
 }
 
-function EtfPagina({ onTerug }) {
+function EtfPagina({ onTerug, onSelectEffect }) {
   const [actieveTab, setActieveTab] = useState('aandelen');
   const [etfs, setEtfs] = useState([]);
   const [laden, setLaden] = useState(true);
@@ -1453,7 +1453,15 @@ function EtfPagina({ onTerug }) {
                 ))}
               </tr>
             )) : gesorteerdeEtfs().map((e, i) => (
-              <tr key={i}>
+              <tr
+                key={i}
+                onClick={() => onSelectEffect && onSelectEffect({
+                  naam: e.naam, symbol: e.symbol, beurs: e.beurs, type: 'etf', valuta: e.valuta,
+                })}
+                style={{ cursor: onSelectEffect ? 'pointer' : 'default' }}
+                onMouseEnter={e2 => { if (onSelectEffect) e2.currentTarget.style.background = 'var(--bg)'; }}
+                onMouseLeave={e2 => { e2.currentTarget.style.background = 'transparent'; }}
+              >
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span className="etf-badge">ETF</span>
@@ -1503,7 +1511,7 @@ function EtfPagina({ onTerug }) {
 }
 
 // ── Hoofd Markten component ───────────────────────────────────────────────────
-export default function Markten() {
+export default function Markten({ onSelectEffect }) {
   const [actieveRegio, setActieveRegio] = useState('lokaal');
   const [actieveCat, setActieveCat] = useState(null);
   const [indices, setIndices] = useState([]);
@@ -1571,7 +1579,7 @@ export default function Markten() {
   }
 
   if (actieveCat === 'etfs') {
-    return <EtfPagina onTerug={() => setActieveCat(null)} />;
+    return <EtfPagina onTerug={() => setActieveCat(null)} onSelectEffect={onSelectEffect} />;
   }
 
   if (actieveCat === 'aandelen') {
