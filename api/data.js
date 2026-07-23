@@ -566,19 +566,19 @@ module.exports = async function handler(req, res) {
             // ETF logo via naam van de uitgever
             if (!resultaat.logo) {
               const naam = (resultaat.name || symbol).toLowerCase();
-              if (naam.includes('ishares') || naam.includes('blackrock')) resultaat.logo = 'https://logo.clearbit.com/ishares.com';
-              else if (naam.includes('vanguard')) resultaat.logo = 'https://logo.clearbit.com/vanguard.com';
-              else if (naam.includes('amundi')) resultaat.logo = 'https://logo.clearbit.com/amundi.com';
-              else if (naam.includes('xtrackers') || naam.includes('dws')) resultaat.logo = 'https://logo.clearbit.com/dws.com';
-              else if (naam.includes('invesco')) resultaat.logo = 'https://logo.clearbit.com/invesco.com';
-              else if (naam.includes('spdr') || naam.includes('state street')) resultaat.logo = 'https://logo.clearbit.com/ssga.com';
-              else if (naam.includes('wisdomtree')) resultaat.logo = 'https://logo.clearbit.com/wisdomtree.com';
-              else if (naam.includes('vaneck')) resultaat.logo = 'https://logo.clearbit.com/vaneck.com';
-              else if (naam.includes('lyxor')) resultaat.logo = 'https://logo.clearbit.com/lyxor.com';
-              else if (naam.includes('ubs')) resultaat.logo = 'https://logo.clearbit.com/ubs.com';
-              else if (naam.includes('pimco')) resultaat.logo = 'https://logo.clearbit.com/pimco.com';
-              else if (naam.includes('franklin')) resultaat.logo = 'https://logo.clearbit.com/franklintempleton.com';
-              else if (naam.includes('fidelity')) resultaat.logo = 'https://logo.clearbit.com/fidelity.com';
+              if (naam.includes('ishares') || naam.includes('blackrock')) resultaat.logo = 'https://favicon.im/ishares.com';
+              else if (naam.includes('vanguard')) resultaat.logo = 'https://favicon.im/vanguard.com';
+              else if (naam.includes('amundi')) resultaat.logo = 'https://favicon.im/amundi.com';
+              else if (naam.includes('xtrackers') || naam.includes('dws')) resultaat.logo = 'https://favicon.im/dws.com';
+              else if (naam.includes('invesco')) resultaat.logo = 'https://favicon.im/invesco.com';
+              else if (naam.includes('spdr') || naam.includes('state street')) resultaat.logo = 'https://favicon.im/ssga.com';
+              else if (naam.includes('wisdomtree')) resultaat.logo = 'https://favicon.im/wisdomtree.com';
+              else if (naam.includes('vaneck')) resultaat.logo = 'https://favicon.im/vaneck.com';
+              else if (naam.includes('lyxor')) resultaat.logo = 'https://favicon.im/lyxor.com';
+              else if (naam.includes('ubs')) resultaat.logo = 'https://favicon.im/ubs.com';
+              else if (naam.includes('pimco')) resultaat.logo = 'https://favicon.im/pimco.com';
+              else if (naam.includes('franklin')) resultaat.logo = 'https://favicon.im/franklintempleton.com';
+              else if (naam.includes('fidelity')) resultaat.logo = 'https://favicon.im/fidelity.com';
             }
           }
           else if (qt === 'CRYPTOCURRENCY') {
