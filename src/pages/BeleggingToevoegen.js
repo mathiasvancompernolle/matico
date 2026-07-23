@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-
-const BEKENDE_LOGOS = {
-  'PRX.AS': 'https://static2.finnhub.io/file/publicdatany/finnhubimage/stock_logo/PRX.png',
-};
 import { TrendingUp, Building2, Bitcoin, PiggyBank, ArrowLeft, Search, Loader } from 'lucide-react';
 
 const TYPES = [
@@ -22,8 +18,9 @@ export default function BeleggingToevoegen({ onClose }) {
   const [zoekLoading, setZoekLoading] = useState(false);
   const [geselecteerd, setGeselecteerd] = useState(null);
   const [form, setForm] = useState({ datum: '', kostprijs: '', aantal: '', munt: 'EUR', transactiekosten: '' });
-  const [extraSelectie, setExtraSelectie] = useState([]); // extra beleggingen naast de eerste
-  const [extraForms, setExtraForms] = useState({});
+  // Multi-selectie
+  const [selectie, setSelectie] = useState([]); // [{...resultaat}]
+  const [multiForms, setMultiForms] = useState({}); // { symbol: { datum, kostprijs, aantal, munt, transactiekosten } }
   const [wisselkoersOpDatum, setWisselkoersOpDatum] = useState(1);
   const [wisselkoersLoading, setWisselkoersLoading] = useState(false);
 
@@ -92,6 +89,65 @@ export default function BeleggingToevoegen({ onClose }) {
     }
   };
 
+  const toggleSelectie = async (r) => {
+    const al = selectie.find(s => s.symbol === r.symbol);
+    if (al) {
+      setSelectie(prev => prev.filter(s => s.symbol !== r.symbol));
+      setMultiForms(prev => { const n = {...prev}; delete n[r.symbol]; return n; });
+    } else {
+      setSelectie(prev => [...prev, r]);
+      // Pre-fill koers
+      const koers = await fetchKoers(r.symbol);
+      setMultiForms(prev => ({
+        ...prev,
+        [r.symbol]: {
+          datum: new Date().toISOString().split('T')[0],
+          kostprijs: koers?.c ? koers.c.toFixed(2) : '',
+          aantal: '',
+          munt: r.valuta || 'EUR',
+          transactiekosten: '',
+        }
+      }));
+      // Logo ophalen
+      try {
+        const res = await fetch(`/api/data?endpoint=profile&symbol=${encodeURIComponent(r.symbol)}`);
+        const d = await res.json();
+        const logo = d.logo || d.image || '';
+        if (logo) setSelectie(prev => prev.map(s => s.symbol === r.symbol ? {...s, logo} : s));
+      } catch {}
+    }
+  };
+
+  const updateMultiForm = (symbol, veld, waarde) => {
+    setMultiForms(prev => ({ ...prev, [symbol]: { ...prev[symbol], [veld]: waarde } }));
+  };
+
+  const opslaanMulti = () => {
+    const nieuw = selectie.map(r => {
+      const f = multiForms[r.symbol] || {};
+      if (!f.datum || !f.kostprijs || !f.aantal) return null;
+      const kostprijsPerStuk = parseFloat(f.kostprijs);
+      const aantalStuks = parseFloat(f.aantal);
+      const transactiekosten = parseFloat(f.transactiekosten) || 0;
+      return {
+        id: Date.now() + Math.random(),
+        symbol: r.symbol,
+        naam: r.naam || r.symbol,
+        logo: r.logo || '',
+        type: r.type || type || 'aandeel',
+        datum: f.datum,
+        kostprijs: kostprijsPerStuk + (transactiekosten / aantalStuks),
+        kostprijsExclKosten: kostprijsPerStuk,
+        transactiekosten,
+        aantal: aantalStuks,
+        munt: f.munt,
+      };
+    }).filter(Boolean);
+    if (nieuw.length === 0) return;
+    setBeleggingen(prev => [...prev, ...nieuw]);
+    onClose();
+  };
+
   const opslaan = () => {
     if (!geselecteerd || !form.datum || !form.kostprijs || !form.aantal) return;
     const kostprijsPerStuk = parseFloat(form.kostprijs);
@@ -113,21 +169,7 @@ export default function BeleggingToevoegen({ onClose }) {
       aantal: aantalStuks,
       munt: form.munt,
     };
-    // Sla ook extra beleggingen op
-    const extraNieuw = extraSelectie.map(({ resultaat: r, form: f, kostprijsInclKosten }) => ({
-      id: Date.now() + Math.random(),
-      symbol: r.symbol,
-      naam: r.naam || r.description || r.symbol,
-      logo: r.logo || BEKENDE_LOGOS[r.symbol] || '',
-      type: type || r.type || 'aandeel',
-      datum: f.datum,
-      kostprijs: kostprijsInclKosten,
-      kostprijsExclKosten: parseFloat(f.kostprijs),
-      transactiekosten: parseFloat(f.transactiekosten) || 0,
-      aantal: parseFloat(f.aantal),
-      munt: f.munt,
-    }));
-    setBeleggingen(prev => [...prev, ...extraNieuw, nieuw]);
+    setBeleggingen(prev => [...prev, nieuw]);
     onClose();
   };
 
@@ -145,7 +187,7 @@ export default function BeleggingToevoegen({ onClose }) {
       <div className="page-header" style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {stap !== 'type' && (
-            <button className="btn btn-ghost" onClick={() => stap === 'invoer' ? setStap('zoek') : setStap('type')}>
+            <button className="btn btn-ghost" onClick={() => stap === 'invoer' ? setStap('zoek') : stap === 'multi-invoer' ? setStap('zoek') : setStap('type')}>
               <ArrowLeft size={16} />
             </button>
           )}
@@ -175,19 +217,6 @@ export default function BeleggingToevoegen({ onClose }) {
       )}
 
       {/* Stap: zoeken */}
-      {stap === 'zoek' && extraSelectie.length > 0 && (
-        <div style={{ padding: '8px 24px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Al toegevoegd ({extraSelectie.length}):</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {extraSelectie.map((e, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#eef2ff', color: '#6366f1', padding: '4px 10px', borderRadius: 100, fontSize: 12, fontWeight: 600 }}>
-                {e.resultaat.naam || e.resultaat.symbol}
-                <button onClick={() => setExtraSelectie(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6366f1', padding: 0, fontSize: 14, lineHeight: 1 }}>×</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       {stap === 'zoek' && (
         <div style={{ padding: '0 32px' }}>
           <div style={{ marginBottom: 20 }}>
@@ -208,14 +237,86 @@ export default function BeleggingToevoegen({ onClose }) {
             {zoekResultaten.length === 0 && zoekterm.length < 2 && (
               <div className="empty-state" style={{ padding: 30 }}><p>Typ minimaal 2 tekens om te zoeken</p></div>
             )}
-            {zoekResultaten.map(r => (
-              <div key={r.symbol} className="zoek-resultaat" style={{ display: 'flex', alignItems: 'center', gap: 10 }} onClick={() => kiesAandeel(r)}>
-                <div style={{ flex: 1 }}>
-                  <div className="zoek-resultaat-naam">{r.naam || r.description}</div>
-                  <div className="zoek-resultaat-symbol">{r.symbol} · {r.type || ''} · {r.beurs || r.displaySymbol || ''}</div>
+            {zoekResultaten.map(r => {
+              const aangevinkt = selectie.some(s => s.symbol === r.symbol);
+              return (
+                <div key={r.symbol} className="zoek-resultaat"
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, background: aangevinkt ? 'var(--accent-bg)' : 'transparent', borderLeft: aangevinkt ? '3px solid var(--accent)' : '3px solid transparent' }}
+                  onClick={() => toggleSelectie(r)}>
+                  {/* Checkbox */}
+                  <div style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${aangevinkt ? 'var(--accent)' : 'var(--border)'}`, background: aangevinkt ? 'var(--accent)' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {aangevinkt && <span style={{ color: 'white', fontSize: 11, fontWeight: 700, lineHeight: 1 }}>✓</span>}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div className="zoek-resultaat-naam">{r.naam || r.description}</div>
+                    <div className="zoek-resultaat-symbol">{r.symbol} · {r.type || ''} · {r.beurs || r.displaySymbol || ''}</div>
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+          {/* Toevoegen knop */}
+          {selectie.length > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                {selectie.length} belegging{selectie.length !== 1 ? 'en' : ''} geselecteerd
+              </span>
+              <button className="btn btn-primary" onClick={() => setStap('multi-invoer')}>
+                Gegevens invullen ({selectie.length}) →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Stap: multi-invoer tabel */}
+      {stap === 'multi-invoer' && (
+        <div style={{ padding: '0 24px' }}>
+          {/* Tabelheader */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.4fr 0.8fr', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+            <span>Naam</span>
+            <span>Aankoopdatum</span>
+            <span>Kostprijs per stuk</span>
+            <span>Aantal</span>
+          </div>
+          {/* Rijen */}
+          {selectie.map(r => {
+            const f = multiForms[r.symbol] || {};
+            return (
+              <div key={r.symbol} style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.4fr 0.8fr', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center' }}>
+                {/* Naam */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
+                    {r.symbol.slice(0,2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{r.naam || r.symbol}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.symbol}</div>
+                  </div>
+                </div>
+                {/* Datum */}
+                <input type="date" value={f.datum || ''} onChange={e => updateMultiForm(r.symbol, 'datum', e.target.value)}
+                  style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
+                {/* Kostprijs */}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input type="number" value={f.kostprijs || ''} onChange={e => updateMultiForm(r.symbol, 'kostprijs', e.target.value)}
+                    placeholder="0,00" step="0.01"
+                    style={{ flex: 1, border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
+                  <select value={f.munt || 'EUR'} onChange={e => updateMultiForm(r.symbol, 'munt', e.target.value)}
+                    style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', fontSize: 12, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-muted)', outline: 'none', cursor: 'pointer' }}>
+                    <option>EUR</option><option>USD</option><option>GBP</option>
+                  </select>
+                </div>
+                {/* Aantal */}
+                <input type="number" value={f.aantal || ''} onChange={e => updateMultiForm(r.symbol, 'aantal', e.target.value)}
+                  placeholder="0" step="0.0001"
+                  style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
               </div>
-            ))}
+            );
+          })}
+          {/* Transactiekosten info */}
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+            💡 Transactiekosten kan je later aanpassen bij elke belegging afzonderlijk.
           </div>
         </div>
       )}
@@ -268,8 +369,8 @@ export default function BeleggingToevoegen({ onClose }) {
               {/* Rij 3: Transactiekosten */}
               <div className="toevoegen-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
                 <div>
-                  <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Transactiekosten <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11 }}>(optioneel)</span></div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Niet gekend? Laat leeg — later aan te passen</div>
+                  <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Transactiekosten</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Niet gekend? Laat leeg — later aanpasbaar</div>
                 </div>
                 <div />
                 <input type="number" className="form-input" placeholder="€0 (optioneel)" value={form.transactiekosten}
@@ -306,33 +407,25 @@ export default function BeleggingToevoegen({ onClose }) {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-            <button className="btn btn-ghost" onClick={() => setStap('zoek')}>← Terug</button>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-ghost"
-                disabled={!form.datum || !form.kostprijs || !form.aantal}
-                style={{ opacity: (!form.datum || !form.kostprijs || !form.aantal) ? 0.5 : 1 }}
-                onClick={() => {
-                  if (!geselecteerd || !form.datum || !form.kostprijs || !form.aantal) return;
-                  const kostprijsPerStuk = parseFloat(form.kostprijs);
-                  const aantalStuks = parseFloat(form.aantal);
-                  const transactiekosten = parseFloat(form.transactiekosten) || 0;
-                  setExtraSelectie(prev => [...prev, {
-                    resultaat: geselecteerd,
-                    form: { ...form },
-                    kostprijsInclKosten: kostprijsPerStuk + (transactiekosten / aantalStuks),
-                  }]);
-                  setGeselecteerd(null);
-                  setForm({ datum: '', kostprijs: '', aantal: '', munt: 'EUR', transactiekosten: '' });
-                  setStap('zoek');
-                }}>
-                + Nog een toevoegen
-              </button>
-              <button className="btn btn-primary" onClick={opslaan}
-                disabled={!form.datum || !form.kostprijs || !form.aantal}
-                style={{ opacity: (!form.datum || !form.kostprijs || !form.aantal) ? 0.5 : 1 }}>
-                Opslaan{extraSelectie.length > 0 ? ` (${extraSelectie.length + 1})` : ''}
-              </button>
-            </div>
+            {stap === 'multi-invoer' ? (
+              <>
+                <button className="btn btn-ghost" onClick={() => setStap('zoek')}>← Terug</button>
+                <button className="btn btn-primary" onClick={opslaanMulti}
+                  disabled={!selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; })}
+                  style={{ opacity: !selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; }) ? 0.5 : 1 }}>
+                  Opslaan ({selectie.filter(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; }).length}/{selectie.length})
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="btn btn-secondary" onClick={() => setStap('zoek')}>Annuleren</button>
+                <button className="btn btn-primary" onClick={opslaan}
+                  disabled={!form.datum || !form.kostprijs || !form.aantal}
+                  style={{ opacity: (!form.datum || !form.kostprijs || !form.aantal) ? 0.5 : 1 }}>
+                  Opslaan
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
