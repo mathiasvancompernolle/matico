@@ -224,7 +224,7 @@ export default function BeleggingToevoegen({ onClose }) {
           )}
           <h1>Beleggingen</h1>
         </div>
-        <button className="btn btn-primary" onClick={onClose}>← Terug</button>
+
       </div>
 
       {/* Stap: type kiezen */}
@@ -351,7 +351,7 @@ export default function BeleggingToevoegen({ onClose }) {
           </div>
           {/* Footer knoppen */}
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-            <button className="btn btn-ghost" onClick={() => setStap('zoek')}>← Terug</button>
+
             <button className="btn btn-primary" onClick={opslaanMulti}
               disabled={!selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; })}
               style={{ opacity: !selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; }) ? 0.5 : 1 }}>
@@ -458,7 +458,7 @@ export default function BeleggingToevoegen({ onClose }) {
               </>
             ) : (
               <>
-                <button className="btn btn-secondary" onClick={() => setStap('zoek')}>Annuleren</button>
+
                 <button className="btn btn-primary" onClick={opslaan}
                   disabled={!form.datum || !form.kostprijs || !form.aantal}
                   style={{ opacity: (!form.datum || !form.kostprijs || !form.aantal) ? 0.5 : 1 }}>
