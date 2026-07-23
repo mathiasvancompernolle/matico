@@ -4,9 +4,21 @@ import {
 } from 'recharts';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function fmtPrijs(v, dec = 2) {
+// Adaptieve afronding: hoe kleiner het getal, hoe meer decimalen, zodat kleine
+// prijzen (penny stocks, sommige crypto) niet afgerond worden tot 0,00.
+//   < 1        → 4 decimalen
+//   1 t.e.m. 9 → 3 decimalen
+//   ≥ 10       → 2 decimalen
+function adaptieveDecimalen(v) {
+  const abs = Math.abs(v);
+  if (abs < 1) return 4;
+  if (abs < 10) return 3;
+  return 2;
+}
+function fmtPrijs(v, dec) {
   if (v === null || v === undefined || isNaN(v)) return '—';
-  return v.toLocaleString('nl-BE', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  const decimalen = dec !== undefined ? dec : adaptieveDecimalen(v);
+  return v.toLocaleString('nl-BE', { minimumFractionDigits: decimalen, maximumFractionDigits: decimalen });
 }
 
 function fmtPct(v) {

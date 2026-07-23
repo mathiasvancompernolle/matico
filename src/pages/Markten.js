@@ -41,9 +41,21 @@ const PERIODES = [
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function fmtPrijs(v, dec = 2) {
+// Adaptieve afronding: hoe kleiner het getal, hoe meer decimalen, zodat kleine
+// prijzen (penny stocks, sommige crypto) niet afgerond worden tot 0,00.
+//   < 1        → 4 decimalen
+//   1 t.e.m. 9 → 3 decimalen
+//   ≥ 10       → 2 decimalen
+function adaptieveDecimalen(v) {
+  const abs = Math.abs(v);
+  if (abs < 1) return 4;
+  if (abs < 10) return 3;
+  return 2;
+}
+function fmtPrijs(v, dec) {
   if (!v && v !== 0) return '—';
-  return v.toLocaleString('nl-BE', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  const decimalen = dec !== undefined ? dec : adaptieveDecimalen(v);
+  return v.toLocaleString('nl-BE', { minimumFractionDigits: decimalen, maximumFractionDigits: decimalen });
 }
 
 function fmtPct(v) {
@@ -1031,7 +1043,7 @@ function MiniTabel({ titel, rijen, laden, kolom1Label, kolom1Key, uitlegType, on
                   <span style={{ fontSize: 12 }}>{r.naam}</span>
                 </div>
               </td>
-              <td style={{ fontSize: 12 }}>{r.prijs ? r.prijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</td>
+              <td style={{ fontSize: 12 }}>{fmtPrijs(r.prijs)}</td>
               <td className={r[kolom1Key] >= 0 ? 'cel-groen' : 'cel-rood'} style={{ fontSize: 12, fontWeight: 600 }}>
                 {r[kolom1Key] !== undefined ? (r[kolom1Key] >= 0 ? '+' : '') + r[kolom1Key].toFixed(2) + '%' : '—'}
               </td>
@@ -1128,7 +1140,6 @@ function MarktenOverzichtTabellen() {
       .catch(() => setLaden(false));
   }, []);
 
-  const fmtPrijs = (v) => v ? v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
   const fmtPct = (v) => {
     if (v === undefined || v === null) return '—';
     if (v === 0 || (Math.abs(v) < 0.005)) return '0,00%';
@@ -1411,10 +1422,7 @@ function EtfPagina({ onTerug, onSelectEffect }) {
     return <span style={{ marginLeft: 3 }}>{sortDir === 'asc' ? '↑' : '↓'}</span>;
   };
 
-  const fmtKoers = (v, val) => {
-    if (!v) return '—';
-    return v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
+  const fmtKoers = (v, val) => fmtPrijs(v);
 
   return (
     <div className="markten-pagina">
