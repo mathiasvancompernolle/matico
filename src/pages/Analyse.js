@@ -421,10 +421,28 @@ export function Analyse() {
       return null;
     };
 
+    // Live FMP-sectorgewichten: voor ETF's die niet in de handmatige ETF_DB
+    // hierboven staan, gebruiken we de sectordata die al via de etf-holdings
+    // endpoint wordt opgehaald (liveEtfData, ook gebruikt voor de holdings-
+    // tabel verderop) — zo krijgt élke ETF een echte sectorspreiding in
+    // plaats van dat alles in "Overige" belandt.
+    const liveEtfSectorGewichten = (symbol) => {
+      const basis = symbol.toUpperCase().split('.')[0];
+      const sectoren = liveEtfData[basis]?.sectoren;
+      if (!sectoren || sectoren.length === 0) return null;
+      const gewichten = {};
+      sectoren.forEach(s => {
+        const label = FMP_SECTOR_MAP[s.label] || 'Overige';
+        gewichten[label] = (gewichten[label] || 0) + s.pct;
+      });
+      return gewichten;
+    };
+
     const getEtfGewichten = (sym, type) => {
       const etf = zoekETF(sym);
       if (etf) return type === 'regio' ? etf.regio : etf.sector;
-      return null;
+      if (type === 'sector') return liveEtfSectorGewichten(sym);
+      return null; // regio via land vereist een aparte land→regio-mapping
     };
 
     // Welke beleggingen tonen op basis van subfilter
@@ -490,7 +508,7 @@ export function Analyse() {
       .sort((a, b) => b.waarde - a.waarde);
 
     return { spreidingData: data, pieData: data };
-  }, [beleggingen, koersen, spreidingTab, spreidingSubFilter, liveSectoren]);
+  }, [beleggingen, koersen, spreidingTab, spreidingSubFilter, liveSectoren, liveEtfData]);
 
   // ── Concentratierisico ──
   // ── Live bèta ophalen via Finnhub metrics API ──
