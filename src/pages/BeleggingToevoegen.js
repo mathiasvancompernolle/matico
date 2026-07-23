@@ -268,11 +268,11 @@ export default function BeleggingToevoegen({ onClose }) {
               {/* Rij 3: Transactiekosten */}
               <div className="toevoegen-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
                 <div>
-                  <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Transactiekosten</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Totale kosten voor deze aankoop</div>
+                  <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Transactiekosten <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11 }}>(optioneel)</span></div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Niet gekend? Laat leeg — later aan te passen</div>
                 </div>
                 <div />
-                <input type="number" className="form-input" placeholder="0.00" value={form.transactiekosten}
+                <input type="number" className="form-input" placeholder="€0 (optioneel)" value={form.transactiekosten}
                   onChange={e => setForm(f => ({ ...f, transactiekosten: e.target.value }))} step="0.01" min="0" />
               </div>
 
@@ -305,13 +305,34 @@ export default function BeleggingToevoegen({ onClose }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <button className="btn btn-secondary" onClick={() => setStap('zoek')}>Annuleren</button>
-            <button className="btn btn-primary" onClick={opslaan}
-              disabled={!form.datum || !form.kostprijs || !form.aantal}
-              style={{ opacity: (!form.datum || !form.kostprijs || !form.aantal) ? 0.5 : 1 }}>
-              Opslaan
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+            <button className="btn btn-ghost" onClick={() => setStap('zoek')}>← Terug</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-ghost"
+                disabled={!form.datum || !form.kostprijs || !form.aantal}
+                style={{ opacity: (!form.datum || !form.kostprijs || !form.aantal) ? 0.5 : 1 }}
+                onClick={() => {
+                  if (!geselecteerd || !form.datum || !form.kostprijs || !form.aantal) return;
+                  const kostprijsPerStuk = parseFloat(form.kostprijs);
+                  const aantalStuks = parseFloat(form.aantal);
+                  const transactiekosten = parseFloat(form.transactiekosten) || 0;
+                  setExtraSelectie(prev => [...prev, {
+                    resultaat: geselecteerd,
+                    form: { ...form },
+                    kostprijsInclKosten: kostprijsPerStuk + (transactiekosten / aantalStuks),
+                  }]);
+                  setGeselecteerd(null);
+                  setForm({ datum: '', kostprijs: '', aantal: '', munt: 'EUR', transactiekosten: '' });
+                  setStap('zoek');
+                }}>
+                + Nog een toevoegen
+              </button>
+              <button className="btn btn-primary" onClick={opslaan}
+                disabled={!form.datum || !form.kostprijs || !form.aantal}
+                style={{ opacity: (!form.datum || !form.kostprijs || !form.aantal) ? 0.5 : 1 }}>
+                Opslaan{extraSelectie.length > 0 ? ` (${extraSelectie.length + 1})` : ''}
+              </button>
+            </div>
           </div>
         </div>
       )}
