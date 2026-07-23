@@ -57,6 +57,80 @@ function getBegindatumVoorTijdperk(tijdperk, beleggingen) {
   return null; // Voor andere tijdperken filtert de API al correct
 }
 
+// ETF uitgever mapping
+const ETF_UITGEVERS = [
+  { match: ['ishares','blackrock','ish '], label: 'iSH', kleur: '#00b140' },
+  { match: ['vanguard','vang ftse','vang ','vang.'], label: 'VG', kleur: '#c8102e' },
+  { match: ['amundi','lyx ','lyxor'], label: 'AM', kleur: '#0066cc' },
+  { match: ['xtrackers','dws','xtr '], label: 'XT', kleur: '#003c88' },
+  { match: ['invesco','inv '], label: 'IV', kleur: '#00205b' },
+  { match: ['spdr','state street'], label: 'SPD', kleur: '#00a651' },
+  { match: ['wisdomtree'], label: 'WT', kleur: '#f7941d' },
+  { match: ['vaneck','van eck'], label: 'VE', kleur: '#003087' },
+  { match: ['ubs'], label: 'UBS', kleur: '#e3000f' },
+  { match: ['pimco'], label: 'PM', kleur: '#00205b' },
+  { match: ['franklin','templeton'], label: 'FT', kleur: '#2e5eaa' },
+  { match: ['fidelity'], label: 'FID', kleur: '#008a00' },
+  { match: ['hsbc'], label: 'HSB', kleur: '#db0011' },
+  { match: ['jpmorgan','jpm '], label: 'JPM', kleur: '#003087' },
+];
+const TICKER_ETF_MAP = {
+  'VWCE': 'VG','VFEM': 'VG','VUSA': 'VG','VEUR': 'VG','VHYL': 'VG','VWRL': 'VG',
+  'IWDA': 'iSH','CSPX': 'iSH','EIMI': 'iSH','IEMA': 'iSH','IUSA': 'iSH','ISAC': 'iSH',
+  'SWRD': 'iSH','SPPW': 'iSH','EXSA': 'iSH',
+  'XDWD': 'XT','XMAW': 'XT','XNAS': 'XT',
+  'AMUN': 'AM',
+};
+const TICKER_KLEUREN = {
+  'VG': '#c8102e','iSH': '#00b140','AM': '#0066cc','XT': '#003c88',
+  'IV': '#00205b','SPD': '#00a651','WT': '#f7941d','VE': '#003087',
+  'UBS': '#e3000f','PM': '#00205b','FT': '#2e5eaa','FID': '#008a00',
+  'HSB': '#db0011','JPM': '#003087',
+};
+const CRYPTO_KLEUREN = {
+  'BTC':'#f7931a','ETH':'#627eea','SOL':'#9945ff','XRP':'#00aae4',
+  'ADA':'#0033ad','DOT':'#e6007a','DOGE':'#c2a633','AVAX':'#e84142',
+  'LINK':'#2a5ada','MATIC':'#8247e5','SHIB':'#f00500','TON':'#0088cc',
+  'BNB':'#f3ba2f','NEAR':'#00c08b','OP':'#ff0420','ARB':'#12aaff',
+};
+
+function BeleggingAvatar({ b }) {
+  const [imgFout, setImgFout] = React.useState(false);
+  if (b.logo && !imgFout) {
+    return (
+      <img src={b.logo} alt={b.symbol}
+        style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', border: '1px solid var(--border)', background: 'white', padding: 2, flexShrink: 0 }}
+        onError={() => setImgFout(true)} />
+    );
+  }
+  const naamLower = (b.naam || b.symbol || '').toLowerCase();
+  const symBase = (b.symbol || '').replace(/-EUR$|-USD$|-GBP$|-USDT$/,'').toUpperCase();
+  const tickerBase = symBase.split('.')[0];
+
+  // Crypto
+  if (b.type === 'crypto' || symBase.match(/-EUR$|-USD$/)) {
+    const kleur = CRYPTO_KLEUREN[symBase] || '#f7931a';
+    return <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: kleur, color: 'white', fontWeight: 800, fontSize: 10 }}>{symBase.slice(0,3)}</div>;
+  }
+
+  // ETF via ticker
+  const tickerLabel = TICKER_ETF_MAP[tickerBase];
+  if (tickerLabel) {
+    return <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: TICKER_KLEUREN[tickerLabel] || '#6366f1', color: 'white', fontWeight: 800, fontSize: 10 }}>{tickerLabel}</div>;
+  }
+
+  // ETF via naam
+  if (b.type === 'etf') {
+    const uitgever = ETF_UITGEVERS.find(u => u.match.some(m => naamLower.includes(m)));
+    if (uitgever) return <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: uitgever.kleur, color: 'white', fontWeight: 800, fontSize: 10 }}>{uitgever.label}</div>;
+    return <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#6366f1', color: 'white', fontWeight: 800, fontSize: 9 }}>ETF</div>;
+  }
+
+  // Aandeel fallback
+  return <div className="belegging-avatar" style={{ flexShrink: 0 }}>{(b.symbol || '').slice(0,2).toUpperCase()}</div>;
+}
+
+
 export default function Overzicht({ onToevoegen, onImporteren }) {
   const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen } = useApp();
 
@@ -925,10 +999,7 @@ export default function Overzicht({ onToevoegen, onImporteren }) {
               return (
                 <div key={b.id} className="tabel-rij belegging-grid" onClick={() => setDetailBelegging(b)}>
                   <div className="belegging-naam">
-                    {b.logo
-                      ? <img src={b.logo} alt={b.symbol} style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', border: '1px solid var(--border)', background: 'white', padding: 2 }} onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-                      : null}
-                    <div className="belegging-avatar" style={{ display: b.logo ? 'none' : 'flex' }}>{b.symbol.slice(0, 2).toUpperCase()}</div>
+                    <BeleggingAvatar b={b} />
                     <div>
                       <div className="belegging-naam-text">{b.naam}</div>
                       <div className="belegging-symbol">{b.symbol} · {b.aantal} st.</div>
