@@ -104,7 +104,7 @@ export default function BeleggingToevoegen({ onClose }) {
           datum: new Date().toISOString().split('T')[0],
           kostprijs: koers?.c ? koers.c.toFixed(2) : '',
           aantal: '',
-          munt: r.valuta || 'EUR',
+          munt: r.valuta || (r.symbol?.includes('-USD') || r.beurs === 'NMS' || r.beurs === 'NYQ' || r.beurs === 'NGM' ? 'USD' : r.symbol?.includes('-GBP') ? 'GBP' : 'EUR'),
           transactiekosten: '',
         }
       }));
@@ -317,6 +317,15 @@ export default function BeleggingToevoegen({ onClose }) {
           {/* Transactiekosten info */}
           <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
             💡 Transactiekosten kan je later aanpassen bij elke belegging afzonderlijk.
+          </div>
+          {/* Footer knoppen */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            <button className="btn btn-ghost" onClick={() => setStap('zoek')}>← Terug</button>
+            <button className="btn btn-primary" onClick={opslaanMulti}
+              disabled={!selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; })}
+              style={{ opacity: !selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; }) ? 0.5 : 1 }}>
+              Opslaan ({selectie.filter(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; }).length}/{selectie.length})
+            </button>
           </div>
         </div>
       )}
