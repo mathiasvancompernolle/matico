@@ -443,6 +443,42 @@ module.exports = async function handler(req, res) {
             valuta: q.currency || 'EUR',
           }));
 
+        // ── Vroeg gekende tickers toevoegen bij korte/ambigue zoekopdrachten ─
+        // Yahoo's eigen zoek-relevantie mist de juiste (whitelist) notering
+        // soms bij een korte query zoals "kbc", omdat er dan te veel losse
+        // gelijkaardige namen zijn (fondsen, gelieerde vennootschappen, ...).
+        // We checken of de query overeenkomt met de ticker-basis van een
+        // gekende notering, en voegen die toe als Yahoo hem zelf niet gaf.
+        const queryBasis = q.trim().toLowerCase().split(/\s+/)[0];
+        if (queryBasis.length >= 2) {
+          const alAanwezig = new Set(resultaten.map(r => r.symbol.toUpperCase()));
+          const teInjecteren = Array.from(GEKENDE_TICKERS).filter(sym => {
+            if (alAanwezig.has(sym)) return false;
+            const punt = sym.indexOf('.');
+            const basis = (punt === -1 ? sym : sym.slice(0, punt)).toLowerCase();
+            return basis.startsWith(queryBasis) || queryBasis.startsWith(basis);
+          }).slice(0, 3);
+          if (teInjecteren.length > 0) {
+            const extra = await Promise.all(teInjecteren.map(async (sym) => {
+              try {
+                const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=1d`;
+                const yr = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                const yd = await yr.json();
+                const meta = yd?.chart?.result?.[0]?.meta;
+                if (!meta) return null;
+                return {
+                  naam: meta.longName || meta.shortName || sym,
+                  symbol: sym,
+                  beurs: meta.fullExchangeName || meta.exchangeName || '',
+                  type: 'aandeel',
+                  valuta: meta.currency || 'EUR',
+                };
+              } catch { return null; }
+            }));
+            resultaten.push(...extra.filter(Boolean));
+          }
+        }
+
         // ── Dedupliceren naar één notering per bedrijf ──────────────────────
         // Yahoo geeft voor bekende namen vaak meerdere kruisnoteringen terug
         // (thuisbeurs + OTC-noteringen in de VS + secundaire Europese beurzen).
