@@ -162,6 +162,83 @@ module.exports = async function handler(req, res) {
     } catch (e) { return null; }
   }
 
+  // Index-samenstellingen (gedeeld door 'aandelen-regio' én de zoekfunctie —
+  // voor bekende namen uit deze lijsten weten we de notering met zekerheid correct is)
+  const componenten = {
+    bel20: ['ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR','DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR','SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR'],
+    'bel-midcap': [
+      'AGFB.BR',   // Agfa-Gevaert
+      'ATEB.BR',   // Atenor
+      'BAR.BR',    // Barco
+      'BEKB.BR',   // Bekaert
+      'BPOST.BR',  // Bpost
+      'BREB.BR',   // Brederode
+      'CPINV.BR',  // Care Property Invest
+      'CFEB.BR',   // CFE
+      'COMB.BR',   // Compagnie du Bois Sauvage
+      'ECONB.BR',  // Econocom
+      'EVS.BR',    // EVS Broadcast Equipment
+      'FAGR.BR',   // Fagron
+      'GIMB.BR',   // GIMV
+      'HOMI.BR',   // Home Invest Belgium
+      'IMMO.BR',   // Immobel
+      'IBAB.BR',   // Ion Beam Applications
+      'KIN.BR',    // Kinepolis
+      'ONTEX.BR',  // Ontex
+      'OBEL.BR',   // Orange Belgium
+      'RET.BR',    // Retail Estates
+      'SHUR.BR',   // Shurgard
+      'SIP.BR',    // Sipef
+      'TESB.BR',   // Tessenderlo Chemie
+      'TINC.BR',   // TINC
+      'TITC.BR',   // Titan
+      'XIOR.BR',   // Xior Student Housing
+      'AZE.BR',    // Azelis Group
+      'LOTB.BR',   // Lotus Bakeries
+      'MELE.BR',   // Melexis
+      'MONT.BR',   // Montea
+    ],
+    'bel-smallcap': [
+      'ACCB.BR',   // Accentis
+      'CYAD.BR',   // Celyad Oncology
+      'DECB.BR',   // Deceuninck
+      'EKOP.BR',   // Ekopak
+      'EXM.BR',    // Exmar
+      'HYL.BR',    // Hyloris Pharmaceuticals
+      'JEN.BR',   // Jensen-Group
+      'NYR.BR',    // Nyrstar
+      'NYXH.BR',   // Nyxoah
+      'ONWD.BR',   // ONWARD Medical
+      'OPTI.BR',   // Option
+      'OXUR.BR',   // Oxurion
+      'QRF.BR',    // Qrf
+      'ROU.BR',    // Roularta Media Group
+      'SEQUA.BR',  // Sequana Medical
+      'TEXF.BR',   // Texaf
+      'VAN.BR',    // Van de Velde
+      'VASTB.BR',  // Vastned
+      'WEB.BR',    // Warehouses Estates Belgium
+      'WEHB.BR',   // Wereldhave Belgium
+    ],
+    aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
+    sp500: [], // niet in gebruik
+    nasdaq: [
+      'NVDA','AAPL','MSFT','AMZN','GOOGL','GOOG','AVGO','TSLA','META','MU',
+      'WMT','AMD','ASML','INTC','AMAT','LRCX','CSCO','ARM','COST','KLAC',
+      'SNDK','NFLX','PLTR','TXN','MRVL','WDC','STX','QCOM','LIN','PANW',
+      'ADI','TMUS','PEP','AMGN','CRWD','APP','GILD','ISRG','SHOP','BKNG',
+      'SBUX','VRTX','PDD','CDNS','FTNT','MAR','CEG','MNST','ADP','SNPS',
+      'CSX','ABNB','MELI','CMCSA','DDOG','NXPI','ADBE','MDLZ','MPWR','DASH',
+      'ROST','INTC','ORLY','AEP','CINTAS','WBD','PCAR','REGN','BKR','MCHP',
+      'FAST','FANG','EA','XEL','EXC','ODFL','TTWO','IDXX','CCEP','KDP',
+      'ADSK','MSTR','PYPL','ALNY','PAYX','TRI','AXON','ROP','WDAY','GEHC',
+      'CPRT','DXCM','KHC','VRSK','INSM','CTSH','ZS','CHTR','CSGP','WMT',
+    ],
+    nikkei: ['7203.T','9984.T','6758.T','8306.T','6861.T','7267.T','4063.T','6594.T','9433.T','8035.T'],
+    hangseng: ['0700.HK','0941.HK','1299.HK','2318.HK','0005.HK','1398.HK','3690.HK','2020.HK','9988.HK','0388.HK'],
+  };
+  const GEKENDE_TICKERS = new Set(Object.values(componenten).flat());
+
   const { endpoint } = req.query;
 
   try {
@@ -306,7 +383,7 @@ module.exports = async function handler(req, res) {
         );
         const d = await r.json();
         const quotes = d?.quotes || [];
-        const resultaten = quotes
+        let resultaten = quotes
           .filter(q => ['EQUITY','ETF','MUTUALFUND','CRYPTOCURRENCY'].includes(q.quoteType))
           .map(q => ({
             naam: q.longname || q.shortname || q.symbol,
@@ -317,6 +394,50 @@ module.exports = async function handler(req, res) {
                 : 'aandeel',
             valuta: q.currency || 'EUR',
           }));
+
+        // ── Dedupliceren naar één notering per bedrijf ──────────────────────
+        // Yahoo geeft voor bekende namen vaak meerdere kruisnoteringen terug
+        // (thuisbeurs + OTC-noteringen in de VS + secundaire Europese beurzen).
+        // We houden enkel de meest relevante notering over: thuisbeurs
+        // (Brussel/Amsterdam/Parijs/... voor Belgische gebruikers) boven een
+        // gewone VS-notering, boven OTC/pink-sheet-tickers en overige
+        // secundaire dubbele noteringen.
+        function normaliseerNaam(naam) {
+          return (naam || '')
+            .toLowerCase()
+            .replace(/\b(nv|n\.v\.|sa|s\.a\.|ag|se|plc|inc|inc\.|corp|corporation|ltd|limited|co\.|ord|shs|adr|spon|the)\b/g, '')
+            .replace(/[^a-z0-9 ]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        }
+        function scoreNotering(r) {
+          const sym = r.symbol.toUpperCase();
+          // Zit deze ticker in onze eigen, met de hand nagekeken indexlijsten
+          // (BEL20/Mid/Small, AEX, belangrijkste Nasdaq-namen, Nikkei, Hang Seng)?
+          // Dan weten we met zekerheid dat dit de juiste notering is.
+          if (GEKENDE_TICKERS.has(sym)) return 1000;
+          const suffixMatch = sym.match(/\.([A-Z]{1,3})$/);
+          const suffix = suffixMatch ? suffixMatch[1] : null;
+          const VOORKEUR = ['BR', 'AS', 'PA', 'MI', 'MC', 'L', 'SW', 'DE', 'TO', 'HK', 'T'];
+          if (suffix && VOORKEUR.includes(suffix)) return 100 - VOORKEUR.indexOf(suffix);
+          if (!suffix) {
+            // Geen suffix: gewone VS-notering (NASDAQ/NYSE), tenzij het op een
+            // OTC/pink-sheet ticker lijkt (vaak 4-5 letters, eindigend op F of Y)
+            const lijktOpOtc = /^[A-Z]{4,5}[FY]$/.test(sym);
+            return lijktOpOtc ? 10 : 80;
+          }
+          return 30; // andere suffixen: overige secundaire beurzen
+        }
+        const perBedrijf = new Map();
+        for (const r of resultaten) {
+          const sleutel = normaliseerNaam(r.naam) + '|' + r.type;
+          const score = scoreNotering(r);
+          const bestaand = perBedrijf.get(sleutel);
+          if (!bestaand || score > bestaand.score) {
+            perBedrijf.set(sleutel, { ...r, score });
+          }
+        }
+        resultaten = Array.from(perBedrijf.values()).map(({ score, ...r }) => r);
 
         // Volledige crypto EUR lijst
         const CRYPTO_EUR = {
@@ -942,80 +1063,6 @@ module.exports = async function handler(req, res) {
 
     if (endpoint === 'aandelen-regio') {
       const { regio = 'belgie', subindex = 'bel20', periode = '1d' } = req.query;
-
-      const componenten = {
-        bel20: ['ABI.BR','ACKB.BR','AED.BR','AGS.BR','APAM.AS','ARGX.BR','AZE.BR','DIE.BR','ELI.BR','GBLB.BR','KBC.BR','LOTB.BR','MELE.BR','MONT.BR','SOLB.BR','SOF.BR','SYENS.BR','UCB.BR','UMI.BR','WDP.BR'],
-        'bel-midcap': [
-          'AGFB.BR',   // Agfa-Gevaert
-          'ATEB.BR',   // Atenor
-          'BAR.BR',    // Barco
-          'BEKB.BR',   // Bekaert
-          'BPOST.BR',  // Bpost
-          'BREB.BR',   // Brederode
-          'CPINV.BR',  // Care Property Invest
-          'CFEB.BR',   // CFE
-          'COMB.BR',   // Compagnie du Bois Sauvage
-          'ECONB.BR',  // Econocom
-          'EVS.BR',    // EVS Broadcast Equipment
-          'FAGR.BR',   // Fagron
-          'GIMB.BR',   // GIMV
-          'HOMI.BR',   // Home Invest Belgium
-          'IMMO.BR',   // Immobel
-          'IBAB.BR',   // Ion Beam Applications
-          'KIN.BR',    // Kinepolis
-          'ONTEX.BR',  // Ontex
-          'OBEL.BR',   // Orange Belgium
-          'RET.BR',    // Retail Estates
-          'SHUR.BR',   // Shurgard
-          'SIP.BR',    // Sipef
-          'TESB.BR',   // Tessenderlo Chemie
-          'TINC.BR',   // TINC
-          'TITC.BR',   // Titan
-          'XIOR.BR',   // Xior Student Housing
-          'AZE.BR',    // Azelis Group
-          'LOTB.BR',   // Lotus Bakeries
-          'MELE.BR',   // Melexis
-          'MONT.BR',   // Montea
-        ],
-        'bel-smallcap': [
-          'ACCB.BR',   // Accentis
-          'CYAD.BR',   // Celyad Oncology
-          'DECB.BR',   // Deceuninck
-          'EKOP.BR',   // Ekopak
-          'EXM.BR',    // Exmar
-          'HYL.BR',    // Hyloris Pharmaceuticals
-          'JEN.BR',   // Jensen-Group
-          'NYR.BR',    // Nyrstar
-          'NYXH.BR',   // Nyxoah
-          'ONWD.BR',   // ONWARD Medical
-          'OPTI.BR',   // Option
-          'OXUR.BR',   // Oxurion
-          'QRF.BR',    // Qrf
-          'ROU.BR',    // Roularta Media Group
-          'SEQUA.BR',  // Sequana Medical
-          'TEXF.BR',   // Texaf
-          'VAN.BR',    // Van de Velde
-          'VASTB.BR',  // Vastned
-          'WEB.BR',    // Warehouses Estates Belgium
-          'WEHB.BR',   // Wereldhave Belgium
-        ],
-        aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
-        sp500: [], // niet in gebruik
-        nasdaq: [
-          'NVDA','AAPL','MSFT','AMZN','GOOGL','GOOG','AVGO','TSLA','META','MU',
-          'WMT','AMD','ASML','INTC','AMAT','LRCX','CSCO','ARM','COST','KLAC',
-          'SNDK','NFLX','PLTR','TXN','MRVL','WDC','STX','QCOM','LIN','PANW',
-          'ADI','TMUS','PEP','AMGN','CRWD','APP','GILD','ISRG','SHOP','BKNG',
-          'SBUX','VRTX','PDD','CDNS','FTNT','MAR','CEG','MNST','ADP','SNPS',
-          'CSX','ABNB','MELI','CMCSA','DDOG','NXPI','ADBE','MDLZ','MPWR','DASH',
-          'ROST','INTC','ORLY','AEP','CINTAS','WBD','PCAR','REGN','BKR','MCHP',
-          'FAST','FANG','EA','XEL','EXC','ODFL','TTWO','IDXX','CCEP','KDP',
-          'ADSK','MSTR','PYPL','ALNY','PAYX','TRI','AXON','ROP','WDAY','GEHC',
-          'CPRT','DXCM','KHC','VRSK','INSM','CTSH','ZS','CHTR','CSGP','WMT',
-        ],
-        nikkei: ['7203.T','9984.T','6758.T','8306.T','6861.T','7267.T','4063.T','6594.T','9433.T','8035.T'],
-        hangseng: ['0700.HK','0941.HK','1299.HK','2318.HK','0005.HK','1398.HK','3690.HK','2020.HK','9988.HK','0388.HK'],
-      };
 
       const indexSymbolen = {
         bel20: '^BFX', 'bel-midcap': 'BELM.BR', 'bel-smallcap': 'BELS.BR',
