@@ -117,6 +117,51 @@ module.exports = async function handler(req, res) {
       .replace('.PA', '.PA');
   }
 
+  // Yahoo exchange-codes → leesbare beursnamen (gedeeld door meerdere endpoints)
+  const exchangeMap = {
+    'AMS': 'Euronext Amsterdam', 'EPA': 'Euronext Paris', 'PAR': 'Euronext Paris',
+    'ETR': 'Xetra', 'XETR': 'Xetra', 'GER': 'Xetra',
+    'MIL': 'Euronext Milan', 'BIT': 'Euronext Milan',
+    'LSE': 'London SE', 'IOB': 'London SE',
+    'SWX': 'SIX Swiss', 'VTX': 'SIX Swiss',
+    'NMS': 'Nasdaq', 'NGM': 'Nasdaq', 'PCX': 'NYSE Arca', 'NYQ': 'NYSE',
+  };
+
+  // ── Betrouwbare handelsuren-check ────────────────────────────────────────
+  // Yahoo's `marketState` veld is niet altijd actueel/correct voor elke ticker.
+  // Voor de bekende grote beurzen berekenen we zelf of ze nu open zijn op basis
+  // van de echte lokale tijd, en gebruiken dat als correctie/fallback.
+  const BEURS_UREN = {
+    'Euronext Amsterdam': { open: '09:00', sluit: '17:30', tz: 'Europe/Amsterdam' },
+    'Euronext Paris':     { open: '09:00', sluit: '17:30', tz: 'Europe/Paris' },
+    'Euronext Milan':     { open: '09:00', sluit: '17:30', tz: 'Europe/Rome' },
+    'Xetra':              { open: '09:00', sluit: '17:30', tz: 'Europe/Berlin' },
+    'London SE':          { open: '08:00', sluit: '16:30', tz: 'Europe/London' },
+    'SIX Swiss':          { open: '09:00', sluit: '17:30', tz: 'Europe/Zurich' },
+    'Nasdaq':             { open: '09:30', sluit: '16:00', tz: 'America/New_York' },
+    'NYSE Arca':          { open: '09:30', sluit: '16:00', tz: 'America/New_York' },
+    'NYSE':               { open: '09:30', sluit: '16:00', tz: 'America/New_York' },
+    'BATS':               { open: '09:30', sluit: '16:00', tz: 'America/New_York' },
+    'Toronto SE':         { open: '09:30', sluit: '16:00', tz: 'America/Toronto' },
+  };
+
+  function isBeursOpenNu(beursNaam) {
+    const info = BEURS_UREN[beursNaam];
+    if (!info) return null; // onbekende beurs: laat Yahoo's marketState-veld beslissen
+    try {
+      const nu = new Date();
+      const nuInBeurs = new Date(nu.toLocaleString('en-US', { timeZone: info.tz }));
+      const dag = nuInBeurs.getDay(); // 0=zo, 6=za
+      if (dag === 0 || dag === 6) return false;
+      const nuMinuten = nuInBeurs.getHours() * 60 + nuInBeurs.getMinutes();
+      const [openH, openM] = info.open.split(':').map(Number);
+      const [sluitH, sluitM] = info.sluit.split(':').map(Number);
+      const openMinuten = openH * 60 + openM;
+      const sluitMinuten = sluitH * 60 + sluitM;
+      return nuMinuten >= openMinuten && nuMinuten < sluitMinuten;
+    } catch (e) { return null; }
+  }
+
   const { endpoint } = req.query;
 
   try {
@@ -221,6 +266,10 @@ module.exports = async function handler(req, res) {
           const quotes = result.indicators?.quote?.[0];
           const closes = quotes?.close?.filter(v => v != null) || [];
           const huidigeKoers = meta.regularMarketPrice || closes[closes.length - 1] || 0;
+          const exchCodeQd = (meta.exchangeName || meta.fullExchangeName || '').toUpperCase();
+          const beursQd = exchangeMap[exchCodeQd] || meta.fullExchangeName || meta.exchangeName || '';
+          const berekendOpenQd = isBeursOpenNu(beursQd);
+          const marktOpenQd = berekendOpenQd !== null ? berekendOpenQd : meta.marketState === 'REGULAR';
           return res.json({
             c: huidigeKoers,
             pc: meta.chartPreviousClose || meta.previousClose || huidigeKoers,
@@ -235,10 +284,10 @@ module.exports = async function handler(req, res) {
             hoog52: meta.fiftyTwoWeekHigh || null,
             laag52: meta.fiftyTwoWeekLow || null,
             marktKap: meta.marketCap || null,
-            beurs: meta.fullExchangeName || meta.exchangeName || '',
+            beurs: beursQd,
             valuta: meta.currency || 'EUR',
             tijdzone: meta.exchangeTimezoneShortName || meta.exchangeTimezoneName || '',
-            marktOpen: meta.marketState === 'REGULAR',
+            marktOpen: marktOpenQd,
           });
         }
       } catch (e) { console.error('quote-detail fout:', e); }
@@ -2640,15 +2689,6 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
       // Bij toonAlles=true: alles in batches van 40 concurrent ophalen
       const teOphalen = toonAlles === 'true' ? syms : syms.slice(0, 80);
 
-      const exchangeMap = {
-        'AMS': 'Euronext Amsterdam', 'EPA': 'Euronext Paris', 'PAR': 'Euronext Paris',
-        'ETR': 'Xetra', 'XETR': 'Xetra', 'GER': 'Xetra',
-        'MIL': 'Euronext Milan', 'BIT': 'Euronext Milan',
-        'LSE': 'London SE', 'IOB': 'London SE',
-        'SWX': 'SIX Swiss', 'VTX': 'SIX Swiss',
-        'NMS': 'Nasdaq', 'NGM': 'Nasdaq', 'PCX': 'NYSE Arca', 'NYQ': 'NYSE',
-      };
-
       async function fetchEtf(sym) {
         try {
           const [r1d, r1m, r3m, r1j, r5j] = await Promise.all([
@@ -2676,6 +2716,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
           const naam = naamRaw.length > 40 ? naamRaw.slice(0, 39) + '…' : naamRaw;
           const metaLookup = ETF_META[sym] || {};
           const exchCode = (meta.exchangeName || meta.fullExchangeName || '').toUpperCase();
+          const beurs = exchangeMap[exchCode] || meta.fullExchangeName || meta.exchangeName || '—';
+          const berekendOpen = isBeursOpenNu(beurs);
+          const marktOpen = berekendOpen !== null ? berekendOpen : meta.marketState === 'REGULAR';
           return {
             symbol: sym, naam, naamVolledig: naamRaw, prijs,
             valuta: meta.currency || 'EUR',
@@ -2683,9 +2726,9 @@ const quoteResults = await Promise.all(syms.map(async (sym, idx) => {
             totalAssets: 0,
             ter: metaLookup.ter ?? null,
             tob: metaLookup.tob ?? 0.12,
-            beurs: exchangeMap[exchCode] || meta.fullExchangeName || meta.exchangeName || '—',
-            marktOpen: meta.marketState === 'REGULAR',
-            marktState: meta.marketState || 'CLOSED',
+            beurs,
+            marktOpen,
+            marktState: meta.marketState || (marktOpen ? 'REGULAR' : 'CLOSED'),
             timezone: meta.exchangeTimezoneShortName || meta.exchangeTimezoneName || '',
             pct1D, pct1M: pctLang(d1m), pct3M: pctLang(d3m),
             pct1J: pctLang(d1j), pct5J: pctLang(d5j),
