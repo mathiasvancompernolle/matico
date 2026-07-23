@@ -27,6 +27,22 @@ const laadActiefPortfolioId = (portfolios) => {
   return portfolios[0]?.id || 'portfolio_1';
 };
 
+// Auto-detecteer type op basis van naam en symbool
+function detecteerType(b) {
+  if (b.type && b.type !== 'aandeel') return b.type; // al correct (etf/crypto)
+  const naam = (b.naam || '').toLowerCase();
+  const sym = (b.symbol || '').toUpperCase();
+  // Crypto: symbool eindigt op -EUR, -USD, -GBP
+  if (sym.match(/-EUR$|-USD$|-GBP$|-USDT$/)) return 'crypto';
+  // ETF: naam bevat bekende uitgevers of UCITS/ETF keyword
+  const etfNamen = ['ishares','blackrock','vanguard','vang ftse','vang ','amundi','xtrackers','dws','invesco','spdr','wisdomtree','vaneck','lyxor','ubs etf','pimco','franklin','fidelity','hsbc etf','ucits','index etf',' etf ','etf acc','etf dist'];
+  if (etfNamen.some(n => naam.includes(n))) return 'etf';
+  // ETF: Europese beurssuffixen (niet .BR want dat zijn Belgische aandelen)
+  const etfSuffixen = ['.DE','.PA','.MI','.SW'];
+  if (etfSuffixen.some(s => sym.includes(s))) return 'etf';
+  return b.type || 'aandeel';
+}
+
 export function AppProvider({ children }) {
   const [gebruiker, setGebruiker] = useState(() => {
     const saved = localStorage.getItem('matico_gebruiker');
@@ -63,7 +79,10 @@ export function AppProvider({ children }) {
   const [beleggingen, setBeleggingen] = useState(() => {
     const ps = laadPortfolios();
     const id = laadActiefPortfolioId(ps);
-    try { return JSON.parse(localStorage.getItem(`matico_beleggingen_${id}`) || '[]'); } catch { return []; }
+    try {
+      const raw = JSON.parse(localStorage.getItem(`matico_beleggingen_${id}`) || '[]');
+      return raw.map(b => ({ ...b, type: detecteerType(b) }));
+    } catch { return []; }
   });
 
   const [verkochteBeleggingen, setVerkochteBeleggingen] = useState(() => {
@@ -82,7 +101,7 @@ export function AppProvider({ children }) {
     localStorage.setItem('matico_actief_portfolio', id);
     setActiefPortfolioId(id);
     setKoersen({});
-    try { setBeleggingen(JSON.parse(localStorage.getItem(`matico_beleggingen_${id}`) || '[]')); } catch { setBeleggingen([]); }
+    try { setBeleggingen((JSON.parse(localStorage.getItem(`matico_beleggingen_${id}`) || '[]')).map(b => ({ ...b, type: detecteerType(b) }))); } catch { setBeleggingen([]); }
     try { setVerkochteBeleggingen(JSON.parse(localStorage.getItem(`matico_verkochte_${id}`) || '[]')); } catch { setVerkochteBeleggingen([]); }
   };
 
