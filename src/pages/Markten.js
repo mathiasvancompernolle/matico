@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
@@ -1258,16 +1259,32 @@ function tijdTotOpening(beurs) {
 
 function BeursBolletje({ marktOpen, beurs, marktState }) {
   const [tooltip, setTooltip] = React.useState(false);
+  const [pos, setPos] = React.useState(null);
+  const ankerRef = React.useRef(null);
   const tijdInfo = !marktOpen ? tijdTotOpening(beurs) : null;
 
   const stateLabel = marktState === 'PRE'  ? 'Pre-market' :
                      marktState === 'POST' ? 'Nabeurs' :
                      marktOpen             ? 'Open' : 'Gesloten';
 
+  const toonTooltip = () => {
+    const rect = ankerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const tooltipBreedteSchatting = 240;
+      const marge = 8;
+      let left = rect.left;
+      const maxLeft = window.innerWidth - tooltipBreedteSchatting - marge;
+      if (left > maxLeft) left = Math.max(marge, maxLeft);
+      setPos({ top: rect.top - 8, left });
+    }
+    setTooltip(true);
+  };
+
   return (
     <div
+      ref={ankerRef}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 5, position: 'relative', cursor: 'default' }}
-      onMouseEnter={() => setTooltip(true)}
+      onMouseEnter={toonTooltip}
       onMouseLeave={() => setTooltip(false)}
     >
       <span style={{
@@ -1275,9 +1292,10 @@ function BeursBolletje({ marktOpen, beurs, marktState }) {
         background: marktOpen ? '#10b981' : marktState === 'PRE' || marktState === 'POST' ? '#f59e0b' : '#ef4444',
       }} />
       <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{beurs || '—'}</span>
-      {tooltip && (
+      {tooltip && pos && createPortal(
         <div style={{
-          position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, zIndex: 999,
+          position: 'fixed', top: pos.top, left: pos.left, transform: 'translateY(-100%)',
+          zIndex: 9999,
           background: '#1e293b', color: '#f1f5f9', borderRadius: 8,
           padding: '8px 12px', fontSize: 12, whiteSpace: 'nowrap',
           boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
@@ -1289,20 +1307,14 @@ function BeursBolletje({ marktOpen, beurs, marktState }) {
               background: marktOpen ? '#10b981' : marktState === 'PRE' || marktState === 'POST' ? '#f59e0b' : '#ef4444',
             }} />
             <span style={{ fontWeight: 600 }}>{stateLabel}</span>
-            {!marktOpen && (
-              <span
-                style={{ marginLeft: 8, color: '#94a3b8', fontSize: 11, cursor: 'pointer', textDecoration: 'underline' }}
-              >
-                Toon meer
-              </span>
-            )}
           </div>
           {tijdInfo && (
             <div style={{ color: '#94a3b8', fontSize: 11 }}>
               Next: {tijdInfo}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
