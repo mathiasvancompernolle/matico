@@ -72,6 +72,7 @@ module.exports = async function handler(req, res) {
   const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
   const FMP_KEY = process.env.FMP_API_KEY;
   const EODHD_KEY = process.env.EODHD_API_KEY;
+  const OPENFIGI_KEY = process.env.OPENFIGI_API_KEY;
 
   // Yahoo Finance headers
   const YF_HEADERS = {
@@ -238,6 +239,53 @@ module.exports = async function handler(req, res) {
     hangseng: ['0700.HK','0941.HK','1299.HK','2318.HK','0005.HK','1398.HK','3690.HK','2020.HK','9988.HK','0388.HK'],
   };
   const GEKENDE_TICKERS = new Set(Object.values(componenten).flat());
+
+  // ── OpenFIGI kruisverificatie ─────────────────────────────────────────────
+  // Voor bedrijven die niet in onze eigen whitelist (GEKENDE_TICKERS) zitten,
+  // gebruiken we Bloomberg's gratis OpenFIGI-symbology-API als tweede,
+  // onafhankelijke bron om de juiste beursnotering te bevestigen.
+  const FIGI_NAAR_SUFFIX = {
+    'BB': 'BR',        // Brussel
+    'NA': 'AS',        // Amsterdam
+    'FP': 'PA',        // Parijs
+    'IM': 'MI',        // Milaan
+    'MF': 'MC',        // Madrid
+    'LN': 'L',         // Londen
+    'SW': 'SW',        // SIX Swiss
+    'GR': 'DE', 'GY': 'DE', 'GF': 'DE', // Xetra/Duitsland
+    'US': null, 'UN': null, 'UW': null, 'UQ': null, 'UR': null, // VS: geen suffix
+    'TT': 'T', 'JT': 'T', // Tokio
+    'HK': 'HK',        // Hong Kong
+    'TO': 'TO',        // Toronto
+  };
+
+  async function verifieerViaOpenFigi(bedrijfsnaam, kandidaten) {
+    if (!OPENFIGI_KEY) return null;
+    try {
+      const r = await fetch('https://api.openfigi.com/v3/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-OPENFIGI-APIKEY': OPENFIGI_KEY },
+        body: JSON.stringify({ query: bedrijfsnaam }),
+      });
+      const d = await r.json();
+      const gevonden = d?.data || [];
+      for (const fig of gevonden.slice(0, 15)) {
+        if (!(fig.exchCode in FIGI_NAAR_SUFFIX)) continue;
+        const verwachtSuffix = FIGI_NAAR_SUFFIX[fig.exchCode];
+        const basisTicker = (fig.ticker || '').toUpperCase();
+        const match = kandidaten.find(k => {
+          const sym = k.symbol.toUpperCase();
+          const puntPos = sym.lastIndexOf('.');
+          const symBasis = puntPos === -1 ? sym : sym.slice(0, puntPos);
+          const symSuffix = puntPos === -1 ? null : sym.slice(puntPos + 1);
+          if (symBasis !== basisTicker) return false;
+          return verwachtSuffix === null ? symSuffix === null : symSuffix === verwachtSuffix;
+        });
+        if (match) return match.symbol;
+      }
+      return null;
+    } catch (e) { return null; }
+  }
 
   const { endpoint } = req.query;
 
@@ -428,16 +476,40 @@ module.exports = async function handler(req, res) {
           }
           return 30; // andere suffixen: overige secundaire beurzen
         }
-        const perBedrijf = new Map();
+        const perBedrijf = new Map(); // sleutel -> alle ruwe kandidaten
         for (const r of resultaten) {
           const sleutel = normaliseerNaam(r.naam) + '|' + r.type;
-          const score = scoreNotering(r);
-          const bestaand = perBedrijf.get(sleutel);
-          if (!bestaand || score > bestaand.score) {
-            perBedrijf.set(sleutel, { ...r, score });
+          if (!perBedrijf.has(sleutel)) perBedrijf.set(sleutel, []);
+          perBedrijf.get(sleutel).push(r);
+        }
+
+        // Per groep: kies de beste kandidaat op basis van scoreNotering(). Als er
+        // meerdere kandidaten zijn én de winnaar nog niet gegarandeerd is via onze
+        // eigen whitelist (score 1000), vragen we OpenFIGI om een onafhankelijke
+        // bevestiging — en die krijgt voorrang op de heuristiek.
+        const teVerifieren = [];
+        const voorlopig = new Map(); // sleutel -> { kandidaten, beste }
+        for (const [sleutel, kandidaten] of perBedrijf) {
+          let beste = kandidaten[0], besteScore = scoreNotering(kandidaten[0]);
+          for (const k of kandidaten.slice(1)) {
+            const s = scoreNotering(k);
+            if (s > besteScore) { beste = k; besteScore = s; }
+          }
+          voorlopig.set(sleutel, { kandidaten, beste });
+          if (kandidaten.length > 1 && besteScore < 1000 && OPENFIGI_KEY) {
+            teVerifieren.push(sleutel);
           }
         }
-        resultaten = Array.from(perBedrijf.values()).map(({ score, ...r }) => r);
+        // Max. 5 OpenFIGI-verificaties per zoekopdracht (snelheid + rate limit)
+        await Promise.all(teVerifieren.slice(0, 5).map(async (sleutel) => {
+          const { kandidaten } = voorlopig.get(sleutel);
+          const bevestigdSymbol = await verifieerViaOpenFigi(kandidaten[0].naam, kandidaten);
+          if (bevestigdSymbol) {
+            const match = kandidaten.find(k => k.symbol === bevestigdSymbol);
+            if (match) voorlopig.set(sleutel, { kandidaten, beste: match });
+          }
+        }));
+        resultaten = Array.from(voorlopig.values()).map(({ beste }) => beste);
 
         // Volledige crypto EUR lijst
         const CRYPTO_EUR = {
