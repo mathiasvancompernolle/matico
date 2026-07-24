@@ -159,6 +159,201 @@ const FMP_SECTOR_MAP = {
   'Real Estate': 'Vastgoed', 'REITs': 'Vastgoed',
 };
 
+// ── ETF gewichtendatabase (regio + sector) ──────────────────────
+// Symbolen worden gematcht op prefix: VWCE.DE → VWCE, IWDA.AS → IWDA, enz.
+const ETF_DB = {
+  // Vanguard FTSE All-World (VWCE / VWRL)
+  VWCE: {
+    regio: { 'Noord-Amerika': 64.45, 'Europa - Ontwikkeld': 10.92, 'Azië - Ontwikkeld': 6.13, 'Japan': 5.83, 'Azië - Opkomend': 5.15, 'Verenigd Koninkrijk': 3.19, 'Australazië': 1.67, 'Afrika/Midden-Oosten': 1.34, 'Latijns-Amerika': 1.03, 'Europa - Opkomend': 0.29 },
+    sector: { 'Technologie': 29.0, 'Financiële dienstverlening': 16.1, 'Industrie': 11.0, 'Cyclische consumptiegoederen': 9.4, 'Communicatiediensten': 8.8, 'Gezondheidszorg': 8.0, 'Defensieve consumptiegoederen': 4.9, 'Energie': 4.2, 'Basismaterialen': 3.8, 'Nutsbedrijven': 2.7, 'Vastgoed': 1.9 }
+  },
+  VWRL: {
+    regio: { 'Noord-Amerika': 64.45, 'Europa - Ontwikkeld': 10.92, 'Azië - Ontwikkeld': 6.13, 'Japan': 5.83, 'Azië - Opkomend': 5.15, 'Verenigd Koninkrijk': 3.19, 'Australazië': 1.67, 'Afrika/Midden-Oosten': 1.34, 'Latijns-Amerika': 1.03, 'Europa - Opkomend': 0.29 },
+    sector: { 'Technologie': 29.0, 'Financiële dienstverlening': 16.1, 'Industrie': 11.0, 'Cyclische consumptiegoederen': 9.4, 'Communicatiediensten': 8.8, 'Gezondheidszorg': 8.0, 'Defensieve consumptiegoederen': 4.9, 'Energie': 4.2, 'Basismaterialen': 3.8, 'Nutsbedrijven': 2.7, 'Vastgoed': 1.9 }
+  },
+  // iShares Core MSCI World (IWDA / SWRD)
+  IWDA: {
+    regio: { 'Noord-Amerika': 72.1, 'Europa - Ontwikkeld': 13.8, 'Japan': 6.2, 'Azië - Ontwikkeld': 4.1, 'Verenigd Koninkrijk': 2.9, 'Australazië': 0.9 },
+    sector: { 'Technologie': 25.2, 'Financiële dienstverlening': 15.8, 'Gezondheidszorg': 12.1, 'Industrie': 11.3, 'Cyclische consumptiegoederen': 10.4, 'Communicatiediensten': 8.6, 'Defensieve consumptiegoederen': 6.8, 'Energie': 4.5, 'Basismaterialen': 3.2, 'Nutsbedrijven': 2.1 }
+  },
+  SWRD: {
+    regio: { 'Noord-Amerika': 72.1, 'Europa - Ontwikkeld': 13.8, 'Japan': 6.2, 'Azië - Ontwikkeld': 4.1, 'Verenigd Koninkrijk': 2.9, 'Australazië': 0.9 },
+    sector: { 'Technologie': 25.2, 'Financiële dienstverlening': 15.8, 'Gezondheidszorg': 12.1, 'Industrie': 11.3, 'Cyclische consumptiegoederen': 10.4, 'Communicatiediensten': 8.6, 'Defensieve consumptiegoederen': 6.8, 'Energie': 4.5, 'Basismaterialen': 3.2, 'Nutsbedrijven': 2.1 }
+  },
+  // iShares Emerging Markets (EMIM / EEM / IEMA)
+  EMIM: {
+    regio: { 'China': 27.5, 'India': 18.2, 'Taiwan': 16.8, 'Zuid-Korea': 11.3, 'Brazilië': 5.4, 'Saudi-Arabië': 4.1, 'Zuid-Afrika': 3.2, 'Mexico': 2.8, 'Overige opkomende markten': 10.7 },
+    sector: { 'Financiële dienstverlening': 22.4, 'Technologie': 20.1, 'Cyclische consumptiegoederen': 13.8, 'Communicatiediensten': 9.6, 'Energie': 6.8, 'Industrie': 6.4, 'Basismaterialen': 6.2, 'Gezondheidszorg': 4.8, 'Defensieve consumptiegoederen': 4.5, 'Vastgoed': 3.2, 'Nutsbedrijven': 2.2 }
+  },
+  IEMA: {
+    regio: { 'China': 27.5, 'India': 18.2, 'Taiwan': 16.8, 'Zuid-Korea': 11.3, 'Brazilië': 5.4, 'Saudi-Arabië': 4.1, 'Zuid-Afrika': 3.2, 'Mexico': 2.8, 'Overige opkomende markten': 10.7 },
+    sector: { 'Financiële dienstverlening': 22.4, 'Technologie': 20.1, 'Cyclische consumptiegoederen': 13.8, 'Communicatiediensten': 9.6, 'Energie': 6.8, 'Industrie': 6.4, 'Basismaterialen': 6.2, 'Gezondheidszorg': 4.8, 'Defensieve consumptiegoederen': 4.5, 'Vastgoed': 3.2, 'Nutsbedrijven': 2.2 }
+  },
+  EEM: {
+    regio: { 'China': 27.5, 'India': 18.2, 'Taiwan': 16.8, 'Zuid-Korea': 11.3, 'Brazilië': 5.4, 'Saudi-Arabië': 4.1, 'Zuid-Afrika': 3.2, 'Mexico': 2.8, 'Overige opkomende markten': 10.7 },
+    sector: { 'Financiële dienstverlening': 22.4, 'Technologie': 20.1, 'Cyclische consumptiegoederen': 13.8, 'Communicatiediensten': 9.6, 'Energie': 6.8, 'Industrie': 6.4, 'Basismaterialen': 6.2, 'Gezondheidszorg': 4.8, 'Defensieve consumptiegoederen': 4.5, 'Vastgoed': 3.2, 'Nutsbedrijven': 2.2 }
+  },
+  // Invesco NASDAQ-100 (EQQQ / QQQ / CNDX)
+  EQQQ: {
+    regio: { 'Noord-Amerika': 94.8, 'Europa - Ontwikkeld': 2.1, 'Azië - Ontwikkeld': 1.8, 'Overige': 1.3 },
+    sector: { 'Technologie': 51.2, 'Communicatiediensten': 16.8, 'Cyclische consumptiegoederen': 14.3, 'Gezondheidszorg': 6.4, 'Industrie': 4.8, 'Financiële dienstverlening': 3.1, 'Defensieve consumptiegoederen': 1.8, 'Overige': 1.6 }
+  },
+  CNDX: {
+    regio: { 'Noord-Amerika': 94.8, 'Europa - Ontwikkeld': 2.1, 'Azië - Ontwikkeld': 1.8, 'Overige': 1.3 },
+    sector: { 'Technologie': 51.2, 'Communicatiediensten': 16.8, 'Cyclische consumptiegoederen': 14.3, 'Gezondheidszorg': 6.4, 'Industrie': 4.8, 'Financiële dienstverlening': 3.1, 'Defensieve consumptiegoederen': 1.8, 'Overige': 1.6 }
+  },
+  QQQ: {
+    regio: { 'Noord-Amerika': 94.8, 'Europa - Ontwikkeld': 2.1, 'Azië - Ontwikkeld': 1.8, 'Overige': 1.3 },
+    sector: { 'Technologie': 51.2, 'Communicatiediensten': 16.8, 'Cyclische consumptiegoederen': 14.3, 'Gezondheidszorg': 6.4, 'Industrie': 4.8, 'Financiële dienstverlening': 3.1, 'Defensieve consumptiegoederen': 1.8, 'Overige': 1.6 }
+  },
+  // iShares S&P 500 (CSPX / SXR8 / IVV / SPY / IUSA)
+  CSPX: {
+    regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+    sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
+  },
+  SXR8: {
+    regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+    sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
+  },
+  IUSA: {
+    regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+    sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
+  },
+  IVV: {
+    regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+    sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
+  },
+  SPY: {
+    regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+    sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
+  },
+  // Xtrackers MSCI World (XDWD / XWLD)
+  XDWD: {
+    regio: { 'Noord-Amerika': 71.8, 'Europa - Ontwikkeld': 14.2, 'Japan': 6.4, 'Azië - Ontwikkeld': 3.9, 'Verenigd Koninkrijk': 2.8, 'Australazië': 0.9 },
+    sector: { 'Technologie': 24.9, 'Financiële dienstverlening': 15.6, 'Gezondheidszorg': 12.3, 'Industrie': 11.5, 'Cyclische consumptiegoederen': 10.2, 'Communicatiediensten': 8.4, 'Defensieve consumptiegoederen': 7.1, 'Energie': 4.4, 'Basismaterialen': 3.3, 'Nutsbedrijven': 2.3 }
+  },
+  XWLD: {
+    regio: { 'Noord-Amerika': 71.8, 'Europa - Ontwikkeld': 14.2, 'Japan': 6.4, 'Azië - Ontwikkeld': 3.9, 'Verenigd Koninkrijk': 2.8, 'Australazië': 0.9 },
+    sector: { 'Technologie': 24.9, 'Financiële dienstverlening': 15.6, 'Gezondheidszorg': 12.3, 'Industrie': 11.5, 'Cyclische consumptiegoederen': 10.2, 'Communicatiediensten': 8.4, 'Defensieve consumptiegoederen': 7.1, 'Energie': 4.4, 'Basismaterialen': 3.3, 'Nutsbedrijven': 2.3 }
+  },
+  // Amundi MSCI World / Prime All Country (LCWD / CW8 / WEBG / PRAW)
+  LCWD: {
+    regio: { 'Noord-Amerika': 71.5, 'Europa - Ontwikkeld': 14.0, 'Japan': 6.3, 'Azië - Ontwikkeld': 4.2, 'Verenigd Koninkrijk': 3.1, 'Australazië': 0.9 },
+    sector: { 'Technologie': 25.1, 'Financiële dienstverlening': 15.9, 'Gezondheidszorg': 12.0, 'Industrie': 11.2, 'Cyclische consumptiegoederen': 10.6, 'Communicatiediensten': 8.5, 'Defensieve consumptiegoederen': 6.9, 'Energie': 4.3, 'Basismaterialen': 3.4, 'Nutsbedrijven': 2.1 }
+  },
+  WEBG: {
+    regio: { 'Noord-Amerika': 64.2, 'Europa - Ontwikkeld': 10.8, 'Japan': 5.9, 'Azië - Ontwikkeld': 6.1, 'Azië - Opkomend': 5.4, 'Verenigd Koninkrijk': 3.1, 'Australazië': 1.6, 'Latijns-Amerika': 1.1, 'Overige': 1.8 },
+    sector: { 'Technologie': 28.8, 'Financiële dienstverlening': 16.0, 'Industrie': 10.9, 'Cyclische consumptiegoederen': 9.5, 'Communicatiediensten': 8.7, 'Gezondheidszorg': 8.1, 'Defensieve consumptiegoederen': 4.8, 'Energie': 4.1, 'Basismaterialen': 3.7, 'Nutsbedrijven': 2.6, 'Vastgoed': 2.8 }
+  },
+  PRAW: {
+    regio: { 'Noord-Amerika': 64.2, 'Europa - Ontwikkeld': 10.8, 'Japan': 5.9, 'Azië - Ontwikkeld': 6.1, 'Azië - Opkomend': 5.4, 'Verenigd Koninkrijk': 3.1, 'Australazië': 1.6, 'Latijns-Amerika': 1.1, 'Overige': 1.8 },
+    sector: { 'Technologie': 28.8, 'Financiële dienstverlening': 16.0, 'Industrie': 10.9, 'Cyclische consumptiegoederen': 9.5, 'Communicatiediensten': 8.7, 'Gezondheidszorg': 8.1, 'Defensieve consumptiegoederen': 4.8, 'Energie': 4.1, 'Basismaterialen': 3.7, 'Nutsbedrijven': 2.6, 'Vastgoed': 2.8 }
+  },
+  // iShares Core EURO STOXX 50 (CSX5 / EUE / EUEA)
+  CSX5: {
+    regio: { 'Frankrijk': 38.2, 'Duitsland': 27.4, 'Nederland': 12.8, 'Spanje': 9.6, 'Finland': 4.2, 'Italië': 3.9, 'Ierland': 2.1, 'België': 1.8 },
+    sector: { 'Financiële dienstverlening': 19.8, 'Industrie': 17.4, 'Technologie': 12.6, 'Gezondheidszorg': 11.8, 'Defensieve consumptiegoederen': 10.4, 'Energie': 7.9, 'Cyclische consumptiegoederen': 7.2, 'Basismaterialen': 5.6, 'Nutsbedrijven': 4.8, 'Overige': 2.5 }
+  },
+  // iShares Core MSCI Europe (SMEA / IMEU / IEUA)
+  SMEA: {
+    regio: { 'Verenigd Koninkrijk': 22.4, 'Frankrijk': 18.3, 'Zwitserland': 14.8, 'Duitsland': 12.6, 'Nederland': 7.2, 'Zweden': 5.4, 'Denemarken': 4.8, 'Spanje': 4.2, 'Overige Europa': 10.3 },
+    sector: { 'Financiële dienstverlening': 18.6, 'Industrie': 16.2, 'Gezondheidszorg': 14.8, 'Defensieve consumptiegoederen': 13.4, 'Technologie': 8.9, 'Cyclische consumptiegoederen': 8.2, 'Energie': 6.8, 'Basismaterialen': 5.9, 'Nutsbedrijven': 4.4, 'Vastgoed': 2.8 }
+  },
+  IMEU: {
+    regio: { 'Verenigd Koninkrijk': 22.4, 'Frankrijk': 18.3, 'Zwitserland': 14.8, 'Duitsland': 12.6, 'Nederland': 7.2, 'Zweden': 5.4, 'Denemarken': 4.8, 'Spanje': 4.2, 'Overige Europa': 10.3 },
+    sector: { 'Financiële dienstverlening': 18.6, 'Industrie': 16.2, 'Gezondheidszorg': 14.8, 'Defensieve consumptiegoederen': 13.4, 'Technologie': 8.9, 'Cyclische consumptiegoederen': 8.2, 'Energie': 6.8, 'Basismaterialen': 5.9, 'Nutsbedrijven': 4.4, 'Vastgoed': 2.8 }
+  },
+  // SPDR S&P 500 ETF / World
+  GWL: {
+    regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+    sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
+  },
+  // ── Nieuw toegevoegd (juli 2026) — met bron geverifieerd ──────────────
+  // iShares Core MSCI World (Xetra-notering) — zelfde fonds als IWDA/SWRD
+  EUNL: {
+    regio: { 'Noord-Amerika': 72.1, 'Europa - Ontwikkeld': 13.8, 'Japan': 6.2, 'Azië - Ontwikkeld': 4.1, 'Verenigd Koninkrijk': 2.9, 'Australazië': 0.9 },
+    sector: { 'Technologie': 25.2, 'Financiële dienstverlening': 15.8, 'Gezondheidszorg': 12.1, 'Industrie': 11.3, 'Cyclische consumptiegoederen': 10.4, 'Communicatiediensten': 8.6, 'Defensieve consumptiegoederen': 6.8, 'Energie': 4.5, 'Basismaterialen': 3.2, 'Nutsbedrijven': 2.1 }
+  },
+  // Vanguard S&P 500 UCITS ETF — zelfde index als IVV/SPY/IUSA/CSPX
+  VOO: {
+    regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+    sector: { 'Technologie': 33.03, 'Financiële dienstverlening': 14.00, 'Cyclische consumptiegoederen': 10.35, 'Communicatiediensten': 9.77, 'Gezondheidszorg': 9.30, 'Industrie': 8.57, 'Defensieve consumptiegoederen': 5.49, 'Energie': 2.97, 'Nutsbedrijven': 2.39, 'Vastgoed': 2.04, 'Basismaterialen': 1.88 }
+  },
+  VUSA: {
+    regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+    sector: { 'Technologie': 33.03, 'Financiële dienstverlening': 14.00, 'Cyclische consumptiegoederen': 10.35, 'Communicatiediensten': 9.77, 'Gezondheidszorg': 9.30, 'Industrie': 8.57, 'Defensieve consumptiegoederen': 5.49, 'Energie': 2.97, 'Nutsbedrijven': 2.39, 'Vastgoed': 2.04, 'Basismaterialen': 1.88 }
+  },
+  // iShares Core MSCI EM IMI (LSE-notering) — zelfde fonds als EMIM
+  EIMI: {
+    regio: { 'China': 27.5, 'India': 18.2, 'Taiwan': 16.8, 'Zuid-Korea': 11.3, 'Brazilië': 5.4, 'Saudi-Arabië': 4.1, 'Zuid-Afrika': 3.2, 'Mexico': 2.8, 'Overige opkomende markten': 10.7 },
+    sector: { 'Financiële dienstverlening': 22.4, 'Technologie': 20.1, 'Cyclische consumptiegoederen': 13.8, 'Communicatiediensten': 9.6, 'Energie': 6.8, 'Industrie': 6.4, 'Basismaterialen': 6.2, 'Gezondheidszorg': 4.8, 'Defensieve consumptiegoederen': 4.5, 'Vastgoed': 3.2, 'Nutsbedrijven': 2.2 }
+  },
+  // iShares Core EURO STOXX 50 (dubbele notering) — zelfde fonds als CSX5
+  CSSX5E: {
+    regio: { 'Frankrijk': 38.2, 'Duitsland': 27.4, 'Nederland': 12.8, 'Spanje': 9.6, 'Finland': 4.2, 'Italië': 3.9, 'Ierland': 2.1, 'België': 1.8 },
+    sector: { 'Financiële dienstverlening': 19.8, 'Industrie': 17.4, 'Technologie': 12.6, 'Gezondheidszorg': 11.8, 'Defensieve consumptiegoederen': 10.4, 'Energie': 7.9, 'Cyclische consumptiegoederen': 7.2, 'Basismaterialen': 5.6, 'Nutsbedrijven': 4.8, 'Overige': 2.5 }
+  },
+  // Vanguard Total Stock Market ETF — sector via Yahoo (juli 2026), regio 100% VS
+  VTI: {
+    regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+    sector: { 'Technologie': 36.07, 'Financiële dienstverlening': 11.76, 'Industrie': 10.15, 'Gezondheidszorg': 9.66, 'Cyclische consumptiegoederen': 9.40, 'Communicatiediensten': 9.13, 'Defensieve consumptiegoederen': 4.29, 'Energie': 3.15, 'Vastgoed': 2.33, 'Nutsbedrijven': 2.17, 'Basismaterialen': 1.89 }
+  },
+  // Vanguard FTSE Emerging Markets UCITS ETF — sector rechtstreeks bevestigd
+  // via de live Yahoo-data van de app zelf (juli 2026); regio via TradingView
+  // (zelfde FTSE Emerging Index als de Acc-variant VFEA)
+  VFEM: {
+    regio: { 'Azië - Opkomend': 77.97, 'Afrika/Midden-Oosten': 10.60, 'Latijns-Amerika': 5.02, 'Europa - Opkomend': 4.11, 'Noord-Amerika': 2.30 },
+    sector: { 'Technologie': 34.07, 'Financiële dienstverlening': 20.68, 'Cyclische consumptiegoederen': 9.17, 'Communicatiediensten': 7.1, 'Basismaterialen': 6.95, 'Industrie': 6.88, 'Energie': 4.07, 'Defensieve consumptiegoederen': 3.33, 'Gezondheidszorg': 3.30, 'Nutsbedrijven': 2.86, 'Vastgoed': 1.59 }
+  },
+};
+
+// Zoek ETF op symboolprefix (VWCE.DE → VWCE, IWDA.AS → IWDA, enz.)
+const zoekETF = (symbol) => {
+  if (!symbol) return null;
+  const sym = symbol.toUpperCase();
+  if (ETF_DB[sym]) return ETF_DB[sym];
+  const basis = sym.split('.')[0];
+  if (ETF_DB[basis]) return ETF_DB[basis];
+  return null;
+};
+
+// Live sector-/regiogewichten: voor ETF's die niet in de handmatige ETF_DB
+// hierboven staan, gebruiken we de data die al via de etf-holdings endpoint
+// wordt opgehaald (liveEtfData, ook gebruikt voor de holdings-tabel
+// verderop) — zo krijgt élke ETF een echte spreiding i.p.v. "Overige"/
+// "Wereldwijd". De backend (EODHD) levert regio's al in dezelfde
+// Nederlandse bucketnamen als ETF_DB hierboven, dus geen extra vertaling
+// nodig voor "landen" → regio.
+const liveEtfSectorGewichten = (symbol, liveEtfData) => {
+  const basis = symbol.toUpperCase().split('.')[0];
+  const sectoren = liveEtfData[basis]?.sectoren;
+  if (!sectoren || sectoren.length === 0) return null;
+  const gewichten = {};
+  sectoren.forEach(s => {
+    const label = FMP_SECTOR_MAP[s.label] || 'Overige';
+    gewichten[label] = (gewichten[label] || 0) + s.pct;
+  });
+  return gewichten;
+};
+const liveEtfRegioGewichten = (symbol, liveEtfData) => {
+  const basis = symbol.toUpperCase().split('.')[0];
+  const landen = liveEtfData[basis]?.landen;
+  if (!landen || landen.length === 0) return null;
+  const gewichten = {};
+  landen.forEach(l => {
+    const label = l.label || 'Overige';
+    gewichten[label] = (gewichten[label] || 0) + l.pct;
+  });
+  return gewichten;
+};
+
+const getEtfGewichten = (sym, type, liveEtfData) => {
+  const etf = zoekETF(sym);
+  if (etf) return type === 'regio' ? etf.regio : etf.sector;
+  return type === 'regio' ? liveEtfRegioGewichten(sym, liveEtfData) : liveEtfSectorGewichten(sym, liveEtfData);
+};
+
+
 function getSector(b, liveSectoren = {}) {
   const sym = b.symbol.toUpperCase().split('.')[0];
   if (isEtfBelegging(b)) return 'ETF';
@@ -300,200 +495,6 @@ export function Analyse() {
 
   // ── Spreiding berekening ──
   const { spreidingData, pieData } = useMemo(() => {
-    // ── ETF gewichtendatabase (regio + sector) ──────────────────────
-    // Symbolen worden gematcht op prefix: VWCE.DE → VWCE, IWDA.AS → IWDA, enz.
-    const ETF_DB = {
-      // Vanguard FTSE All-World (VWCE / VWRL)
-      VWCE: {
-        regio: { 'Noord-Amerika': 64.45, 'Europa - Ontwikkeld': 10.92, 'Azië - Ontwikkeld': 6.13, 'Japan': 5.83, 'Azië - Opkomend': 5.15, 'Verenigd Koninkrijk': 3.19, 'Australazië': 1.67, 'Afrika/Midden-Oosten': 1.34, 'Latijns-Amerika': 1.03, 'Europa - Opkomend': 0.29 },
-        sector: { 'Technologie': 29.0, 'Financiële dienstverlening': 16.1, 'Industrie': 11.0, 'Cyclische consumptiegoederen': 9.4, 'Communicatiediensten': 8.8, 'Gezondheidszorg': 8.0, 'Defensieve consumptiegoederen': 4.9, 'Energie': 4.2, 'Basismaterialen': 3.8, 'Nutsbedrijven': 2.7, 'Vastgoed': 1.9 }
-      },
-      VWRL: {
-        regio: { 'Noord-Amerika': 64.45, 'Europa - Ontwikkeld': 10.92, 'Azië - Ontwikkeld': 6.13, 'Japan': 5.83, 'Azië - Opkomend': 5.15, 'Verenigd Koninkrijk': 3.19, 'Australazië': 1.67, 'Afrika/Midden-Oosten': 1.34, 'Latijns-Amerika': 1.03, 'Europa - Opkomend': 0.29 },
-        sector: { 'Technologie': 29.0, 'Financiële dienstverlening': 16.1, 'Industrie': 11.0, 'Cyclische consumptiegoederen': 9.4, 'Communicatiediensten': 8.8, 'Gezondheidszorg': 8.0, 'Defensieve consumptiegoederen': 4.9, 'Energie': 4.2, 'Basismaterialen': 3.8, 'Nutsbedrijven': 2.7, 'Vastgoed': 1.9 }
-      },
-      // iShares Core MSCI World (IWDA / SWRD)
-      IWDA: {
-        regio: { 'Noord-Amerika': 72.1, 'Europa - Ontwikkeld': 13.8, 'Japan': 6.2, 'Azië - Ontwikkeld': 4.1, 'Verenigd Koninkrijk': 2.9, 'Australazië': 0.9 },
-        sector: { 'Technologie': 25.2, 'Financiële dienstverlening': 15.8, 'Gezondheidszorg': 12.1, 'Industrie': 11.3, 'Cyclische consumptiegoederen': 10.4, 'Communicatiediensten': 8.6, 'Defensieve consumptiegoederen': 6.8, 'Energie': 4.5, 'Basismaterialen': 3.2, 'Nutsbedrijven': 2.1 }
-      },
-      SWRD: {
-        regio: { 'Noord-Amerika': 72.1, 'Europa - Ontwikkeld': 13.8, 'Japan': 6.2, 'Azië - Ontwikkeld': 4.1, 'Verenigd Koninkrijk': 2.9, 'Australazië': 0.9 },
-        sector: { 'Technologie': 25.2, 'Financiële dienstverlening': 15.8, 'Gezondheidszorg': 12.1, 'Industrie': 11.3, 'Cyclische consumptiegoederen': 10.4, 'Communicatiediensten': 8.6, 'Defensieve consumptiegoederen': 6.8, 'Energie': 4.5, 'Basismaterialen': 3.2, 'Nutsbedrijven': 2.1 }
-      },
-      // iShares Emerging Markets (EMIM / EEM / IEMA)
-      EMIM: {
-        regio: { 'China': 27.5, 'India': 18.2, 'Taiwan': 16.8, 'Zuid-Korea': 11.3, 'Brazilië': 5.4, 'Saudi-Arabië': 4.1, 'Zuid-Afrika': 3.2, 'Mexico': 2.8, 'Overige opkomende markten': 10.7 },
-        sector: { 'Financiële dienstverlening': 22.4, 'Technologie': 20.1, 'Cyclische consumptiegoederen': 13.8, 'Communicatiediensten': 9.6, 'Energie': 6.8, 'Industrie': 6.4, 'Basismaterialen': 6.2, 'Gezondheidszorg': 4.8, 'Defensieve consumptiegoederen': 4.5, 'Vastgoed': 3.2, 'Nutsbedrijven': 2.2 }
-      },
-      IEMA: {
-        regio: { 'China': 27.5, 'India': 18.2, 'Taiwan': 16.8, 'Zuid-Korea': 11.3, 'Brazilië': 5.4, 'Saudi-Arabië': 4.1, 'Zuid-Afrika': 3.2, 'Mexico': 2.8, 'Overige opkomende markten': 10.7 },
-        sector: { 'Financiële dienstverlening': 22.4, 'Technologie': 20.1, 'Cyclische consumptiegoederen': 13.8, 'Communicatiediensten': 9.6, 'Energie': 6.8, 'Industrie': 6.4, 'Basismaterialen': 6.2, 'Gezondheidszorg': 4.8, 'Defensieve consumptiegoederen': 4.5, 'Vastgoed': 3.2, 'Nutsbedrijven': 2.2 }
-      },
-      EEM: {
-        regio: { 'China': 27.5, 'India': 18.2, 'Taiwan': 16.8, 'Zuid-Korea': 11.3, 'Brazilië': 5.4, 'Saudi-Arabië': 4.1, 'Zuid-Afrika': 3.2, 'Mexico': 2.8, 'Overige opkomende markten': 10.7 },
-        sector: { 'Financiële dienstverlening': 22.4, 'Technologie': 20.1, 'Cyclische consumptiegoederen': 13.8, 'Communicatiediensten': 9.6, 'Energie': 6.8, 'Industrie': 6.4, 'Basismaterialen': 6.2, 'Gezondheidszorg': 4.8, 'Defensieve consumptiegoederen': 4.5, 'Vastgoed': 3.2, 'Nutsbedrijven': 2.2 }
-      },
-      // Invesco NASDAQ-100 (EQQQ / QQQ / CNDX)
-      EQQQ: {
-        regio: { 'Noord-Amerika': 94.8, 'Europa - Ontwikkeld': 2.1, 'Azië - Ontwikkeld': 1.8, 'Overige': 1.3 },
-        sector: { 'Technologie': 51.2, 'Communicatiediensten': 16.8, 'Cyclische consumptiegoederen': 14.3, 'Gezondheidszorg': 6.4, 'Industrie': 4.8, 'Financiële dienstverlening': 3.1, 'Defensieve consumptiegoederen': 1.8, 'Overige': 1.6 }
-      },
-      CNDX: {
-        regio: { 'Noord-Amerika': 94.8, 'Europa - Ontwikkeld': 2.1, 'Azië - Ontwikkeld': 1.8, 'Overige': 1.3 },
-        sector: { 'Technologie': 51.2, 'Communicatiediensten': 16.8, 'Cyclische consumptiegoederen': 14.3, 'Gezondheidszorg': 6.4, 'Industrie': 4.8, 'Financiële dienstverlening': 3.1, 'Defensieve consumptiegoederen': 1.8, 'Overige': 1.6 }
-      },
-      QQQ: {
-        regio: { 'Noord-Amerika': 94.8, 'Europa - Ontwikkeld': 2.1, 'Azië - Ontwikkeld': 1.8, 'Overige': 1.3 },
-        sector: { 'Technologie': 51.2, 'Communicatiediensten': 16.8, 'Cyclische consumptiegoederen': 14.3, 'Gezondheidszorg': 6.4, 'Industrie': 4.8, 'Financiële dienstverlening': 3.1, 'Defensieve consumptiegoederen': 1.8, 'Overige': 1.6 }
-      },
-      // iShares S&P 500 (CSPX / SXR8 / IVV / SPY / IUSA)
-      CSPX: {
-        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
-        sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
-      },
-      SXR8: {
-        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
-        sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
-      },
-      IUSA: {
-        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
-        sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
-      },
-      IVV: {
-        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
-        sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
-      },
-      SPY: {
-        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
-        sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
-      },
-      // Xtrackers MSCI World (XDWD / XWLD)
-      XDWD: {
-        regio: { 'Noord-Amerika': 71.8, 'Europa - Ontwikkeld': 14.2, 'Japan': 6.4, 'Azië - Ontwikkeld': 3.9, 'Verenigd Koninkrijk': 2.8, 'Australazië': 0.9 },
-        sector: { 'Technologie': 24.9, 'Financiële dienstverlening': 15.6, 'Gezondheidszorg': 12.3, 'Industrie': 11.5, 'Cyclische consumptiegoederen': 10.2, 'Communicatiediensten': 8.4, 'Defensieve consumptiegoederen': 7.1, 'Energie': 4.4, 'Basismaterialen': 3.3, 'Nutsbedrijven': 2.3 }
-      },
-      XWLD: {
-        regio: { 'Noord-Amerika': 71.8, 'Europa - Ontwikkeld': 14.2, 'Japan': 6.4, 'Azië - Ontwikkeld': 3.9, 'Verenigd Koninkrijk': 2.8, 'Australazië': 0.9 },
-        sector: { 'Technologie': 24.9, 'Financiële dienstverlening': 15.6, 'Gezondheidszorg': 12.3, 'Industrie': 11.5, 'Cyclische consumptiegoederen': 10.2, 'Communicatiediensten': 8.4, 'Defensieve consumptiegoederen': 7.1, 'Energie': 4.4, 'Basismaterialen': 3.3, 'Nutsbedrijven': 2.3 }
-      },
-      // Amundi MSCI World / Prime All Country (LCWD / CW8 / WEBG / PRAW)
-      LCWD: {
-        regio: { 'Noord-Amerika': 71.5, 'Europa - Ontwikkeld': 14.0, 'Japan': 6.3, 'Azië - Ontwikkeld': 4.2, 'Verenigd Koninkrijk': 3.1, 'Australazië': 0.9 },
-        sector: { 'Technologie': 25.1, 'Financiële dienstverlening': 15.9, 'Gezondheidszorg': 12.0, 'Industrie': 11.2, 'Cyclische consumptiegoederen': 10.6, 'Communicatiediensten': 8.5, 'Defensieve consumptiegoederen': 6.9, 'Energie': 4.3, 'Basismaterialen': 3.4, 'Nutsbedrijven': 2.1 }
-      },
-      WEBG: {
-        regio: { 'Noord-Amerika': 64.2, 'Europa - Ontwikkeld': 10.8, 'Japan': 5.9, 'Azië - Ontwikkeld': 6.1, 'Azië - Opkomend': 5.4, 'Verenigd Koninkrijk': 3.1, 'Australazië': 1.6, 'Latijns-Amerika': 1.1, 'Overige': 1.8 },
-        sector: { 'Technologie': 28.8, 'Financiële dienstverlening': 16.0, 'Industrie': 10.9, 'Cyclische consumptiegoederen': 9.5, 'Communicatiediensten': 8.7, 'Gezondheidszorg': 8.1, 'Defensieve consumptiegoederen': 4.8, 'Energie': 4.1, 'Basismaterialen': 3.7, 'Nutsbedrijven': 2.6, 'Vastgoed': 2.8 }
-      },
-      PRAW: {
-        regio: { 'Noord-Amerika': 64.2, 'Europa - Ontwikkeld': 10.8, 'Japan': 5.9, 'Azië - Ontwikkeld': 6.1, 'Azië - Opkomend': 5.4, 'Verenigd Koninkrijk': 3.1, 'Australazië': 1.6, 'Latijns-Amerika': 1.1, 'Overige': 1.8 },
-        sector: { 'Technologie': 28.8, 'Financiële dienstverlening': 16.0, 'Industrie': 10.9, 'Cyclische consumptiegoederen': 9.5, 'Communicatiediensten': 8.7, 'Gezondheidszorg': 8.1, 'Defensieve consumptiegoederen': 4.8, 'Energie': 4.1, 'Basismaterialen': 3.7, 'Nutsbedrijven': 2.6, 'Vastgoed': 2.8 }
-      },
-      // iShares Core EURO STOXX 50 (CSX5 / EUE / EUEA)
-      CSX5: {
-        regio: { 'Frankrijk': 38.2, 'Duitsland': 27.4, 'Nederland': 12.8, 'Spanje': 9.6, 'Finland': 4.2, 'Italië': 3.9, 'Ierland': 2.1, 'België': 1.8 },
-        sector: { 'Financiële dienstverlening': 19.8, 'Industrie': 17.4, 'Technologie': 12.6, 'Gezondheidszorg': 11.8, 'Defensieve consumptiegoederen': 10.4, 'Energie': 7.9, 'Cyclische consumptiegoederen': 7.2, 'Basismaterialen': 5.6, 'Nutsbedrijven': 4.8, 'Overige': 2.5 }
-      },
-      // iShares Core MSCI Europe (SMEA / IMEU / IEUA)
-      SMEA: {
-        regio: { 'Verenigd Koninkrijk': 22.4, 'Frankrijk': 18.3, 'Zwitserland': 14.8, 'Duitsland': 12.6, 'Nederland': 7.2, 'Zweden': 5.4, 'Denemarken': 4.8, 'Spanje': 4.2, 'Overige Europa': 10.3 },
-        sector: { 'Financiële dienstverlening': 18.6, 'Industrie': 16.2, 'Gezondheidszorg': 14.8, 'Defensieve consumptiegoederen': 13.4, 'Technologie': 8.9, 'Cyclische consumptiegoederen': 8.2, 'Energie': 6.8, 'Basismaterialen': 5.9, 'Nutsbedrijven': 4.4, 'Vastgoed': 2.8 }
-      },
-      IMEU: {
-        regio: { 'Verenigd Koninkrijk': 22.4, 'Frankrijk': 18.3, 'Zwitserland': 14.8, 'Duitsland': 12.6, 'Nederland': 7.2, 'Zweden': 5.4, 'Denemarken': 4.8, 'Spanje': 4.2, 'Overige Europa': 10.3 },
-        sector: { 'Financiële dienstverlening': 18.6, 'Industrie': 16.2, 'Gezondheidszorg': 14.8, 'Defensieve consumptiegoederen': 13.4, 'Technologie': 8.9, 'Cyclische consumptiegoederen': 8.2, 'Energie': 6.8, 'Basismaterialen': 5.9, 'Nutsbedrijven': 4.4, 'Vastgoed': 2.8 }
-      },
-      // SPDR S&P 500 ETF / World
-      GWL: {
-        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
-        sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
-      },
-      // ── Nieuw toegevoegd (juli 2026) — met bron geverifieerd ──────────────
-      // iShares Core MSCI World (Xetra-notering) — zelfde fonds als IWDA/SWRD
-      EUNL: {
-        regio: { 'Noord-Amerika': 72.1, 'Europa - Ontwikkeld': 13.8, 'Japan': 6.2, 'Azië - Ontwikkeld': 4.1, 'Verenigd Koninkrijk': 2.9, 'Australazië': 0.9 },
-        sector: { 'Technologie': 25.2, 'Financiële dienstverlening': 15.8, 'Gezondheidszorg': 12.1, 'Industrie': 11.3, 'Cyclische consumptiegoederen': 10.4, 'Communicatiediensten': 8.6, 'Defensieve consumptiegoederen': 6.8, 'Energie': 4.5, 'Basismaterialen': 3.2, 'Nutsbedrijven': 2.1 }
-      },
-      // Vanguard S&P 500 UCITS ETF — zelfde index als IVV/SPY/IUSA/CSPX
-      VOO: {
-        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
-        sector: { 'Technologie': 33.03, 'Financiële dienstverlening': 14.00, 'Cyclische consumptiegoederen': 10.35, 'Communicatiediensten': 9.77, 'Gezondheidszorg': 9.30, 'Industrie': 8.57, 'Defensieve consumptiegoederen': 5.49, 'Energie': 2.97, 'Nutsbedrijven': 2.39, 'Vastgoed': 2.04, 'Basismaterialen': 1.88 }
-      },
-      VUSA: {
-        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
-        sector: { 'Technologie': 33.03, 'Financiële dienstverlening': 14.00, 'Cyclische consumptiegoederen': 10.35, 'Communicatiediensten': 9.77, 'Gezondheidszorg': 9.30, 'Industrie': 8.57, 'Defensieve consumptiegoederen': 5.49, 'Energie': 2.97, 'Nutsbedrijven': 2.39, 'Vastgoed': 2.04, 'Basismaterialen': 1.88 }
-      },
-      // iShares Core MSCI EM IMI (LSE-notering) — zelfde fonds als EMIM
-      EIMI: {
-        regio: { 'China': 27.5, 'India': 18.2, 'Taiwan': 16.8, 'Zuid-Korea': 11.3, 'Brazilië': 5.4, 'Saudi-Arabië': 4.1, 'Zuid-Afrika': 3.2, 'Mexico': 2.8, 'Overige opkomende markten': 10.7 },
-        sector: { 'Financiële dienstverlening': 22.4, 'Technologie': 20.1, 'Cyclische consumptiegoederen': 13.8, 'Communicatiediensten': 9.6, 'Energie': 6.8, 'Industrie': 6.4, 'Basismaterialen': 6.2, 'Gezondheidszorg': 4.8, 'Defensieve consumptiegoederen': 4.5, 'Vastgoed': 3.2, 'Nutsbedrijven': 2.2 }
-      },
-      // iShares Core EURO STOXX 50 (dubbele notering) — zelfde fonds als CSX5
-      CSSX5E: {
-        regio: { 'Frankrijk': 38.2, 'Duitsland': 27.4, 'Nederland': 12.8, 'Spanje': 9.6, 'Finland': 4.2, 'Italië': 3.9, 'Ierland': 2.1, 'België': 1.8 },
-        sector: { 'Financiële dienstverlening': 19.8, 'Industrie': 17.4, 'Technologie': 12.6, 'Gezondheidszorg': 11.8, 'Defensieve consumptiegoederen': 10.4, 'Energie': 7.9, 'Cyclische consumptiegoederen': 7.2, 'Basismaterialen': 5.6, 'Nutsbedrijven': 4.8, 'Overige': 2.5 }
-      },
-      // Vanguard Total Stock Market ETF — sector via Yahoo (juli 2026), regio 100% VS
-      VTI: {
-        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
-        sector: { 'Technologie': 36.07, 'Financiële dienstverlening': 11.76, 'Industrie': 10.15, 'Gezondheidszorg': 9.66, 'Cyclische consumptiegoederen': 9.40, 'Communicatiediensten': 9.13, 'Defensieve consumptiegoederen': 4.29, 'Energie': 3.15, 'Vastgoed': 2.33, 'Nutsbedrijven': 2.17, 'Basismaterialen': 1.89 }
-      },
-      // Vanguard FTSE Emerging Markets UCITS ETF — sector rechtstreeks bevestigd
-      // via de live Yahoo-data van de app zelf (juli 2026); regio via TradingView
-      // (zelfde FTSE Emerging Index als de Acc-variant VFEA)
-      VFEM: {
-        regio: { 'Azië - Opkomend': 77.97, 'Afrika/Midden-Oosten': 10.60, 'Latijns-Amerika': 5.02, 'Europa - Opkomend': 4.11, 'Noord-Amerika': 2.30 },
-        sector: { 'Technologie': 34.07, 'Financiële dienstverlening': 20.68, 'Cyclische consumptiegoederen': 9.17, 'Communicatiediensten': 7.1, 'Basismaterialen': 6.95, 'Industrie': 6.88, 'Energie': 4.07, 'Defensieve consumptiegoederen': 3.33, 'Gezondheidszorg': 3.30, 'Nutsbedrijven': 2.86, 'Vastgoed': 1.59 }
-      },
-    };
-
-    // Zoek ETF op symboolprefix (VWCE.DE → VWCE, IWDA.AS → IWDA, enz.)
-    const zoekETF = (symbol) => {
-      if (!symbol) return null;
-      const sym = symbol.toUpperCase();
-      if (ETF_DB[sym]) return ETF_DB[sym];
-      const basis = sym.split('.')[0];
-      if (ETF_DB[basis]) return ETF_DB[basis];
-      return null;
-    };
-
-    // Live sector-/regiogewichten: voor ETF's die niet in de handmatige ETF_DB
-    // hierboven staan, gebruiken we de data die al via de etf-holdings endpoint
-    // wordt opgehaald (liveEtfData, ook gebruikt voor de holdings-tabel
-    // verderop) — zo krijgt élke ETF een echte spreiding i.p.v. "Overige"/
-    // "Wereldwijd". De backend (EODHD) levert regio's al in dezelfde
-    // Nederlandse bucketnamen als ETF_DB hierboven, dus geen extra vertaling
-    // nodig voor "landen" → regio.
-    const liveEtfSectorGewichten = (symbol) => {
-      const basis = symbol.toUpperCase().split('.')[0];
-      const sectoren = liveEtfData[basis]?.sectoren;
-      if (!sectoren || sectoren.length === 0) return null;
-      const gewichten = {};
-      sectoren.forEach(s => {
-        const label = FMP_SECTOR_MAP[s.label] || 'Overige';
-        gewichten[label] = (gewichten[label] || 0) + s.pct;
-      });
-      return gewichten;
-    };
-    const liveEtfRegioGewichten = (symbol) => {
-      const basis = symbol.toUpperCase().split('.')[0];
-      const landen = liveEtfData[basis]?.landen;
-      if (!landen || landen.length === 0) return null;
-      const gewichten = {};
-      landen.forEach(l => {
-        const label = l.label || 'Overige';
-        gewichten[label] = (gewichten[label] || 0) + l.pct;
-      });
-      return gewichten;
-    };
-
-    const getEtfGewichten = (sym, type) => {
-      const etf = zoekETF(sym);
-      if (etf) return type === 'regio' ? etf.regio : etf.sector;
-      return type === 'regio' ? liveEtfRegioGewichten(sym) : liveEtfSectorGewichten(sym);
-    };
-
     // Welke beleggingen tonen op basis van subfilter
     const gefilterd = beleggingen.filter(b => {
       if (spreidingTab === 'Type') return true;
@@ -533,7 +534,7 @@ export function Analyse() {
       const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
 
       if (b.type === 'etf') {
-        const gewichten = getEtfGewichten(b.symbol, isRegio ? 'regio' : 'sector');
+        const gewichten = getEtfGewichten(b.symbol, isRegio ? 'regio' : 'sector', liveEtfData);
         if (gewichten) {
           // Verdeel ETF waarde proportioneel over regio's/sectoren
           Object.entries(gewichten).forEach(([cat, pctInEtf]) => {
@@ -718,9 +719,31 @@ export function Analyse() {
     beleggingen.forEach(b => {
       const k = koersen[b.symbol];
       const w = ((k ? k.c : b.kostprijs) * b.aantal * factor(b) / totaal) * 100;
-      const s = getSector(b, liveSectoren); const r = getRegio(b);
-      sectorMap[s] = (sectorMap[s] || 0) + w;
-      regioMap[r] = (regioMap[r] || 0) + w;
+      if (b.type === 'etf') {
+        // Zelfde doorrekening als de spreidingstaart: verdeel de ETF-waarde
+        // proportioneel over de sectoren/regio's die het fonds echt bevat,
+        // i.p.v. de hele positie als één blok "ETF" te labelen.
+        const sectorGewichten = getEtfGewichten(b.symbol, 'sector', liveEtfData);
+        if (sectorGewichten) {
+          Object.entries(sectorGewichten).forEach(([cat, pctInEtf]) => {
+            sectorMap[cat] = (sectorMap[cat] || 0) + w * (pctInEtf / 100);
+          });
+        } else {
+          sectorMap['Overige'] = (sectorMap['Overige'] || 0) + w;
+        }
+        const regioGewichten = getEtfGewichten(b.symbol, 'regio', liveEtfData);
+        if (regioGewichten) {
+          Object.entries(regioGewichten).forEach(([cat, pctInEtf]) => {
+            regioMap[cat] = (regioMap[cat] || 0) + w * (pctInEtf / 100);
+          });
+        } else {
+          regioMap['Wereldwijd'] = (regioMap['Wereldwijd'] || 0) + w;
+        }
+      } else {
+        const s = getSector(b, liveSectoren); const r = getRegio(b);
+        sectorMap[s] = (sectorMap[s] || 0) + w;
+        regioMap[r] = (regioMap[r] || 0) + w;
+      }
     });
     const topS = Object.entries(sectorMap).sort((a, b) => b[1] - a[1])[0] || ['—', 0];
     const topR = Object.entries(regioMap).sort((a, b) => b[1] - a[1])[0] || ['—', 0];
@@ -782,7 +805,7 @@ export function Analyse() {
       topRegio: topR[0], topRegioPct: topR[1],
       concentratieTips: tips,
     };
-  }, [beleggingen, koersen, liveSectoren]);
+  }, [beleggingen, koersen, liveSectoren, liveEtfData]);
 
   // ── ETF X-ray database ──
   const etfs = beleggingen.filter(b => b.type === 'etf');
