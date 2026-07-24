@@ -63,7 +63,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
     <nav className="top-nav" style={{ display: 'flex', alignItems: 'center', padding: '0 16px', gap: 8 }}>
       {/* Logo */}
       <div onClick={() => { onSectieWissel('portefeuille'); navigeerNaar('overzicht'); }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 16, flexShrink: 0 }}>
-        <img src={rendlyLogo} alt="Rendly" style={{ height: 22, width: 'auto', display: 'block' }} />
+        <img src={rendlyLogo} alt="Rendly" style={{ height: 28, width: 'auto', display: 'block' }} />
       </div>
 
       {/* Tabs */}
