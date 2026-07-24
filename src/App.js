@@ -11,6 +11,8 @@ import BeleggingToevoegen from './pages/BeleggingToevoegen';
 import ImportBeleggingen from './pages/ImportBeleggingen';
 import Markten from './pages/Markten';
 import EffectDetail from './pages/EffectDetail';
+import CookieConsent from './components/CookieConsent';
+import CrispChat from './components/CrispChat';
 import './App.css';
 import Landing from './pages/Landing';
 import AuthPage from './pages/AuthPage';
@@ -171,6 +173,7 @@ function AppInner() {
   const [overzichtResetKey, setOverzichtResetKey] = useState(0);
   const [actieveSectie, setActieveSectie] = useState('portefeuille');
   const [effectDetail, setEffectDetail] = useState(null); // geselecteerd zoekresultaat, toont EffectDetail pagina
+  const [cookieToestemming, setCookieToestemming] = useState(null);
 
   if (!gebruiker.voornaam) {
     return <NaamInstellen />;
@@ -247,6 +250,8 @@ function AppInner() {
           {renderPage()}
         </main>
       </div>
+      <CookieConsent onWijziging={setCookieToestemming} />
+      <CrispChat toestemming={cookieToestemming} />
     </div>
   );
 }
