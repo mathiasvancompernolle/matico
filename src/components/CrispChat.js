@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 // dashboard onder Settings → Setup instructions). Dit ID zelf is niet geheim
 // (het staat sowieso zichtbaar in de client-side broncode), dus gewoon
 // hardcoden hier is voldoende — geen environment variable nodig.
-const CRISP_WEBSITE_ID = 'JOUW-CRISP-WEBSITE-ID';
+const CRISP_WEBSITE_ID = 'e15b16c7-9fc8-43b9-ab3f-e52b1224e23d';
 
 let scriptGeladen = false;
 
