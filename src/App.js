@@ -15,6 +15,7 @@ import CookieConsent from './components/CookieConsent';
 import CrispChat from './components/CrispChat';
 import Privacybeleid from './pages/Privacybeleid';
 import MijnProfiel from './pages/MijnProfiel';
+import Weergave from './pages/Weergave';
 import './App.css';
 import Landing from './pages/Landing';
 import AuthPage from './pages/AuthPage';
@@ -139,7 +140,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
                 {[
                   { label: 'Mijn profiel', sub: 'Account & instellingen', route: 'mijn-profiel' },
                   { label: 'Billing', sub: 'Abonnement beheren', route: 'instellingen' },
-                  { label: 'Instellingen', sub: 'Weergave & voorkeuren', route: 'instellingen' },
+                  { label: 'Instellingen', sub: 'Weergave & voorkeuren', route: 'weergave' },
                   { label: 'Privacybeleid', sub: 'Hoe we met je gegevens omgaan', route: 'privacybeleid' },
                 ].map(({ label, sub, route }) => (
                   <div key={label} onClick={() => { navigeerNaar(route); setProfielOpen(false); }}
@@ -233,6 +234,7 @@ function AppInner() {
       case 'instellingen': return <Instellingen sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
       case 'privacybeleid': return <Privacybeleid />;
       case 'mijn-profiel': return <MijnProfiel sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
+      case 'weergave': return <Weergave sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
       default: return <Overzicht key={overzichtResetKey} onToevoegen={openToevoegen} onImporteren={openImporteren} />;
     }
   };

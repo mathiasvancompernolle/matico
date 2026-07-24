@@ -35,7 +35,7 @@ const TIJDSTIPPEN = [
 ];
 
 export default function Instellingen({ sidebarCollapsed, onToggleSidebar }) {
-  const { beleggingen, darkMode, setDarkMode } = useApp();
+  const { beleggingen } = useApp();
   const [actieveTab, setActieveTab] = useState('portfolio');
 
   return (
@@ -67,30 +67,6 @@ export default function Instellingen({ sidebarCollapsed, onToggleSidebar }) {
         {/* ── Portfolio tab ── */}
         {actieveTab === 'portfolio' && (
           <div style={{ maxWidth: 500 }}>
-            <div className="card">
-              <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Weergave</h3>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Donkere modus</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Schakel over naar een donker kleurenschema</div>
-                </div>
-                <div
-                  onClick={() => setDarkMode(d => !d)}
-                  style={{
-                    width: 44, height: 24, borderRadius: 12,
-                    background: darkMode ? ACCENT : 'var(--border)',
-                    cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0
-                  }}
-                >
-                  <div style={{
-                    position: 'absolute', top: 3, left: darkMode ? 23 : 3,
-                    width: 18, height: 18, borderRadius: '50%', background: 'white',
-                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                  }} />
-                </div>
-              </div>
-            </div>
-
             <div className="card">
               <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Over Matico</h3>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
