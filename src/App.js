@@ -13,6 +13,7 @@ import Markten from './pages/Markten';
 import EffectDetail from './pages/EffectDetail';
 import CookieConsent from './components/CookieConsent';
 import CrispChat from './components/CrispChat';
+import Privacybeleid from './pages/Privacybeleid';
 import './App.css';
 import Landing from './pages/Landing';
 import AuthPage from './pages/AuthPage';
@@ -135,11 +136,12 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
               </div>
               <div style={{ padding: '6px 0' }}>
                 {[
-                  { label: 'Mijn profiel', sub: 'Account & instellingen' },
-                  { label: 'Billing', sub: 'Abonnement beheren' },
-                  { label: 'Instellingen', sub: 'Weergave & voorkeuren' },
-                ].map(({ label, sub }) => (
-                  <div key={label} onClick={() => { navigeerNaar('instellingen'); setProfielOpen(false); }}
+                  { label: 'Mijn profiel', sub: 'Account & instellingen', route: 'instellingen' },
+                  { label: 'Billing', sub: 'Abonnement beheren', route: 'instellingen' },
+                  { label: 'Instellingen', sub: 'Weergave & voorkeuren', route: 'instellingen' },
+                  { label: 'Privacybeleid', sub: 'Hoe we met je gegevens omgaan', route: 'privacybeleid' },
+                ].map(({ label, sub, route }) => (
+                  <div key={label} onClick={() => { navigeerNaar(route); setProfielOpen(false); }}
                     style={{ padding: '9px 16px', cursor: 'pointer', fontSize: 13 }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -228,6 +230,7 @@ function AppInner() {
       case 'dividend': return <Dividend />;
       case 'belastingen': return <Belastingen />;
       case 'instellingen': return <Instellingen />;
+      case 'privacybeleid': return <Privacybeleid />;
       default: return <Overzicht key={overzichtResetKey} onToevoegen={openToevoegen} onImporteren={openImporteren} />;
     }
   };
