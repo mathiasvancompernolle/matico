@@ -82,7 +82,7 @@ export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       {/* Logo / Home */}
 
 

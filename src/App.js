@@ -224,7 +224,7 @@ function AppInner() {
     const openToevoegen = () => setToevoegenOpen(true);
     const openImporteren = () => setImportOpen(true);
     switch (activeNav) {
-      case 'overzicht': return <Overzicht key={overzichtResetKey} onToevoegen={openToevoegen} onImporteren={openImporteren} />;
+      case 'overzicht': return <Overzicht key={overzichtResetKey} onToevoegen={openToevoegen} onImporteren={openImporteren} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
       case 'beleggingen': return <Beleggingen onToevoegen={openToevoegen} />;
       case 'analyse': return <Analyse />;
       case 'dividend': return <Dividend />;
