@@ -226,7 +226,7 @@ function AppInner() {
     switch (activeNav) {
       case 'overzicht': return <Overzicht key={overzichtResetKey} onToevoegen={openToevoegen} onImporteren={openImporteren} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
       case 'beleggingen': return <Beleggingen onToevoegen={openToevoegen} />;
-      case 'analyse': return <Analyse />;
+      case 'analyse': return <Analyse sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
       case 'dividend': return <Dividend />;
       case 'belastingen': return <Belastingen />;
       case 'instellingen': return <Instellingen />;
