@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Plus, ChevronDown, Calendar, MoreVertical, Search, ArrowLeft, X, Trash2, Download } from 'lucide-react';
+import SidebarToggleKnop from '../components/SidebarToggleKnop';
 import BeleggingDetail from '../components/BeleggingDetail';
 
 // ── kleine hulpfuncties ──────────────────────────────────────────
@@ -374,7 +375,7 @@ const inputStyle = {
 };
 
 // ── Hoofd component ──────────────────────────────────────────────
-export default function Beleggingen({ onToevoegen }) {
+export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSidebar }) {
   const { beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen, getMuntFactor } = useApp();
 
   // Haal logo's en type op voor beleggingen zonder logo OF zonder type
@@ -567,7 +568,10 @@ export default function Beleggingen({ onToevoegen }) {
     <div style={{ padding: '0 0 60px' }}>
       {/* Page header */}
       <div className="page-header" style={{ marginBottom: 24 }}>
-        <h1>Beleggingen</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+          <h1>Beleggingen</h1>
+        </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn btn-secondary" onClick={exporteerNaarExcel} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Download size={15} /> Exporteren

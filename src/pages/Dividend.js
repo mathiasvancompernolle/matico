@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Info, X } from 'lucide-react';
+import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
 const ACCENT = '#6366f1';
 const fmt2 = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -79,7 +80,7 @@ const BELASTING = 0.30;
 
 const MAANDEN = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
 
-export default function Dividend() {
+export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
   const { beleggingen, koersen, getMuntFactor, verkochteBeleggingen } = useApp();
   const [jaar, setJaar] = useState(new Date().getFullYear());
   const [modus, setModus] = useState('bruto'); // 'bruto' | 'netto'
@@ -405,7 +406,7 @@ export default function Dividend() {
   if (beleggingen.length === 0) {
     return (
       <div style={{ padding: '0 0 40px' }}>
-        <div className="page-header" style={{ marginBottom: 24 }}><h1>Dividend</h1></div>
+        <div className="page-header" style={{ marginBottom: 24, display: 'flex', alignItems: 'center' }}><SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} /><h1>Dividend</h1></div>
         <div style={{ padding: '0 32px' }}>
           <div className="empty-state card"><h3>Nog geen beleggingen</h3><p>Voeg beleggingen toe om dividenddata te zien</p></div>
         </div>
@@ -417,7 +418,10 @@ export default function Dividend() {
     <div style={{ padding: '0 0 60px' }}>
       {/* Header */}
       <div className="page-header" style={{ marginBottom: 24 }}>
-        <h1>Dividend</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+          <h1>Dividend</h1>
+        </div>
         {/* Jaar dropdown */}
         <div style={{ position: 'relative' }}>
           <button onClick={() => setJaarDropdown(o => !o)} style={{

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
-import { SlidersHorizontal, GitCompare, Plus, ChevronDown, X, Check, Upload, Edit3, PanelLeft } from 'lucide-react';
+import { SlidersHorizontal, GitCompare, Plus, ChevronDown, X, Check, Upload, Edit3 } from 'lucide-react';
+import SidebarToggleKnop from '../components/SidebarToggleKnop';
 import BeleggingDetail from '../components/BeleggingDetail';
 
 const TIJDPERKEN = ['1D', '1W', '1M', '1J', 'YTD', 'Laatste', 'Totaal'];
@@ -696,21 +697,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     <div style={{ padding: '0 0 40px' }}>
       <div className="page-header" style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {onToggleSidebar && (
-            <button
-              onClick={onToggleSidebar}
-              title={sidebarCollapsed ? 'Sidebar tonen' : 'Sidebar verbergen'}
-              style={{
-                width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)',
-                background: 'transparent', cursor: 'pointer', display: 'flex',
-                alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexShrink: 0,
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <PanelLeft size={17} />
-            </button>
-          )}
+          <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
           <h1>{begroeting()}, {gebruiker.voornaam}</h1>
         </div>
         <div style={{ position: 'relative' }} ref={menuRef}>

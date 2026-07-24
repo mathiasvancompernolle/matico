@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Info, Download, ChevronDown } from 'lucide-react';
+import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
 const fmt = (v) => Math.abs(v).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const ACCENT = '#6366f1';
@@ -25,7 +26,7 @@ const REF_KOERSEN_2025 = {
   'VWCE': 137.82,
 };
 
-export default function Belastingen() {
+export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
   const { beleggingen, koersen, verkochteBeleggingen, getMuntFactor } = useApp();
   const [jaar, setJaar] = useState(new Date().getFullYear());
   const [jaarDropdown, setJaarDropdown] = useState(false);
@@ -181,7 +182,10 @@ export default function Belastingen() {
     <div style={{ padding: '0 0 60px' }}>
       {/* Header */}
       <div className="page-header" style={{ marginBottom: 0 }}>
-        <h1>Belastingen</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+          <h1>Belastingen</h1>
+        </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button onClick={openSimulatie} style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px',

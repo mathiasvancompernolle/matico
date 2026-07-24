@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
-import { ChevronDown, PanelLeft } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────
 const fmt = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -416,25 +416,7 @@ function Staaf({ label, waarde, pct, kleur }) {
 }
 
 // ── Hoofd Analyse component ───────────────────────────────────────
-function SidebarToggleKnop({ onToggleSidebar, sidebarCollapsed }) {
-  if (!onToggleSidebar) return null;
-  return (
-    <button
-      onClick={onToggleSidebar}
-      title={sidebarCollapsed ? 'Sidebar tonen' : 'Sidebar verbergen'}
-      style={{
-        width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)',
-        background: 'transparent', cursor: 'pointer', display: 'flex',
-        alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexShrink: 0,
-        marginRight: 12,
-      }}
-      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-    >
-      <PanelLeft size={17} />
-    </button>
-  );
-}
+import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
 export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
   const { beleggingen: beleggingenRaw, koersen, getMuntFactor, verkochteBeleggingen } = useApp();

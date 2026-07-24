@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { Info } from 'lucide-react';
+import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
 const ACCENT = '#6366f1';
 const inputStyle = {
@@ -33,7 +34,7 @@ const TIJDSTIPPEN = [
   '04:00', '04:30', '05:00', '05:30', '06:00'
 ];
 
-export default function Instellingen() {
+export default function Instellingen({ sidebarCollapsed, onToggleSidebar }) {
   const { gebruiker, setGebruiker, beleggingen, darkMode, setDarkMode } = useApp();
   const [actieveTab, setActieveTab] = useState('portfolio');
 
@@ -50,7 +51,8 @@ export default function Instellingen() {
 
   return (
     <div style={{ padding: '0 0 60px' }}>
-      <div className="page-header" style={{ marginBottom: 0 }}>
+      <div className="page-header" style={{ marginBottom: 0, display: 'flex', alignItems: 'center' }}>
+        <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
         <h1>Instellingen</h1>
       </div>
 

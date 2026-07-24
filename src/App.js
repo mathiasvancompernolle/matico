@@ -225,11 +225,11 @@ function AppInner() {
     const openImporteren = () => setImportOpen(true);
     switch (activeNav) {
       case 'overzicht': return <Overzicht key={overzichtResetKey} onToevoegen={openToevoegen} onImporteren={openImporteren} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
-      case 'beleggingen': return <Beleggingen onToevoegen={openToevoegen} />;
+      case 'beleggingen': return <Beleggingen onToevoegen={openToevoegen} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
       case 'analyse': return <Analyse sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
-      case 'dividend': return <Dividend />;
-      case 'belastingen': return <Belastingen />;
-      case 'instellingen': return <Instellingen />;
+      case 'dividend': return <Dividend sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
+      case 'belastingen': return <Belastingen sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
+      case 'instellingen': return <Instellingen sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
       case 'privacybeleid': return <Privacybeleid />;
       default: return <Overzicht key={overzichtResetKey} onToevoegen={openToevoegen} onImporteren={openImporteren} />;
     }
