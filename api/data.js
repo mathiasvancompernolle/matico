@@ -1081,10 +1081,11 @@ module.exports = async function handler(req, res) {
     }
 
     if (endpoint === 'etf-holdings') {
-      const { symbol } = req.query;
+      const { symbol, debug } = req.query;
       // Normaliseer symbool voor FMP (verwijder exchange suffix)
       const fmpSym = symbol.split('.')[0];
       const yfSym = toYahooSymbol(symbol);
+      const _debug = { symbol, fmpSym, yfSym, heeftEodhdKey: !!EODHD_KEY, heeftFmpKey: !!FMP_KEY, bronnen: {} };
 
       // Yahoo's sector-codes (snake_case, fractie 0-1) → dezelfde Engelse labels
       // als FMP gebruikt, zodat de bestaande FMP_SECTOR_MAP (front-end) ze
@@ -1144,6 +1145,14 @@ module.exports = async function handler(req, res) {
           const er = await fetch(`https://eodhd.com/api/fundamentals/${symbol}?api_token=${EODHD_KEY}&fmt=json`);
           const ed = await er.json();
           const etfData = ed?.ETF_Data;
+          _debug.bronnen.eodhd = {
+            httpStatus: er.status,
+            heeftEtfData: !!etfData,
+            heeftSectorWeights: !!etfData?.Sector_Weights,
+            heeftWorldRegions: !!etfData?.World_Regions,
+            topLevelKeys: ed ? Object.keys(ed).slice(0, 15) : [],
+            fout: ed?.message || ed?.error || null,
+          };
           if (etfData) {
             if (etfData.Sector_Weights) {
               const s = Object.entries(etfData.Sector_Weights)
@@ -1170,7 +1179,9 @@ module.exports = async function handler(req, res) {
               if (h.length > 0) holdings = h;
             }
           }
-        } catch (e) { console.error('EODHD ETF fundamentals fout:', e); }
+        } catch (e) { console.error('EODHD ETF fundamentals fout:', e); _debug.bronnen.eodhd = { crash: String(e) }; }
+      } else {
+        _debug.bronnen.eodhd = { overgeslagen: 'geen EODHD_KEY' };
       }
 
       // ── Bron 2: Yahoo Finance quoteSummary (topHoldings) ─────────────────
@@ -1189,6 +1200,13 @@ module.exports = async function handler(req, res) {
         });
         const yd = await yr.json();
         const th = yd?.quoteSummary?.result?.[0]?.topHoldings;
+        _debug.bronnen.yahoo = {
+          sessieOk: !!sessie,
+          httpStatus: yr.status,
+          heeftTopHoldings: !!th,
+          heeftSectorWeightings: !!th?.sectorWeightings,
+          yahooFout: yd?.finance?.error || yd?.quoteSummary?.error || null,
+        };
         if (sectoren.length === 0 && th?.sectorWeightings?.length > 0) {
           const s = th.sectorWeightings
             .map(obj => {
@@ -1204,7 +1222,7 @@ module.exports = async function handler(req, res) {
             weightPercentage: (h.holdingPercent || 0) * 100,
           }));
         }
-      } catch (e) { console.error('Yahoo topHoldings fout:', e); }
+      } catch (e) { console.error('Yahoo topHoldings fout:', e); _debug.bronnen.yahoo = { crash: String(e) }; }
       }
 
       // ── Bron 3: FMP (aanvulling/fallback voor sector, land, en holdings) ──
@@ -1249,7 +1267,13 @@ module.exports = async function handler(req, res) {
         if (sectoren.length === 0 && Array.isArray(fmpSectoren)) sectoren = fmpSectoren;
         if (holdings.length === 0 && Array.isArray(fmpHoldings)) holdings = fmpHoldings;
         if (landen.length === 0 && Array.isArray(fmpLanden) && fmpLanden.length > 0) landen = fmpLanden;
-      } catch (e) { console.error('FMP ETF holdings fout:', e); }
+        _debug.bronnen.fmp = {
+          sectorCount: Array.isArray(fmpSectoren) ? fmpSectoren.length : 'geen array',
+          holdingsCount: Array.isArray(fmpHoldings) ? fmpHoldings.length : 'geen array',
+          landenCount: Array.isArray(fmpLanden) ? fmpLanden.length : 'geen array',
+          fmpFoutSector: fmpSectoren?.['Error Message'] || fmpSectoren?.error || null,
+        };
+      } catch (e) { console.error('FMP ETF holdings fout:', e); _debug.bronnen.fmp = { crash: String(e) }; }
       }
 
       try {
@@ -1265,14 +1289,18 @@ module.exports = async function handler(req, res) {
           pct: parseFloat(l.weightPercentage) || 0
         })).filter(l => l.pct > 0) : [];
 
-        return res.json({
+        const antwoord = {
           sectoren: sectorData,
           landen: landData,
           holdings: Array.isArray(holdings) ? holdings.slice(0, 20) : []
-        });
+        };
+        if (debug === '1') antwoord._debug = _debug;
+        return res.json(antwoord);
       } catch (e) {
         console.error('ETF holdings fout:', e);
-        return res.json({ sectoren: [], landen: [], holdings: [] });
+        const antwoord = { sectoren: [], landen: [], holdings: [] };
+        if (debug === '1') antwoord._debug = _debug;
+        return res.json(antwoord);
       }
     }
 
