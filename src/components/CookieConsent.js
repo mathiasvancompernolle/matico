@@ -17,7 +17,7 @@ export default function CookieConsent({ onWijziging }) {
     const huidige = haalCookieToestemming();
     if (!huidige) setZichtbaar(true);
     else onWijziging && onWijziging(huidige);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onWijziging]);
 
   const kies = (keuze) => {
     try { localStorage.setItem(OPSLAG_SLEUTEL, keuze); } catch (e) {}
