@@ -10,7 +10,7 @@ export default function SidebarToggleKnop({ onToggleSidebar, sidebarCollapsed })
       onClick={onToggleSidebar}
       title={sidebarCollapsed ? 'Sidebar tonen' : 'Sidebar verbergen'}
       style={{
-        width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)',
+        width: 40, height: 40, borderRadius: 8, border: '1px solid var(--border)',
         background: 'transparent', cursor: 'pointer', display: 'flex',
         alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexShrink: 0,
         marginRight: 12,
@@ -18,7 +18,7 @@ export default function SidebarToggleKnop({ onToggleSidebar, sidebarCollapsed })
       onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
     >
-      <PanelLeft size={17} />
+      <PanelLeft size={20} />
     </button>
   );
 }

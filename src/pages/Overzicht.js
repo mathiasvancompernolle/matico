@@ -701,8 +701,8 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           <h1>{begroeting()}, {gebruiker.voornaam}</h1>
         </div>
         <div style={{ position: 'relative' }} ref={menuRef}>
-          <button className="btn btn-primary" onClick={() => setToevoegenMenuOpen(!toevoegenMenuOpen)}>
-            <Plus size={16} /> Beleggingen toevoegen <ChevronDown size={14} />
+          <button className="btn btn-primary" onClick={() => setToevoegenMenuOpen(!toevoegenMenuOpen)} style={{ padding: '12px 20px', fontSize: 15 }}>
+            <Plus size={18} /> Beleggingen toevoegen <ChevronDown size={16} />
           </button>
           {toevoegenMenuOpen && (
             <div style={{
