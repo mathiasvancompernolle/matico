@@ -35,19 +35,8 @@ const TIJDSTIPPEN = [
 ];
 
 export default function Instellingen({ sidebarCollapsed, onToggleSidebar }) {
-  const { gebruiker, setGebruiker, beleggingen, darkMode, setDarkMode } = useApp();
+  const { beleggingen, darkMode, setDarkMode } = useApp();
   const [actieveTab, setActieveTab] = useState('portfolio');
-
-  // Portfolio tab
-  const [voornaam, setVoornaam] = useState(gebruiker.voornaam);
-  const [achternaam, setAchternaam] = useState(gebruiker.achternaam);
-  const [portfolioOpgeslagen, setPortfolioOpgeslagen] = useState(false);
-
-  const slaPortfolioOp = () => {
-    setGebruiker({ voornaam, achternaam });
-    setPortfolioOpgeslagen(true);
-    setTimeout(() => setPortfolioOpgeslagen(false), 2000);
-  };
 
   return (
     <div style={{ padding: '0 0 60px' }}>
@@ -78,24 +67,6 @@ export default function Instellingen({ sidebarCollapsed, onToggleSidebar }) {
         {/* ── Portfolio tab ── */}
         {actieveTab === 'portfolio' && (
           <div style={{ maxWidth: 500 }}>
-            <div className="card" style={{ marginBottom: 16 }}>
-              <h3 style={{ marginBottom: 20, fontSize: 16, fontWeight: 700 }}>Persoonlijke gegevens</h3>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Voornaam</label>
-                <input style={inputStyle} value={voornaam} onChange={e => setVoornaam(e.target.value)} />
-              </div>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Achternaam</label>
-                <input style={inputStyle} value={achternaam} onChange={e => setAchternaam(e.target.value)} />
-              </div>
-              <button onClick={slaPortfolioOp} style={{
-                padding: '10px 20px', background: ACCENT, color: 'white', border: 'none',
-                borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 600
-              }}>
-                {portfolioOpgeslagen ? '✓ Opgeslagen!' : 'Opslaan'}
-              </button>
-            </div>
-
             <div className="card">
               <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Weergave</h3>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
