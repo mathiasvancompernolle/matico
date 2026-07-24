@@ -5,8 +5,8 @@ import { ChevronDown } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────
 const fmt = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const ACCENT = '#6366f1';
-const PIE_KLEUREN = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#f97316', '#06b6d4', '#84cc16', '#ec4899', '#14b8a6', '#a855f7', '#eab308'];
+const ACCENT = '#1e3a8a';
+const PIE_KLEUREN = ['#1e3a8a', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#f97316', '#06b6d4', '#84cc16', '#ec4899', '#14b8a6', '#a855f7', '#eab308'];
 
 // Bekende ETF-tickers (komen overeen met de ETF_DB/ETF_VALUTA-databases hieronder).
 // Hiermee herkennen we een belegging ook als ETF wanneer het symbool bekend is,
@@ -501,7 +501,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     }, 0);
     // Grenzen conform info-modal: Defensief <1.0, Neutraal 1.0-1.5, Offensief 1.5-2.5, Speculatief >2.5
     const label = gewogenBeta < 1.0 ? 'Defensief' : gewogenBeta < 1.5 ? 'Neutraal' : gewogenBeta < 2.5 ? 'Offensief' : 'Speculatief';
-    const kleur = gewogenBeta < 1.0 ? 'var(--green)' : gewogenBeta < 1.5 ? '#6366f1' : gewogenBeta < 2.5 ? '#f97316' : 'var(--red)';
+    const kleur = gewogenBeta < 1.0 ? 'var(--green)' : gewogenBeta < 1.5 ? '#1e3a8a' : gewogenBeta < 2.5 ? '#f97316' : 'var(--red)';
     const bolletjes = gewogenBeta < 1.0 ? 1 : gewogenBeta < 1.5 ? 2 : gewogenBeta < 2.5 ? 3 : 4;
     return { beta: gewogenBeta, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: bolletjes, onbekendeBetas: [...new Set(onbekend)] };
   }, [beleggingen, koersen]);
@@ -1322,7 +1322,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                 <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>De vier risiconiveaus die Matico gebruikt</div>
                 {[
                   { label: 'Defensief', kleur: 'var(--green)', beschrijving: 'Bèta lager dan 1,0. Bij een marktdaling van 10% daalt je portfolio gemiddeld minder dan 10%.' },
-                  { label: 'Neutraal', kleur: '#6366f1', beschrijving: 'Bèta van 1,0 tot 1,5. Je portfolio beweegt grofweg mee met de markt, met iets hogere uitslagen.' },
+                  { label: 'Neutraal', kleur: '#1e3a8a', beschrijving: 'Bèta van 1,0 tot 1,5. Je portfolio beweegt grofweg mee met de markt, met iets hogere uitslagen.' },
                   { label: 'Offensief', kleur: '#f97316', beschrijving: 'Bèta van 1,5 tot 2,5. Je portfolio reageert duidelijk sterker op marktbewegingen.' },
                   { label: 'Speculatief', kleur: 'var(--red)', beschrijving: 'Bèta vanaf 2,5. Zeer hoge gevoeligheid voor schommelingen, met grotere op- en neerwaartse bewegingen.' },
                 ].map(({ label, kleur, beschrijving }) => (

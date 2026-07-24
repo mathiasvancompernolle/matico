@@ -2,7 +2,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
-const ACCENT = '#6366f1';
+const ACCENT = '#1e3a8a';
 
 export default function Weergave({ sidebarCollapsed, onToggleSidebar }) {
   const { darkMode, setDarkMode } = useApp();

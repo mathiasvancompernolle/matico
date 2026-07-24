@@ -49,7 +49,7 @@ export default function CookieConsent({ onWijziging }) {
         </button>
         <button onClick={() => kies('geaccepteerd')} style={{
           padding: '10px 18px', borderRadius: 8, border: 'none',
-          background: 'var(--accent, #6366f1)', color: 'white', fontSize: 13, fontWeight: 600,
+          background: 'var(--accent, #1e3a8a)', color: 'white', fontSize: 13, fontWeight: 600,
           cursor: 'pointer', fontFamily: 'inherit',
         }}>
           Accepteren

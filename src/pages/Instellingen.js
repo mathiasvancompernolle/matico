@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Info } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
-const ACCENT = '#6366f1';
+const ACCENT = '#1e3a8a';
 const inputStyle = {
   width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)',
   borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none',
@@ -280,7 +280,7 @@ function DataKwaliteitTab({ beleggingen }) {
               <div key={sym} style={{
                 display: 'grid', gridTemplateColumns: '1fr 140px 100px 80px',
                 padding: '14px 16px', borderBottom: idx < aandelen.length - 1 ? '1px solid var(--border)' : 'none',
-                alignItems: 'center', background: isOpgeslagen ? 'rgba(99,102,241,0.04)' : 'transparent',
+                alignItems: 'center', background: isOpgeslagen ? 'rgba(30,58,138,0.04)' : 'transparent',
                 transition: 'background 0.3s'
               }}>
                 {/* Naam */}

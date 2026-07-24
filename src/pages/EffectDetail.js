@@ -75,7 +75,7 @@ const PERIODES = [
 // ── Type-badge (logo indien beschikbaar, anders gekleurde badge) ─────────────
 function EffectIcoon({ type, logo, symbol }) {
   const kleuren = {
-    etf: { bg: '#eef2ff', kleur: '#6366f1', label: 'ETF' },
+    etf: { bg: '#eef1f8', kleur: '#1e3a8a', label: 'ETF' },
     crypto: { bg: '#fff7ed', kleur: '#f59e0b', label: (symbol || '').split('-')[0].slice(0, 4) },
     aandeel: { bg: '#fef3c7', kleur: '#d97706', label: 'EQ' },
   };

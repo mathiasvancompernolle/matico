@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
-const ACCENT = '#6366f1';
+const ACCENT = '#1e3a8a';
 const inputStyle = {
   width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)',
   borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none',

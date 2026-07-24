@@ -117,14 +117,14 @@ function BeleggingAvatar({ b }) {
   // ETF via ticker
   const tickerLabel = TICKER_ETF_MAP[tickerBase];
   if (tickerLabel) {
-    return <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: TICKER_KLEUREN[tickerLabel] || '#6366f1', color: 'white', fontWeight: 800, fontSize: 10 }}>{tickerLabel}</div>;
+    return <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: TICKER_KLEUREN[tickerLabel] || '#1e3a8a', color: 'white', fontWeight: 800, fontSize: 10 }}>{tickerLabel}</div>;
   }
 
   // ETF via naam
   if (b.type === 'etf') {
     const uitgever = ETF_UITGEVERS.find(u => u.match.some(m => naamLower.includes(m)));
     if (uitgever) return <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: uitgever.kleur, color: 'white', fontWeight: 800, fontSize: 10 }}>{uitgever.label}</div>;
-    return <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#6366f1', color: 'white', fontWeight: 800, fontSize: 9 }}>ETF</div>;
+    return <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1e3a8a', color: 'white', fontWeight: 800, fontSize: 9 }}>ETF</div>;
   }
 
   // Aandeel fallback
@@ -662,7 +662,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     : displayData;
   const grafiekKleur = beursGesloten1D
     ? '#94a3b8'
-    : displayData.length > 1 && displayData[displayData.length-1]?.waarde >= displayData[0]?.waarde ? '#6366f1' : '#ef4444';
+    : displayData.length > 1 && displayData[displayData.length-1]?.waarde >= displayData[0]?.waarde ? '#1e3a8a' : '#ef4444';
 
   // Y-as domein: altijd strak rond de data, nooit vanaf 0
   // Y-as: nette gehele getallen, vaste stapgrootte, Totaal start bij 0
@@ -1175,7 +1175,7 @@ function VergelijkModal({ onClose, vergelijk1, setVergelijk1, vergelijk2, setVer
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => v.toFixed(1) + '%'} />
               <Tooltip formatter={v => v.toFixed(2) + '%'} contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }} />
-              <Line type="monotone" dataKey="waarde" stroke="#6366f1" strokeWidth={2} dot={false} name="Portfolio" />
+              <Line type="monotone" dataKey="waarde" stroke="#1e3a8a" strokeWidth={2} dot={false} name="Portfolio" />
               {vergelijk1 !== 'geen' && <Line type="monotone" dataKey="benchmark1" stroke={opt1?.kleur} strokeWidth={2} dot={false} name={opt1?.label} />}
               {vergelijk2 !== 'geen' && <Line type="monotone" dataKey="benchmark2" stroke={opt2?.kleur} strokeWidth={2} dot={false} strokeDasharray="5 5" name={opt2?.label} />}
               <Legend />

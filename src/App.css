@@ -1,10 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
 :root {
-  --accent: #6366f1;
-  --accent-light: #818cf8;
-  --accent-dark: #4f46e5;
-  --accent-bg: #eef2ff;
+  --accent: #1e3a8a;
+  --accent-light: #3b5998;
+  --accent-dark: #14275e;
+  --accent-bg: #eef1f8;
   --green: #22c55e;
   --green-bg: #f0fdf4;
   --red: #ef4444;
@@ -29,10 +29,10 @@
 
 /* ── Dark mode ── */
 body.dark {
-  --accent: #818cf8;
-  --accent-light: #a5b4fc;
-  --accent-dark: #6366f1;
-  --accent-bg: #1e1b4b;
+  --accent: #5b7fd4;
+  --accent-light: #8aa4e8;
+  --accent-dark: #1e3a8a;
+  --accent-bg: #16213e;
   --green: #4ade80;
   --green-bg: #052e16;
   --red: #f87171;

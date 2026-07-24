@@ -17,7 +17,7 @@ const navItems = [
   { id: 'instellingen', label: 'Instellingen', icon: Settings },
 ];
 
-const ACCENT = '#6366f1';
+const ACCENT = '#1e3a8a';
 
 export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
   const {

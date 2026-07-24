@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Info, X } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
-const ACCENT = '#6366f1';
+const ACCENT = '#1e3a8a';
 const fmt2 = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // ── Dividend database (bruto, per aandeel, jaarlijks) ──────────────

@@ -77,7 +77,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
 
         {/* Zoekbalk */}
         <div ref={zoekRef} style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-white)', border: `1px solid ${zoekOpen ? '#6366f1' : 'var(--border)'}`, borderRadius: 8, padding: '5px 10px', width: 220 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-white)', border: `1px solid ${zoekOpen ? '#1e3a8a' : 'var(--border)'}`, borderRadius: 8, padding: '5px 10px', width: 220 }}>
             <svg width="15" height="15" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
@@ -95,7 +95,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: r.type === 'etf' ? '#eef2ff' : '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: r.type === 'etf' ? '#6366f1' : '#d97706', flexShrink: 0 }}>{r.type === 'etf' ? 'ETF' : 'EQ'}</div>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: r.type === 'etf' ? '#eef1f8' : '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: r.type === 'etf' ? '#1e3a8a' : '#d97706', flexShrink: 0 }}>{r.type === 'etf' ? 'ETF' : 'EQ'}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.naam}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.symbol}</div>
@@ -108,8 +108,8 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
 
         {/* Favorieten */}
         <div ref={favorietenRef} style={{ position: 'relative' }}>
-          <button onClick={() => setFavorietenOpen(v => !v)} style={{ width: 32, height: 32, border: 'none', borderRadius: 8, background: favorietenOpen ? '#eef2ff' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="16" height="16" fill="none" stroke={favorietenOpen ? '#6366f1' : 'var(--text-muted)'} strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <button onClick={() => setFavorietenOpen(v => !v)} style={{ width: 32, height: 32, border: 'none', borderRadius: 8, background: favorietenOpen ? '#eef1f8' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="16" height="16" fill="none" stroke={favorietenOpen ? '#1e3a8a' : 'var(--text-muted)'} strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           </button>
           {favorietenOpen && (
             <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 260, zIndex: 300 }}>
@@ -126,14 +126,14 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
 
         {/* Profiel */}
         <div ref={profielRef} style={{ position: 'relative', marginLeft: 4 }}>
-          <button onClick={() => setProfielOpen(v => !v)} style={{ width: 30, height: 30, borderRadius: '50%', background: '#6366f1', border: 'none', cursor: 'pointer', color: 'white', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>{initialen}</button>
+          <button onClick={() => setProfielOpen(v => !v)} style={{ width: 30, height: 30, borderRadius: '50%', background: '#1e3a8a', border: 'none', cursor: 'pointer', color: 'white', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>{initialen}</button>
           {profielOpen && (
             <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 230, zIndex: 300, overflow: 'hidden' }}>
               <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#6366f1', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>{initialen}</div>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#1e3a8a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>{initialen}</div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>{gebruiker?.voornaam} {gebruiker?.achternaam}</div>
-                  <div style={{ fontSize: 11, color: '#6366f1', fontWeight: 600 }}>Pro plan</div>
+                  <div style={{ fontSize: 11, color: '#1e3a8a', fontWeight: 600 }}>Pro plan</div>
                 </div>
               </div>
               <div style={{ padding: '6px 0' }}>

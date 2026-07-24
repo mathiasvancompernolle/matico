@@ -87,7 +87,7 @@ function Avatar({ symbol, logo, naam, type }) {
     // Eerst op ticker
     if (tickerLabel) {
       const u = ETF_UITGEVERS.find(u => u.label === tickerLabel) || ETF_UITGEVERS.find(u => u.match[0] === (tickerLabel === 'VG' ? 'vanguard' : tickerLabel === 'iSH' ? 'ishares' : tickerLabel.toLowerCase()));
-      const kleur = tickerLabel === 'VG' ? '#c8102e' : tickerLabel === 'iSH' ? '#00b140' : tickerLabel === 'AM' ? '#0066cc' : tickerLabel === 'XT' ? '#003c88' : '#6366f1';
+      const kleur = tickerLabel === 'VG' ? '#c8102e' : tickerLabel === 'iSH' ? '#00b140' : tickerLabel === 'AM' ? '#0066cc' : tickerLabel === 'XT' ? '#003c88' : '#1e3a8a';
       return (
         <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: kleur, color: 'white', fontWeight: 800, fontSize: 10, letterSpacing: '-0.3px' }}>
           {tickerLabel}
@@ -109,7 +109,7 @@ function Avatar({ symbol, logo, naam, type }) {
     }
     // Generieke ETF badge
     return (
-      <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#6366f1', color: 'white', fontWeight: 800, fontSize: 9 }}>
+      <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1e3a8a', color: 'white', fontWeight: 800, fontSize: 9 }}>
         ETF
       </div>
     );

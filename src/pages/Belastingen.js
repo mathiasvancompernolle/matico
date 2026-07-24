@@ -4,7 +4,7 @@ import { Info, Download, ChevronDown } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
 const fmt = (v) => Math.abs(v).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const ACCENT = '#6366f1';
+const ACCENT = '#1e3a8a';
 const VRIJSTELLING_JAAR = 10000; // €10.000 per persoon per jaar
 const TARIEF = 0.10; // 10%
 const REFERENTIEDATUM = '31 dec 2025';
