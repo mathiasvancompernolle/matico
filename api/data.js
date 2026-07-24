@@ -1102,13 +1102,81 @@ module.exports = async function handler(req, res) {
         energy: 'Energy',
         healthcare: 'Healthcare',
       };
+      // EODHD gebruikt grotendeels dezelfde categorieën, maar "Consumer Cyclicals"
+      // (meervoud) i.p.v. "Consumer Cyclical" — normaliseren naar dezelfde
+      // Engelse labels als hierboven.
+      const EODHD_SECTOR_LABELS = {
+        'Basic Materials': 'Basic Materials',
+        'Consumer Cyclicals': 'Consumer Cyclical',
+        'Financial Services': 'Financial Services',
+        'Real Estate': 'Real Estate',
+        'Communication Services': 'Communication Services',
+        'Energy': 'Energy',
+        'Industrials': 'Industrials',
+        'Technology': 'Technology',
+        'Consumer Defensive': 'Consumer Defensive',
+        'Healthcare': 'Healthcare',
+        'Utilities': 'Utilities',
+      };
+      // EODHD's World_Regions → dezelfde Nederlandse regio-bucketnamen die de
+      // handmatige ETF_DB in Analyse.js al gebruikt (front-end regiogrenzen).
+      const EODHD_REGIO_LABELS = {
+        'North America': 'Noord-Amerika',
+        'United Kingdom': 'Verenigd Koninkrijk',
+        'Europe Developed': 'Europa - Ontwikkeld',
+        'Europe Emerging': 'Europa - Opkomend',
+        'Africa/Middle East': 'Afrika/Midden-Oosten',
+        'Japan': 'Japan',
+        'Australasia': 'Australazië',
+        'Asia Developed': 'Azië - Ontwikkeld',
+        'Asia Emerging': 'Azië - Opkomend',
+        'Latin America': 'Latijns-Amerika',
+      };
 
       let sectoren = [], holdings = [], landen = [];
 
-      // ── Bron 1: Yahoo Finance quoteSummary (topHoldings) ─────────────────
+      // ── Bron 1: EODHD fundamentals (ETF_Data) ────────────────────────────
+      // Officiële, gedocumenteerde API (in tegenstelling tot Yahoo hieronder),
+      // dekt >10.000 ETF's wereldwijd incl. Europese UCITS-fondsen, en geeft
+      // zowel sector- als regiogewichten in één aanroep.
+      if (EODHD_KEY) {
+        try {
+          const er = await fetch(`https://eodhd.com/api/fundamentals/${symbol}?api_token=${EODHD_KEY}&fmt=json`);
+          const ed = await er.json();
+          const etfData = ed?.ETF_Data;
+          if (etfData) {
+            if (etfData.Sector_Weights) {
+              const s = Object.entries(etfData.Sector_Weights)
+                .map(([naam, v]) => ({
+                  sector: EODHD_SECTOR_LABELS[naam] || naam,
+                  weightPercentage: parseFloat(v?.['Equity_%']) || 0,
+                }))
+                .filter(s => s.weightPercentage > 0);
+              if (s.length > 0) sectoren = s;
+            }
+            if (etfData.World_Regions) {
+              const l = Object.entries(etfData.World_Regions)
+                .map(([naam, v]) => ({
+                  country: EODHD_REGIO_LABELS[naam] || naam,
+                  weightPercentage: parseFloat(v?.['Equity_%']) || 0,
+                }))
+                .filter(l => l.weightPercentage > 0);
+              if (l.length > 0) landen = l;
+            }
+            if (etfData.Top_Holdings) {
+              const h = Object.values(etfData.Top_Holdings).map(v => ({
+                asset: v.Code, name: v.Name, weightPercentage: parseFloat(v['Assets_%']) || 0,
+              }));
+              if (h.length > 0) holdings = h;
+            }
+          }
+        } catch (e) { console.error('EODHD ETF fundamentals fout:', e); }
+      }
+
+      // ── Bron 2: Yahoo Finance quoteSummary (topHoldings) ─────────────────
       // Zelfde gratis, key-loze bron die de rest van de app al gebruikt.
-      // Dekt ook Europese UCITS-ETF's (bv. VFEM, VWCE, IWDA) die FMP's gratis
-      // laag vaak mist, omdat die enkel de VS-genoteerde tegenhangers indexeert.
+      // Aanvulling voor wat EODHD niet heeft (bv. sector wel maar land niet).
+      if (sectoren.length === 0 || holdings.length === 0) {
       try {
         const sessie = await haalYahooCookieEnCrumb();
         const basisUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=topHoldings`;
@@ -1121,23 +1189,26 @@ module.exports = async function handler(req, res) {
         });
         const yd = await yr.json();
         const th = yd?.quoteSummary?.result?.[0]?.topHoldings;
-        if (th?.sectorWeightings?.length > 0) {
-          sectoren = th.sectorWeightings
+        if (sectoren.length === 0 && th?.sectorWeightings?.length > 0) {
+          const s = th.sectorWeightings
             .map(obj => {
               const [code, frac] = Object.entries(obj)[0] || [];
               return { sector: YAHOO_SECTOR_LABELS[code] || null, weightPercentage: (frac || 0) * 100 };
             })
             .filter(s => s.sector && s.weightPercentage > 0);
+          if (s.length > 0) sectoren = s;
         }
-        if (th?.holdings?.length > 0) {
+        if (holdings.length === 0 && th?.holdings?.length > 0) {
           holdings = th.holdings.map(h => ({
             asset: h.symbol, name: h.holdingName,
             weightPercentage: (h.holdingPercent || 0) * 100,
           }));
         }
       } catch (e) { console.error('Yahoo topHoldings fout:', e); }
+      }
 
-      // ── Bron 2: FMP (aanvulling/fallback voor sector, land, en holdings) ──
+      // ── Bron 3: FMP (aanvulling/fallback voor sector, land, en holdings) ──
+      if (sectoren.length === 0 || holdings.length === 0 || landen.length === 0) {
       try {
         // FMP heeft de legacy /api/v3/etf-* endpoints vervangen door /stable/etf/*
         // met symbol als query parameter i.p.v. pad-parameter. De oude v3-paden
@@ -1174,11 +1245,12 @@ module.exports = async function handler(req, res) {
           } catch (e) {}
         }
 
-        // Yahoo had voorrang; FMP vult enkel aan wat nog ontbreekt
+        // EODHD/Yahoo hadden voorrang; FMP vult enkel aan wat nog ontbreekt
         if (sectoren.length === 0 && Array.isArray(fmpSectoren)) sectoren = fmpSectoren;
         if (holdings.length === 0 && Array.isArray(fmpHoldings)) holdings = fmpHoldings;
-        if (Array.isArray(fmpLanden) && fmpLanden.length > 0) landen = fmpLanden;
+        if (landen.length === 0 && Array.isArray(fmpLanden) && fmpLanden.length > 0) landen = fmpLanden;
       } catch (e) { console.error('FMP ETF holdings fout:', e); }
+      }
 
       try {
         // Sector data verwerken

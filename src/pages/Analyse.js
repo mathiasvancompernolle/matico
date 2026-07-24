@@ -421,11 +421,13 @@ export function Analyse() {
       return null;
     };
 
-    // Live FMP-sectorgewichten: voor ETF's die niet in de handmatige ETF_DB
-    // hierboven staan, gebruiken we de sectordata die al via de etf-holdings
-    // endpoint wordt opgehaald (liveEtfData, ook gebruikt voor de holdings-
-    // tabel verderop) — zo krijgt élke ETF een echte sectorspreiding in
-    // plaats van dat alles in "Overige" belandt.
+    // Live sector-/regiogewichten: voor ETF's die niet in de handmatige ETF_DB
+    // hierboven staan, gebruiken we de data die al via de etf-holdings endpoint
+    // wordt opgehaald (liveEtfData, ook gebruikt voor de holdings-tabel
+    // verderop) — zo krijgt élke ETF een echte spreiding i.p.v. "Overige"/
+    // "Wereldwijd". De backend (EODHD) levert regio's al in dezelfde
+    // Nederlandse bucketnamen als ETF_DB hierboven, dus geen extra vertaling
+    // nodig voor "landen" → regio.
     const liveEtfSectorGewichten = (symbol) => {
       const basis = symbol.toUpperCase().split('.')[0];
       const sectoren = liveEtfData[basis]?.sectoren;
@@ -437,12 +439,22 @@ export function Analyse() {
       });
       return gewichten;
     };
+    const liveEtfRegioGewichten = (symbol) => {
+      const basis = symbol.toUpperCase().split('.')[0];
+      const landen = liveEtfData[basis]?.landen;
+      if (!landen || landen.length === 0) return null;
+      const gewichten = {};
+      landen.forEach(l => {
+        const label = l.label || 'Overige';
+        gewichten[label] = (gewichten[label] || 0) + l.pct;
+      });
+      return gewichten;
+    };
 
     const getEtfGewichten = (sym, type) => {
       const etf = zoekETF(sym);
       if (etf) return type === 'regio' ? etf.regio : etf.sector;
-      if (type === 'sector') return liveEtfSectorGewichten(sym);
-      return null; // regio via land vereist een aparte land→regio-mapping
+      return type === 'regio' ? liveEtfRegioGewichten(sym) : liveEtfSectorGewichten(sym);
     };
 
     // Welke beleggingen tonen op basis van subfilter
