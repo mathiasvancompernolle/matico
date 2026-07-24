@@ -439,6 +439,13 @@ export function Analyse() {
         regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
         sector: { 'Technologie': 36.07, 'Financiële dienstverlening': 11.76, 'Industrie': 10.15, 'Gezondheidszorg': 9.66, 'Cyclische consumptiegoederen': 9.40, 'Communicatiediensten': 9.13, 'Defensieve consumptiegoederen': 4.29, 'Energie': 3.15, 'Vastgoed': 2.33, 'Nutsbedrijven': 2.17, 'Basismaterialen': 1.89 }
       },
+      // Vanguard FTSE Emerging Markets UCITS ETF — sector rechtstreeks bevestigd
+      // via de live Yahoo-data van de app zelf (juli 2026); regio via TradingView
+      // (zelfde FTSE Emerging Index als de Acc-variant VFEA)
+      VFEM: {
+        regio: { 'Azië - Opkomend': 77.97, 'Afrika/Midden-Oosten': 10.60, 'Latijns-Amerika': 5.02, 'Europa - Opkomend': 4.11, 'Noord-Amerika': 2.30 },
+        sector: { 'Technologie': 34.07, 'Financiële dienstverlening': 20.68, 'Cyclische consumptiegoederen': 9.17, 'Communicatiediensten': 7.1, 'Basismaterialen': 6.95, 'Industrie': 6.88, 'Energie': 4.07, 'Defensieve consumptiegoederen': 3.33, 'Gezondheidszorg': 3.30, 'Nutsbedrijven': 2.86, 'Vastgoed': 1.59 }
+      },
     };
 
     // Zoek ETF op symboolprefix (VWCE.DE → VWCE, IWDA.AS → IWDA, enz.)
