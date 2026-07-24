@@ -586,15 +586,15 @@ function IndexDetailPagina({ index, onTerug }) {
                     </div>
                     {/* Laatste */}
                     <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace' }}>
-                      {a.prijs != null ? (a.prijs < 0.1 ? a.prijs.toFixed(4) : a.prijs < 1 ? a.prijs.toFixed(3) : a.prijs.toFixed(2)) : '—'}
+                      {a.prijs != null ? fmtPrijs(a.prijs) : '—'}
                     </div>
                     {/* Verschil */}
                     <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace', fontWeight: 500,
                       color: a.verschil == null || Math.abs(a.verschil) < 0.0005 ? 'var(--text-primary)' : pos ? 'var(--green)' : 'var(--red)' }}>
                       {a.verschil != null ? (() => {
+                        const dec = adaptieveDecimalen(a.prijs || Math.abs(a.verschil) || 0);
                         const v = Math.abs(a.verschil);
-                        if (v < 0.0005) return '0,00';
-                        const dec = v < 0.001 ? 4 : v < 0.01 ? 4 : v < 0.1 ? 3 : 2;
+                        if (v < Math.pow(10, -dec) / 2) return (0).toFixed(dec);
                         return (a.verschil > 0 ? '+' : '') + a.verschil.toFixed(dec);
                       })() : '—'}
                     </div>
