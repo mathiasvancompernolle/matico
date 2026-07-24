@@ -629,7 +629,10 @@ export function Analyse() {
 
     const laadEtf = async (basis) => {
       // Check localStorage cache
-      const cacheKey = `matico_etf_${basis}`;
+      // v2: sleutel gewijzigd zodat oude, foutieve cache-entries (van vóór de
+      // ETF-sectordata-fix) automatisch genegeerd worden i.p.v. tot 30 dagen
+      // stale te blijven staan.
+      const cacheKey = `matico_etf_v2_${basis}`;
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
@@ -644,7 +647,12 @@ export function Analyse() {
       try {
         const res = await fetch(`/api/data?endpoint=etf-holdings&symbol=${basis}`);
         const data = await res.json();
-        if (data && (data.holdings?.length > 0 || data.sectoren?.length > 0)) {
+        // Enkel als bruikbaar beschouwen (en dus cachen) als er echte sectordata is,
+        // of holdings met een effectief gewicht (niet enkel namen zonder percentages) —
+        // dit voorkomt dat onvolledige data 30 dagen lang blijft "hangen".
+        const heeftSectoren = data?.sectoren?.length > 0;
+        const heeftBruikbareHoldings = data?.holdings?.length > 0 && data.holdings.some(h => h.weightPercentage > 0);
+        if (data && (heeftSectoren || heeftBruikbareHoldings)) {
           localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
           return { basis, data };
         }
@@ -1571,7 +1579,7 @@ export function Analyse() {
                   ⟳ Data laden...
                 </span>
               ) : (() => {
-                const cacheKey = `matico_etf_${etfs[0]?.symbol?.toUpperCase().split('.')[0]}`;
+                const cacheKey = `matico_etf_v2_${etfs[0]?.symbol?.toUpperCase().split('.')[0]}`;
                 try {
                   const cached = localStorage.getItem(cacheKey);
                   if (cached) {
