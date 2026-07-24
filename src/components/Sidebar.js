@@ -21,7 +21,7 @@ const ACCENT = '#6366f1';
 
 export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
   const {
-    activeNav, gebruiker, portfolioWaarde, ytdPct,
+    activeNav, gebruiker, portfolioWaarde,
     portfolios, actiefPortfolio, actiefPortfolioId,
     wisselPortfolio, voegPortfolioToe, verwijderPortfolio, hernoemPortfolio
   } = useApp();
@@ -214,12 +214,6 @@ export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
           <div className="sidebar-stat">
             <div className="sidebar-stat-label">Waarde</div>
             <div className="sidebar-stat-value">{formatBedrag(portfolioWaarde)}</div>
-          </div>
-          <div className="sidebar-stat">
-            <div className="sidebar-stat-label">YTD</div>
-            <div className="sidebar-stat-value" style={{ color: ytdPct >= 0 ? 'var(--green)' : 'var(--red)' }}>
-              {ytdPct >= 0 ? '+' : ''}{ytdPct.toFixed(2)}%
-            </div>
           </div>
         </div>
       </div>
