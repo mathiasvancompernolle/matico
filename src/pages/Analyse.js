@@ -409,6 +409,36 @@ export function Analyse() {
         regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
         sector: { 'Technologie': 29.3, 'Financiële dienstverlening': 13.8, 'Gezondheidszorg': 12.4, 'Cyclische consumptiegoederen': 10.9, 'Communicatiediensten': 8.9, 'Industrie': 8.4, 'Defensieve consumptiegoederen': 6.2, 'Energie': 3.7, 'Nutsbedrijven': 2.5, 'Basismaterialen': 2.3, 'Vastgoed': 2.1 }
       },
+      // ── Nieuw toegevoegd (juli 2026) — met bron geverifieerd ──────────────
+      // iShares Core MSCI World (Xetra-notering) — zelfde fonds als IWDA/SWRD
+      EUNL: {
+        regio: { 'Noord-Amerika': 72.1, 'Europa - Ontwikkeld': 13.8, 'Japan': 6.2, 'Azië - Ontwikkeld': 4.1, 'Verenigd Koninkrijk': 2.9, 'Australazië': 0.9 },
+        sector: { 'Technologie': 25.2, 'Financiële dienstverlening': 15.8, 'Gezondheidszorg': 12.1, 'Industrie': 11.3, 'Cyclische consumptiegoederen': 10.4, 'Communicatiediensten': 8.6, 'Defensieve consumptiegoederen': 6.8, 'Energie': 4.5, 'Basismaterialen': 3.2, 'Nutsbedrijven': 2.1 }
+      },
+      // Vanguard S&P 500 UCITS ETF — zelfde index als IVV/SPY/IUSA/CSPX
+      VOO: {
+        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+        sector: { 'Technologie': 33.03, 'Financiële dienstverlening': 14.00, 'Cyclische consumptiegoederen': 10.35, 'Communicatiediensten': 9.77, 'Gezondheidszorg': 9.30, 'Industrie': 8.57, 'Defensieve consumptiegoederen': 5.49, 'Energie': 2.97, 'Nutsbedrijven': 2.39, 'Vastgoed': 2.04, 'Basismaterialen': 1.88 }
+      },
+      VUSA: {
+        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+        sector: { 'Technologie': 33.03, 'Financiële dienstverlening': 14.00, 'Cyclische consumptiegoederen': 10.35, 'Communicatiediensten': 9.77, 'Gezondheidszorg': 9.30, 'Industrie': 8.57, 'Defensieve consumptiegoederen': 5.49, 'Energie': 2.97, 'Nutsbedrijven': 2.39, 'Vastgoed': 2.04, 'Basismaterialen': 1.88 }
+      },
+      // iShares Core MSCI EM IMI (LSE-notering) — zelfde fonds als EMIM
+      EIMI: {
+        regio: { 'China': 27.5, 'India': 18.2, 'Taiwan': 16.8, 'Zuid-Korea': 11.3, 'Brazilië': 5.4, 'Saudi-Arabië': 4.1, 'Zuid-Afrika': 3.2, 'Mexico': 2.8, 'Overige opkomende markten': 10.7 },
+        sector: { 'Financiële dienstverlening': 22.4, 'Technologie': 20.1, 'Cyclische consumptiegoederen': 13.8, 'Communicatiediensten': 9.6, 'Energie': 6.8, 'Industrie': 6.4, 'Basismaterialen': 6.2, 'Gezondheidszorg': 4.8, 'Defensieve consumptiegoederen': 4.5, 'Vastgoed': 3.2, 'Nutsbedrijven': 2.2 }
+      },
+      // iShares Core EURO STOXX 50 (dubbele notering) — zelfde fonds als CSX5
+      CSSX5E: {
+        regio: { 'Frankrijk': 38.2, 'Duitsland': 27.4, 'Nederland': 12.8, 'Spanje': 9.6, 'Finland': 4.2, 'Italië': 3.9, 'Ierland': 2.1, 'België': 1.8 },
+        sector: { 'Financiële dienstverlening': 19.8, 'Industrie': 17.4, 'Technologie': 12.6, 'Gezondheidszorg': 11.8, 'Defensieve consumptiegoederen': 10.4, 'Energie': 7.9, 'Cyclische consumptiegoederen': 7.2, 'Basismaterialen': 5.6, 'Nutsbedrijven': 4.8, 'Overige': 2.5 }
+      },
+      // Vanguard Total Stock Market ETF — sector via Yahoo (juli 2026), regio 100% VS
+      VTI: {
+        regio: { 'Noord-Amerika': 99.5, 'Overige': 0.5 },
+        sector: { 'Technologie': 36.07, 'Financiële dienstverlening': 11.76, 'Industrie': 10.15, 'Gezondheidszorg': 9.66, 'Cyclische consumptiegoederen': 9.40, 'Communicatiediensten': 9.13, 'Defensieve consumptiegoederen': 4.29, 'Energie': 3.15, 'Vastgoed': 2.33, 'Nutsbedrijven': 2.17, 'Basismaterialen': 1.89 }
+      },
     };
 
     // Zoek ETF op symboolprefix (VWCE.DE → VWCE, IWDA.AS → IWDA, enz.)
