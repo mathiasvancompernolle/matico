@@ -1190,7 +1190,7 @@ module.exports = async function handler(req, res) {
       if (sectoren.length === 0 || holdings.length === 0) {
       try {
         const sessie = await haalYahooCookieEnCrumb();
-        const basisUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=topHoldings`;
+        const basisUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=topHoldings&formatted=false`;
         const url = sessie ? `${basisUrl}&crumb=${encodeURIComponent(sessie.crumb)}` : basisUrl;
         const yr = await fetch(url, {
           headers: {
@@ -1200,6 +1200,14 @@ module.exports = async function handler(req, res) {
         });
         const yd = await yr.json();
         const th = yd?.quoteSummary?.result?.[0]?.topHoldings;
+        // Yahoo geeft getallen soms terug als { raw, fmt } i.p.v. een gewoon getal
+        // (ondanks formatted=false) — hiermee werkt het hoe dan ook.
+        const yahooGetal = (v) => {
+          if (v === null || v === undefined) return 0;
+          if (typeof v === 'number') return v;
+          if (typeof v === 'object' && typeof v.raw === 'number') return v.raw;
+          return 0;
+        };
         _debug.bronnen.yahoo = {
           sessieOk: !!sessie,
           httpStatus: yr.status,
@@ -1211,7 +1219,7 @@ module.exports = async function handler(req, res) {
           const s = th.sectorWeightings
             .map(obj => {
               const [code, frac] = Object.entries(obj)[0] || [];
-              return { sector: YAHOO_SECTOR_LABELS[code] || null, weightPercentage: (frac || 0) * 100 };
+              return { sector: YAHOO_SECTOR_LABELS[code] || null, weightPercentage: yahooGetal(frac) * 100 };
             })
             .filter(s => s.sector && s.weightPercentage > 0);
           if (s.length > 0) sectoren = s;
@@ -1219,7 +1227,7 @@ module.exports = async function handler(req, res) {
         if (holdings.length === 0 && th?.holdings?.length > 0) {
           holdings = th.holdings.map(h => ({
             asset: h.symbol, name: h.holdingName,
-            weightPercentage: (h.holdingPercent || 0) * 100,
+            weightPercentage: yahooGetal(h.holdingPercent) * 100,
           }));
         }
       } catch (e) { console.error('Yahoo topHoldings fout:', e); _debug.bronnen.yahoo = { crash: String(e) }; }
