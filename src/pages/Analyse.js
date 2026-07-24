@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, PanelLeft } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────
 const fmt = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -416,7 +416,27 @@ function Staaf({ label, waarde, pct, kleur }) {
 }
 
 // ── Hoofd Analyse component ───────────────────────────────────────
-export function Analyse() {
+function SidebarToggleKnop({ onToggleSidebar, sidebarCollapsed }) {
+  if (!onToggleSidebar) return null;
+  return (
+    <button
+      onClick={onToggleSidebar}
+      title={sidebarCollapsed ? 'Sidebar tonen' : 'Sidebar verbergen'}
+      style={{
+        width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)',
+        background: 'transparent', cursor: 'pointer', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexShrink: 0,
+        marginRight: 12,
+      }}
+      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+    >
+      <PanelLeft size={17} />
+    </button>
+  );
+}
+
+export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
   const { beleggingen: beleggingenRaw, koersen, getMuntFactor, verkochteBeleggingen } = useApp();
   // Belegging-type normaliseren: bekende ETF-tickers (VWCE, IWDA, ...) tellen altijd
   // als ETF voor Spreiding/Sectoren/Regio/Valuta/ETF X-ray, ook als het type-veld
@@ -1136,7 +1156,7 @@ export function Analyse() {
   if (beleggingen.length === 0) {
     return (
       <div style={{ padding: '0 0 40px' }}>
-        <div className="page-header" style={{ marginBottom: 24 }}><h1>Analyse</h1></div>
+        <div className="page-header" style={{ marginBottom: 24, display: 'flex', alignItems: 'center' }}><SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} /><h1>Analyse</h1></div>
         <div style={{ padding: '0 32px' }}>
           <div className="empty-state card"><h3>Nog geen beleggingen</h3><p>Voeg beleggingen toe om je portfolio te analyseren</p></div>
         </div>
@@ -1146,7 +1166,7 @@ export function Analyse() {
 
   return (
     <div style={{ padding: '0 0 60px' }}>
-      <div className="page-header" style={{ marginBottom: 24 }}><h1>Analyse</h1></div>
+      <div className="page-header" style={{ marginBottom: 24, display: 'flex', alignItems: 'center' }}><SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} /><h1>Analyse</h1></div>
       <div style={{ padding: '0 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* ── Rij 1: Totale winst/verlies + Risicoprofiel ── */}
