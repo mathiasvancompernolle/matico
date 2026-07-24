@@ -159,6 +159,19 @@ const FMP_SECTOR_MAP = {
   'Real Estate': 'Vastgoed', 'REITs': 'Vastgoed',
 };
 
+// Alle mogelijke sector-/regiobuckets die de app gebruikt (voor het opsporen
+// van de minst vertegenwoordigde categorie bij diversificatiesuggesties)
+const ALLE_SECTOREN = [
+  'Technologie', 'Financiële dienstverlening', 'Cyclische consumptiegoederen',
+  'Defensieve consumptiegoederen', 'Gezondheidszorg', 'Communicatiediensten',
+  'Industrie', 'Energie', 'Basismaterialen', 'Nutsbedrijven', 'Vastgoed',
+];
+const ALLE_REGIOS = [
+  'Noord-Amerika', 'Europa - Ontwikkeld', 'Europa - Opkomend',
+  'Azië - Ontwikkeld', 'Azië - Opkomend', 'Japan', 'Verenigd Koninkrijk',
+  'Australazië', 'Afrika/Midden-Oosten', 'Latijns-Amerika',
+];
+
 // ── ETF gewichtendatabase (regio + sector) ──────────────────────
 // Symbolen worden gematcht op prefix: VWCE.DE → VWCE, IWDA.AS → IWDA, enz.
 const ETF_DB = {
@@ -707,7 +720,7 @@ export function Analyse() {
     });
   }, [beleggingen.filter(b => b.type === 'etf').map(b => b.symbol).join(',')]);
 
-    const { grootstePct, grootsteSym, topSector, topSectorPct, topRegio, topRegioPct, concentratieTips } = useMemo(() => {
+    const { grootstePct, grootsteSym, topSector, topSectorPct, topRegio, topRegioPct, typeSuggestie, sectorSuggestie, regioSuggestie, concentratieTips } = useMemo(() => {
     const totaal = beleggingen.reduce((s, b) => {
       const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
     }, 0) || 1;
@@ -799,10 +812,34 @@ export function Analyse() {
       tips.push(`Je portfolio is goed gespreid over ${aantalPosities} posities, ${Object.keys(sectorMap).length} sectoren en ${Object.keys(regioMap).length} regio's.`);
     }
 
+    // ── Suggesties voor de volgende belegging ──────────────────────────
+    // Per dimensie (type/sector/regio) tonen we, enkel als er echt een
+    // concentratie is, welke categorie het minst vertegenwoordigd is —
+    // dat is de richting die de spreiding het meest zou verbeteren.
+    const etfPct = posities.filter(p => p.type === 'etf').reduce((s, p) => s + p.pct, 0);
+    const typeSuggestie = (aandelenPct > 60 && etfPct < 20)
+      ? `Vooral individuele aandelen (${aandelenPct.toFixed(0)}%) — een brede ETF zou hier het meest aan bijdragen.`
+      : null;
+
+    const sectorZwakste = ALLE_SECTOREN
+      .map(s => [s, sectorMap[s] || 0])
+      .sort((a, b) => a[1] - b[1])[0];
+    const sectorSuggestie = (topS[1] > 30 && sectorZwakste && sectorZwakste[0] !== topS[0])
+      ? `${sectorZwakste[0]} (${sectorZwakste[1].toFixed(0)}%) is nu het minst vertegenwoordigd — kijk daar voor je volgende belegging.`
+      : null;
+
+    const regioZwakste = ALLE_REGIOS
+      .map(r => [r, regioMap[r] || 0])
+      .sort((a, b) => a[1] - b[1])[0];
+    const regioSuggestie = (topR[1] > 50 && regioZwakste && regioZwakste[0] !== topR[0])
+      ? `${regioZwakste[0]} (${regioZwakste[1].toFixed(0)}%) is nu het minst vertegenwoordigd — kijk daar voor je volgende belegging.`
+      : null;
+
     return {
       grootstePct: posities[0]?.pct || 0, grootsteSym: posities[0]?.sym || '—',
       topSector: topS[0], topSectorPct: topS[1],
       topRegio: topR[0], topRegioPct: topR[1],
+      typeSuggestie, sectorSuggestie, regioSuggestie,
       concentratieTips: tips,
     };
   }, [beleggingen, koersen, liveSectoren, liveEtfData]);
@@ -1414,16 +1451,22 @@ export function Analyse() {
               </div>
             ))}
             {[
-              { label: 'Grootste positie', waarde: grootsteSym, pct: grootstePct },
-              { label: 'Top sector', waarde: topSector, pct: topSectorPct },
-              { label: 'Top regio', waarde: topRegio, pct: topRegioPct },
-            ].map(({ label, waarde, pct }) => (
+              { label: 'Grootste positie', waarde: grootsteSym, pct: grootstePct, suggestie: typeSuggestie },
+              { label: 'Top sector', waarde: topSector, pct: topSectorPct, suggestie: sectorSuggestie },
+              { label: 'Top regio', waarde: topRegio, pct: topRegioPct, suggestie: regioSuggestie },
+            ].map(({ label, waarde, pct, suggestie }) => (
               <div key={label} style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
                 <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>{waarde} <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{pct.toFixed(0)}%</span></div>
                 <div style={{ height: 6, background: 'var(--border-light)', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: ACCENT, borderRadius: 4, transition: 'width 0.4s ease' }} />
                 </div>
+                {suggestie && (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+                    <span style={{ flexShrink: 0 }}>→</span>
+                    <span>{suggestie}</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
