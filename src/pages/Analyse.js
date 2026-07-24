@@ -1138,7 +1138,12 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
   if (beleggingen.length === 0) {
     return (
       <div style={{ padding: '0 0 40px' }}>
-        <div className="page-header" style={{ marginBottom: 24, display: 'flex', alignItems: 'center' }}><SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} /><h1>Analyse</h1></div>
+        <div className="page-header" style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+            <h1>Analyse</h1>
+          </div>
+        </div>
         <div style={{ padding: '0 32px' }}>
           <div className="empty-state card"><h3>Nog geen beleggingen</h3><p>Voeg beleggingen toe om je portfolio te analyseren</p></div>
         </div>
@@ -1148,7 +1153,12 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
 
   return (
     <div style={{ padding: '0 0 60px' }}>
-      <div className="page-header" style={{ marginBottom: 24, display: 'flex', alignItems: 'center' }}><SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} /><h1>Analyse</h1></div>
+      <div className="page-header" style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+          <h1>Analyse</h1>
+        </div>
+      </div>
       <div style={{ padding: '0 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* ── Rij 1: Totale winst/verlies + Risicoprofiel ── */}

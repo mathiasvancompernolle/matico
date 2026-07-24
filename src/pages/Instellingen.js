@@ -51,9 +51,11 @@ export default function Instellingen({ sidebarCollapsed, onToggleSidebar }) {
 
   return (
     <div style={{ padding: '0 0 60px' }}>
-      <div className="page-header" style={{ marginBottom: 0, display: 'flex', alignItems: 'center' }}>
-        <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
-        <h1>Instellingen</h1>
+      <div className="page-header" style={{ marginBottom: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+          <h1>Instellingen</h1>
+        </div>
       </div>
 
       {/* Tabs */}

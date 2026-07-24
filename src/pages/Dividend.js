@@ -406,7 +406,12 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
   if (beleggingen.length === 0) {
     return (
       <div style={{ padding: '0 0 40px' }}>
-        <div className="page-header" style={{ marginBottom: 24, display: 'flex', alignItems: 'center' }}><SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} /><h1>Dividend</h1></div>
+        <div className="page-header" style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+            <h1>Dividend</h1>
+          </div>
+        </div>
         <div style={{ padding: '0 32px' }}>
           <div className="empty-state card"><h3>Nog geen beleggingen</h3><p>Voeg beleggingen toe om dividenddata te zien</p></div>
         </div>
