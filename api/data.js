@@ -1061,44 +1061,98 @@ module.exports = async function handler(req, res) {
       const { symbol } = req.query;
       // Normaliseer symbool voor FMP (verwijder exchange suffix)
       const fmpSym = symbol.split('.')[0];
+      const yfSym = toYahooSymbol(symbol);
+
+      // Yahoo's sector-codes (snake_case, fractie 0-1) → dezelfde Engelse labels
+      // als FMP gebruikt, zodat de bestaande FMP_SECTOR_MAP (front-end) ze
+      // zonder wijziging naar het Nederlands vertaalt.
+      const YAHOO_SECTOR_LABELS = {
+        realestate: 'Real Estate',
+        consumer_cyclical: 'Consumer Cyclical',
+        basic_materials: 'Basic Materials',
+        consumer_defensive: 'Consumer Defensive',
+        technology: 'Technology',
+        communication_services: 'Communication Services',
+        financial_services: 'Financial Services',
+        utilities: 'Utilities',
+        industrials: 'Industrials',
+        energy: 'Energy',
+        healthcare: 'Healthcare',
+      };
+
+      let sectoren = [], holdings = [], landen = [];
+
+      // ── Bron 1: Yahoo Finance quoteSummary (topHoldings) ─────────────────
+      // Zelfde gratis, key-loze bron die de rest van de app al gebruikt.
+      // Dekt ook Europese UCITS-ETF's (bv. VFEM, VWCE, IWDA) die FMP's gratis
+      // laag vaak mist, omdat die enkel de VS-genoteerde tegenhangers indexeert.
+      try {
+        const yr = await fetch(
+          `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=topHoldings`,
+          { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } }
+        );
+        const yd = await yr.json();
+        const th = yd?.quoteSummary?.result?.[0]?.topHoldings;
+        if (th?.sectorWeightings?.length > 0) {
+          sectoren = th.sectorWeightings
+            .map(obj => {
+              const [code, frac] = Object.entries(obj)[0] || [];
+              return { sector: YAHOO_SECTOR_LABELS[code] || null, weightPercentage: (frac || 0) * 100 };
+            })
+            .filter(s => s.sector && s.weightPercentage > 0);
+        }
+        if (th?.holdings?.length > 0) {
+          holdings = th.holdings.map(h => ({
+            asset: h.symbol, name: h.holdingName,
+            weightPercentage: (h.holdingPercent || 0) * 100,
+          }));
+        }
+      } catch (e) { console.error('Yahoo topHoldings fout:', e); }
+
+      // ── Bron 2: FMP (aanvulling/fallback voor sector, land, en holdings) ──
       try {
         // FMP heeft de legacy /api/v3/etf-* endpoints vervangen door /stable/etf/*
         // met symbol als query parameter i.p.v. pad-parameter. De oude v3-paden
-        // gaven stilzwijgend niets meer terug, waardoor sectorspreiding voor
-        // ETF's altijd leeg bleef.
+        // gaven stilzwijgend niets meer terug.
         const [sectorRes, holdingsRes, countryRes] = await Promise.all([
           fetch(`https://financialmodelingprep.com/stable/etf/sector-weightings?symbol=${fmpSym}&apikey=${FMP_KEY}`),
           fetch(`https://financialmodelingprep.com/stable/etf/holdings?symbol=${fmpSym}&apikey=${FMP_KEY}`),
           fetch(`https://financialmodelingprep.com/stable/etf/country-weightings?symbol=${fmpSym}&apikey=${FMP_KEY}`)
         ]);
-        let sectoren = await sectorRes.json();
-        let holdings = await holdingsRes.json();
-        let landen = await countryRes.json();
+        let fmpSectoren = await sectorRes.json();
+        let fmpHoldings = await holdingsRes.json();
+        let fmpLanden = await countryRes.json();
 
         // Fallback naar de oude legacy-endpoints als /stable/ onverwacht niets geeft
-        // (bv. als FMP dit later weer anders indeelt)
-        if (!Array.isArray(sectoren) || sectoren.length === 0) {
+        if (!Array.isArray(fmpSectoren) || fmpSectoren.length === 0) {
           try {
             const r = await fetch(`https://financialmodelingprep.com/api/v3/etf-sector-weightings/${fmpSym}?apikey=${FMP_KEY}`);
             const d = await r.json();
-            if (Array.isArray(d) && d.length > 0) sectoren = d;
+            if (Array.isArray(d) && d.length > 0) fmpSectoren = d;
           } catch (e) {}
         }
-        if (!Array.isArray(holdings) || holdings.length === 0) {
+        if (!Array.isArray(fmpHoldings) || fmpHoldings.length === 0) {
           try {
             const r = await fetch(`https://financialmodelingprep.com/api/v3/etf-holder/${fmpSym}?apikey=${FMP_KEY}`);
             const d = await r.json();
-            if (Array.isArray(d) && d.length > 0) holdings = d;
+            if (Array.isArray(d) && d.length > 0) fmpHoldings = d;
           } catch (e) {}
         }
-        if (!Array.isArray(landen) || landen.length === 0) {
+        if (!Array.isArray(fmpLanden) || fmpLanden.length === 0) {
           try {
             const r = await fetch(`https://financialmodelingprep.com/api/v3/etf-country-weightings/${fmpSym}?apikey=${FMP_KEY}`);
             const d = await r.json();
-            if (Array.isArray(d) && d.length > 0) landen = d;
+            if (Array.isArray(d) && d.length > 0) fmpLanden = d;
           } catch (e) {}
         }
 
+        // Yahoo had voorrang; FMP vult enkel aan wat nog ontbreekt
+        if (sectoren.length === 0 && Array.isArray(fmpSectoren)) sectoren = fmpSectoren;
+        if (holdings.length === 0 && Array.isArray(fmpHoldings)) holdings = fmpHoldings;
+        if (Array.isArray(fmpLanden) && fmpLanden.length > 0) landen = fmpLanden;
+      } catch (e) { console.error('FMP ETF holdings fout:', e); }
+
+      try {
         // Sector data verwerken
         const sectorData = Array.isArray(sectoren) ? sectoren.map(s => ({
           label: s.sector || s.weightPercentage,
