@@ -20,6 +20,7 @@ import './App.css';
 import Landing from './pages/Landing';
 import AuthPage from './pages/AuthPage';
 import { supabase } from './supabaseClient';
+import rendlyLogo from './assets/rendly-logo.png';
 
 function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSelectEffect }) {
   const [zoekOpen, setZoekOpen] = React.useState(false);
@@ -61,9 +62,8 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
   return (
     <nav className="top-nav" style={{ display: 'flex', alignItems: 'center', padding: '0 16px', gap: 8 }}>
       {/* Logo */}
-      <div onClick={() => { onSectieWissel('portefeuille'); navigeerNaar('overzicht'); }} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginRight: 16, flexShrink: 0 }}>
-        <div style={{ width: 28, height: 28, borderRadius: 7, background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 13 }}>M</div>
-        <span style={{ fontWeight: 800, fontSize: 15, color: '#6366f1', letterSpacing: '-0.3px' }}>Matico</span>
+      <div onClick={() => { onSectieWissel('portefeuille'); navigeerNaar('overzicht'); }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 16, flexShrink: 0 }}>
+        <img src={rendlyLogo} alt="Rendly" style={{ height: 22, width: 'auto', display: 'block' }} />
       </div>
 
       {/* Tabs */}
@@ -277,8 +277,8 @@ function NaamInstellen() {
   return (
     <div className="naam-instellen">
       <div className="naam-card">
-        <div className="naam-logo">M</div>
-        <h1>Welkom bij Matico</h1>
+        <img src={rendlyLogo} alt="Rendly" className="naam-logo" style={{ height: 32, width: 'auto' }} />
+        <h1>Welkom bij Rendly</h1>
         <p>Hoe mogen we je noemen?</p>
         <input type="text" placeholder="Voornaam" value={voornaam}
           onChange={e => setVoornaam(e.target.value)}
@@ -322,7 +322,7 @@ export default function App() {
   if (authLaden) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans, sans-serif' }}>
-        <div style={{ color: '#6366f1', fontSize: 16, fontWeight: 600 }}>Matico laden...</div>
+        <div style={{ color: '#1e3a8a', fontSize: 16, fontWeight: 600 }}>Rendly laden...</div>
       </div>
     );
   }
