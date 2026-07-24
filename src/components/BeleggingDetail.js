@@ -18,6 +18,8 @@ export default function BeleggingDetail({ belegging, onClose }) {
   const [aktieveTab, setAktieveTab] = useState('sector');
   const [beschrijvingUitgeklapt, setBeschrijvingUitgeklapt] = useState(false);
   const [gekopieerd, setGekopieerd] = useState(false);
+  const [etfData, setEtfData] = useState(null);
+  const [etfDataLaden, setEtfDataLaden] = useState(false);
 
   const koers = koersen[belegging.symbol];
   const huidigePrijs = koers ? koers.c : belegging.kostprijs;
@@ -65,6 +67,21 @@ export default function BeleggingDetail({ belegging, onClose }) {
     };
     laadGrafiek();
   }, [tijdperk, belegging.symbol, huidigePrijs]);
+
+  // ETF-verdeling (sector/regio) en top-10 holdings — per geselecteerd effect
+  // opnieuw opgehaald, zodat dit niet blijft hangen op het vorige effect.
+  useEffect(() => {
+    if (belegging.type !== 'etf') { setEtfData(null); return; }
+    let genegeerd = false;
+    setEtfDataLaden(true);
+    setEtfData(null);
+    const basis = belegging.symbol.toUpperCase().split('.')[0];
+    fetch(`/api/data?endpoint=etf-holdings&symbol=${encodeURIComponent(basis)}`)
+      .then(r => r.json())
+      .then(d => { if (!genegeerd) { setEtfData(d); setEtfDataLaden(false); } })
+      .catch(() => { if (!genegeerd) setEtfDataLaden(false); });
+    return () => { genegeerd = true; };
+  }, [belegging.symbol, belegging.type]);
 
   // Profiel, metrics & nieuws
   useEffect(() => {
@@ -179,19 +196,17 @@ export default function BeleggingDetail({ belegging, onClose }) {
     return { detailXTicks: ticks, detailXFormatter: formatter };
   })();
 
-  // ETF sector data
-  const etfSectorData = [
-    { naam: 'Technologie', pct: 29.01, kleur: '#6366f1' },
-    { naam: 'Financiële dienstverlening', pct: 16.10, kleur: '#8b5cf6' },
-    { naam: 'Industrie', pct: 11.04, kleur: '#a78bfa' },
-    { naam: 'Cyclische consumptiegoederen', pct: 9.43, kleur: '#22c55e' },
-    { naam: 'Communicatiediensten', pct: 8.82, kleur: '#16a34a' },
-    { naam: 'Gezondheidszorg', pct: 8.01, kleur: '#7c3aed' },
-    { naam: 'Defensieve consumentengoederen', pct: 4.95, kleur: '#f97316' },
-    { naam: 'Energie', pct: 4.21, kleur: '#eab308' },
-    { naam: 'Basismaterialen', pct: 3.84, kleur: '#ef4444' },
-    { naam: 'Nutsbedrijven', pct: 2.68, kleur: '#06b6d4' },
-  ];
+  // ETF-verdeling: sector of regio, afhankelijk van de actieve tab — live
+  // opgehaald voor het geselecteerde effect (zie useEffect hierboven).
+  const ETF_KLEUREN = ['#6366f1', '#8b5cf6', '#a78bfa', '#22c55e', '#16a34a', '#7c3aed', '#f97316', '#eab308', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6'];
+  const etfSectorData = (() => {
+    if (aktieveTab !== 'sector' && aktieveTab !== 'regio') return [];
+    const bron = aktieveTab === 'regio' ? etfData?.landen : etfData?.sectoren;
+    if (!bron || bron.length === 0) return [];
+    return bron
+      .slice().sort((a, b) => b.pct - a.pct)
+      .map((s, i) => ({ naam: s.label, pct: s.pct, kleur: ETF_KLEUREN[i % ETF_KLEUREN.length] }));
+  })();
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -445,6 +460,14 @@ export default function BeleggingDetail({ belegging, onClose }) {
               ))}
             </div>
             <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+              {etfDataLaden ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '20px 0' }}>Laden...</div>
+              ) : etfSectorData.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '20px 0' }}>
+                  {aktieveTab === 'effect type' ? 'Geen data beschikbaar voor dit type.' : 'Geen data beschikbaar voor dit effect.'}
+                </div>
+              ) : (
+                <>
               <svg width="110" height="110" viewBox="0 0 120 120">
                 {etfSectorData.reduce((acc, item) => {
                   const total = etfSectorData.reduce((s, d) => s + d.pct, 0);
@@ -468,10 +491,12 @@ export default function BeleggingDetail({ belegging, onClose }) {
                   <div key={s.naam} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
                     <div style={{ width: 28, height: 4, borderRadius: 2, background: s.kleur, flexShrink: 0 }} />
                     <span style={{ fontSize: 12, flex: 1 }}>{s.naam}</span>
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>{s.pct}%</span>
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>{s.pct.toFixed(2)}%</span>
                   </div>
                 ))}
               </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -480,29 +505,22 @@ export default function BeleggingDetail({ belegging, onClose }) {
         {belegging.type === 'etf' && (
           <div className="detail-section">
             <h3>Top 10 onderliggende beleggingen</h3>
-            {[
-              { naam: 'NVIDIA Corporation', sym: 'NVDA', pct: 4.66 },
-              { naam: 'Apple Inc', sym: 'AAPL', pct: 3.90 },
-              { naam: 'Microsoft Corporation', sym: 'MSFT', pct: 3.02 },
-              { naam: 'Amazon.com Inc', sym: 'AMZN', pct: 2.54 },
-              { naam: 'Alphabet Inc Class A', sym: 'GOOGL', pct: 2.23 },
-              { naam: 'Broadcom Inc', sym: 'AVGO', pct: 1.92 },
-              { naam: 'Alphabet Inc Class C', sym: 'GOOG', pct: 1.81 },
-              { naam: 'Taiwan Semiconductor', sym: '2330', pct: 1.63 },
-              { naam: 'Meta Platforms Inc.', sym: 'META', pct: 1.33 },
-              { naam: 'Tesla Inc', sym: 'TSLA', pct: 1.07 },
-            ].map(({ naam, sym, pct }) => (
-              <div key={sym} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
+            {etfDataLaden ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '10px 0' }}>Laden...</div>
+            ) : !etfData?.holdings || etfData.holdings.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '10px 0' }}>Geen holdings-data beschikbaar voor dit effect.</div>
+            ) : etfData.holdings.slice(0, 10).map(({ asset, name, weightPercentage }) => (
+              <div key={asset} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
                 <div style={{ width: 32, height: 32, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', background: 'white', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <img src={`https://assets.parqet.com/logos/symbol/${sym.split('.')[0]}?format=png`} alt={sym}
+                  <img src={`https://assets.parqet.com/logos/symbol/${asset.split('.')[0]}?format=png`} alt={asset}
                     style={{ width: 26, height: 26, objectFit: 'contain' }}
-                    onError={e => { e.target.style.display='none'; e.target.parentNode.style.background='var(--accent-bg)'; e.target.parentNode.innerHTML=`<span style="color:var(--accent);font-weight:700;font-size:11px">${sym.slice(0,2).toUpperCase()}</span>`; }} />
+                    onError={e => { e.target.style.display='none'; e.target.parentNode.style.background='var(--accent-bg)'; e.target.parentNode.innerHTML=`<span style="color:var(--accent);font-weight:700;font-size:11px">${asset.slice(0,2).toUpperCase()}</span>`; }} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{naam}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{sym}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{name || asset}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{asset}</div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{pct}%</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{(weightPercentage || 0).toFixed(2)}%</div>
               </div>
             ))}
           </div>
