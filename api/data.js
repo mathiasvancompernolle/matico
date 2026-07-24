@@ -163,6 +163,29 @@ module.exports = async function handler(req, res) {
     } catch (e) { return null; }
   }
 
+  // ── Yahoo cookie + crumb ──────────────────────────────────────────────────
+  // Yahoo's v10/quoteSummary-endpoint (gebruikt voor ETF-sectordata) vereist
+  // sinds enige tijd een geldige sessie-cookie + "crumb"-token, anders geeft
+  // Yahoo stilzwijgend een 401 terug. In-memory gecached per functie-instance
+  // (niet per request) zodat we dit niet bij elke aanroep opnieuw moeten doen.
+  let _yahooSessie = null;
+  async function haalYahooCookieEnCrumb() {
+    if (_yahooSessie) return _yahooSessie;
+    try {
+      const cookieRes = await fetch('https://fc.yahoo.com', { headers: { 'User-Agent': 'Mozilla/5.0' }, redirect: 'manual' });
+      const setCookie = cookieRes.headers.get('set-cookie');
+      if (!setCookie) return null;
+      const cookie = setCookie.split(';')[0];
+      const crumbRes = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+        headers: { 'User-Agent': 'Mozilla/5.0', 'Cookie': cookie },
+      });
+      const crumb = await crumbRes.text();
+      if (!crumb || crumb.includes('<html') || crumb.length > 100) return null;
+      _yahooSessie = { cookie, crumb };
+      return _yahooSessie;
+    } catch (e) { return null; }
+  }
+
   // Index-samenstellingen (gedeeld door 'aandelen-regio' én de zoekfunctie —
   // voor bekende namen uit deze lijsten weten we de notering met zekerheid correct is)
   const componenten = {
@@ -1087,10 +1110,15 @@ module.exports = async function handler(req, res) {
       // Dekt ook Europese UCITS-ETF's (bv. VFEM, VWCE, IWDA) die FMP's gratis
       // laag vaak mist, omdat die enkel de VS-genoteerde tegenhangers indexeert.
       try {
-        const yr = await fetch(
-          `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=topHoldings`,
-          { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } }
-        );
+        const sessie = await haalYahooCookieEnCrumb();
+        const basisUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=topHoldings`;
+        const url = sessie ? `${basisUrl}&crumb=${encodeURIComponent(sessie.crumb)}` : basisUrl;
+        const yr = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json',
+            ...(sessie ? { 'Cookie': sessie.cookie } : {}),
+          },
+        });
         const yd = await yr.json();
         const th = yd?.quoteSummary?.result?.[0]?.topHoldings;
         if (th?.sectorWeightings?.length > 0) {
