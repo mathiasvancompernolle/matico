@@ -274,7 +274,7 @@ module.exports = async function handler(req, res) {
       'ACA.PA',    // Crédit Agricole
       'BN.PA',     // Danone
       'DSY.PA',    // Dassault Systèmes
-      'EDEN.PA',   // Edenred
+      'FGR.PA',    // Eiffage (verving Edenred, dec. 2025)
       'ENGI.PA',   // Engie
       'EL.PA',     // EssilorLuxottica
       'ERF.PA',    // Eurofins Scientific
@@ -295,7 +295,7 @@ module.exports = async function handler(req, res) {
       'GLE.PA',    // Société Générale
       'STLAP.PA',  // Stellantis
       'STMPA.PA',  // STMicroelectronics
-      'TEP.PA',    // Teleperformance
+      'ENX.PA',    // Euronext NV (verving Teleperformance, sept. 2025)
       'HO.PA',     // Thales
       'TTE.PA',    // TotalEnergies
       'URW.PA',    // Unibail-Rodamco-Westfield
