@@ -1,3 +1,4 @@
+// v2-cookievoorkeuren-knop
 import React from 'react';
 import { heropenCookieBanner } from '../components/CookieConsent';
 

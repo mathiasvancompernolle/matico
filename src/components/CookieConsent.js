@@ -1,3 +1,4 @@
+// v2-heropen-cookiebanner
 import React, { useState, useEffect } from 'react';
 
 const OPSLAG_SLEUTEL = 'matico_cookie_toestemming'; // 'geaccepteerd' | 'geweigerd'
