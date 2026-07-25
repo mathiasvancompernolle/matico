@@ -244,7 +244,7 @@ module.exports = async function handler(req, res) {
       'WEB.BR',    // Warehouses Estates Belgium
       'WEHB.BR',   // Wereldhave Belgium
     ],
-    aex: ['ADYEN.AS','AGN.AS','AKZA.AS','ASML.AS','BESI.AS','DSFIR.AS','EXOR.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','RAND.AS','REN.AS','SHELL.AS','UNA.AS','URW.AS','WKL.AS'],
+    aex: ['ABN.AS','ADYEN.AS','AGN.AS','AD.AS','AKZA.AS','MT.AS','ASM.AS','ASML.AS','ASRNL.AS','BESI.AS','DSFIR.AS','EXO.AS','HEIA.AS','IMCD.AS','INGA.AS','KPN.AS','NN.AS','PHIA.AS','PRX.AS','REN.AS','SHELL.AS','UMG.AS','UNA.AS','WKL.AS','AALB.AS','CVC.AS','INPST.AS','SBMO.AS','MICC.AS','WDP.BR'],
     sp500: [], // niet in gebruik
     nasdaq: [
       'NVDA','AAPL','MSFT','AMZN','GOOGL','GOOG','AVGO','TSLA','META','MU',
