@@ -260,6 +260,48 @@ module.exports = async function handler(req, res) {
     ],
     nikkei: ['7203.T','9984.T','6758.T','8306.T','6861.T','7267.T','4063.T','6594.T','9433.T','8035.T'],
     hangseng: ['0700.HK','0941.HK','1299.HK','2318.HK','0005.HK','1398.HK','3690.HK','2020.HK','9988.HK','0388.HK'],
+    cac40: [
+      'AC.PA',     // Accor
+      'AI.PA',     // Air Liquide
+      'AIR.PA',    // Airbus
+      'MT.AS',     // ArcelorMittal (Amsterdam-notering, ook in CAC 40)
+      'CS.PA',     // Axa
+      'BNP.PA',    // BNP Paribas
+      'EN.PA',     // Bouygues
+      'BVI.PA',    // Bureau Veritas
+      'CAP.PA',    // Capgemini
+      'CA.PA',     // Carrefour
+      'ACA.PA',    // Crédit Agricole
+      'BN.PA',     // Danone
+      'DSY.PA',    // Dassault Systèmes
+      'EDEN.PA',   // Edenred
+      'ENGI.PA',   // Engie
+      'EL.PA',     // EssilorLuxottica
+      'ERF.PA',    // Eurofins Scientific
+      'RMS.PA',    // Hermès
+      'KER.PA',    // Kering
+      'OR.PA',     // L'Oréal
+      'LR.PA',     // Legrand
+      'MC.PA',     // LVMH
+      'ML.PA',     // Michelin
+      'ORA.PA',    // Orange
+      'RI.PA',     // Pernod Ricard
+      'PUB.PA',    // Publicis
+      'RNO.PA',    // Renault
+      'SAF.PA',    // Safran
+      'SGO.PA',    // Saint-Gobain
+      'SAN.PA',    // Sanofi
+      'SU.PA',     // Schneider Electric
+      'GLE.PA',    // Société Générale
+      'STLAP.PA',  // Stellantis
+      'STMPA.PA',  // STMicroelectronics
+      'TEP.PA',    // Teleperformance
+      'HO.PA',     // Thales
+      'TTE.PA',    // TotalEnergies
+      'URW.PA',    // Unibail-Rodamco-Westfield
+      'VIE.PA',    // Veolia
+      'DG.PA',     // Vinci
+    ],
   };
   const GEKENDE_TICKERS = new Set(Object.values(componenten).flat());
 
