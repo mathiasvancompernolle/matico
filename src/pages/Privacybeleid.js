@@ -1,4 +1,5 @@
 import React from 'react';
+import { heropenCookieBanner } from '../components/CookieConsent';
 
 // Privacybeleid-pagina. Inhoud is opgesteld op basis van hoe Matico
 // technisch in elkaar zit (Supabase-login, localStorage voor portefeuille-
@@ -75,9 +76,15 @@ export default function Privacybeleid() {
           <li><strong>Chat-cookie (Crisp)</strong> — enkel geplaatst nadat je hier expliciet toestemming voor geeft via de cookiebanner. Zonder toestemming wordt de chatwidget niet geladen.</li>
         </ul>
         <p>
-          Je kan je toestemming op elk moment aanpassen via de cookiebanner die verschijnt
-          onderaan de pagina.
+          Je kan je toestemming op elk moment aanpassen:
         </p>
+        <button onClick={heropenCookieBanner} style={{
+          padding: '10px 18px', background: 'var(--accent, #1e3a8a)', color: 'white',
+          border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+          fontSize: 13, fontWeight: 600, marginTop: 4,
+        }}>
+          Cookievoorkeuren wijzigen
+        </button>
       </Sectie>
 
       <Sectie titel="5. Bewaartermijn">

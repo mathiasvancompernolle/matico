@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
 
 const OPSLAG_SLEUTEL = 'matico_cookie_toestemming'; // 'geaccepteerd' | 'geweigerd'
+const HEROPEN_EVENT = 'matico:heropen-cookiebanner';
 
 export function haalCookieToestemming() {
   try { return localStorage.getItem(OPSLAG_SLEUTEL); } catch (e) { return null; }
+}
+
+// Door eender welk component aan te roepen (bv. via een "Cookievoorkeuren
+// wijzigen"-knop op de Privacybeleid-pagina) verschijnt de banner opnieuw,
+// zodat iemand die per ongeluk "Weigeren" koos dat zelf kan herstellen.
+export function heropenCookieBanner() {
+  window.dispatchEvent(new Event(HEROPEN_EVENT));
 }
 
 // Simpele, GDPR-conforme cookiebanner: niet-essentiële cookies (zoals de
@@ -18,6 +26,12 @@ export default function CookieConsent({ onWijziging }) {
     if (!huidige) setZichtbaar(true);
     else onWijziging && onWijziging(huidige);
   }, [onWijziging]);
+
+  useEffect(() => {
+    const handler = () => setZichtbaar(true);
+    window.addEventListener(HEROPEN_EVENT, handler);
+    return () => window.removeEventListener(HEROPEN_EVENT, handler);
+  }, []);
 
   const kies = (keuze) => {
     try { localStorage.setItem(OPSLAG_SLEUTEL, keuze); } catch (e) {}
