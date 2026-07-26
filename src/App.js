@@ -20,7 +20,7 @@ import './App.css';
 import Landing from './pages/Landing';
 import AuthPage from './pages/AuthPage';
 import { supabase } from './supabaseClient';
-import rendlyLogo from './assets/rendly-logo.png';
+import kapitasLogo from './assets/kapitas-logo.png';
 
 function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSelectEffect }) {
   const [zoekOpen, setZoekOpen] = React.useState(false);
@@ -63,7 +63,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
     <nav className="top-nav" style={{ display: 'flex', alignItems: 'center', padding: '0 16px', gap: 8 }}>
       {/* Logo */}
       <div onClick={() => { onSectieWissel('portefeuille'); navigeerNaar('overzicht'); }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 16, flexShrink: 0 }}>
-        <img src={rendlyLogo} alt="Rendly" style={{ height: 28, width: 'auto', display: 'block' }} />
+        <img src={kapitasLogo} alt="Kapitas" style={{ height: 28, width: 'auto', display: 'block' }} />
       </div>
 
       {/* Tabs */}
@@ -277,8 +277,8 @@ function NaamInstellen() {
   return (
     <div className="naam-instellen">
       <div className="naam-card">
-        <img src={rendlyLogo} alt="Rendly" className="naam-logo" style={{ height: 32, width: 'auto' }} />
-        <h1>Welkom bij Rendly</h1>
+        <img src={kapitasLogo} alt="Kapitas" className="naam-logo" style={{ height: 32, width: 'auto' }} />
+        <h1>Welkom bij Kapitas</h1>
         <p>Hoe mogen we je noemen?</p>
         <input type="text" placeholder="Voornaam" value={voornaam}
           onChange={e => setVoornaam(e.target.value)}
@@ -322,7 +322,7 @@ export default function App() {
   if (authLaden) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans, sans-serif' }}>
-        <div style={{ color: '#1e3a8a', fontSize: 16, fontWeight: 600 }}>Rendly laden...</div>
+        <div style={{ color: '#1e3a8a', fontSize: 16, fontWeight: 600 }}>Kapitas laden...</div>
       </div>
     );
   }
