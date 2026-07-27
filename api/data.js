@@ -845,15 +845,23 @@ module.exports = async function handler(req, res) {
 
           // Voor 1D: volledige intraday-reeks (per minuut), niet enkel 2 punten
           if (tijdperk === '1D') {
-            const punten = timestamps.map((t, i) => {
+            const allePunten = timestamps.map((t, i) => {
               if (closes[i] == null) return null;
               const datum = new Date(t * 1000);
               return {
                 label: datum.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' }),
                 datum: datum.toISOString().split('T')[0],
                 prijs: Math.round(closes[i] * 100) / 100,
+                _minuut: datum.getMinutes(),
               };
             }).filter(p => p !== null);
+
+            // Downsamplen naar elke 10 minuten (Yahoo levert enkel per minuut,
+            // 5 min of 15 min — geen 10 min-optie), met altijd het allerlaatste
+            // (huidige) punt erbij, ook als dat niet exact op een tiental valt.
+            const punten = allePunten
+              .filter((p, i) => p._minuut % 10 === 0 || i === allePunten.length - 1)
+              .map(({ _minuut, ...rest }) => rest);
 
             if (punten.length > 1) return res.json({ punten });
 
