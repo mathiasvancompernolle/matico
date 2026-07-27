@@ -448,8 +448,8 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     const actief = beleggingen;
     const verkocht = winstFilter === 'inclusief' ? (verkochteBeleggingen || []) : [];
 
-    const kp = actief.reduce((s, b) => s + b.kostprijs * b.aantal * factor(b), 0)
-      + verkocht.reduce((s, b) => s + b.kostprijs * b.aantalVerkocht * factor(b), 0);
+    const kp = actief.reduce((s, b) => s + (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * factor(b), 0)
+      + verkocht.reduce((s, b) => s + (b.kostprijs * b.aantalVerkocht + (b.transactiekosten || 0)) * factor(b), 0);
 
     const hw = actief.reduce((s, b) => {
       const k = koersen[b.symbol];

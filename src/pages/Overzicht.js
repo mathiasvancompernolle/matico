@@ -385,7 +385,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         case 'koers': va = ka ? ka.c : a.kostprijs; vb = kb ? kb.c : b.kostprijs; break;
         case 'waarde': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa; vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb; break;
         case 'vandaag': va = ka ? (ka.c - ka.pc) * a.aantal * fa : 0; vb = kb ? (kb.c - kb.pc) * b.aantal * fb : 0; break;
-        case 'totaal': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa - a.kostprijs * a.aantal * fa; vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb - b.kostprijs * b.aantal * fb; break;
+        case 'totaal': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa - (a.kostprijs * a.aantal + (a.transactiekosten || 0)) * fa; vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb - (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * fb; break;
         case 'gewicht': {
           const tot = lijst.reduce((s,bb) => { const k=koersen[bb.symbol]; const f=getMuntFactor?getMuntFactor(bb.munt||'EUR'):((bb.munt||'EUR')==='USD'?0.865:1); return s+(k?k.c:bb.kostprijs)*bb.aantal*f; }, 0);
           va = tot > 0 ? (ka?ka.c:a.kostprijs)*a.aantal*fa/tot : 0;
@@ -414,7 +414,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
       const aankoopDatum = b.datum ? new Date(b.datum) : null;
       if (!puntDatum || !aankoopDatum || puntDatum >= aankoopDatum) {
-        aankoopwaarde += b.kostprijs * b.aantal * factor;
+        aankoopwaarde += (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * factor;
       }
     });
     // Verkochte beleggingen: kostprijs telt alleen mee terwijl de positie open was (niet bij inbezit-filter)
@@ -426,7 +426,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       const verkoopDatum = parseDatum(b.verkoopdatum);
       if (puntDatum && aankoopDatum && puntDatum < aankoopDatum) return;
       if (puntDatum && verkoopDatum && puntDatum > verkoopDatum) return;
-      aankoopwaarde += b.kostprijs * b.aantalVerkocht * factor;
+      aankoopwaarde += (b.kostprijs * b.aantalVerkocht + (b.transactiekosten || 0)) * factor;
     });
     return { ...d, waarde: Math.round((d.waarde - aankoopwaarde) * 100) / 100 };
   });
@@ -984,7 +984,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               const huidigePrijs = koers ? koers.c : b.kostprijs;
               const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
               const huidigeWaarde = huidigePrijs * b.aantal * factor;
-              const kostprijs = b.kostprijs * b.aantal * factor;
+              const kostprijs = (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * factor;
               const winstTotaal = huidigeWaarde - kostprijs;
               const winstTotaalPct = kostprijs > 0 ? (winstTotaal / kostprijs) * 100 : 0;
               const beursOpen = isBeursOpen(b.munt || 'EUR');

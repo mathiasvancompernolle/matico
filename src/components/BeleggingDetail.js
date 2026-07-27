@@ -25,7 +25,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
   const huidigePrijs = koers ? koers.c : belegging.kostprijs;
   const factor = getMuntFactor ? getMuntFactor(belegging.munt || 'EUR') : ((belegging.munt || 'EUR') === 'USD' ? 0.865 : 1);
   const huidigeWaarde = huidigePrijs * belegging.aantal * factor;
-  const kostprijsTotaal = belegging.kostprijs * belegging.aantal * factor;
+  const kostprijsTotaal = (belegging.kostprijs * belegging.aantal + (belegging.transactiekosten || 0)) * factor;
   const winstTotaal = huidigeWaarde - kostprijsTotaal;
   const winstTotaalPct = kostprijsTotaal > 0 ? (winstTotaal / kostprijsTotaal) * 100 : 0;
   const dagVRaw = koers ? (koers.c - koers.pc) : 0;

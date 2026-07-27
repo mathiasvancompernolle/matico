@@ -465,13 +465,16 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
   };
 
   const registreerVerkoop = (belegging, verkoopdata) => {
+    const fractie = belegging.aantal > 0 ? verkoopdata.aantal / belegging.aantal : 1;
+    const kostenVerkochtDeel = (belegging.transactiekosten || 0) * fractie;
     const verkochte = {
       ...belegging,
+      transactiekosten: kostenVerkochtDeel,
       verkoopdatum: verkoopdata.datum,
       aantalVerkocht: verkoopdata.aantal,
       verkoopkoers: verkoopdata.koers,
       verkoopMunt: verkoopdata.munt,
-      winstverlies: (verkoopdata.koers - belegging.kostprijs) * verkoopdata.aantal
+      winstverlies: (verkoopdata.koers - belegging.kostprijs) * verkoopdata.aantal - kostenVerkochtDeel
     };
     setVerkochteBeleggingen(prev => [...(prev || []), verkochte]);
     // Verwijder (deels) uit actieve beleggingen
@@ -480,7 +483,9 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
         if (b.id !== belegging.id) return b;
         const resterend = b.aantal - verkoopdata.aantal;
         if (resterend <= 0) return null;
-        return { ...b, aantal: resterend };
+        // Het overblijvende deel behoudt enkel zijn eigen aandeel van de
+        // oorspronkelijke transactiekosten (de rest ging mee naar de verkoop hierboven).
+        return { ...b, aantal: resterend, transactiekosten: (belegging.transactiekosten || 0) - kostenVerkochtDeel };
       }).filter(Boolean);
       return updated;
     });
@@ -502,7 +507,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
           const k = koersen[b.symbol];
           const factor = getMuntFactor(b.munt || 'EUR');
           const koersNu = k ? k.c : b.kostprijs;
-          const aankoopWaarde = b.kostprijs * b.aantal * factor;
+          const aankoopWaarde = (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * factor;
           const huidigeWaarde = koersNu * b.aantal * factor;
           const winstVerlies = huidigeWaarde - aankoopWaarde;
           const winstPct = aankoopWaarde > 0 ? (winstVerlies / aankoopWaarde) * 100 : 0;
@@ -551,7 +556,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
           if (b.datum) rijen.push([
             b.datum, 'Aankoop', b.naam || b.symbol, b.symbol, b.munt || 'EUR',
             b.aantalVerkocht || b.aantal, b.kostprijs, b.transactiekosten || 0,
-            parseFloat((b.kostprijs * (b.aantalVerkocht || b.aantal) * factor).toFixed(2)),
+            parseFloat((b.kostprijs * (b.aantalVerkocht || b.aantal) * factor + (b.transactiekosten || 0) * factor).toFixed(2)),
           ]);
           if (b.verkoopdatum) rijen.push([
             b.verkoopdatum, 'Verkoop', b.naam || b.symbol, b.symbol, b.munt || 'EUR',
