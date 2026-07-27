@@ -205,8 +205,56 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       if (beleggingVoorGrafiek.length === 0) { setGrafiekData([]); return; }
       setGrafiekLoading(true);
 
-      // 1D: vorige handelsdag slotkoers en huidige koers
+      // 1D: echte intraday-reeks (per minuut), samengevoegd over alle posities
       if (tijdperk === '1D') {
+        const intradayData = {};
+        await Promise.all(beleggingVoorGrafiek.map(async (b) => {
+          try {
+            const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(b.symbol)}&tijdperk=1D`);
+            const data = await res.json();
+            if (data?.punten?.length > 1) intradayData[b.symbol] = data.punten;
+          } catch (e) {}
+        }));
+
+        const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR'));
+
+        if (Object.keys(intradayData).length > 0) {
+          // Neem de reeks met de meeste punten als gemeenschappelijke tijdsas.
+          const eersteSymbol = Object.keys(intradayData).reduce((a, bb) =>
+            intradayData[a].length >= intradayData[bb].length ? a : bb
+          );
+          const aantalPunten = intradayData[eersteSymbol].length;
+
+          const punten = Array.from({ length: aantalPunten }, (_, i) => {
+            let totaalWaarde = 0;
+            beleggingVoorGrafiek.forEach(b => {
+              const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+              const reeks = intradayData[b.symbol];
+              if (reeks) {
+                // Binnen één dag delen alle punten dezelfde 'datum', dus op
+                // index combineren i.p.v. op datum matchen (zoals bij de
+                // andere periodes hieronder wél kan).
+                const punt = reeks[Math.min(i, reeks.length - 1)];
+                totaalWaarde += punt.prijs * b.aantal * factor;
+              } else {
+                const koers = koersen[b.symbol];
+                totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
+              }
+            });
+            return {
+              label: intradayData[eersteSymbol][i].label,
+              waarde: Math.round(totaalWaarde * 100) / 100,
+              gesloten: !iemandOpen,
+            };
+          });
+
+          setGrafiekData(punten);
+          setGrafiekLoading(false);
+          return;
+        }
+
+        // Terugval: geen intraday-data beschikbaar (bv. buiten handelsuren
+        // zonder recente sessie) — vorige slotkoers + huidige koers.
         const nu = new Date();
         const dag = nu.getDay();
         const maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
@@ -242,7 +290,6 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           nuWaarde += (koers?.c || b.kostprijs) * b.aantal * factor;
         });
 
-        const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR'));
         setGrafiekData([
           { label: vorigeLabel, waarde: Math.round(gisterenWaarde * 100) / 100, gesloten: !iemandOpen },
           { label: 'Nu', waarde: Math.round((iemandOpen ? nuWaarde : gisterenWaarde) * 100) / 100, gesloten: !iemandOpen }
