@@ -484,6 +484,43 @@ module.exports = async function handler(req, res) {
       return res.json({});
     }
 
+    // ── ISIN → ticker omzetting (voor broker-imports zoals DEGIRO die enkel
+    // ISIN's tonen, geen ticker) — via OpenFIGI's mapping-API, met dezelfde
+    // beurscode-naar-suffix-tabel die ook bij de zoekfunctie gebruikt wordt.
+    if (endpoint === 'isin-naar-ticker') {
+      const { isin } = req.query;
+      if (!isin) return res.json({ symbol: null });
+      if (!OPENFIGI_KEY) return res.json({ symbol: null, fout: 'OpenFIGI-sleutel ontbreekt' });
+      try {
+        const r = await fetch('https://api.openfigi.com/v3/mapping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-OPENFIGI-APIKEY': OPENFIGI_KEY },
+          body: JSON.stringify([{ idType: 'ID_ISIN', idValue: isin }]),
+        });
+        const d = await r.json();
+        const matches = d?.[0]?.data || [];
+        if (matches.length === 0) return res.json({ symbol: null });
+
+        // Voorkeursvolgorde van beurzen: Europese thuismarkten eerst
+        // (relevant voor Belgische beleggers), dan de VS, dan de rest.
+        const VOORKEUR = ['BB', 'NA', 'FP', 'GR', 'GY', 'GF', 'LN', 'US', 'UN', 'UW', 'UQ', 'UR'];
+        const bruikbaar = matches.filter(m => m.exchCode in FIGI_NAAR_SUFFIX && m.ticker);
+        bruikbaar.sort((a, b) => {
+          const ia = VOORKEUR.indexOf(a.exchCode), ib = VOORKEUR.indexOf(b.exchCode);
+          return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        });
+        const beste = bruikbaar[0];
+        if (!beste) return res.json({ symbol: null });
+
+        const suffix = FIGI_NAAR_SUFFIX[beste.exchCode];
+        const symbol = suffix ? `${beste.ticker}.${suffix}` : beste.ticker;
+        return res.json({ symbol, naam: beste.name || null });
+      } catch (e) {
+        console.error('isin-naar-ticker fout:', e);
+        return res.json({ symbol: null });
+      }
+    }
+
     if (endpoint === 'search') {
       const { q } = req.query;
       if (!q) return res.json({ resultaten: [] });

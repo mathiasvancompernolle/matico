@@ -1,7 +1,101 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Upload, Download, ArrowLeft, Info, Check } from 'lucide-react';
+import { Upload, Download, ArrowLeft, Info, Check, AlertTriangle } from 'lucide-react';
 import * as XLSX from 'xlsx';
+
+// Saxo gebruikt zijn eigen beurscode na een dubbele punt in de "Symb."-kolom
+// (bv. "NKE:xnys", "PRX:xams") — dit zet dat om naar de Yahoo-achtige suffix
+// die de rest van de app gebruikt (bv. "PRX.AS"). null = geen suffix (VS).
+const SAXO_BEURS_SUFFIX = {
+  xnys: null, xnas: null, xase: null,
+  xams: 'AS', xbru: 'BR', xpar: 'PA',
+  xetr: 'DE', xfra: 'DE', xget: 'DE', xdus: 'DE', xber: 'DE', xstu: 'DE', xham: 'DE', xmun: 'DE',
+  xlon: 'L', xswx: 'SW', xvtx: 'SW',
+  xmil: 'MI', xmad: 'MC',
+  xtse: 'TO', xhkg: 'HK', xtks: 'T',
+  xosl: 'OL', xsto: 'ST', xcse: 'CO', xhel: 'HE', xwbo: 'VI',
+};
+
+const SAXO_TYPE_MAP = {
+  'aandeel': 'aandeel', 'etf': 'etf', 'tracker': 'etf', 'fonds': 'etf', 'beleggingsfonds': 'etf',
+  'cryptovaluta': 'crypto', 'crypto': 'crypto',
+};
+
+// Herkent een bekend broker-exportformaat op basis van de kolomkoppen, zodat
+// we automatisch de juiste, broker-specifieke omzetting kunnen toepassen
+// i.p.v. de gebruiker manueel elke kolom te laten koppelen.
+function detecteerBroker(hdrs) {
+  const set = new Set(hdrs);
+  if (set.has('AK-krs') && set.has('Symb.') && set.has('Soort belegging')) return 'saxo';
+  if (set.has('Product') && set.has('Symbool/ISIN') && set.has('Slotkoers')) return 'degiro';
+  return null;
+}
+
+// Saxo: momentopname van je posities. Bevat wel een echte aankoopkoers
+// ("AK-krs"), maar geen aankoopdatum. Tussenkoppen zoals "Aandelen (3)"
+// worden overgeslagen (geen "Aantal"/"Symb." aanwezig op die rijen).
+function transformeerSaxo(rijen) {
+  const resultaat = [];
+  for (const r of rijen) {
+    const symb = (r['Symb.'] || '').trim();
+    const aantal = parseFloat(String(r['Aantal'] || '').replace(',', '.'));
+    if (!symb || !aantal) continue; // tussenkop/subtotaal-rij, geen echte positie
+
+    const [ticker, beursCode] = symb.split(':');
+    const suffix = beursCode ? SAXO_BEURS_SUFFIX[beursCode.toLowerCase()] : undefined;
+    const symbol = suffix ? `${ticker}.${suffix}` : ticker;
+
+    const soort = (r['Soort belegging'] || '').toLowerCase();
+    const type = SAXO_TYPE_MAP[soort] || 'aandeel';
+
+    resultaat.push({
+      naam: (r['Instrument'] || symbol).trim(),
+      symbol,
+      type,
+      kostprijs: parseFloat(String(r['AK-krs'] || '0').replace(',', '.')) || 0,
+      aantal,
+      munt: r['Valuta'] || 'EUR',
+      datum: '',
+    });
+  }
+  return resultaat;
+}
+
+// DEGIRO: momentopname van je portefeuille, enkel ISIN (geen ticker) en
+// enkel de huidige koers ("Slotkoers"), geen echte aankoopprijs. We lossen
+// de ISIN op naar een ticker via OpenFIGI, en markeren de kostprijs als
+// een schatting die de gebruiker zelf moet natrekken.
+async function transformeerDegiro(rijen, onVoortgang) {
+  const posities = rijen.filter(r => (r['Symbool/ISIN'] || '').trim());
+  const resultaat = [];
+  for (let i = 0; i < posities.length; i++) {
+    const r = posities[i];
+    const isin = r['Symbool/ISIN'].trim();
+    let symbol = isin;
+    let naam = (r['Product'] || isin).trim();
+    try {
+      const res = await fetch(`/api/data?endpoint=isin-naar-ticker&isin=${encodeURIComponent(isin)}`);
+      const d = await res.json();
+      if (d?.symbol) {
+        symbol = d.symbol;
+        if (d.naam) naam = d.naam;
+      }
+    } catch (e) { /* val terug op ISIN als ticker */ }
+
+    resultaat.push({
+      naam,
+      symbol,
+      type: 'aandeel',
+      kostprijs: parseFloat(String(r['Slotkoers'] || '0').replace(',', '.')) || 0,
+      kostprijsOnzeker: true,
+      aantal: parseFloat(String(r['Aantal'] || '0').replace(',', '.')) || 0,
+      munt: r['Lokale waarde'] || 'EUR', // let op: DEGIRO's eigen kolomkop hier is misleidend, de waarde zelf klopt wel
+      datum: '',
+    });
+    onVoortgang && onVoortgang(i + 1, posities.length);
+  }
+  return resultaat;
+}
 
 export default function ImportBeleggingen({ onClose }) {
   const { setBeleggingen } = useApp();
@@ -13,6 +107,9 @@ export default function ImportBeleggingen({ onClose }) {
   const [fout, setFout] = useState('');
   const [succes, setSucces] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [brokerNaam, setBrokerNaam] = useState(null);
+  const [brokerRijen, setBrokerRijen] = useState([]);
+  const [voortgang, setVoortgang] = useState(null);
   const fileRef = useRef(null);
 
   const downloadTemplate = () => {
@@ -24,12 +121,36 @@ export default function ImportBeleggingen({ onClose }) {
     URL.revokeObjectURL(url);
   };
 
+  // Ontleedt één CSV-regel met correcte inachtneming van aanhalingstekens:
+  // een komma/puntkomma BINNEN aanhalingstekens (bv. "163,78") wordt niet als
+  // scheidingsteken behandeld. Zonder dit breekt elk bedrag met een komma als
+  // decimaalteken (zoals bij DEGIRO) de volledige rij.
+  const parseCSVRegel = (regel, sep) => {
+    const velden = [];
+    let huidig = '';
+    let inAanhaling = false;
+    for (let i = 0; i < regel.length; i++) {
+      const c = regel[i];
+      if (c === '"') {
+        if (inAanhaling && regel[i + 1] === '"') { huidig += '"'; i++; }
+        else inAanhaling = !inAanhaling;
+      } else if (c === sep && !inAanhaling) {
+        velden.push(huidig);
+        huidig = '';
+      } else {
+        huidig += c;
+      }
+    }
+    velden.push(huidig);
+    return velden.map(v => v.trim());
+  };
+
   const parseCSV = (tekst) => {
     const regels = tekst.trim().split('\n');
     const sep = regels[0].includes(';') ? ';' : ',';
-    const hdrs = regels[0].split(sep).map(h => h.trim().replace(/"/g, ''));
+    const hdrs = parseCSVRegel(regels[0], sep);
     const rijen = regels.slice(1).filter(r => r.trim()).map(r => {
-      const waarden = r.split(sep).map(w => w.trim().replace(/"/g, ''));
+      const waarden = parseCSVRegel(r, sep);
       const obj = {};
       hdrs.forEach((h, i) => { obj[h] = waarden[i] || ''; });
       return obj;
@@ -77,31 +198,68 @@ export default function ImportBeleggingen({ onClose }) {
     setFout('');
     const naam = file.name.toLowerCase();
 
+    let hdrs, rijen;
     if (naam.endsWith('.csv')) {
       const tekst = await file.text();
-      const { hdrs, rijen } = parseCSV(tekst);
-      setHeaders(hdrs);
-      setPreview(rijen);
-      setMapping(detecteerMapping(hdrs));
-      setStap('mapping');
+      ({ hdrs, rijen } = parseCSV(tekst));
     } else if (naam.endsWith('.xlsx') || naam.endsWith('.xls')) {
       try {
         const buffer = await file.arrayBuffer();
-        const { hdrs, rijen } = parseXLSX(buffer);
+        ({ hdrs, rijen } = parseXLSX(buffer));
         if (hdrs.length === 0) {
           setFout('Het bestand lijkt leeg of heeft geen herkenbare structuur.');
           return;
         }
-        setHeaders(hdrs);
-        setPreview(rijen);
-        setMapping(detecteerMapping(hdrs));
-        setStap('mapping');
       } catch (e) {
         setFout('Fout bij het lezen van het Excel-bestand. Probeer het op te slaan als .xlsx en opnieuw te uploaden.');
+        return;
       }
     } else {
       setFout('Ongeldig bestandstype. Upload een CSV, XLSX of XLS bestand.');
+      return;
     }
+
+    const broker = detecteerBroker(hdrs);
+    if (broker === 'saxo') {
+      const rijenOm = transformeerSaxo(rijen);
+      setBrokerNaam('Saxo');
+      setBrokerRijen(rijenOm);
+      setStap('broker-preview');
+      return;
+    }
+    if (broker === 'degiro') {
+      setBrokerNaam('DEGIRO');
+      setStap('broker-laden');
+      setVoortgang({ huidig: 0, totaal: 0 });
+      const rijenOm = await transformeerDegiro(rijen, (huidig, totaal) => setVoortgang({ huidig, totaal }));
+      setBrokerRijen(rijenOm);
+      setStap('broker-preview');
+      return;
+    }
+
+    // Geen bekende broker herkend — terugvallen op de generieke,
+    // manuele kolom-koppel-flow.
+    setHeaders(hdrs);
+    setPreview(rijen);
+    setMapping(detecteerMapping(hdrs));
+    setStap('mapping');
+  };
+
+  const bewerkBrokerRij = (idx, veld, waarde) => {
+    setBrokerRijen(prev => prev.map((r, i) => i === idx ? { ...r, [veld]: waarde } : r));
+  };
+
+  const importeerBroker = () => {
+    const nieuweBeleggingen = brokerRijen
+      .filter(b => b.symbol && b.kostprijs > 0 && b.aantal > 0)
+      .map((b, i) => ({ id: Date.now() + i, ...b }));
+    if (nieuweBeleggingen.length === 0) {
+      setFout('Geen geldige beleggingen gevonden.');
+      return;
+    }
+    setBeleggingen(prev => [...prev, ...nieuweBeleggingen]);
+    setSucces(true);
+    setTimeout(() => onClose(), 1500);
   };
 
   const importeer = () => {
@@ -150,7 +308,7 @@ export default function ImportBeleggingen({ onClose }) {
     <div style={{ padding: '0 0 40px' }}>
       <div className="page-header" style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {stap === 'mapping' && (
+          {(stap === 'mapping' || stap === 'broker-preview') && (
             <button className="btn btn-ghost" onClick={() => setStap('upload')} style={{ padding: '8px' }}>
               <ArrowLeft size={18} />
             </button>
@@ -264,6 +422,78 @@ export default function ImportBeleggingen({ onClose }) {
 
             <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: 14 }} onClick={importeer}>
               <Upload size={16} /> Importeer {preview.length} beleggingen
+            </button>
+          </div>
+        )}
+
+        {stap === 'broker-laden' && (
+          <div className="card" style={{ textAlign: 'center', padding: '60px 40px' }}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Bezig met herkennen van je {brokerNaam}-posities...</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              {voortgang ? `${voortgang.huidig} van ${voortgang.totaal} posities verwerkt` : 'Even geduld'}
+            </div>
+          </div>
+        )}
+
+        {stap === 'broker-preview' && (
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Check size={18} color="var(--green)" />
+              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{brokerNaam} herkend</h2>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
+              <strong>{brokerRijen.length}</strong> posities gevonden en automatisch omgezet. Controleer even of alles klopt voor je importeert.
+            </p>
+
+            {brokerNaam === 'DEGIRO' && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, marginBottom: 20 }}>
+                <AlertTriangle size={16} color="#b45309" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
+                  DEGIRO's portefeuille-export bevat geen echte aankoopprijs, enkel de huidige koers. De kostprijs hieronder is dus voorlopig gelijk aan de huidige koers (0% winst/verlies) — pas dit zelf aan per positie voor een correcte berekening.
+                </div>
+              </div>
+            )}
+
+            <div style={{ overflowX: 'auto', marginBottom: 20, border: '1px solid var(--border)', borderRadius: 8 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg)' }}>
+                    {['Naam', 'Symbool', 'Type', 'Kostprijs', 'Aantal', 'Munt'].map(h => (
+                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600, color: 'var(--text-secondary)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {brokerRijen.map((r, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                      <td style={{ padding: '6px 12px' }}>{r.naam}</td>
+                      <td style={{ padding: '6px 12px', fontFamily: 'monospace' }}>{r.symbol}</td>
+                      <td style={{ padding: '6px 12px' }}>{r.type}</td>
+                      <td style={{ padding: '4px 8px' }}>
+                        <input type="number" step="0.01" value={r.kostprijs}
+                          onChange={e => bewerkBrokerRij(i, 'kostprijs', parseFloat(e.target.value) || 0)}
+                          style={{
+                            width: 90, padding: '5px 8px', borderRadius: 6, fontSize: 13, fontFamily: 'inherit',
+                            border: r.kostprijsOnzeker ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                            background: r.kostprijsOnzeker ? '#fffbeb' : 'white',
+                          }} />
+                      </td>
+                      <td style={{ padding: '4px 8px' }}>
+                        <input type="number" step="1" value={r.aantal}
+                          onChange={e => bewerkBrokerRij(i, 'aantal', parseFloat(e.target.value) || 0)}
+                          style={{ width: 70, padding: '5px 8px', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--border)' }} />
+                      </td>
+                      <td style={{ padding: '6px 12px' }}>{r.munt}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {fout && <div style={{ marginBottom: 16, color: 'var(--red)', fontSize: 13, padding: '10px 14px', background: 'var(--red-bg)', borderRadius: 8 }}>{fout}</div>}
+
+            <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: 14 }} onClick={importeerBroker}>
+              <Upload size={16} /> Importeer {brokerRijen.length} beleggingen
             </button>
           </div>
         )}
