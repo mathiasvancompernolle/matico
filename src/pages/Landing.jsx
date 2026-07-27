@@ -78,8 +78,8 @@ export default function Landing({ onNaarApp, onPrivacybeleid }) {
           ))}
         </ul>
         <div style={{ display:'flex',gap:10 }}>
-          <button onClick={onNaarApp} className="l-btn" style={{ background:'none',color:'#64748b',fontSize:14 }}>Inloggen</button>
-          <button onClick={onNaarApp} className="l-btn l-btn-primary" style={{ fontSize:14,padding:'9px 18px' }}>Probeer gratis →</button>
+          <button onClick={() => onNaarApp('login')} className="l-btn" style={{ background:'none',color:'#64748b',fontSize:14 }}>Inloggen</button>
+          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ fontSize:14,padding:'9px 18px' }}>Probeer gratis →</button>
         </div>
       </nav>
 
@@ -100,7 +100,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid }) {
           Kapitas bundelt je portfolio, ETFs en aandelen in één slim dashboard. Met automatische Belgische belastingberekeningen, live koersen en AI-analyses.
         </p>
         <div className="l-hero-actions" style={{ display:'flex',gap:12,flexWrap:'wrap',justifyContent:'center',marginBottom:14 }}>
-          <button onClick={onNaarApp} className="l-btn l-btn-primary" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Start gratis — 14 dagen ✦</button>
+          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Start gratis — 14 dagen ✦</button>
           <a href="#features" className="l-btn l-btn-outline" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Bekijk features</a>
         </div>
         <p style={{ fontSize:13,color:'#94a3b8' }}>
@@ -296,7 +296,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid }) {
                   </div>
                 ))}
               </div>
-              <button onClick={onNaarApp} className="l-btn l-btn-outline" style={{ width:'100%',justifyContent:'center' }}>Start gratis</button>
+              <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-outline" style={{ width:'100%',justifyContent:'center' }}>Start gratis</button>
             </div>
             {/* Pro */}
             <div className="l-pricing-card l-pricing-popular l-animate">
@@ -315,7 +315,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid }) {
                   </div>
                 ))}
               </div>
-              <button onClick={onNaarApp} className="l-btn l-btn-primary" style={{ width:'100%',justifyContent:'center' }}>Start 14 dagen gratis →</button>
+              <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ width:'100%',justifyContent:'center' }}>Start 14 dagen gratis →</button>
               <p style={{ fontSize:11,color:'#94a3b8',textAlign:'center',marginTop:10 }}>Geen betaalgegevens nodig voor proefperiode</p>
             </div>
           </div>
@@ -373,8 +373,8 @@ export default function Landing({ onNaarApp, onPrivacybeleid }) {
         <h2 style={{ fontSize:'clamp(28px,5vw,48px)',fontWeight:800,color:'white',letterSpacing:'-1px',marginBottom:16 }}>Klaar om je beleggingen<br />overzichtelijk te maken?</h2>
         <p style={{ fontSize:18,color:'rgba(255,255,255,0.8)',marginBottom:40 }}>Sluit je aan bij Belgische beleggers die Kapitas gebruiken om slimmer te beleggen.</p>
         <div style={{ display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap' }}>
-          <button onClick={onNaarApp} className="l-btn l-btn-white" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Start 14 dagen gratis →</button>
-          <button onClick={onNaarApp} className="l-btn l-btn-ghost-white" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Live demo bekijken</button>
+          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-white" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Start 14 dagen gratis →</button>
+          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-ghost-white" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Live demo bekijken</button>
         </div>
         <p style={{ fontSize:13,color:'rgba(255,255,255,0.5)',marginTop:16 }}>Geen betaalgegevens nodig · Annuleer wanneer je wil · €9,99/maand na proefperiode</p>
       </section>
@@ -390,7 +390,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid }) {
           {[['Product',['Features','Prijzen','Live demo','Hoe werkt het']],['Belgisch',['Belastingmodule','TOB calculator','Meerwaardebelasting','Reynders-taks']],['Info',['Privacybeleid','Algemene voorwaarden','Disclaimer','Contact']]].map(([titel,links]) => (
             <div key={titel}>
               <h4 style={{ fontSize:13,fontWeight:700,color:'white',marginBottom:14 }}>{titel}</h4>
-              {links.map(l => <div key={l} style={{ fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer' }} onClick={l==='Contact'?()=>window.location.href='mailto:hello@kapitas.be':l==='Privacybeleid'?onPrivacybeleid:onNaarApp}>{l}</div>)}
+              {links.map(l => <div key={l} style={{ fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer' }} onClick={l==='Contact'?()=>window.location.href='mailto:hello@kapitas.be':l==='Privacybeleid'?onPrivacybeleid:() => onNaarApp('registreren')}>{l}</div>)}
             </div>
           ))}
         </div>

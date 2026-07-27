@@ -297,6 +297,7 @@ function NaamInstellen() {
 export default function App() {
   const [toonLanding, setToonLanding] = React.useState(true);
   const [toonPubliekPrivacybeleid, setToonPubliekPrivacybeleid] = React.useState(false);
+  const [authStartModus, setAuthStartModus] = React.useState('login');
   const [gebruiker, setGebruiker] = React.useState(null);
   const [authLaden, setAuthLaden] = React.useState(true);
 
@@ -334,14 +335,14 @@ export default function App() {
     if (toonPubliekPrivacybeleid) {
       return <Privacybeleid onTerug={() => setToonPubliekPrivacybeleid(false)} />;
     }
-    return <Landing onNaarApp={() => setToonLanding(false)} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} />;
+    return <Landing onNaarApp={(modus) => { setToonLanding(false); setAuthStartModus(modus || 'login'); }} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} />;
   }
 
   if (!gebruiker) {
     if (toonPubliekPrivacybeleid) {
       return <Privacybeleid onTerug={() => setToonPubliekPrivacybeleid(false)} />;
     }
-    return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} />;
+    return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} startModus={authStartModus} />;
   }
 
   return (

@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import kapitasLogo from '../assets/kapitas-logo.png';
 
-export default function AuthPage({ onIngelogd, onPrivacybeleid }) {
+export default function AuthPage({ onIngelogd, onPrivacybeleid, startModus }) {
   const [laden, setLaden] = useState(false);
   const [fout, setFout] = useState(null);
   const [emailMode, setEmailMode] = useState(false);
   const [email, setEmail] = useState('');
   const [wachtwoord, setWachtwoord] = useState('');
-  const [isRegistreren, setIsRegistreren] = useState(false);
+  const [isRegistreren, setIsRegistreren] = useState(startModus === 'registreren');
   const [bevestigd, setBevestigd] = useState(false);
 
   const metGoogle = async () => {
@@ -68,10 +68,28 @@ export default function AuthPage({ onIngelogd, onPrivacybeleid }) {
     <div style={s.wrapper}>
       <div style={s.kaart}>
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <img src={kapitasLogo} alt="Kapitas" style={{ height: 32, width: 'auto', margin: '0 auto 12px', display: 'block' }} />
-          <p style={s.sub}>{isRegistreren ? 'Maak een gratis account aan' : 'Welkom terug'}</p>
         </div>
+
+        {/* Tabbladen: Inloggen / Registreren */}
+        <div style={s.tabRij}>
+          <button
+            type="button"
+            onClick={() => { setIsRegistreren(false); setFout(null); }}
+            style={isRegistreren ? s.tabInactief : s.tabActief}
+          >
+            Inloggen
+          </button>
+          <button
+            type="button"
+            onClick={() => { setIsRegistreren(true); setFout(null); }}
+            style={isRegistreren ? s.tabActief : s.tabInactief}
+          >
+            Registreren
+          </button>
+        </div>
+        <p style={{ ...s.sub, marginBottom: 20 }}>{isRegistreren ? 'Maak een gratis account aan' : 'Welkom terug'}</p>
 
         {/* Foutmelding */}
         {fout && (
@@ -164,6 +182,19 @@ const s = {
   },
   sub: {
     fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 0, lineHeight: 1.6,
+  },
+  tabRij: {
+    display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 10, padding: 4, marginBottom: 16,
+  },
+  tabActief: {
+    flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
+    background: 'white', color: '#1e3a8a', fontWeight: 700, fontSize: 14,
+    fontFamily: "'DM Sans', sans-serif", boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+  },
+  tabInactief: {
+    flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
+    background: 'transparent', color: '#64748b', fontWeight: 600, fontSize: 14,
+    fontFamily: "'DM Sans', sans-serif",
   },
   fout: {
     background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626',
