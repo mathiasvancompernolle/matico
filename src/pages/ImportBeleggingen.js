@@ -28,7 +28,52 @@ function detecteerBroker(hdrs) {
   const set = new Set(hdrs);
   if (set.has('AK-krs') && set.has('Symb.') && set.has('Soort belegging')) return 'saxo';
   if (set.has('Product') && set.has('Symbool/ISIN') && set.has('Slotkoers')) return 'degiro';
+  if (set.has('Quote Price') && set.has('Received / Paid Currency') && set.has('Type')) return 'bitvavo';
   return null;
+}
+
+// Bitvavo: dit is een volledige TRANSACTIEgeschiedenis (geen momentopname),
+// met dus een échte aankoopprijs én -datum per aankoop. We groeperen alle
+// aan-/verkopen per munt, tellen aan- en verkochte hoeveelheid tegen elkaar
+// op (netto-aantal = wat je nu nog in bezit hebt), en berekenen de
+// gewogen-gemiddelde aankoopprijs over alle aankopen van die munt.
+function transformeerBitvavo(rijen) {
+  const perMunt = {};
+  for (const r of rijen) {
+    const type = (r['Type'] || '').toLowerCase();
+    if (type !== 'buy' && type !== 'sell') continue; // deposit/withdrawal/rebate/staking enz. overslaan
+    const munt = (r['Currency'] || '').trim();
+    if (!munt) continue;
+    const aantal = parseFloat(String(r['Amount'] || '0').replace(',', '.')) || 0;
+    const prijs = parseFloat(String(r['Quote Price'] || '0').replace(',', '.')) || 0;
+    const quoteMunt = (r['Quote Currency'] || 'EUR').trim();
+    const datum = r['Date'] || '';
+
+    if (!perMunt[munt]) perMunt[munt] = { gekocht: 0, gekochtKost: 0, verkocht: 0, quoteMunt, eersteDatum: datum };
+    if (type === 'buy') {
+      perMunt[munt].gekocht += aantal;
+      perMunt[munt].gekochtKost += aantal * prijs;
+      if (datum && (!perMunt[munt].eersteDatum || datum < perMunt[munt].eersteDatum)) perMunt[munt].eersteDatum = datum;
+    } else {
+      perMunt[munt].verkocht += aantal;
+    }
+  }
+
+  const resultaat = [];
+  for (const [munt, d] of Object.entries(perMunt)) {
+    const netAantal = d.gekocht - d.verkocht;
+    if (netAantal <= 0.00000001 || d.gekocht === 0) continue; // volledig verkocht of nooit gekocht
+    resultaat.push({
+      naam: munt,
+      symbol: `${munt}-${d.quoteMunt}`,
+      type: 'crypto',
+      kostprijs: d.gekochtKost / d.gekocht, // gewogen gemiddelde over alle aankopen
+      aantal: netAantal,
+      munt: d.quoteMunt,
+      datum: d.eersteDatum,
+    });
+  }
+  return resultaat;
 }
 
 // Saxo: momentopname van je posities. Bevat wel een echte aankoopkoers
@@ -250,6 +295,13 @@ export default function ImportBeleggingen({ onClose }) {
       setStap('broker-laden');
       setVoortgang({ huidig: 0, totaal: 0 });
       const rijenOm = await transformeerDegiro(rijen, (huidig, totaal) => setVoortgang({ huidig, totaal }));
+      setBrokerRijen(rijenOm);
+      setStap('broker-preview');
+      return;
+    }
+    if (broker === 'bitvavo') {
+      const rijenOm = transformeerBitvavo(rijen);
+      setBrokerNaam('Bitvavo');
       setBrokerRijen(rijenOm);
       setStap('broker-preview');
       return;
@@ -492,6 +544,15 @@ export default function ImportBeleggingen({ onClose }) {
                 <AlertTriangle size={16} color="#b45309" style={{ flexShrink: 0, marginTop: 1 }} />
                 <div style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
                   DEGIRO's portefeuille-export bevat geen echte aankoopprijs, enkel de huidige koers. De kostprijs hieronder is dus voorlopig gelijk aan de huidige koers (0% winst/verlies) — pas dit zelf aan per positie voor een correcte berekening.
+                </div>
+              </div>
+            )}
+
+            {brokerNaam === 'Bitvavo' && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', background: 'var(--accent-bg)', border: '1px solid var(--accent-light)', borderRadius: 10, marginBottom: 20 }}>
+                <Info size={16} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div style={{ fontSize: 13, color: 'var(--accent)', lineHeight: 1.5 }}>
+                  Berekend uit je volledige transactiegeschiedenis: aan- en verkopen per munt zijn tegen elkaar weggestreept tot je huidige, netto-hoeveelheid, en de kostprijs is het gewogen gemiddelde over al je aankopen van die munt.
                 </div>
               </div>
             )}
