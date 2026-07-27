@@ -796,7 +796,7 @@ module.exports = async function handler(req, res) {
       }
 
       // ── Grafiek tijdperken (1D, 1W, 1M, 1J, YTD, 3J, 5J, Max) ──
-      const yfRange = tijdperk === '1D' ? '5d'
+      const yfRange = tijdperk === '1D' ? '1d'
         : tijdperk === '1W' ? '5d'
         : tijdperk === '1M' ? '1mo'
         : tijdperk === '3M' ? '3mo'
@@ -807,7 +807,7 @@ module.exports = async function handler(req, res) {
         : tijdperk === '5J' ? '5y'
         : '10y';
 
-      const yfInterval = tijdperk === '1D' ? '1d'
+      const yfInterval = tijdperk === '1D' ? '1m'
         : tijdperk === '1W' ? '1d'
         : tijdperk === '1M' ? '1d'
         : tijdperk === '3M' ? '1d'
@@ -843,8 +843,22 @@ module.exports = async function handler(req, res) {
           const timestamps = result.timestamp;
           const closes = result.indicators?.adjclose?.[0]?.adjclose || result.indicators?.quote?.[0]?.close || [];
 
-          // Voor 1D: neem enkel de vorige slotkoers + huidige koers
+          // Voor 1D: volledige intraday-reeks (per minuut), niet enkel 2 punten
           if (tijdperk === '1D') {
+            const punten = timestamps.map((t, i) => {
+              if (closes[i] == null) return null;
+              const datum = new Date(t * 1000);
+              return {
+                label: datum.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' }),
+                datum: datum.toISOString().split('T')[0],
+                prijs: Math.round(closes[i] * 100) / 100,
+              };
+            }).filter(p => p !== null);
+
+            if (punten.length > 1) return res.json({ punten });
+
+            // Terugval als er geen minuutdata beschikbaar was (bv. buiten
+            // handelsuren zonder recente sessie): vorige slotkoers + nu.
             const geldigeCloses = closes.filter(v => v != null);
             const vorigeSlot = geldigeCloses[geldigeCloses.length - 2] || geldigeCloses[geldigeCloses.length - 1];
             const huidig = result.meta.regularMarketPrice || geldigeCloses[geldigeCloses.length - 1];
