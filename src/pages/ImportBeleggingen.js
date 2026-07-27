@@ -97,6 +97,24 @@ async function transformeerDegiro(rijen, onVoortgang) {
   return resultaat;
 }
 
+// Een ISIN volgt altijd dit vaste patroon: 2 letters (landcode) + 9
+// letters/cijfers + 1 controlecijfer. Zo herkennen we, ongeacht welke broker
+// het bestand aanleverde, of een kolom eigenlijk een ISIN bevat i.p.v. een
+// ticker — en lossen we die dan automatisch op, niet enkel bij DEGIRO.
+const ISIN_PATRONEN = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
+
+async function losIsinOp(waarde) {
+  const schoon = (waarde || '').trim().toUpperCase();
+  if (!ISIN_PATRONEN.test(schoon)) return null;
+  try {
+    const res = await fetch(`/api/data?endpoint=isin-naar-ticker&isin=${encodeURIComponent(schoon)}`);
+    const d = await res.json();
+    return d?.symbol || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 export default function ImportBeleggingen({ onClose }) {
   const { setBeleggingen } = useApp();
   const [stap, setStap] = useState('upload');
@@ -262,15 +280,18 @@ export default function ImportBeleggingen({ onClose }) {
     setTimeout(() => onClose(), 1500);
   };
 
-  const importeer = () => {
+  const importeer = async () => {
     if (!mapping.symbol || !mapping.kostprijs || !mapping.aantal) {
       setFout('Selecteer minimaal: Symbool, Kostprijs en Aantal');
       return;
     }
-    const nieuweBeleggingen = preview.map((r, i) => ({
+    setFout('');
+    setStap('importeren');
+
+    const ruw = preview.map((r, i) => ({
       id: Date.now() + i,
       naam: mapping.naam ? r[mapping.naam] : r[mapping.symbol] || 'Onbekend',
-      symbol: r[mapping.symbol] || '',
+      symbol: (r[mapping.symbol] || '').trim(),
       type: 'aandeel',
       datum: mapping.datum ? r[mapping.datum] : '',
       kostprijs: parseFloat(String(r[mapping.kostprijs] || '0').replace(',', '.')) || 0,
@@ -278,7 +299,19 @@ export default function ImportBeleggingen({ onClose }) {
       munt: mapping.munt ? (r[mapping.munt] || 'EUR') : 'EUR',
     })).filter(b => b.symbol && b.kostprijs > 0 && b.aantal > 0);
 
+    // Herkent, ongeacht welke broker het bestand aanleverde, of het
+    // "symbool" eigenlijk een ISIN is, en lost dat automatisch op.
+    setVoortgang({ huidig: 0, totaal: ruw.length });
+    const nieuweBeleggingen = [];
+    for (let i = 0; i < ruw.length; i++) {
+      const b = ruw[i];
+      const opgelosteTicker = await losIsinOp(b.symbol);
+      nieuweBeleggingen.push(opgelosteTicker ? { ...b, symbol: opgelosteTicker } : b);
+      setVoortgang({ huidig: i + 1, totaal: ruw.length });
+    }
+
     if (nieuweBeleggingen.length === 0) {
+      setStap('mapping');
       setFout('Geen geldige beleggingen gevonden. Controleer de kolom-mapping.');
       return;
     }
@@ -423,6 +456,15 @@ export default function ImportBeleggingen({ onClose }) {
             <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: 14 }} onClick={importeer}>
               <Upload size={16} /> Importeer {preview.length} beleggingen
             </button>
+          </div>
+        )}
+
+        {stap === 'importeren' && (
+          <div className="card" style={{ textAlign: 'center', padding: '60px 40px' }}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Bezig met importeren...</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              {voortgang ? `${voortgang.huidig} van ${voortgang.totaal} beleggingen verwerkt` : 'Even geduld'}
+            </div>
           </div>
         )}
 
