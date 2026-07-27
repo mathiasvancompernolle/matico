@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import kapitasLogo from '../assets/kapitas-logo.png';
 
-export default function AuthPage({ onIngelogd, onPrivacybeleid, startModus }) {
+export default function AuthPage({ onIngelogd, onPrivacybeleid, startModus, onTerugNaarLanding }) {
   const [laden, setLaden] = useState(false);
   const [fout, setFout] = useState(null);
   const [emailMode, setEmailMode] = useState(false);
@@ -66,10 +66,21 @@ export default function AuthPage({ onIngelogd, onPrivacybeleid, startModus }) {
 
   return (
     <div style={s.wrapper}>
+      {onTerugNaarLanding && (
+        <div style={{ width: '100%', maxWidth: 420, marginBottom: 12 }}>
+          <span onClick={onTerugNaarLanding} style={{ ...s.btnLink, fontSize: 13, color: '#64748b' }}>
+            ← Terug naar website
+          </span>
+        </div>
+      )}
       <div style={s.kaart}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <img src={kapitasLogo} alt="Kapitas" style={{ height: 32, width: 'auto', margin: '0 auto 12px', display: 'block' }} />
+          <img
+            src={kapitasLogo} alt="Kapitas"
+            onClick={onTerugNaarLanding}
+            style={{ height: 32, width: 'auto', margin: '0 auto 12px', display: 'block', cursor: onTerugNaarLanding ? 'pointer' : 'default' }}
+          />
         </div>
 
         {/* Tabbladen: Inloggen / Registreren */}
@@ -166,7 +177,7 @@ export default function AuthPage({ onIngelogd, onPrivacybeleid, startModus }) {
 
 const s = {
   wrapper: {
-    minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     background: 'linear-gradient(135deg, #eef1f8 0%, #f8fafc 100%)',
     padding: 24, fontFamily: "'DM Sans', sans-serif",
   },

@@ -342,7 +342,7 @@ export default function App() {
     if (toonPubliekPrivacybeleid) {
       return <Privacybeleid onTerug={() => setToonPubliekPrivacybeleid(false)} />;
     }
-    return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} startModus={authStartModus} />;
+    return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} startModus={authStartModus} onTerugNaarLanding={() => setToonLanding(true)} />;
   }
 
   return (
