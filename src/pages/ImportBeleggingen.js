@@ -660,7 +660,7 @@ export default function ImportBeleggingen({ onClose }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'var(--bg)' }}>
-                    {['Naam', 'Symbool', 'Type', 'Kostprijs', 'Transactiekosten', 'Aantal', 'Munt'].map(h => (
+                    {['Naam', 'Symbool', 'Type', 'Aankoopprijs', 'Transactiekosten', 'Aantal', 'Munt'].map(h => (
                       <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600, color: 'var(--text-secondary)' }}>{h}</th>
                     ))}
                   </tr>
