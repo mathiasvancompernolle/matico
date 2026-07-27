@@ -6,7 +6,7 @@ import { ChevronDown } from 'lucide-react';
 // ── Helpers ──────────────────────────────────────────────────────
 const fmt = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const ACCENT = '#1e3a8a';
-const PIE_KLEUREN = ['#1e3a8a', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#f97316', '#06b6d4', '#84cc16', '#ec4899', '#14b8a6', '#a855f7', '#eab308'];
+const PIE_KLEUREN = ['#1e3a8a', '#d97706', '#059669', '#dc2626', '#3b82f6', '#7c3aed', '#ea580c', '#0891b2', '#65a30d', '#db2777', '#0d9488', '#ca8a04'];
 
 // Bekende ETF-tickers (komen overeen met de ETF_DB/ETF_VALUTA-databases hieronder).
 // Hiermee herkennen we een belegging ook als ETF wanneer het symbool bekend is,

@@ -198,7 +198,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
 
   // ETF-verdeling: sector of regio, afhankelijk van de actieve tab — live
   // opgehaald voor het geselecteerde effect (zie useEffect hierboven).
-  const ETF_KLEUREN = ['#1e3a8a', '#8b5cf6', '#a78bfa', '#22c55e', '#16a34a', '#7c3aed', '#f97316', '#eab308', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6'];
+  const ETF_KLEUREN = ['#1e3a8a', '#d97706', '#059669', '#dc2626', '#3b82f6', '#7c3aed', '#ea580c', '#0891b2', '#65a30d', '#db2777', '#0d9488', '#ca8a04'];
   const etfSectorData = (() => {
     if (aktieveTab !== 'sector' && aktieveTab !== 'regio') return [];
     const bron = aktieveTab === 'regio' ? etfData?.landen : etfData?.sectoren;
