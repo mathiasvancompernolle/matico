@@ -1796,7 +1796,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
           const kostenLijst = [
             ...beleggingen.map(b => ({ naam: b.naam || b.symbol, symbol: b.symbol, broker: b.broker || null, kosten: (b.transactiekosten || 0) * factor(b), investering: b.kostprijs * b.aantal * factor(b), status: 'actief' })),
             ...(verkochteBeleggingen || []).map(b => ({ naam: b.naam || b.symbol, symbol: b.symbol, broker: b.broker || null, kosten: (b.transactiekosten || 0) * factor(b), investering: b.kostprijs * (b.aantalVerkocht || b.aantal) * factor(b), status: 'verkocht' })),
-          ].filter(b => b.kosten > 0).sort((a, b) => b.kosten - a.kosten);
+          ].sort((a, b) => b.kosten - a.kosten);
 
           return (
             <div className="card" style={{ marginTop: 24 }}>
