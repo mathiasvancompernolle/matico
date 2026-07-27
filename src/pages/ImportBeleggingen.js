@@ -21,6 +21,17 @@ const SAXO_TYPE_MAP = {
   'cryptovaluta': 'crypto', 'crypto': 'crypto',
 };
 
+// Saxo noteert de aankoopdatum onder "Open tijd", in het formaat
+// "03-jun-2026 20:20:04" (Nederlandse maandafkorting + tijdstip erbij).
+const SAXO_MAANDEN = { jan:'01', feb:'02', mrt:'03', apr:'04', mei:'05', jun:'06', jul:'07', aug:'08', sep:'09', okt:'10', nov:'11', dec:'12' };
+function parseSaxoOpenTijd(s) {
+  const m = /^(\d{1,2})-([a-z]{3})-(\d{4})/i.exec((s || '').trim());
+  if (!m) return '';
+  const maand = SAXO_MAANDEN[m[2].toLowerCase()];
+  if (!maand) return '';
+  return `${m[3]}-${maand}-${m[1].padStart(2, '0')}`;
+}
+
 // Herkent een bekend broker-exportformaat op basis van de kolomkoppen, zodat
 // we automatisch de juiste, broker-specifieke omzetting kunnen toepassen
 // i.p.v. de gebruiker manueel elke kolom te laten koppelen.
@@ -146,8 +157,9 @@ function transformeerBitvavo(rijen) {
   return resultaat;
 }
 
-// Saxo: momentopname van je posities. Bevat wel een echte aankoopkoers
-// ("AK-krs"), maar geen aankoopdatum. Tussenkoppen zoals "Aandelen (3)"
+// Saxo: momentopname van je posities. Bevat een echte aankoopkoers
+// ("AK-krs") én de aankoopdatum (verstopt onder "Open tijd"). Tussenkoppen
+// zoals "Aandelen (3)"
 // worden overgeslagen (geen "Aantal"/"Symb." aanwezig op die rijen).
 function transformeerSaxo(rijen) {
   const resultaat = [];
@@ -170,7 +182,7 @@ function transformeerSaxo(rijen) {
       kostprijs: parseFloat(String(r['AK-krs'] || '0').replace(',', '.')) || 0,
       aantal,
       munt: r['Valuta'] || 'EUR',
-      datum: '',
+      datum: parseSaxoOpenTijd(r['Open tijd']),
       transactiekosten: (() => {
         // "AK-krs+kost" is dezelfde aankoopprijs, maar dan inclusief kosten
         // per stuk — het verschil x aantal geeft de totale transactiekost.
