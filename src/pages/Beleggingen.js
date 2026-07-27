@@ -906,18 +906,18 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                 <span style={{ textAlign: 'right' }}>{t('ov_col_koers')}</span>
                 <span style={{ textAlign: 'right' }}>{t('ov_totaal')}</span>
               </div>
-              {transacties.map((t, idx) => {
-                const factor = getMuntFactor ? getMuntFactor(t.munt) : (t.munt === 'USD' ? 0.865 : 1);
-                const totaal = (t.koers || 0) * t.aantal * factor + (t.kosten || 0);
-                const ms = t.munt === 'USD' ? '$' : t.munt === 'GBP' ? '£' : '€';
-                const isAankoop = t.type === 'aankoop';
+              {transacties.map((tx, idx) => {
+                const factor = getMuntFactor ? getMuntFactor(tx.munt) : (tx.munt === 'USD' ? 0.865 : 1);
+                const totaal = (tx.koers || 0) * tx.aantal * factor + (tx.kosten || 0);
+                const ms = tx.munt === 'USD' ? '$' : tx.munt === 'GBP' ? '£' : '€';
+                const isAankoop = tx.type === 'aankoop';
                 return (
-                  <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr 100px 1fr 1fr 1fr 1fr', padding: '14px 24px', borderBottom: idx < transacties.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
+                  <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr 100px 1fr 1fr 1fr 1fr', padding: '14px 24px', borderBottom: idx < transacties.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <Avatar symbol={t.symbol} logo={t.logo} />
+                      <Avatar symbol={tx.symbol} logo={tx.logo} />
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: 14 }}>{t.naam}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{t.symbol}</div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{tx.naam}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{tx.symbol}</div>
                       </div>
                     </div>
                     <div>
@@ -925,9 +925,9 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                         {isAankoop ? `↑ ${t('ov_tooltip_aankoop')}` : `↓ ${t('ov_tooltip_verkoop')}`}
                       </span>
                     </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{formatDatum(t.datum)}</div>
-                    <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{t.aantal}</div>
-                    <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{ms}{(t.koers || 0).toFixed(2)}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{formatDatum(tx.datum)}</div>
+                    <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{tx.aantal}</div>
+                    <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{ms}{(tx.koers || 0).toFixed(2)}</div>
                     <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right', fontWeight: 600, color: isAankoop ? 'var(--text-primary)' : 'var(--green)' }}>
                       {isAankoop ? '-' : '+'}€{Math.abs(totaal).toFixed(2)}
                     </div>
