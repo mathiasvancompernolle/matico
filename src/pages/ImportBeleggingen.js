@@ -49,10 +49,11 @@ function transformeerBitvavo(rijen) {
     const quoteMunt = (r['Quote Currency'] || 'EUR').trim();
     const datum = r['Date'] || '';
 
-    if (!perMunt[munt]) perMunt[munt] = { gekocht: 0, gekochtKost: 0, verkocht: 0, quoteMunt, eersteDatum: datum };
+    if (!perMunt[munt]) perMunt[munt] = { gekocht: 0, gekochtKost: 0, verkocht: 0, kosten: 0, quoteMunt, eersteDatum: datum };
     if (type === 'buy') {
       perMunt[munt].gekocht += aantal;
       perMunt[munt].gekochtKost += aantal * prijs;
+      perMunt[munt].kosten += parseFloat(String(r['Fee amount'] || '0').replace(',', '.')) || 0;
       if (datum && (!perMunt[munt].eersteDatum || datum < perMunt[munt].eersteDatum)) perMunt[munt].eersteDatum = datum;
     } else {
       perMunt[munt].verkocht += aantal;
@@ -68,6 +69,7 @@ function transformeerBitvavo(rijen) {
       symbol: `${munt}-${d.quoteMunt}`,
       type: 'crypto',
       kostprijs: d.gekochtKost / d.gekocht, // gewogen gemiddelde over alle aankopen
+      transactiekosten: Math.round(d.kosten * 100) / 100,
       aantal: netAantal,
       munt: d.quoteMunt,
       datum: d.eersteDatum,
@@ -101,6 +103,14 @@ function transformeerSaxo(rijen) {
       aantal,
       munt: r['Valuta'] || 'EUR',
       datum: '',
+      transactiekosten: (() => {
+        // "AK-krs+kost" is dezelfde aankoopprijs, maar dan inclusief kosten
+        // per stuk — het verschil x aantal geeft de totale transactiekost.
+        const alInkl = parseFloat(String(r['AK-krs+kost'] || '0').replace(',', '.')) || 0;
+        const zuiver = parseFloat(String(r['AK-krs'] || '0').replace(',', '.')) || 0;
+        const verschil = (alInkl - zuiver) * aantal;
+        return verschil > 0 ? Math.round(verschil * 100) / 100 : 0;
+      })(),
     });
   }
   return resultaat;
@@ -133,6 +143,7 @@ async function transformeerDegiro(rijen, onVoortgang) {
       type: 'aandeel',
       kostprijs: parseFloat(String(r['Slotkoers'] || '0').replace(',', '.')) || 0,
       kostprijsOnzeker: true,
+      transactiekosten: 0, // DEGIRO's portefeuille-export bevat geen kosteninformatie
       aantal: parseFloat(String(r['Aantal'] || '0').replace(',', '.')) || 0,
       munt: r['Lokale waarde'] || 'EUR', // let op: DEGIRO's eigen kolomkop hier is misleidend, de waarde zelf klopt wel
       datum: '',
@@ -561,7 +572,7 @@ export default function ImportBeleggingen({ onClose }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'var(--bg)' }}>
-                    {['Naam', 'Symbool', 'Type', 'Kostprijs', 'Aantal', 'Munt'].map(h => (
+                    {['Naam', 'Symbool', 'Type', 'Kostprijs', 'Transactiekosten', 'Aantal', 'Munt'].map(h => (
                       <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600, color: 'var(--text-secondary)' }}>{h}</th>
                     ))}
                   </tr>
@@ -580,6 +591,11 @@ export default function ImportBeleggingen({ onClose }) {
                             border: r.kostprijsOnzeker ? '1.5px solid #f59e0b' : '1px solid var(--border)',
                             background: r.kostprijsOnzeker ? '#fffbeb' : 'white',
                           }} />
+                      </td>
+                      <td style={{ padding: '4px 8px' }}>
+                        <input type="number" step="0.01" value={r.transactiekosten || 0}
+                          onChange={e => bewerkBrokerRij(i, 'transactiekosten', parseFloat(e.target.value) || 0)}
+                          style={{ width: 80, padding: '5px 8px', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--border)' }} />
                       </td>
                       <td style={{ padding: '4px 8px' }}>
                         <input type="number" step="1" value={r.aantal}
