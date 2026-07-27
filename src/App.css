@@ -1061,11 +1061,11 @@ body {
 .app-wrapper .app-layout {
   flex: 1;
   overflow: hidden;
-  height: calc(100vh - 92px);
+  height: calc(100vh - 72px);
 }
 
 .top-nav {
-  height: 92px;
+  height: 72px;
   background: var(--bg-white);
   border-bottom: 1px solid var(--border);
   display: flex;

@@ -63,11 +63,11 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
     <nav className="top-nav" style={{ display: 'flex', alignItems: 'center', padding: '0 16px', gap: 8 }}>
       {/* Logo als grote home-knop */}
       <div onClick={() => { onSectieWissel('portefeuille'); navigeerNaar('overzicht'); }}
-        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 16, flexShrink: 0, padding: '6px 10px', borderRadius: 10, transition: 'background 0.15s' }}
+        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 16, flexShrink: 0, height: '100%', borderRadius: 8, transition: 'background 0.15s' }}
         onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
       >
-        <img src={kapitasLogo} alt="Kapitas" style={{ height: 64, width: 'auto', display: 'block' }} />
+        <img src={kapitasLogo} alt="Kapitas" style={{ height: '80%', width: 'auto', display: 'block' }} />
       </div>
 
       {/* Tabs */}
