@@ -1,8 +1,9 @@
 // src/pages/AuthPage.jsx
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
+import kapitasLogo from '../assets/kapitas-logo.png';
 
-export default function AuthPage({ onIngelogd }) {
+export default function AuthPage({ onIngelogd, onPrivacybeleid }) {
   const [laden, setLaden] = useState(false);
   const [fout, setFout] = useState(null);
   const [emailMode, setEmailMode] = useState(false);
@@ -59,7 +60,7 @@ export default function AuthPage({ onIngelogd }) {
       <div style={s.kaart}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={s.logo}>Mati<span style={{ color: '#0f172a' }}>co</span></div>
+          <img src={kapitasLogo} alt="Kapitas" style={{ height: 32, width: 'auto', margin: '0 auto 12px', display: 'block' }} />
           <p style={s.sub}>{isRegistreren ? 'Maak een gratis account aan' : 'Welkom terug'}</p>
         </div>
 
@@ -128,10 +129,8 @@ export default function AuthPage({ onIngelogd }) {
 
         {/* Footer */}
         <p style={s.disclaimer}>
-          Door in te loggen ga je akkoord met onze{' '}
-          <a href="/voorwaarden" style={{ color: '#6366f1' }}>algemene voorwaarden</a>{' '}
-          en{' '}
-          <a href="/privacy" style={{ color: '#6366f1' }}>privacybeleid</a>.
+          Door in te loggen ga je akkoord met ons{' '}
+          <span onClick={onPrivacybeleid} style={{ color: '#1e3a8a', cursor: 'pointer', fontWeight: 600 }}>privacybeleid</span>.
         </p>
       </div>
     </div>
@@ -141,7 +140,7 @@ export default function AuthPage({ onIngelogd }) {
 const s = {
   wrapper: {
     minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%)',
+    background: 'linear-gradient(135deg, #eef1f8 0%, #f8fafc 100%)',
     padding: 24, fontFamily: "'DM Sans', sans-serif",
   },
   kaart: {
@@ -149,7 +148,7 @@ const s = {
     boxShadow: '0 20px 60px rgba(0,0,0,0.1)', width: '100%', maxWidth: 420,
   },
   logo: {
-    fontSize: 28, fontWeight: 800, color: '#6366f1', letterSpacing: '-0.5px',
+    fontSize: 28, fontWeight: 800, color: '#1e3a8a', letterSpacing: '-0.5px',
   },
   titel: {
     fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8, textAlign: 'center',
@@ -176,17 +175,17 @@ const s = {
   },
   btnPrimary: {
     width: '100%', padding: '13px 16px', borderRadius: 10,
-    border: 'none', background: '#6366f1', color: 'white', cursor: 'pointer',
+    border: 'none', background: '#1e3a8a', color: 'white', cursor: 'pointer',
     fontSize: 15, fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
     marginTop: 8,
   },
   btnGhost: {
-    background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer',
+    background: 'none', border: 'none', color: '#1e3a8a', cursor: 'pointer',
     fontSize: 14, fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
     marginTop: 12,
   },
   btnLink: {
-    background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer',
+    background: 'none', border: 'none', color: '#1e3a8a', cursor: 'pointer',
     fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
   },
   divider: {

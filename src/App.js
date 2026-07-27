@@ -338,7 +338,10 @@ export default function App() {
   }
 
   if (!gebruiker) {
-    return <AuthPage onIngelogd={(user) => setGebruiker(user)} />;
+    if (toonPubliekPrivacybeleid) {
+      return <Privacybeleid onTerug={() => setToonPubliekPrivacybeleid(false)} />;
+    }
+    return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} />;
   }
 
   return (
