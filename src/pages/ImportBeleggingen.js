@@ -28,8 +28,76 @@ function detecteerBroker(hdrs) {
   const set = new Set(hdrs);
   if (set.has('AK-krs') && set.has('Symb.') && set.has('Soort belegging')) return 'saxo';
   if (set.has('Product') && set.has('Symbool/ISIN') && set.has('Slotkoers')) return 'degiro';
+  if (set.has('ISIN') && set.has('Datum') && set.has('Transactiekosten en/of kosten van derden EUR')) return 'degiro-transacties';
   if (set.has('Quote Price') && set.has('Received / Paid Currency') && set.has('Type')) return 'bitvavo';
   return null;
+}
+
+// DEGIRO Transacties (in tegenstelling tot de Portefeuille-momentopname):
+// een échte transactiegeschiedenis, met per transactie de werkelijke
+// aankoopprijs, -datum én transactiekosten. Net als bij Bitvavo groeperen
+// we aan-/verkopen per ISIN (Aantal > 0 = aankoop, < 0 = verkoop) tot een
+// netto-hoeveelheid, met een gewogen-gemiddelde kostprijs.
+function parseDegiroDatum(s) {
+  // "02-06-2026" (dd-mm-jjjj) → "2026-06-02"
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec((s || '').trim());
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+
+async function transformeerDegiroTransacties(rijen, onVoortgang) {
+  const perIsin = {};
+  for (const r of rijen) {
+    const isin = (r['ISIN'] || '').trim();
+    if (!isin) continue;
+    const aantal = parseFloat(String(r['Aantal'] || '0').replace(',', '.')) || 0;
+    const koers = parseFloat(String(r['Koers '] ?? r['Koers'] ?? '0').replace(',', '.')) || 0;
+    const kosten = Math.abs(parseFloat(String(r['Transactiekosten en/of kosten van derden EUR'] || '0').replace(',', '.')) || 0);
+    const datum = parseDegiroDatum(r['Datum']);
+    const naam = (r['Product'] || isin).trim();
+
+    if (!perIsin[isin]) perIsin[isin] = { gekocht: 0, gekochtKost: 0, verkocht: 0, kosten: 0, naam, eersteDatum: datum };
+    if (aantal > 0) {
+      perIsin[isin].gekocht += aantal;
+      perIsin[isin].gekochtKost += aantal * koers;
+      perIsin[isin].kosten += kosten;
+      if (datum && (!perIsin[isin].eersteDatum || datum < perIsin[isin].eersteDatum)) perIsin[isin].eersteDatum = datum;
+    } else if (aantal < 0) {
+      perIsin[isin].verkocht += Math.abs(aantal);
+    }
+    perIsin[isin].naam = naam; // meest recente (volledige) productnaam gebruiken
+  }
+
+  const isins = Object.keys(perIsin);
+  const resultaat = [];
+  for (let i = 0; i < isins.length; i++) {
+    const isin = isins[i];
+    const d = perIsin[isin];
+    const netAantal = d.gekocht - d.verkocht;
+    if (netAantal <= 0.00000001 || d.gekocht === 0) { onVoortgang && onVoortgang(i + 1, isins.length); continue; }
+
+    let symbol = isin;
+    try {
+      const res = await fetch(`/api/data?endpoint=isin-naar-ticker&isin=${encodeURIComponent(isin)}`);
+      const dd = await res.json();
+      if (dd?.symbol) symbol = dd.symbol;
+    } catch (e) { /* val terug op ISIN */ }
+
+    const naamGroot = d.naam.toUpperCase();
+    const type = naamGroot.includes('ETF') || naamGroot.includes('TRACKER') ? 'etf' : 'aandeel';
+
+    resultaat.push({
+      naam: d.naam,
+      symbol,
+      type,
+      kostprijs: d.gekochtKost / d.gekocht,
+      transactiekosten: Math.round(d.kosten * 100) / 100,
+      aantal: netAantal,
+      munt: 'EUR',
+      datum: d.eersteDatum,
+    });
+    onVoortgang && onVoortgang(i + 1, isins.length);
+  }
+  return resultaat;
 }
 
 // Bitvavo: dit is een volledige TRANSACTIEgeschiedenis (geen momentopname),
@@ -302,10 +370,19 @@ export default function ImportBeleggingen({ onClose }) {
       return;
     }
     if (broker === 'degiro') {
-      setBrokerNaam('DEGIRO');
+      setBrokerNaam('DEGIRO (portefeuille)');
       setStap('broker-laden');
       setVoortgang({ huidig: 0, totaal: 0 });
       const rijenOm = await transformeerDegiro(rijen, (huidig, totaal) => setVoortgang({ huidig, totaal }));
+      setBrokerRijen(rijenOm);
+      setStap('broker-preview');
+      return;
+    }
+    if (broker === 'degiro-transacties') {
+      setBrokerNaam('DEGIRO');
+      setStap('broker-laden');
+      setVoortgang({ huidig: 0, totaal: 0 });
+      const rijenOm = await transformeerDegiroTransacties(rijen, (huidig, totaal) => setVoortgang({ huidig, totaal }));
       setBrokerRijen(rijenOm);
       setStap('broker-preview');
       return;
@@ -550,11 +627,22 @@ export default function ImportBeleggingen({ onClose }) {
               <strong>{brokerRijen.length}</strong> posities gevonden en automatisch omgezet. Controleer even of alles klopt voor je importeert.
             </p>
 
-            {brokerNaam === 'DEGIRO' && (
+            {brokerNaam === 'DEGIRO (portefeuille)' && (
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, marginBottom: 20 }}>
                 <AlertTriangle size={16} color="#b45309" style={{ flexShrink: 0, marginTop: 1 }} />
                 <div style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
                   DEGIRO's portefeuille-export bevat geen echte aankoopprijs, enkel de huidige koers. De kostprijs hieronder is dus voorlopig gelijk aan de huidige koers (0% winst/verlies) — pas dit zelf aan per positie voor een correcte berekening.
+                  <br /><br />
+                  <strong>Tip:</strong> DEGIRO biedt ook een aparte "Transacties"-export aan met je échte aankoopprijzen, -data en transactiekosten — upload die in plaats van deze portefeuille-export voor een nauwkeuriger resultaat.
+                </div>
+              </div>
+            )}
+
+            {brokerNaam === 'DEGIRO' && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', background: 'var(--accent-bg)', border: '1px solid var(--accent-light)', borderRadius: 10, marginBottom: 20 }}>
+                <Info size={16} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div style={{ fontSize: 13, color: 'var(--accent)', lineHeight: 1.5 }}>
+                  Berekend uit je volledige transactiegeschiedenis: aan- en verkopen per positie zijn tegen elkaar weggestreept tot je huidige, netto-hoeveelheid, de kostprijs is het gewogen gemiddelde over al je aankopen, en de transactiekosten zijn meegenomen.
                 </div>
               </div>
             )}
