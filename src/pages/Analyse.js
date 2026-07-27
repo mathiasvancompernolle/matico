@@ -1829,20 +1829,20 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>{t('an_per_belegging')}</div>
                   <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 110px 100px 100px', padding: '10px 16px', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 100px 100px 90px', padding: '10px 16px', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       <span>{t('bel_col_instrument')}</span>
-                      <span>{t('an_col_broker')}</span>
                       <span style={{ textAlign: 'right' }}>{t('an_col_investering')}</span>
                       <span style={{ textAlign: 'right' }}>{t('an_col_kosten')}</span>
                       <span style={{ textAlign: 'right' }}>{t('an_col_pct_inv')}</span>
+                      <span style={{ textAlign: 'right' }}>{t('an_col_broker')}</span>
                     </div>
                     {kostenLijst.map((b, idx) => {
                       const pct = b.investering > 0 ? (b.kosten / b.investering) * 100 : 0;
-                      const BROKER_KLEUREN = { Saxo: '#7c2d12', DEGIRO: '#0c4a6e', Bitvavo: '#c2410c' };
-                      const brokerKleur = BROKER_KLEUREN[b.broker] || 'var(--text-muted)';
+                      const BROKER_DOMEIN = { Saxo: 'home.saxo', DEGIRO: 'degiro.be', Bitvavo: 'bitvavo.com' };
+                      const brokerDomein = BROKER_DOMEIN[b.broker];
                       const brokerLabel = b.broker || t('an_manueel_broker');
                       return (
-                        <div key={b.symbol + idx} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 110px 100px 100px', padding: '12px 16px', borderBottom: idx < kostenLijst.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
+                        <div key={b.symbol + idx} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 100px 100px 90px', padding: '12px 16px', borderBottom: idx < kostenLijst.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
                               {b.symbol.split('.')[0].slice(0, 2).toUpperCase()}
@@ -1855,18 +1855,27 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                               </div>
                             </div>
                           </div>
-                          <div>
-                            <span style={{
-                              display: 'inline-block', padding: '3px 8px', borderRadius: 6,
-                              fontSize: 10, fontWeight: 700, color: 'white', background: brokerKleur,
-                              whiteSpace: 'nowrap',
-                            }}>
-                              {brokerLabel}
-                            </span>
-                          </div>
                           <div style={{ textAlign: 'right', fontSize: 13, fontFamily: 'monospace' }}>€{b.investering.toFixed(2)}</div>
                           <div style={{ textAlign: 'right', fontSize: 13, fontFamily: 'monospace', fontWeight: 600, color: 'var(--red)' }}>€{b.kosten.toFixed(2)}</div>
                           <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>{pct.toFixed(3)}%</div>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6 }}>
+                            {brokerDomein ? (
+                              <img
+                                src={`https://www.google.com/s2/favicons?domain=${brokerDomein}&sz=64`}
+                                alt={b.broker}
+                                title={b.broker}
+                                style={{ width: 20, height: 20, borderRadius: 4, flexShrink: 0 }}
+                              />
+                            ) : (
+                              <span style={{
+                                display: 'inline-block', padding: '3px 8px', borderRadius: 6,
+                                fontSize: 10, fontWeight: 700, color: 'white', background: 'var(--text-muted)',
+                                whiteSpace: 'nowrap',
+                              }}>
+                                {brokerLabel}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
