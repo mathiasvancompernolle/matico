@@ -32,8 +32,17 @@ export default function AuthPage({ onIngelogd, onPrivacybeleid }) {
     setLaden(true);
     setFout(null);
     if (isRegistreren) {
-      const { error } = await supabase.auth.signUp({ email, password: wachtwoord });
+      const { data, error } = await supabase.auth.signUp({ email, password: wachtwoord });
       if (error) { setFout(error.message); setLaden(false); }
+      else if (data?.user?.identities?.length === 0) {
+        // Supabase geeft bij een reeds bestaand (bevestigd) e-mailadres bewust
+        // geen foutmelding terug (ter voorkoming van account-enumeratie) —
+        // maar stuurt in dat geval ook geen nieuwe bevestigingsmail. We
+        // herkennen dit via de lege 'identities'-lijst en tonen zelf een
+        // duidelijke melding in plaats van blind "bevestig je e-mail" te tonen.
+        setFout('Dit e-mailadres heeft al een account. Probeer in te loggen in plaats van te registreren.');
+        setLaden(false);
+      }
       else { setBevestigd(true); setLaden(false); }
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password: wachtwoord });
