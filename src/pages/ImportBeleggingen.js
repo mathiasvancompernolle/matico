@@ -99,6 +99,7 @@ async function transformeerDegiroTransacties(rijen, onVoortgang) {
     resultaat.push({
       naam: d.naam,
       symbol,
+      broker: 'DEGIRO',
       type,
       kostprijs: d.gekochtKost / d.gekocht,
       transactiekosten: Math.round(d.kosten * 100) / 100,
@@ -146,6 +147,7 @@ function transformeerBitvavo(rijen) {
     resultaat.push({
       naam: munt,
       symbol: `${munt}-${d.quoteMunt}`,
+      broker: 'Bitvavo',
       type: 'crypto',
       kostprijs: d.gekochtKost / d.gekocht, // gewogen gemiddelde over alle aankopen
       transactiekosten: Math.round(d.kosten * 100) / 100,
@@ -178,6 +180,7 @@ function transformeerSaxo(rijen) {
     resultaat.push({
       naam: (r['Instrument'] || symbol).trim(),
       symbol,
+      broker: 'Saxo',
       type,
       kostprijs: parseFloat(String(r['AK-krs'] || '0').replace(',', '.')) || 0,
       aantal,
@@ -220,6 +223,7 @@ async function transformeerDegiro(rijen, onVoortgang) {
     resultaat.push({
       naam,
       symbol,
+      broker: 'DEGIRO',
       type: 'aandeel',
       kostprijs: parseFloat(String(r['Slotkoers'] || '0').replace(',', '.')) || 0,
       kostprijsOnzeker: true,
