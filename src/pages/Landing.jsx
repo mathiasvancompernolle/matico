@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import kapitasLogo from '../assets/kapitas-logo.png';
 
 export default function Landing({ onNaarApp, onPrivacybeleid }) {
   const [faqOpen, setFaqOpen] = useState(null);
@@ -70,9 +71,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid }) {
 
       {/* ── NAV ── */}
       <nav style={{ position:'sticky',top:0,zIndex:100,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(12px)',borderBottom:'1px solid #e2e8f0',padding:'0 24px',height:64,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-        <span style={{ fontSize:22,fontWeight:800,color:'#1e3a8a',letterSpacing:'-0.5px' }}>
-          Mati<span style={{ color:'#0f172a' }}>co</span>
-        </span>
+        <img src={kapitasLogo} alt="Kapitas" style={{ height: 40, width: 'auto', display: 'block' }} />
         <ul className="l-hide-mobile" style={{ display:'flex',gap:32,listStyle:'none' }}>
           {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
             <li key={i}><a href={h} style={{ textDecoration:'none',color:'#64748b',fontSize:14,fontWeight:500 }}>{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a></li>
