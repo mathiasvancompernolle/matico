@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import { Plus, ChevronDown, Calendar, MoreVertical, Search, ArrowLeft, X, Trash2, Download } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
@@ -148,28 +149,42 @@ function Avatar({ symbol, logo, naam, type }) {
 function KebabMenu({ onDetail, onVerkopen, onVerwijder }) {
   const { t } = useApp();
   const [open, setOpen] = useState(false);
+  const [positie, setPositie] = useState(null);
   const ref = useRef();
+  const knopRef = useRef();
 
   useEffect(() => {
-    const handle = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handle = (e) => {
+      if (ref.current && !ref.current.contains(e.target) && !e.target.closest('[data-kebab-menu]')) setOpen(false);
+    };
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, []);
 
+  const toggleOpen = (e) => {
+    e.stopPropagation();
+    if (!open && knopRef.current) {
+      const rect = knopRef.current.getBoundingClientRect();
+      setPositie({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setOpen(o => !o);
+  };
+
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button
-        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        ref={knopRef}
+        onClick={toggleOpen}
         style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px',
           borderRadius: 6, color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
       >
         <MoreVertical size={16} />
       </button>
-      {open && (
-        <div style={{
-          position: 'absolute', right: 0, top: '100%', background: 'var(--bg-white)',
+      {open && positie && createPortal(
+        <div data-kebab-menu style={{
+          position: 'fixed', top: positie.top, right: positie.right, background: 'var(--bg-white)',
           border: '1px solid var(--border)', borderRadius: 10, boxShadow: 'var(--shadow-md)',
-          zIndex: 100, minWidth: 160, overflow: 'hidden'
+          zIndex: 1000, minWidth: 160, overflow: 'hidden'
         }}>
           <button onClick={e => { e.stopPropagation(); setOpen(false); onDetail(); }}
             style={menuItemStyle}>{t('bel_detail_bekijken')}</button>
@@ -178,7 +193,8 @@ function KebabMenu({ onDetail, onVerkopen, onVerwijder }) {
           <div style={{ height: 1, background: 'var(--border-light)' }} />
           <button onClick={e => { e.stopPropagation(); setOpen(false); onVerwijder(); }}
             style={{ ...menuItemStyle, color: 'var(--red)' }}>{t('bel_verwijderen')}</button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
