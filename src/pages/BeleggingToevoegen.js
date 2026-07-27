@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { TrendingUp, Building2, Bitcoin, PiggyBank, ArrowLeft, Search, Loader } from 'lucide-react';
+import { TrendingUp, Building2, Bitcoin, PiggyBank, ArrowLeft, Search, Loader, X } from 'lucide-react';
 
 const TYPES = [
   { id: 'aandeel', label: 'Aandeel', beschrijving: 'Zoek en voeg beursgenoteerde aandelen toe', icon: TrendingUp },
@@ -304,17 +304,18 @@ export default function BeleggingToevoegen({ onClose }) {
       {stap === 'multi-invoer' && (
         <div style={{ padding: '0 24px' }}>
           {/* Tabelheader */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.4fr 0.8fr', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.4fr 0.8fr 32px', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
             <span>Naam</span>
             <span>Aankoopdatum</span>
             <span>Kostprijs per stuk</span>
             <span>Aantal</span>
+            <span></span>
           </div>
           {/* Rijen */}
           {selectie.map(r => {
             const f = multiForms[r.symbol] || {};
             return (
-              <div key={r.symbol} style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.4fr 0.8fr', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center' }}>
+              <div key={r.symbol} style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.4fr 0.8fr 32px', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center' }}>
                 {/* Naam */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
@@ -342,6 +343,13 @@ export default function BeleggingToevoegen({ onClose }) {
                 <input type="number" value={f.aantal || ''} onChange={e => updateMultiForm(r.symbol, 'aantal', e.target.value)}
                   placeholder="0" step="0.0001"
                   style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                <button
+                  onClick={() => toggleSelectie(r)}
+                  title="Deze belegging niet toevoegen"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--red)', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <X size={16} />
+                </button>
               </div>
             );
           })}
@@ -369,7 +377,7 @@ export default function BeleggingToevoegen({ onClose }) {
               Beleggingen
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-              Automatisch opgevolgd door Matico
+              Automatisch opgevolgd door Kapitas
             </div>
             <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16 }}>
 
