@@ -91,6 +91,27 @@ export function AppProvider({ children }) {
     localStorage.setItem('matico_darkmode', darkMode);
   }, [darkMode]);
 
+  // ── Favorieten ──
+  const [favorieten, setFavorieten] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('matico_favorieten') || '[]'); }
+    catch { return []; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('matico_favorieten', JSON.stringify(favorieten));
+  }, [favorieten]);
+
+  // meta = { symbol, naam, type, beurs } — voegt toe als nog niet aanwezig, verwijdert anders
+  const toggleFavoriet = (meta) => {
+    setFavorieten(prev => {
+      const bestaat = prev.some(f => f.symbol === meta.symbol);
+      if (bestaat) return prev.filter(f => f.symbol !== meta.symbol);
+      return [...prev, meta];
+    });
+  };
+
+  const isFavoriet = (symbol) => favorieten.some(f => f.symbol === symbol);
+
   // ── Multi-portfolio state ──
   const [portfolios, setPortfolios] = useState(() => laadPortfolios());
   const [actiefPortfolioId, setActiefPortfolioId] = useState(() => {
@@ -389,6 +410,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       gebruiker, setGebruiker, t,
       darkMode, setDarkMode,
+      favorieten, toggleFavoriet, isFavoriet,
       portfolios, actiefPortfolio, actiefPortfolioId,
       wisselPortfolio, voegPortfolioToe, verwijderPortfolio,
       hernoemPortfolio: hernoemPortfolioFn,

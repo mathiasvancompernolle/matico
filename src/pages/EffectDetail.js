@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
+import { Star } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Adaptieve afronding: hoe kleiner het getal, hoe meer decimalen, zodat kleine
@@ -95,6 +97,7 @@ function EffectIcoon({ type, logo, symbol }) {
 
 // ── Detailpagina voor een individueel effect (aandeel/ETF/crypto) ────────────
 export default function EffectDetail({ effect, onTerug }) {
+  const { toggleFavoriet, isFavoriet } = useApp();
   const [periode, setPeriode] = useState('1d');
   const [grafiekData, setGrafiekData] = useState([]);
   const [grafiekLaden, setGrafiekLaden] = useState(true);
@@ -166,14 +169,32 @@ export default function EffectDetail({ effect, onTerug }) {
       <div style={{ padding: '0 32px 48px' }}>
         {/* ── Naam + koers + meta ── */}
         <div className="card" style={{ padding: '20px 24px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-            <EffectIcoon type={type} logo={profiel?.logo} symbol={symbol} />
-            <div>
-              <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{naam}</h1>
-              {profiel?.sector && (
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{profiel.sector}</div>
-              )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <EffectIcoon type={type} logo={profiel?.logo} symbol={symbol} />
+              <div>
+                <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{naam}</h1>
+                {profiel?.sector && (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{profiel.sector}</div>
+                )}
+              </div>
             </div>
+            <button
+              onClick={() => toggleFavoriet({ symbol, naam, type, beurs: beursNaam })}
+              title={isFavoriet(symbol) ? 'Verwijderen uit favorieten' : 'Toevoegen aan favorieten'}
+              style={{
+                background: 'transparent', border: 'none', cursor: 'pointer', padding: 6,
+                borderRadius: 8, display: 'flex', alignItems: 'center', flexShrink: 0,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <Star
+                size={22}
+                fill={isFavoriet(symbol) ? '#eab308' : 'none'}
+                color={isFavoriet(symbol) ? '#eab308' : 'var(--text-muted)'}
+              />
+            </button>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>

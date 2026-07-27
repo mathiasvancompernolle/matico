@@ -22,7 +22,7 @@ import { supabase } from './supabaseClient';
 import kapitasLogo from './assets/kapitas-logo.png';
 
 function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSelectEffect }) {
-  const { t } = useApp();
+  const { t, favorieten, toggleFavoriet } = useApp();
   const [zoekOpen, setZoekOpen] = React.useState(false);
   const [zoekQuery, setZoekQuery] = React.useState('');
   const [zoekResultaten, setZoekResultaten] = React.useState([]);
@@ -116,9 +116,32 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
             <svg width="16" height="16" fill="none" stroke={favorietenOpen ? '#1e3a8a' : 'var(--text-muted)'} strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           </button>
           {favorietenOpen && (
-            <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 260, zIndex: 300 }}>
+            <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 280, maxHeight: 340, overflowY: 'auto', zIndex: 300 }}>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: 14 }}>Favorieten</div>
-              <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Nog geen favorieten toegevoegd</div>
+              {favorieten.length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Nog geen favorieten toegevoegd</div>
+              ) : (
+                favorieten.map(f => (
+                  <div key={f.symbol}
+                    onClick={() => { onSelectEffect && onSelectEffect(f); setFavorietenOpen(false); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.naam}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{f.symbol}{f.beurs ? ` · ${f.beurs}` : ''}</div>
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); toggleFavoriet(f); }}
+                      title="Verwijderen uit favorieten"
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-muted)', flexShrink: 0, display: 'flex' }}
+                    >
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>
