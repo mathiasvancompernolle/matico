@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { vertaal, detecteerBrowserTaal } from './translations';
 
 const AppContext = createContext();
 
@@ -70,8 +71,17 @@ function herstelBelegging(b) {
 export function AppProvider({ children }) {
   const [gebruiker, setGebruiker] = useState(() => {
     const saved = localStorage.getItem('matico_gebruiker');
-    return saved ? JSON.parse(saved) : { voornaam: '', achternaam: '' };
+    const parsed = saved ? JSON.parse(saved) : { voornaam: '', achternaam: '' };
+    // Enkel bij het allereerste bezoek (nog geen opgeslagen taalvoorkeur)
+    // gokken we op basis van de browser-/systeemtaal. Eenmaal opgeslagen
+    // (handmatig of via deze gok) blijft die voorkeur vast staan, ook als
+    // de gebruiker zijn browsertaal nadien wijzigt.
+    if (!parsed.taal) parsed.taal = detecteerBrowserTaal();
+    return parsed;
   });
+
+  // Vertaalfunctie, gebonden aan de huidige taalvoorkeur van de gebruiker
+  const t = (sleutel) => vertaal(gebruiker.taal || 'nl', sleutel);
 
   // ── Dark mode ──
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('matico_darkmode') === 'true');
@@ -377,7 +387,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      gebruiker, setGebruiker,
+      gebruiker, setGebruiker, t,
       darkMode, setDarkMode,
       portfolios, actiefPortfolio, actiefPortfolioId,
       wisselPortfolio, voegPortfolioToe, verwijderPortfolio,

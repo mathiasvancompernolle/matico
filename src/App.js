@@ -22,6 +22,7 @@ import { supabase } from './supabaseClient';
 import kapitasLogo from './assets/kapitas-logo.png';
 
 function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSelectEffect }) {
+  const { t } = useApp();
   const [zoekOpen, setZoekOpen] = React.useState(false);
   const [zoekQuery, setZoekQuery] = React.useState('');
   const [zoekResultaten, setZoekResultaten] = React.useState([]);
@@ -71,8 +72,8 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
 
       {/* Tabs */}
       <div className="top-nav-inner" style={{ flex: 1 }}>
-        <button className={`top-nav-tab ${actieveSectie === 'portefeuille' ? 'actief' : ''}`} onClick={() => onSectieWissel('portefeuille')}>Portefeuille</button>
-        <button className={`top-nav-tab ${actieveSectie === 'markten' ? 'actief' : ''}`} onClick={() => onSectieWissel('markten')}>Markten</button>
+        <button className={`top-nav-tab ${actieveSectie === 'portefeuille' ? 'actief' : ''}`} onClick={() => onSectieWissel('portefeuille')}>{t('nav_portefeuille')}</button>
+        <button className={`top-nav-tab ${actieveSectie === 'markten' ? 'actief' : ''}`} onClick={() => onSectieWissel('markten')}>{t('nav_markten')}</button>
       </div>
 
       {/* Rechter iconen */}
@@ -141,9 +142,9 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
               </div>
               <div style={{ padding: '6px 0' }}>
                 {[
-                  { label: 'Mijn profiel', sub: 'Account & instellingen', route: 'mijn-profiel' },
-                  { label: 'Billing', sub: 'Abonnement beheren', route: 'instellingen' },
-                  { label: 'Privacybeleid', sub: 'Hoe we met je gegevens omgaan', route: 'privacybeleid' },
+                  { label: t('profiel_mijn_profiel'), sub: t('profiel_mijn_profiel_sub'), route: 'mijn-profiel' },
+                  { label: t('profiel_billing'), sub: t('profiel_billing_sub'), route: 'instellingen' },
+                  { label: t('profiel_privacybeleid'), sub: t('profiel_privacybeleid_sub'), route: 'privacybeleid' },
                 ].map(({ label, sub, route }) => (
                   <div key={label} onClick={() => { navigeerNaar(route); setProfielOpen(false); }}
                     style={{ padding: '9px 16px', cursor: 'pointer', fontSize: 13 }}
@@ -160,7 +161,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
                   onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                  Uitloggen
+                  {t('profiel_uitloggen')}
                 </div>
               </div>
             </div>

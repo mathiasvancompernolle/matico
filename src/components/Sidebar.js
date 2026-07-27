@@ -8,23 +8,23 @@ import {
   User
 } from 'lucide-react';
 
-const navItems = [
-  { id: 'overzicht', label: 'Overzicht', icon: LayoutDashboard },
-  { id: 'beleggingen', label: 'Beleggingen', icon: BarChart2 },
-  { id: 'analyse', label: 'Analyse', icon: TrendingUp },
-  { id: 'dividend', label: 'Dividend', icon: DollarSign },
-  { id: 'belastingen', label: 'Belastingen', icon: Receipt },
-  { id: 'instellingen', label: 'Instellingen', icon: Settings },
-];
-
 const ACCENT = '#1e3a8a';
 
 export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
   const {
-    activeNav, gebruiker, portfolioWaarde,
+    activeNav, gebruiker, portfolioWaarde, t,
     portfolios, actiefPortfolio, actiefPortfolioId,
     wisselPortfolio, voegPortfolioToe, verwijderPortfolio, hernoemPortfolio
   } = useApp();
+
+  const navItems = [
+    { id: 'overzicht', label: t('nav_overzicht'), icon: LayoutDashboard },
+    { id: 'beleggingen', label: t('nav_beleggingen'), icon: BarChart2 },
+    { id: 'analyse', label: t('nav_analyse'), icon: TrendingUp },
+    { id: 'dividend', label: t('nav_dividend'), icon: DollarSign },
+    { id: 'belastingen', label: t('nav_belastingen'), icon: Receipt },
+    { id: 'instellingen', label: t('nav_instellingen'), icon: Settings },
+  ];
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [toevoegenOpen, setToevoegenOpen] = useState(false);
@@ -219,7 +219,7 @@ export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
       </div>
 
       {/* Nav label */}
-      <div className="sidebar-section-label">Platform</div>
+      <div className="sidebar-section-label">{t('platform_label')}</div>
 
       {/* Nav items */}
       <nav className="sidebar-nav">
