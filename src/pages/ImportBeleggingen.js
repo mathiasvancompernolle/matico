@@ -660,7 +660,7 @@ export default function ImportBeleggingen({ onClose }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'var(--bg)' }}>
-                    {['Naam', 'Symbool', 'Type', 'Aankoopprijs', 'Transactiekosten', 'Aantal', 'Munt'].map(h => (
+                    {['Naam', 'Symbool', 'Type', 'Aankoopprijs', 'Transactiekosten', 'Aantal', 'Munt', 'Aankoopdatum'].map(h => (
                       <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600, color: 'var(--text-secondary)' }}>{h}</th>
                     ))}
                   </tr>
@@ -691,6 +691,15 @@ export default function ImportBeleggingen({ onClose }) {
                           style={{ width: 70, padding: '5px 8px', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--border)' }} />
                       </td>
                       <td style={{ padding: '6px 12px' }}>{r.munt}</td>
+                      <td style={{ padding: '4px 8px' }}>
+                        <input type="date" value={r.datum || ''}
+                          onChange={e => bewerkBrokerRij(i, 'datum', e.target.value)}
+                          style={{
+                            padding: '5px 8px', borderRadius: 6, fontSize: 13, fontFamily: 'inherit',
+                            border: r.datum ? '1px solid var(--border)' : '1.5px solid #f59e0b',
+                            background: r.datum ? 'white' : '#fffbeb',
+                          }} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
