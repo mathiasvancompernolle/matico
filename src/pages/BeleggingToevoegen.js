@@ -315,13 +315,13 @@ export default function BeleggingToevoegen({ onClose }) {
             return (
               <div key={r.symbol} style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 0.8fr 0.7fr 1.1fr 32px', gap: 10, padding: '12px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center' }}>
                 {/* Naam */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden' }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
                     {r.symbol.slice(0,2).toUpperCase()}
                   </div>
-                  <div style={{ minWidth: 0 }}>
+                  <div style={{ minWidth: 0, overflow: 'hidden' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.naam || r.symbol}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.symbol}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.symbol}</div>
                   </div>
                 </div>
                 {/* Aankoopprijs */}
