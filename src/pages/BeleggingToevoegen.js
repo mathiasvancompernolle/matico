@@ -167,8 +167,7 @@ export default function BeleggingToevoegen({ onClose }) {
         logo: r.logo || '',
         type: r.type || type || 'aandeel',
         datum: f.datum,
-        kostprijs: kostprijsPerStuk + (transactiekosten / aantalStuks),
-        kostprijsExclKosten: kostprijsPerStuk,
+        kostprijs: kostprijsPerStuk,
         transactiekosten,
         aantal: aantalStuks,
         munt: f.munt,
@@ -184,8 +183,6 @@ export default function BeleggingToevoegen({ onClose }) {
     const kostprijsPerStuk = parseFloat(form.kostprijs);
     const aantalStuks = parseFloat(form.aantal);
     const transactiekosten = parseFloat(form.transactiekosten) || 0;
-    // Kostprijs per stuk inclusief transactiekosten (verdeeld over alle stuks)
-    const kostprijsInclKosten = kostprijsPerStuk + (transactiekosten / aantalStuks);
 
     const nieuw = {
       id: Date.now(),
@@ -194,8 +191,7 @@ export default function BeleggingToevoegen({ onClose }) {
       logo: geselecteerd.logo || '',
       type,
       datum: form.datum,
-      kostprijs: kostprijsInclKosten,
-      kostprijsExclKosten: kostprijsPerStuk,
+      kostprijs: kostprijsPerStuk,
       transactiekosten,
       aantal: aantalStuks,
       munt: form.munt,
@@ -304,45 +300,55 @@ export default function BeleggingToevoegen({ onClose }) {
       {stap === 'multi-invoer' && (
         <div style={{ padding: '0 24px' }}>
           {/* Tabelheader */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.4fr 0.8fr 32px', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 0.8fr 0.7fr 1.1fr 32px', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
             <span>Naam</span>
-            <span>Aankoopdatum</span>
-            <span>Kostprijs per stuk</span>
+            <span>Aankoopprijs</span>
+            <span>Transactiekosten</span>
             <span>Aantal</span>
+            <span>Munt</span>
+            <span>Aankoopdatum</span>
             <span></span>
           </div>
           {/* Rijen */}
           {selectie.map(r => {
             const f = multiForms[r.symbol] || {};
             return (
-              <div key={r.symbol} style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.4fr 0.8fr 32px', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center' }}>
+              <div key={r.symbol} style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 0.8fr 0.7fr 1.1fr 32px', gap: 10, padding: '12px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center' }}>
                 {/* Naam */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
                     {r.symbol.slice(0,2).toUpperCase()}
                   </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{r.naam || r.symbol}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.naam || r.symbol}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.symbol}</div>
                   </div>
                 </div>
-                {/* Datum */}
-                <input type="date" value={f.datum || ''} onChange={e => updateMultiForm(r.symbol, 'datum', e.target.value)}
+                {/* Aankoopprijs */}
+                <input type="number" value={f.kostprijs || ''} onChange={e => updateMultiForm(r.symbol, 'kostprijs', e.target.value)}
+                  placeholder="0,00" step="0.01"
                   style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
-                {/* Kostprijs */}
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input type="number" value={f.kostprijs || ''} onChange={e => updateMultiForm(r.symbol, 'kostprijs', e.target.value)}
-                    placeholder="0,00" step="0.01"
-                    style={{ flex: 1, border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
-                  <select value={f.munt || 'EUR'} onChange={e => updateMultiForm(r.symbol, 'munt', e.target.value)}
-                    style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', fontSize: 12, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-muted)', outline: 'none', cursor: 'pointer' }}>
-                    <option>EUR</option><option>USD</option><option>GBP</option>
-                  </select>
-                </div>
+                {/* Transactiekosten */}
+                <input type="number" value={f.transactiekosten || ''} onChange={e => updateMultiForm(r.symbol, 'transactiekosten', e.target.value)}
+                  placeholder="0,00 (optioneel)" step="0.01"
+                  style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
                 {/* Aantal */}
                 <input type="number" value={f.aantal || ''} onChange={e => updateMultiForm(r.symbol, 'aantal', e.target.value)}
                   placeholder="0" step="0.0001"
                   style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                {/* Munt */}
+                <select value={f.munt || 'EUR'} onChange={e => updateMultiForm(r.symbol, 'munt', e.target.value)}
+                  style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', fontSize: 12, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-muted)', outline: 'none', cursor: 'pointer', width: '100%' }}>
+                  <option>EUR</option><option>USD</option><option>GBP</option>
+                </select>
+                {/* Datum */}
+                <input type="date" value={f.datum || ''} onChange={e => updateMultiForm(r.symbol, 'datum', e.target.value)}
+                  style={{
+                    border: f.datum ? '1px solid var(--border)' : '1.5px solid #f59e0b', borderRadius: 8, padding: '7px 8px',
+                    fontSize: 13, fontFamily: 'inherit', width: '100%', background: f.datum ? 'var(--bg-white)' : '#fffbeb',
+                    color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box',
+                  }} />
+                {/* Verwijderen */}
                 <button
                   onClick={() => toggleSelectie(r)}
                   title="Deze belegging niet toevoegen"
@@ -353,10 +359,6 @@ export default function BeleggingToevoegen({ onClose }) {
               </div>
             );
           })}
-          {/* Transactiekosten info */}
-          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-            💡 Transactiekosten kan je later aanpassen bij elke belegging afzonderlijk.
-          </div>
           {/* Footer knoppen */}
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
 
