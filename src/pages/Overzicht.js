@@ -504,9 +504,17 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     let groepeerFn, formatFn;
 
     if (dagen <= 2) {
-      // Enkele dag(en): per uur
-      const stap = Math.max(1, Math.floor(data.length / 6));
-      const ticks = data.filter((_, i) => i % stap === 0 || i === data.length - 1).map(d => d.label);
+      // Enkele dag(en): exact één label per uur, op basis van het uur in het
+      // tijdstip zelf (label = "HH:MM") — niet enkel een geschat aantal
+      // punten overslaan, want dat gaf te veel/te weinig labels naargelang
+      // hoeveel datapunten er precies zijn.
+      const gezienUren = new Set();
+      const ticks = data.filter(d => {
+        const uur = (d.label || '').split(':')[0];
+        if (!uur || gezienUren.has(uur)) return false;
+        gezienUren.add(uur);
+        return true;
+      }).map(d => d.label);
       return { xTicks: ticks, xTickFormatter: v => v };
     }
 
