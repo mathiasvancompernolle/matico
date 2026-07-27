@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Upload, Download, ArrowLeft, Info, Check, AlertTriangle } from 'lucide-react';
+import { Upload, Download, ArrowLeft, Info, Check, AlertTriangle, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 // Saxo gebruikt zijn eigen beurscode na een dubbele punt in de "Symb."-kolom
@@ -672,7 +672,7 @@ export default function ImportBeleggingen({ onClose }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'var(--bg)' }}>
-                    {['Naam', 'Symbool', 'Type', 'Aankoopprijs', 'Transactiekosten', 'Aantal', 'Munt', 'Aankoopdatum'].map(h => (
+                    {['Naam', 'Symbool', 'Type', 'Aankoopprijs', 'Transactiekosten', 'Aantal', 'Munt', 'Aankoopdatum', ''].map(h => (
                       <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600, color: 'var(--text-secondary)' }}>{h}</th>
                     ))}
                   </tr>
@@ -711,6 +711,18 @@ export default function ImportBeleggingen({ onClose }) {
                             border: r.datum ? '1px solid var(--border)' : '1.5px solid #f59e0b',
                             background: r.datum ? 'white' : '#fffbeb',
                           }} />
+                      </td>
+                      <td style={{ padding: '4px 8px' }}>
+                        <button
+                          onClick={() => setBrokerRijen(prev => prev.filter((_, idx) => idx !== i))}
+                          title="Deze belegging niet importeren"
+                          style={{
+                            background: 'transparent', border: 'none', cursor: 'pointer',
+                            color: 'var(--red)', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center',
+                          }}
+                        >
+                          <X size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))}
