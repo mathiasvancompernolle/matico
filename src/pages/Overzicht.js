@@ -133,7 +133,7 @@ function BeleggingAvatar({ b }) {
 
 
 export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed, onToggleSidebar }) {
-  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen } = useApp();
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen, t } = useApp();
 
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
@@ -180,9 +180,9 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
   const begroeting = () => {
     const h = new Date().getHours();
-    if (h < 12) return 'Goede morgen';
-    if (h < 18) return 'Goede middag';
-    return 'Goede avond';
+    if (h < 12) return t('ov_goedemorgen');
+    if (h < 18) return t('ov_goedemiddag');
+    return t('ov_goedeavond');
   };
 
   useEffect(() => {
@@ -654,7 +654,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       ? (periodeWinst / grafiekData[0].waarde) * 100
       : 0;
   })();
-  const periodeTekst = tijdperk === '1D' ? 'Prestatie vandaag' : tijdperk === '1W' ? 'Prestatie deze week' : tijdperk === '1M' ? 'Prestatie deze maand' : tijdperk === '1J' ? 'Prestatie dit jaar' : tijdperk === 'YTD' ? 'Prestatie dit kalenderjaar' : tijdperk === 'Laatste' ? 'Prestatie sinds laatste aankoop' : 'Prestatie sinds eerste aankoop';
+  const periodeTekst = tijdperk === '1D' ? t('ov_prestatie_vandaag') : tijdperk === '1W' ? t('ov_prestatie_week') : tijdperk === '1M' ? t('ov_prestatie_maand') : tijdperk === '1J' ? t('ov_prestatie_jaar') : tijdperk === 'YTD' ? t('ov_prestatie_kalenderjaar') : tijdperk === 'Laatste' ? t('ov_prestatie_laatste') : t('ov_prestatie_eerste');
   const beursGesloten1D = tijdperk === '1D' && !beursOpenPortfolio;
   // Als beurs gesloten: forceer platte displayData zodat grafiek recht is
   const displayDataEff = beursGesloten1D && displayData.length > 0
@@ -702,7 +702,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         </div>
         <div style={{ position: 'relative' }} ref={menuRef}>
           <button className="btn btn-primary" onClick={() => setToevoegenMenuOpen(!toevoegenMenuOpen)} style={{ padding: '12px 20px', fontSize: 15 }}>
-            <Plus size={18} /> Beleggingen toevoegen <ChevronDown size={16} />
+            <Plus size={18} /> {t('ov_beleggingen_toevoegen')} <ChevronDown size={16} />
           </button>
           {toevoegenMenuOpen && (
             <div style={{
@@ -716,7 +716,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <Edit3 size={15} color="var(--text-muted)" /> Manueel
+                <Edit3 size={15} color="var(--text-muted)" /> {t('ov_manueel')}
               </div>
               <div
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer', fontSize: 14, borderTop: '1px solid var(--border-light)' }}
@@ -724,7 +724,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <Upload size={15} color="var(--text-muted)" /> Importeer
+                <Upload size={15} color="var(--text-muted)" /> {t('ov_importeer')}
               </div>
             </div>
           )}
@@ -743,7 +743,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="overzicht-portfolio-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Portfolio</div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{t('ov_portfolio')}</div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{periodeTekst}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
                 <div className="portfolio-waarde">
@@ -751,7 +751,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 </div>
                 {(tijdperk === '1D' && !beursOpenPortfolio) ? (
                   <span style={{ fontSize: 13, color: 'var(--text-muted)', padding: '3px 10px', background: 'var(--bg)', borderRadius: 6, fontWeight: 500 }}>
-                    — Beurs gesloten
+                    — {t('ov_beurs_gesloten')}
                   </span>
                 ) : (
                   <span className={`badge ${periodeWinstPct >= 0 ? 'badge-green' : 'badge-red'}`}>
@@ -762,10 +762,10 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
             </div>
             <div className="overzicht-portfolio-actions" style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setVergelijkOpen(true)}>
-                <GitCompare size={15} /> Vergelijk
+                <GitCompare size={15} /> {t('ov_vergelijk')}
               </button>
               <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setFilterOpen(true)}>
-                <SlidersHorizontal size={15} /> Filter
+                <SlidersHorizontal size={15} /> {t('ov_filter')}
               </button>
             </div>
           </div>
@@ -778,18 +778,18 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 color: weergave === w ? 'white' : 'var(--text-secondary)',
                 fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize'
               }}>
-                {w.charAt(0).toUpperCase() + w.slice(1)}
+                {w === 'waarde' ? t('ov_waarde') : t('ov_winst_verlies')}
               </button>
             ))}
           </div>
 
           {beleggingen.length === 0 ? (
             <div className="empty-state" style={{ padding: 40 }}>
-              <p>Voeg beleggingen toe om je portfolio te zien</p>
+              <p>{t('ov_leeg_state')}</p>
             </div>
           ) : grafiekLoading ? (
             <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-              <span style={{ fontSize: 13 }}>Grafiek laden...</span>
+              <span style={{ fontSize: 13 }}>{t('ov_grafiek_laden')}</span>
             </div>
           ) : (
             <div style={{ position: 'relative' }}>
@@ -802,7 +802,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                   fontWeight: 600, pointerEvents: 'none', zIndex: 5,
                   border: '1px solid var(--border)', whiteSpace: 'nowrap'
                 }}>
-                  🔒 Beurs gesloten
+                  🔒 {t('ov_beurs_gesloten')}
                 </div>
               )}
             <ResponsiveContainer width="100%" height={220}>
@@ -874,11 +874,11 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
                         <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{label}</div>
                         <div style={{ fontWeight: 600, color: 'var(--accent)', marginBottom: heeftEvents ? 8 : 0 }}>
-                          Portfolio : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {t('ov_tooltip_portfolio')} : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         {aankopenOpDatum.map((b, i) => (
                           <div key={b.id + i} style={{ fontSize: 12, color: 'var(--green)', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
-                            🟢 Aankoop {b.naam} — {b.aantal} st. à {b.munt === 'USD' ? '$' : '€'}{b.kostprijs.toFixed(2)}
+                            🟢 {t('ov_tooltip_aankoop')} {b.naam} — {b.aantal} {t('ov_tooltip_st_a')} {b.munt === 'USD' ? '$' : '€'}{b.kostprijs.toFixed(2)}
                           </div>
                         ))}
                         {verkopenOpDatum.map((b, i) => {
@@ -886,7 +886,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                           const wv = b.winstverlies || 0;
                           return (
                             <div key={b.id + i} style={{ fontSize: 12, color: '#ef4444', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
-                              🔴 Verkoop {b.naam} — {b.aantalVerkocht} st. à {ms}{b.verkoopkoers?.toFixed(2)}
+                              🔴 {t('ov_tooltip_verkoop')} {b.naam} — {b.aantalVerkocht} {t('ov_tooltip_st_a')} {ms}{b.verkoopkoers?.toFixed(2)}
                               {' '}
                               <span style={{ color: wv >= 0 ? 'var(--green)' : '#ef4444', fontWeight: 600 }}>
                                 ({wv >= 0 ? '+' : ''}{ms}{Math.abs(wv).toFixed(2)})
@@ -965,11 +965,11 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         {beleggingen.length > 0 && (
           <div className="card">
             <div style={{ marginBottom: 4 }}>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>Beleggingen</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Automatisch opgevolgd door Matico</div>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>{t('ov_beleggingen_titel')}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('ov_automatisch_opgevolgd')}</div>
             </div>
             <div className="tabel-header belegging-grid" style={{ marginTop: 16 }}>
-              {[['naam','Naam'],['koers','Koers'],['waarde','Huidige waarde'],['vandaag','Winst/verlies vandaag'],['totaal','Winst/verlies totaal'],['gewicht','Gewicht']].map(([col, label]) => (
+              {[['naam',t('ov_col_naam')],['koers',t('ov_col_koers')],['waarde',t('ov_col_waarde')],['vandaag',t('ov_col_vandaag')],['totaal',t('ov_col_totaal')],['gewicht',t('ov_col_gewicht')]].map(([col, label]) => (
                 <span key={col} onClick={() => { if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortCol(col); setSortDir('asc'); } }}
                   style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
                   {label}
@@ -1009,10 +1009,10 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       <div className="belegging-symbol">{b.symbol} · {b.aantal} st.</div>
                     </div>
                   </div>
-                  <div className="koers-display"><span className="mobile-stat-label">Koers</span>{muntSym}{huidigePrijs.toFixed(2)}</div>
-                  <div className="koers-display"><span className="mobile-stat-label">Waarde</span>€{huidigeWaarde.toFixed(2)}</div>
+                  <div className="koers-display"><span className="mobile-stat-label">{t('ov_col_koers')}</span>{muntSym}{huidigePrijs.toFixed(2)}</div>
+                  <div className="koers-display"><span className="mobile-stat-label">{t('ov_waarde')}</span>€{huidigeWaarde.toFixed(2)}</div>
                   <div>
-                    <span className="mobile-stat-label">Vandaag</span>
+                    <span className="mobile-stat-label">{t('ov_vandaag')}</span>
                     {beursOpen ? (
                       <>
                         <span className={`mobile-hide-amount ${dagVPctRaw >= 0 ? 'pct-pos' : 'pct-neg'}`}>{dagVRaw >= 0 ? '+' : ''}€{Math.abs(dagVRaw).toFixed(2)}</span>
@@ -1025,7 +1025,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     )}
                   </div>
                   <div>
-                    <span className="mobile-stat-label">Totaal</span>
+                    <span className="mobile-stat-label">{t('ov_totaal')}</span>
                     <span className={`mobile-hide-amount ${winstTotaal >= 0 ? 'pct-pos' : 'pct-neg'}`}>{winstTotaal >= 0 ? '+' : ''}€{Math.abs(winstTotaal).toFixed(2)}</span>
                     {' '}<span className={`badge ${winstTotaalPct >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 11, padding: '2px 6px' }}>
                       {winstTotaalPct >= 0 ? '+' : ''}{winstTotaalPct.toFixed(2)}%
@@ -1045,22 +1045,22 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 49 }} onClick={() => setFilterOpen(false)} />
           <div className="filter-panel">
             <div className="modal-header">
-              <h2>Filter</h2>
+              <h2>{t('ov_filter_titel')}</h2>
               <button className="modal-close" onClick={() => setFilterOpen(false)}><X size={16} /></button>
             </div>
             <div style={{ flex: 1, overflow: 'auto' }}>
 
               <div className="filter-section">
-                <h3>Type belegging</h3>
-                {['alle', 'aandeel', 'etf', 'crypto'].map(t => (
-                  <label key={t} className="filter-option">
-                    <input type="radio" checked={filterType === t} onChange={() => setFilterType(t)} />
-                    {t === 'alle' ? 'Alle types' : t.charAt(0).toUpperCase() + t.slice(1) + (t === 'etf' ? 's' : 'en')}
+                <h3>{t('ov_filter_type')}</h3>
+                {['alle', 'aandeel', 'etf', 'crypto'].map(ty => (
+                  <label key={ty} className="filter-option">
+                    <input type="radio" checked={filterType === ty} onChange={() => setFilterType(ty)} />
+                    {ty === 'alle' ? t('ov_filter_alle_types') : ty === 'aandeel' ? t('ov_type_aandeel') : ty === 'etf' ? t('ov_type_etf') : t('ov_type_crypto')}
                   </label>
                 ))}
               </div>
               <div className="filter-section">
-                <h3>Beleggingen</h3>
+                <h3>{t('ov_filter_beleggingen')}</h3>
                 {beleggingen.map(b => (
                   <label key={b.symbol} className="filter-option">
                     <input type="checkbox"
@@ -1084,14 +1084,14 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 ))}
               </div>
               <div className="filter-section" style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16 }}>
-                <h3>Weergave</h3>
+                <h3>{t('ov_filter_weergave')}</h3>
                 <label className="filter-option">
                   <input type="radio" checked={filterBezit === 'inbezit'} onChange={() => setFilterBezit('inbezit')} />
-                  Enkel effecten in bezit
+                  {t('ov_filter_enkel_bezit')}
                 </label>
                 <label className="filter-option">
                   <input type="radio" checked={filterBezit === 'alles'} onChange={() => setFilterBezit('alles')} />
-                  Alles (incl. verkochte effecten)
+                  {t('ov_filter_alles_incl')}
                 </label>
               </div>
             </div>
@@ -1105,11 +1105,11 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                   cursor: 'pointer', fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 }}>
-                ✕ Wis alle filters
+                {t('ov_filter_wis')}
               </button>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setFilterOpen(false)}>Annuleren</button>
-                <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setFilterOpen(false)}>Toepassen</button>
+                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setFilterOpen(false)}>{t('ov_annuleren')}</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setFilterOpen(false)}>{t('ov_toepassen')}</button>
               </div>
             </div>
           </div>
@@ -1133,6 +1133,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 }
 
 function VergelijkModal({ onClose, vergelijk1, setVergelijk1, vergelijk2, setVergelijk2, portfolioData, tijdperk, setTijdperk }) {
+  const { t } = useApp();
   const data = portfolioData.map((d, i) => ({
     ...d,
     benchmark1: vergelijk1 !== 'geen' ? (Math.random() - 0.51) * 0.3 * i : undefined,
@@ -1146,8 +1147,8 @@ function VergelijkModal({ onClose, vergelijk1, setVergelijk1, vergelijk2, setVer
       <div className="vergelijk-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <h2>Prestatievergelijking</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Vergelijk de prestatie van je portfolio met benchmarks</p>
+            <h2>{t('ov_prestatievergelijking')}</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>{t('ov_vergelijk_sub')}</p>
           </div>
           <button className="modal-close" onClick={onClose}><X size={16} /></button>
         </div>
@@ -1155,11 +1156,11 @@ function VergelijkModal({ onClose, vergelijk1, setVergelijk1, vergelijk2, setVer
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'var(--accent-bg)', borderRadius: 8 }}>
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block' }} />
-              <span style={{ fontSize: 13, fontWeight: 600 }}>Je portfolio</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{t('ov_je_portfolio')}</span>
             </div>
-            <span style={{ color: 'var(--text-muted)' }}>vs</span>
+            <span style={{ color: 'var(--text-muted)' }}>{t('ov_vs')}</span>
             <VergelijkSelector value={vergelijk1} onChange={setVergelijk1} />
-            <span style={{ color: 'var(--text-muted)' }}>vs</span>
+            <span style={{ color: 'var(--text-muted)' }}>{t('ov_vs')}</span>
             <VergelijkSelector value={vergelijk2} onChange={setVergelijk2} />
             <div style={{ marginLeft: 'auto' }}>
               <div className="time-tabs" style={{ display: 'inline-flex' }}>
@@ -1188,8 +1189,10 @@ function VergelijkModal({ onClose, vergelijk1, setVergelijk1, vergelijk2, setVer
 }
 
 function VergelijkSelector({ value, onChange }) {
+  const { t } = useApp();
   const [open, setOpen] = useState(false);
   const geselecteerd = VERGELIJK_OPTIES.find(o => o.id === value);
+  const label = (o) => o.id === 'geen' ? t('ov_geen_vergelijking') : o.label;
   return (
     <div style={{ position: 'relative' }}>
       <button onClick={() => setOpen(!open)} style={{
@@ -1198,7 +1201,7 @@ function VergelijkSelector({ value, onChange }) {
         cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit'
       }}>
         {geselecteerd?.kleur && <span style={{ width: 10, height: 10, borderRadius: '50%', background: geselecteerd.kleur, display: 'inline-block' }} />}
-        {geselecteerd?.label}<ChevronDown size={14} />
+        {geselecteerd && label(geselecteerd)}<ChevronDown size={14} />
       </button>
       {open && (
         <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'white', border: '1px solid var(--border)', borderRadius: 8, boxShadow: 'var(--shadow-md)', zIndex: 10, minWidth: 180 }}>
@@ -1209,7 +1212,7 @@ function VergelijkSelector({ value, onChange }) {
             }} onClick={() => { onChange(o.id); setOpen(false); }}>
               {o.id === value && <Check size={14} color="var(--accent)" />}
               {o.kleur && <span style={{ width: 10, height: 10, borderRadius: '50%', background: o.kleur, display: 'inline-block', marginLeft: o.id === value ? 0 : 18 }} />}
-              {o.label}
+              {label(o)}
             </div>
           ))}
         </div>
