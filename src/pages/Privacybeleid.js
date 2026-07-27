@@ -9,9 +9,14 @@ import { heropenCookieBanner } from '../components/CookieConsent';
 // controleren door een jurist/gegevensbeschermingsspecialist voor je
 // dit als officieel, publiek privacybeleid gebruikt, zeker bij commerciële
 // lancering.
-export default function Privacybeleid() {
+export default function Privacybeleid({ onTerug }) {
   return (
     <div style={{ padding: '32px 40px', maxWidth: 820 }}>
+      {onTerug && (
+        <div onClick={onTerug} style={{ cursor: 'pointer', color: 'var(--accent, #1e3a8a)', fontSize: 14, fontWeight: 600, marginBottom: 20 }}>
+          ← Terug naar website
+        </div>
+      )}
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Privacybeleid</h1>
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 32 }}>
         Laatst bijgewerkt: [DATUM INVULLEN]

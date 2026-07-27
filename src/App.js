@@ -298,6 +298,7 @@ function NaamInstellen() {
 
 export default function App() {
   const [toonLanding, setToonLanding] = React.useState(true);
+  const [toonPubliekPrivacybeleid, setToonPubliekPrivacybeleid] = React.useState(false);
   const [gebruiker, setGebruiker] = React.useState(null);
   const [authLaden, setAuthLaden] = React.useState(true);
 
@@ -332,7 +333,10 @@ export default function App() {
   }
 
   if (toonLanding && !gebruiker) {
-    return <Landing onNaarApp={() => setToonLanding(false)} />;
+    if (toonPubliekPrivacybeleid) {
+      return <Privacybeleid onTerug={() => setToonPubliekPrivacybeleid(false)} />;
+    }
+    return <Landing onNaarApp={() => setToonLanding(false)} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} />;
   }
 
   if (!gebruiker) {

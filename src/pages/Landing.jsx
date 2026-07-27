@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export default function Landing({ onNaarApp }) {
+export default function Landing({ onNaarApp, onPrivacybeleid }) {
   const [faqOpen, setFaqOpen] = useState(null);
 
   useEffect(() => {
@@ -391,14 +391,14 @@ export default function Landing({ onNaarApp }) {
           {[['Product',['Features','Prijzen','Live demo','Hoe werkt het']],['Belgisch',['Belastingmodule','TOB calculator','Meerwaardebelasting','Reynders-taks']],['Info',['Privacybeleid','Algemene voorwaarden','Disclaimer','Contact']]].map(([titel,links]) => (
             <div key={titel}>
               <h4 style={{ fontSize:13,fontWeight:700,color:'white',marginBottom:14 }}>{titel}</h4>
-              {links.map(l => <div key={l} style={{ fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer' }} onClick={l==='Contact'?()=>window.location.href='mailto:hello@matico.be':onNaarApp}>{l}</div>)}
+              {links.map(l => <div key={l} style={{ fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer' }} onClick={l==='Contact'?()=>window.location.href='mailto:hello@matico.be':l==='Privacybeleid'?onPrivacybeleid:onNaarApp}>{l}</div>)}
             </div>
           ))}
         </div>
         <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)',paddingTop:24,display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:12,flexWrap:'wrap',gap:12 }}>
           <span>© 2026 Matico. Alle rechten voorbehouden.</span>
           <div style={{ display:'flex',gap:20 }}>
-            {['Privacybeleid','Voorwaarden','Disclaimer'].map(l => <span key={l} style={{ color:'rgba(255,255,255,0.35)',cursor:'pointer' }}>{l}</span>)}
+            {['Privacybeleid','Voorwaarden','Disclaimer'].map(l => <span key={l} style={{ color:'rgba(255,255,255,0.35)',cursor:'pointer' }} onClick={l==='Privacybeleid'?onPrivacybeleid:undefined}>{l}</span>)}
           </div>
         </div>
       </footer>
