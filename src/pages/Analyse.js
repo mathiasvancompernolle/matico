@@ -1838,7 +1838,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                     </div>
                     {kostenLijst.map((b, idx) => {
                       const pct = b.investering > 0 ? (b.kosten / b.investering) * 100 : 0;
-                      const BROKER_DOMEIN = { Saxo: 'home.saxo', DEGIRO: 'degiro.be', Bitvavo: 'bitvavo.com' };
+                      const BROKER_DOMEIN = { Saxo: 'home.saxo', DEGIRO: 'degiro.nl', Bitvavo: 'bitvavo.com' };
                       const brokerDomein = BROKER_DOMEIN[b.broker];
                       const brokerLabel = b.broker || t('an_manueel_broker');
                       return (
