@@ -146,6 +146,7 @@ function Avatar({ symbol, logo, naam, type }) {
 }
 
 function KebabMenu({ onDetail, onVerkopen, onVerwijder }) {
+  const { t } = useApp();
   const [open, setOpen] = useState(false);
   const ref = useRef();
 
@@ -171,12 +172,12 @@ function KebabMenu({ onDetail, onVerkopen, onVerwijder }) {
           zIndex: 100, minWidth: 160, overflow: 'hidden'
         }}>
           <button onClick={e => { e.stopPropagation(); setOpen(false); onDetail(); }}
-            style={menuItemStyle}>Detail bekijken</button>
+            style={menuItemStyle}>{t('bel_detail_bekijken')}</button>
           <button onClick={e => { e.stopPropagation(); setOpen(false); onVerkopen(); }}
-            style={menuItemStyle}>Verkoop registreren</button>
+            style={menuItemStyle}>{t('bel_verkoop_registreren')}</button>
           <div style={{ height: 1, background: 'var(--border-light)' }} />
           <button onClick={e => { e.stopPropagation(); setOpen(false); onVerwijder(); }}
-            style={{ ...menuItemStyle, color: 'var(--red)' }}>Verwijderen</button>
+            style={{ ...menuItemStyle, color: 'var(--red)' }}>{t('bel_verwijderen')}</button>
         </div>
       )}
     </div>
@@ -192,6 +193,7 @@ const menuItemStyle = {
 
 // ── Verkoop Registreren Modal ────────────────────────────────────
 function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
+  const { t } = useApp();
   const [stap, setStap] = useState('kiezen'); // 'kiezen' | 'invullen'
   const [zoek, setZoek] = useState('');
   const [gekozen, setGekozen] = useState(null);
@@ -244,12 +246,12 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
           border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4
         }}><X size={20} /></button>
 
-        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>Verkoop registreren</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{t('bel_verkoop_registreren')}</h2>
 
         {stap === 'kiezen' ? (
           <>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
-              Kies een actieve belegging om te verkopen.
+              {t('bel_modal_kies_tekst')}
             </p>
             {/* Zoekbalk */}
             <div style={{ position: 'relative', marginBottom: 16 }}>
@@ -258,7 +260,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                 autoFocus
                 value={zoek}
                 onChange={e => setZoek(e.target.value)}
-                placeholder="Zoek op naam of symbool..."
+                placeholder={t('bel_zoek_placeholder')}
                 style={{
                   width: '100%', padding: '10px 14px 10px 40px',
                   border: '1.5px solid var(--border)', borderRadius: 10,
@@ -271,7 +273,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
             <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 20 }}>
               {gefilterd.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                  Geen beleggingen gevonden
+                  {t('bel_geen_beleggingen_gevonden')}
                 </div>
               ) : gefilterd.map((b, i) => (
                 <div key={b.id}
@@ -288,7 +290,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{b.naam}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                      {b.symbol} · {b.aantal} stuk{b.aantal !== 1 ? 's' : ''}
+                      {b.symbol} · {b.aantal} {b.aantal !== 1 ? t('bel_stuk_mv') : t('bel_stuk_ev')}
                     </div>
                   </div>
                   <ChevronDown size={16} style={{ color: 'var(--text-muted)', transform: 'rotate(-90deg)' }} />
@@ -299,18 +301,18 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
               <button onClick={onClose} style={{
                 padding: '10px 20px', border: '1px solid var(--border)', borderRadius: 8,
                 background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 500
-              }}>Annuleren</button>
+              }}>{t('ov_annuleren')}</button>
             </div>
           </>
         ) : (
           <>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
-              Vul de verkoopgegevens in van <strong>{gekozen.naam} ({gekozen.symbol})</strong>
+              {t('bel_vul_verkoopgegevens')} <strong>{gekozen.naam} ({gekozen.symbol})</strong>
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Verkoopdatum */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Verkoopdatum</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('bel_col_verkoopdatum')}</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     value={form.datum}
@@ -322,7 +324,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
               </div>
               {/* Aantal */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Aantal</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('bel_col_aantal')}</label>
                 <input
                   type="number"
                   value={form.aantal}
@@ -332,7 +334,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
               </div>
               {/* Verkoopkoers */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Verkoopkoers per stuk</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('bel_verkoopkoers_per_stuk')}</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input
                     type="number"
@@ -346,7 +348,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                   </select>
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-                  Ingevuld op basis van de laatst bekende koers op {new Date().toLocaleDateString('nl-BE')}
+                  {t('bel_ingevuld_op_basis')} {new Date().toLocaleDateString('nl-BE')}
                 </p>
               </div>
             </div>
@@ -354,12 +356,12 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
               <button onClick={() => setStap('kiezen')} style={{
                 padding: '10px 20px', border: '1px solid var(--border)', borderRadius: 8,
                 background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 500
-              }}>Terug</button>
+              }}>{t('bel_terug')}</button>
               <button onClick={bevestig} style={{
                 padding: '10px 24px', background: 'var(--accent)', color: 'white',
                 border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
                 fontSize: 14, fontWeight: 600
-              }}>Markeren als verkocht</button>
+              }}>{t('bel_markeren_verkocht')}</button>
             </div>
           </>
         )}
@@ -376,7 +378,7 @@ const inputStyle = {
 
 // ── Hoofd component ──────────────────────────────────────────────
 export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSidebar }) {
-  const { beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen, getMuntFactor } = useApp();
+  const { gebruiker, beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen, getMuntFactor, t } = useApp();
 
   // Haal logo's en type op voor beleggingen zonder logo OF zonder type
   React.useEffect(() => {
@@ -436,7 +438,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
   });
 
   const verwijder = (id) => {
-    if (window.confirm('Wil je deze belegging verwijderen?')) {
+    if (window.confirm(t('bel_belegging_verwijderen_confirm'))) {
       setBeleggingen(prev => prev.filter(b => b.id !== id));
     }
   };
@@ -570,14 +572,14 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
       <div className="page-header" style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
-          <h1>Beleggingen</h1>
+          <h1>{t('bel_titel')}</h1>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn btn-secondary" onClick={exporteerNaarExcel} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Download size={15} /> Exporteren
+            <Download size={15} /> {t('bel_exporteren')}
           </button>
           <button className="btn btn-primary" onClick={onToevoegen}>
-            <Plus size={16} /> Beleggingen toevoegen
+            <Plus size={16} /> {t('ov_beleggingen_toevoegen')}
           </button>
         </div>
       </div>
@@ -585,15 +587,15 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
       <div style={{ padding: '0 32px' }}>
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
-          {['actief', 'verkocht', 'geschiedenis'].map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{
+          {['actief', 'verkocht', 'geschiedenis'].map(tb => (
+            <button key={tb} onClick={() => setTab(tb)} style={{
               padding: '10px 20px', border: 'none', background: 'transparent',
               fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
-              color: tab === t ? 'var(--text-primary)' : 'var(--text-muted)',
-              borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
+              color: tab === tb ? 'var(--text-primary)' : 'var(--text-muted)',
+              borderBottom: tab === tb ? '2px solid var(--accent)' : '2px solid transparent',
               cursor: 'pointer', textTransform: 'capitalize', marginBottom: -1
             }}>
-              {t === 'actief' ? 'Actief' : t === 'verkocht' ? 'Verkocht' : 'Geschiedenis'}
+              {tb === 'actief' ? t('bel_tab_actief') : tb === 'verkocht' ? t('bel_tab_verkocht') : t('bel_tab_geschiedenis')}
             </button>
           ))}
         </div>
@@ -604,17 +606,17 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
             {beleggingen.length === 0 ? (
               <div className="empty-state">
                 <Plus size={40} />
-                <h3>Nog geen beleggingen</h3>
-                <p>Voeg je eerste belegging toe om te beginnen</p>
+                <h3>{t('bel_leeg_titel')}</h3>
+                <p>{t('bel_leeg_tekst')}</p>
                 <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={onToevoegen}>
-                  Belegging toevoegen
+                  {t('bel_belegging_toevoegen')}
                 </button>
               </div>
             ) : (
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid var(--border-light)' }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>Beleggingen</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Automatisch opgevolgd door Matico</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>{t('bel_titel')}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('ov_automatisch_opgevolgd')}</div>
                 </div>
 
                 {/* Kolomhoofden */}
@@ -626,7 +628,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                   fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
                   alignItems: 'center'
                 }}>
-                  {[['naam','Naam'],['datum','Aankoopdatum'],['kostprijs','Kostprijs per stuk'],['aantal','Aantal']].map(([col,label]) => (
+                  {[['naam',t('ov_col_naam')],['datum',t('bel_col_aankoopdatum')],['kostprijs',t('bel_col_kostprijs')],['aantal',t('bel_col_aantal')]].map(([col,label]) => (
                     <span key={col} onClick={() => wisselSort(col)} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
                       {label} <span style={{ color: sortCol === col ? 'var(--accent)' : 'var(--text-muted)' }}>{sortPijl(col)}</span>
                     </span>
@@ -725,7 +727,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                       fontFamily: 'inherit', fontSize: 14, fontWeight: 600
                     }}
                   >
-                    Verkoop registreren
+                    {t('bel_verkoop_registreren')}
                   </button>
                 </div>
               </div>
@@ -746,21 +748,21 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                   fontFamily: 'inherit', fontSize: 14, fontWeight: 600
                 }}
               >
-                <Plus size={15} /> Verkoop registreren
+                <Plus size={15} /> {t('bel_verkoop_registreren')}
               </button>
             </div>
 
             {(!verkochteBeleggingen || verkochteBeleggingen.length === 0) ? (
               <div className="empty-state">
                 <Trash2 size={40} />
-                <h3>Geen verkochte beleggingen</h3>
-                <p>Zodra je een belegging verkoopt, verschijnt die hier</p>
+                <h3>{t('bel_leeg_verkocht_titel')}</h3>
+                <p>{t('bel_leeg_verkocht_tekst')}</p>
               </div>
             ) : (
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid var(--border-light)' }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>Verkochte beleggingen</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Afgeronde posities</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>{t('bel_verkocht_titel')}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('bel_afgeronde_posities')}</div>
                 </div>
 
                 {/* Kolomhoofden */}
@@ -772,7 +774,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                   fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
                   alignItems: 'center'
                 }}>
-                  {[['naam','Naam'],['datum','Verkoopdatum'],['kostprijs','Aankoopkoers'],['verkoopkoers','Verkoopkoers'],['winst','Winst/Verlies']].map(([col,label]) => (
+                  {[['naam',t('ov_col_naam')],['datum',t('bel_col_verkoopdatum')],['kostprijs',t('bel_col_aankoopkoers')],['verkoopkoers',t('bel_col_verkoopkoers')],['winst',t('bel_col_winst_verlies')]].map(([col,label]) => (
                     <span key={col} onClick={() => wisselSort(col)} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
                       {label} <span style={{ color: sortCol === col ? 'var(--accent)' : 'var(--text-muted)' }}>{sortPijl(col)}</span>
                     </span>
@@ -826,7 +828,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                       </div>
                       <button
                         onClick={() => {
-                          if (window.confirm('Verkoop verwijderen?')) {
+                          if (window.confirm(t('bel_verkoop_verwijderen_confirm'))) {
                             setVerkochteBeleggingen(prev => prev.filter((_, i) => prev[i] !== b));
                           }
                         }}
@@ -844,7 +846,12 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
 
         {/* ── GESCHIEDENIS TAB ── */}
         {tab === 'geschiedenis' && (() => {
-          const maandNamen = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+          const MAAND_NAMEN = {
+            nl: ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'],
+            en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+            fr: ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'],
+          };
+          const maandNamen = MAAND_NAMEN[gebruiker.taal] || MAAND_NAMEN.nl;
           const formatDatum = (s) => {
             if (!s) return '—';
             const d = new Date(s);
@@ -868,20 +875,20 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
           ].sort((a, b) => (b.datum || '') > (a.datum || '') ? 1 : -1);
 
           if (transacties.length === 0) return (
-            <div className="empty-state"><h3>Geen transacties</h3><p>Voeg je eerste belegging toe om te beginnen</p></div>
+            <div className="empty-state"><h3>{t('bel_leeg_transacties_titel')}</h3><p>{t('bel_leeg_tekst')}</p></div>
           );
 
           return (
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-light)' }}>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>Transactiegeschiedenis</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{transacties.length} transacties</div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{t('bel_transactiegeschiedenis')}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{transacties.length} {t('bel_transacties_suffix')}</div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 100px 1fr 1fr 1fr 1fr', padding: '10px 24px', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-light)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                <span>Instrument</span><span>Type</span><span>Datum</span>
-                <span style={{ textAlign: 'right' }}>Aantal</span>
-                <span style={{ textAlign: 'right' }}>Koers</span>
-                <span style={{ textAlign: 'right' }}>Totaal</span>
+                <span>{t('bel_col_instrument')}</span><span>{t('bel_col_type')}</span><span>{t('bel_col_datum')}</span>
+                <span style={{ textAlign: 'right' }}>{t('bel_col_aantal')}</span>
+                <span style={{ textAlign: 'right' }}>{t('ov_col_koers')}</span>
+                <span style={{ textAlign: 'right' }}>{t('ov_totaal')}</span>
               </div>
               {transacties.map((t, idx) => {
                 const factor = getMuntFactor ? getMuntFactor(t.munt) : (t.munt === 'USD' ? 0.865 : 1);
@@ -899,7 +906,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                     </div>
                     <div>
                       <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: isAankoop ? 'var(--green-bg)' : 'var(--red-bg)', color: isAankoop ? 'var(--green)' : 'var(--red)' }}>
-                        {isAankoop ? '↑ Aankoop' : '↓ Verkoop'}
+                        {isAankoop ? `↑ ${t('ov_tooltip_aankoop')}` : `↓ ${t('ov_tooltip_verkoop')}`}
                       </span>
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{formatDatum(t.datum)}</div>
