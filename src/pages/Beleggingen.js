@@ -215,6 +215,9 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
   const [gekozen, setGekozen] = useState(null);
   const [form, setForm] = useState({ datum: new Date().toISOString().slice(0, 10), aantal: '', koers: '', munt: 'EUR', verkoopbedrag: '' });
   const [beperkteInfoVerkoop, setBeperkteInfoVerkoop] = useState(false);
+  const [aantalOnbekend, setAantalOnbekend] = useState(false);
+  const [historischLoading, setHistorischLoading] = useState(false);
+  const [historischeFout, setHistorischeFout] = useState('');
 
   // Pre-fill koers als beschikbaar
   useEffect(() => {
@@ -237,7 +240,50 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
     b.symbol.toLowerCase().includes(zoek.toLowerCase())
   );
 
-  const bevestig = () => {
+  // Zelfde gemiddelde kostenpercentages als bij "Beperkte info" bij aankoop.
+  const GEMIDDELD_KOSTENPERCENTAGE = { aandeel: 0.01, etf: 0.005 };
+
+  const haalHistorischeKoers = async (symbol, datumStr) => {
+    const doelDatum = new Date(datumStr);
+    const van = Math.floor(doelDatum.getTime() / 1000) - 5 * 24 * 60 * 60;
+    const tot = Math.floor(doelDatum.getTime() / 1000) + 24 * 60 * 60;
+    try {
+      const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(symbol)}&van=${van}&tot=${tot}&resolutie=D`);
+      const data = await res.json();
+      if (data?.s === 'ok' && data?.c?.length > 0) return data.c[data.c.length - 1];
+    } catch (e) {}
+    return null;
+  };
+
+  const bevestig = async () => {
+    if (beperkteInfoVerkoop && aantalOnbekend) {
+      // Aantal is niet gekend — enkel verkoopbedrag + datum. Net als bij
+      // "Beperkte info" bij aankoop: zoek de historische koers op die datum
+      // op, en schat op basis daarvan hoeveel stuks er verkocht werden
+      // (rekening houdend met een realistisch gemiddeld kostenpercentage —
+      // bij verkoop verminderen kosten net je netto-ontvangen bedrag).
+      if (!form.datum || !form.verkoopbedrag) return;
+      setHistorischeFout('');
+      setHistorischLoading(true);
+      const verkoopbedrag = parseFloat(form.verkoopbedrag);
+      const historischeKoers = await haalHistorischeKoers(gekozen.symbol, form.datum);
+      setHistorischLoading(false);
+      if (!historischeKoers || historischeKoers <= 0) {
+        setHistorischeFout('Geen historische koers gevonden voor deze datum. Vul het aantal handmatig in.');
+        return;
+      }
+      const kostenPct = GEMIDDELD_KOSTENPERCENTAGE[gekozen.type] ?? 0.01;
+      const geschatAantalRuw = Math.round(verkoopbedrag / (historischeKoers * (1 - kostenPct)));
+      const geschatAantal = Math.min(Math.max(1, geschatAantalRuw), gekozen.aantal);
+      onBevestig(gekozen, {
+        datum: form.datum,
+        aantal: geschatAantal,
+        koers: verkoopbedrag / geschatAantal,
+        munt: form.munt,
+      });
+      onClose();
+      return;
+    }
     if (beperkteInfoVerkoop) {
       if (!form.datum || !form.aantal || !form.verkoopbedrag) return;
       const aantalGetal = parseFloat(form.aantal);
@@ -365,15 +411,24 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                 </div>
               </div>
               {/* Aantal */}
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('bel_col_aantal')}</label>
-                <input
-                  type="number"
-                  value={form.aantal}
-                  onChange={e => setForm(f => ({ ...f, aantal: e.target.value }))}
-                  style={inputStyle}
-                />
-              </div>
+              {!(beperkteInfoVerkoop && aantalOnbekend) && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('bel_col_aantal')}</label>
+                  <input
+                    type="number"
+                    value={form.aantal}
+                    onChange={e => setForm(f => ({ ...f, aantal: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+              )}
+              {beperkteInfoVerkoop && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+                  <input type="checkbox" checked={aantalOnbekend}
+                    onChange={e => setAantalOnbekend(e.target.checked)} />
+                  Ik weet het aantal ook niet meer (enkel verkoopbedrag + datum gekend)
+                </label>
+              )}
               {!beperkteInfoVerkoop ? (
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('bel_verkoopkoers_per_stuk')}</label>
@@ -409,9 +464,18 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                       <option>EUR</option><option>USD</option><option>GBP</option>
                     </select>
                   </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-                    We rekenen de verkoopkoers per stuk terug ({t('bel_col_aantal').toLowerCase()} × koers = verkoopbedrag).
-                  </p>
+                  {!aantalOnbekend ? (
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                      We rekenen de verkoopkoers per stuk terug ({t('bel_col_aantal').toLowerCase()} × koers = verkoopbedrag).
+                    </p>
+                  ) : (
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                      We zoeken de historische koers op deze datum op en <strong>schatten</strong> hoeveel stuks er verkocht werden (afgerond naar een geheel getal, nooit meer dan wat je nog in bezit hebt).
+                    </p>
+                  )}
+                  {historischeFout && (
+                    <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 6 }}>{historischeFout}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -420,11 +484,11 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                 padding: '10px 20px', border: '1px solid var(--border)', borderRadius: 8,
                 background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 500
               }}>{t('bel_terug')}</button>
-              <button onClick={bevestig} style={{
+              <button onClick={bevestig} disabled={historischLoading} style={{
                 padding: '10px 24px', background: 'var(--accent)', color: 'white',
                 border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
                 fontSize: 14, fontWeight: 600
-              }}>{t('bel_markeren_verkocht')}</button>
+              }}>{historischLoading ? 'Koers opzoeken...' : t('bel_markeren_verkocht')}</button>
             </div>
           </>
         )}
