@@ -382,6 +382,40 @@ module.exports = async function handler(req, res) {
       const { symbol } = req.query;
       const isEuropees = symbol.includes('.DE') || symbol.includes('.PA') || symbol.includes('.AS') || symbol.includes('.BR') || symbol.includes('.L') || symbol.includes('.SW') || symbol.includes('.MI');
 
+      // Crypto: handelt 24/7, dus geen "handelsdag" die Yahoo zelf bepaalt.
+      // We vragen expliciet het venster vanaf Belgische middernacht op, zodat
+      // "vorige slotkoers" (voor de winst/verlies-vandaag-badges) overeenkomt
+      // met de prijs rond 23u59 gisteren, niet Yahoo's eigen (2u 's nachts)
+      // UTC-daggrens.
+      if (isCryptoSymbool(toYahooSymbol(symbol))) {
+        try {
+          const yfSym = toYahooSymbol(symbol);
+          const periode1 = middernachtBrusselUnixSeconden();
+          const periode2 = Math.floor(Date.now() / 1000);
+          const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?period1=${periode1}&period2=${periode2}&interval=5m`;
+          const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
+          const yfData = await yfRes.json();
+          const result = yfData?.chart?.result?.[0];
+          if (result) {
+            const meta = result.meta;
+            const quotes = result.indicators?.quote?.[0];
+            const closes = quotes?.close?.filter(v => v != null) || [];
+            const huidigeKoers = meta.regularMarketPrice || closes[closes.length - 1] || 0;
+            const vorigeSlot = meta.chartPreviousClose || meta.previousClose || huidigeKoers;
+            if (huidigeKoers > 0) {
+              return res.json({
+                c: huidigeKoers,
+                pc: vorigeSlot,
+                o: closes[0] || huidigeKoers,
+                h: closes.length > 0 ? Math.max(...closes) : huidigeKoers,
+                l: closes.length > 0 ? Math.min(...closes) : huidigeKoers,
+                v: meta.regularMarketVolume || 0,
+              });
+            }
+          }
+        } catch (e) { console.error('Crypto quote fout:', e); }
+      }
+
       // Voor Europese symbolen: gebruik Yahoo Finance direct (live koersen)
       if (isEuropees) {
         try {
@@ -447,7 +481,11 @@ module.exports = async function handler(req, res) {
       const { symbol } = req.query;
       try {
         const yfSym = toYahooSymbol(symbol);
-        const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=1d&interval=1m`;
+        const isCryptoQd = isCryptoSymbool(yfSym);
+        const reeksParamQd = isCryptoQd
+          ? `period1=${middernachtBrusselUnixSeconden()}&period2=${Math.floor(Date.now() / 1000)}`
+          : `range=1d`;
+        const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?${reeksParamQd}&interval=1m`;
         const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
         const yfData = await yfRes.json();
         const result = yfData?.chart?.result?.[0];
