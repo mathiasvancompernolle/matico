@@ -192,14 +192,22 @@ export default function BeleggingToevoegen({ onClose }) {
     for (const r of selectie) {
       const f = multiForms[r.symbol] || {};
       if (!f.aankoopbedrag || !f.datum) continue;
-      const aankoopbedrag = parseFloat(f.aankoopbedrag);
+      const ingevoerdBedrag = parseFloat(f.aankoopbedrag);
+      const ingevoerdeMunt = f.munt || 'EUR';
       const historischeKoers = await haalHistorischeKoers(r.symbol, f.datum);
       if (!historischeKoers || historischeKoers <= 0) {
         setBeperkteFout(`Geen historische koers gevonden voor ${r.naam || r.symbol} op ${f.datum}. Die positie werd overgeslagen.`);
         continue;
       }
-      const geschatAantal = Math.max(1, Math.round(aankoopbedrag / historischeKoers));
-      const kostprijsPerStuk = aankoopbedrag / geschatAantal;
+      // Het effect zelf noteert mogelijk in een andere munt dan waarin je
+      // het bedrag invulde (bv. je betaalde in euro via je bank, maar het
+      // aandeel noteert in dollar) — reken daarom eerst om naar de munt
+      // waarin de historische koers hierboven staat, vóór we delen.
+      const nativeMunt = bepaalNativeMunt(r);
+      const bedragInNativeMunt = await zetBedragOmNaarNativeMunt(ingevoerdBedrag, ingevoerdeMunt, nativeMunt, f.datum);
+
+      const geschatAantal = Math.max(1, Math.round(bedragInNativeMunt / historischeKoers));
+      const kostprijsPerStuk = bedragInNativeMunt / geschatAantal;
       const basis = {
         id: Date.now() + Math.random(),
         symbol: r.symbol,
@@ -210,19 +218,20 @@ export default function BeleggingToevoegen({ onClose }) {
         kostprijs: kostprijsPerStuk,
         transactiekosten: 0,
         aantal: geschatAantal,
-        munt: f.munt || 'EUR',
+        munt: nativeMunt,
         geschat: true,
       };
 
       if (f.verkocht && f.verkoopbedrag && f.verkoopdatum) {
-        const verkoopbedrag = parseFloat(f.verkoopbedrag);
+        const verkoopbedragIngevoerd = parseFloat(f.verkoopbedrag);
+        const verkoopbedragInNativeMunt = await zetBedragOmNaarNativeMunt(verkoopbedragIngevoerd, ingevoerdeMunt, nativeMunt, f.verkoopdatum);
         nieuweVerkocht.push({
           ...basis,
           verkoopdatum: f.verkoopdatum,
           aantalVerkocht: geschatAantal,
-          verkoopkoers: verkoopbedrag / geschatAantal,
-          verkoopMunt: f.munt || 'EUR',
-          winstverlies: verkoopbedrag - aankoopbedrag,
+          verkoopkoers: verkoopbedragInNativeMunt / geschatAantal,
+          verkoopMunt: nativeMunt,
+          winstverlies: verkoopbedragInNativeMunt - bedragInNativeMunt,
         });
       } else {
         nieuweActief.push(basis);
@@ -272,6 +281,46 @@ export default function BeleggingToevoegen({ onClose }) {
     return null;
   };
 
+  // Bepaalt in welke munt een effect zelf noteert (bv. USD voor een
+  // Amerikaans aandeel) — dezelfde herkenning als bij toggleSelectie, zodat
+  // we de historische koers (die in die munt staat) correct kunnen
+  // vergelijken met het ingevulde bedrag.
+  const bepaalNativeMunt = (r, koers) => {
+    if (r.symbol?.includes('-USD')) return 'USD';
+    if (r.symbol?.includes('-GBP')) return 'GBP';
+    if (r.symbol?.includes('-EUR')) return 'EUR';
+    if (r.valuta === 'USD') return 'USD';
+    if (r.valuta === 'GBP') return 'GBP';
+    const us = ['NMS','NYQ','NGM','ASE','PCX','BATS','NAS','NYSE'];
+    if (us.some(e => (r.beurs || r.exchange || '').toUpperCase().includes(e))) return 'USD';
+    if ((r.beurs || '').toUpperCase().includes('LSE') || r.symbol?.endsWith('.L')) return 'GBP';
+    if (koers?.currency === 'USD') return 'USD';
+    if (koers?.currency === 'GBP') return 'GBP';
+    return 'EUR';
+  };
+
+  // 1 eenheid van `munt` = ? EUR, op een specifieke historische datum.
+  const haalHistorischeWisselkoers = async (munt, datumStr) => {
+    if (munt === 'EUR') return 1;
+    try {
+      const res = await fetch(`/api/data?endpoint=forex-history&datum=${datumStr}&van=${munt}`);
+      const data = await res.json();
+      return data?.rate || 1;
+    } catch (e) { return 1; }
+  };
+
+  // Zet een bedrag van de munt waarin het ingevoerd werd om naar de munt
+  // waarin het effect zelf noteert — nodig omdat je bv. in euro betaalde
+  // (via je bank) voor een aandeel dat in dollar noteert, en de historische
+  // koers dus ook in dollar staat.
+  const zetBedragOmNaarNativeMunt = async (bedrag, ingevoerdeMunt, nativeMunt, datumStr) => {
+    if (ingevoerdeMunt === nativeMunt) return bedrag;
+    const koersIngevoerdNaarEur = await haalHistorischeWisselkoers(ingevoerdeMunt, datumStr); // 1 ingevoerdeMunt = X EUR
+    const bedragInEur = bedrag * koersIngevoerdNaarEur;
+    const koersNativeNaarEur = await haalHistorischeWisselkoers(nativeMunt, datumStr); // 1 nativeMunt = Y EUR
+    return bedragInEur / koersNativeNaarEur;
+  };
+
   // Beperkte info: enkel aan-/verkoopbedrag + datum gekend. De app schat het
   // aantal stuks (bedrag ÷ historische koers, afgerond naar een heel getal —
   // gangbaar bij een traditionele bank) en rekent de kostprijs per stuk
@@ -290,8 +339,14 @@ export default function BeleggingToevoegen({ onClose }) {
       return;
     }
 
-    const geschatAantal = Math.max(1, Math.round(aankoopbedrag / historischeKoers));
-    const kostprijsPerStuk = aankoopbedrag / geschatAantal;
+    // Aangenomen dat het bedrag in EUR werd ingevoerd (bv. je bankafschrift) —
+    // reken om naar de munt waarin het effect zelf noteert, want de
+    // historische koers hierboven staat in díe munt.
+    const nativeMunt = bepaalNativeMunt(geselecteerd);
+    const bedragInNativeMunt = await zetBedragOmNaarNativeMunt(aankoopbedrag, 'EUR', nativeMunt, beperkteForm.aankoopdatum);
+
+    const geschatAantal = Math.max(1, Math.round(bedragInNativeMunt / historischeKoers));
+    const kostprijsPerStuk = bedragInNativeMunt / geschatAantal;
 
     const basis = {
       id: Date.now(),
@@ -303,7 +358,7 @@ export default function BeleggingToevoegen({ onClose }) {
       kostprijs: kostprijsPerStuk,
       transactiekosten: 0,
       aantal: geschatAantal,
-      munt: 'EUR',
+      munt: nativeMunt,
       geschat: true,
     };
 
@@ -311,14 +366,15 @@ export default function BeleggingToevoegen({ onClose }) {
       // Verkoopzijde is exact (geen schatting nodig): het aantal ligt al vast
       // via de aankoopzijde, dus verkoopkoers = verkoopbedrag ÷ dat aantal.
       const verkoopbedrag = parseFloat(beperkteForm.verkoopbedrag);
-      const verkoopkoersPerStuk = verkoopbedrag / geschatAantal;
+      const verkoopbedragInNativeMunt = await zetBedragOmNaarNativeMunt(verkoopbedrag, 'EUR', nativeMunt, beperkteForm.verkoopdatum);
+      const verkoopkoersPerStuk = verkoopbedragInNativeMunt / geschatAantal;
       const verkocht = {
         ...basis,
         verkoopdatum: beperkteForm.verkoopdatum,
         aantalVerkocht: geschatAantal,
         verkoopkoers: verkoopkoersPerStuk,
-        verkoopMunt: 'EUR',
-        winstverlies: verkoopbedrag - aankoopbedrag,
+        verkoopMunt: nativeMunt,
+        winstverlies: verkoopbedragInNativeMunt - bedragInNativeMunt,
       };
       setVerkochteBeleggingen(prev => [...(prev || []), verkocht]);
     } else {
@@ -445,7 +501,7 @@ export default function BeleggingToevoegen({ onClose }) {
           )}
           {beperkteInfoModus && (
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
-              Handig als je enkel weet hoeveel je betaalde (bv. bij een oudere aankoop via een traditionele bank). We zoeken de historische koers op die datum op en <strong>schatten</strong> het aantal stuks (afgerond naar een geheel getal) en de kostprijs per stuk daaruit.
+              Handig als je enkel weet hoeveel je betaalde (bv. bij een oudere aankoop via een traditionele bank). We zoeken de historische koers op die datum op en <strong>schatten</strong> het aantal stuks (afgerond naar een geheel getal) en de kostprijs per stuk daaruit. Betaalde je in een andere munt dan waarin het effect zelf noteert (bv. euro voor een Amerikaans aandeel)? Kies gewoon de munt waarin je betaalde bij "Munt" — we rekenen dat automatisch om.
             </div>
           )}
           {/* Tabelheader */}
