@@ -183,6 +183,59 @@ export default function BeleggingToevoegen({ onClose }) {
     onClose();
   };
 
+  const opslaanMultiBeperkt = async () => {
+    setBeperkteFout('');
+    setBeperkteOpslaanLoading(true);
+    const nieuweActief = [];
+    const nieuweVerkocht = [];
+
+    for (const r of selectie) {
+      const f = multiForms[r.symbol] || {};
+      if (!f.aankoopbedrag || !f.datum) continue;
+      const aankoopbedrag = parseFloat(f.aankoopbedrag);
+      const historischeKoers = await haalHistorischeKoers(r.symbol, f.datum);
+      if (!historischeKoers || historischeKoers <= 0) {
+        setBeperkteFout(`Geen historische koers gevonden voor ${r.naam || r.symbol} op ${f.datum}. Die positie werd overgeslagen.`);
+        continue;
+      }
+      const geschatAantal = Math.max(1, Math.round(aankoopbedrag / historischeKoers));
+      const kostprijsPerStuk = aankoopbedrag / geschatAantal;
+      const basis = {
+        id: Date.now() + Math.random(),
+        symbol: r.symbol,
+        naam: r.naam || r.symbol,
+        logo: r.logo || '',
+        type: r.type || type || 'aandeel',
+        datum: f.datum,
+        kostprijs: kostprijsPerStuk,
+        transactiekosten: 0,
+        aantal: geschatAantal,
+        munt: f.munt || 'EUR',
+        geschat: true,
+      };
+
+      if (f.verkocht && f.verkoopbedrag && f.verkoopdatum) {
+        const verkoopbedrag = parseFloat(f.verkoopbedrag);
+        nieuweVerkocht.push({
+          ...basis,
+          verkoopdatum: f.verkoopdatum,
+          aantalVerkocht: geschatAantal,
+          verkoopkoers: verkoopbedrag / geschatAantal,
+          verkoopMunt: f.munt || 'EUR',
+          winstverlies: verkoopbedrag - aankoopbedrag,
+        });
+      } else {
+        nieuweActief.push(basis);
+      }
+    }
+
+    if (nieuweActief.length > 0) setBeleggingen(prev => [...prev, ...nieuweActief]);
+    if (nieuweVerkocht.length > 0) setVerkochteBeleggingen(prev => [...(prev || []), ...nieuweVerkocht]);
+
+    setBeperkteOpslaanLoading(false);
+    if (nieuweActief.length > 0 || nieuweVerkocht.length > 0) onClose();
+  };
+
   const opslaan = () => {
     if (!geselecteerd || !form.datum || !form.kostprijs || !form.aantal) return;
     const kostprijsPerStuk = parseFloat(form.kostprijs);
@@ -375,7 +428,28 @@ export default function BeleggingToevoegen({ onClose }) {
       {/* Stap: multi-invoer tabel */}
       {stap === 'multi-invoer' && (
         <div style={{ padding: '0 24px' }}>
+          {(type === 'aandeel' || type === 'etf') && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <button
+                onClick={() => setBeperkteInfoModus(v => !v)}
+                style={{
+                  background: beperkteInfoModus ? 'var(--accent-bg)' : 'transparent',
+                  color: beperkteInfoModus ? 'var(--accent)' : 'var(--text-muted)',
+                  border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                {beperkteInfoModus ? '✓ ' : ''}Beperkte info (enkel aan-/verkoopbedrag gekend)
+              </button>
+            </div>
+          )}
+          {beperkteInfoModus && (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+              Handig als je enkel weet hoeveel je betaalde (bv. bij een oudere aankoop via een traditionele bank). We zoeken de historische koers op die datum op en <strong>schatten</strong> het aantal stuks (afgerond naar een geheel getal) en de kostprijs per stuk daaruit.
+            </div>
+          )}
           {/* Tabelheader */}
+          {!beperkteInfoModus ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 0.8fr 0.7fr 1.1fr 32px', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
             <span>Naam</span>
             <span>Aankoopprijs</span>
@@ -388,9 +462,67 @@ export default function BeleggingToevoegen({ onClose }) {
             <span>Aankoopdatum</span>
             <span></span>
           </div>
+          ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 0.7fr 1.1fr 32px', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+            <span>Naam</span>
+            <span>Aankoopbedrag (totaal)</span>
+            <span>Munt</span>
+            <span>Aankoopdatum</span>
+            <span></span>
+          </div>
+          )}
           {/* Rijen */}
           {selectie.map(r => {
             const f = multiForms[r.symbol] || {};
+            if (beperkteInfoModus) {
+              return (
+                <div key={r.symbol}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 0.7fr 1.1fr 32px', gap: 10, padding: '12px 0', borderBottom: f.verkocht ? 'none' : '1px solid var(--border-light)', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
+                        {r.symbol.slice(0,2).toUpperCase()}
+                      </div>
+                      <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.naam || r.symbol}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.symbol}</div>
+                      </div>
+                    </div>
+                    <input type="number" value={f.aankoopbedrag || ''} onChange={e => updateMultiForm(r.symbol, 'aankoopbedrag', e.target.value)}
+                      placeholder="€ 0,00" step="0.01"
+                      style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
+                    <select value={f.munt || 'EUR'} onChange={e => updateMultiForm(r.symbol, 'munt', e.target.value)}
+                      style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', fontSize: 12, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-muted)', outline: 'none', cursor: 'pointer', width: '100%' }}>
+                      <option>EUR</option><option>USD</option><option>GBP</option>
+                    </select>
+                    <input type="date" value={f.datum || ''} onChange={e => updateMultiForm(r.symbol, 'datum', e.target.value)}
+                      style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
+                    <button
+                      onClick={() => toggleSelectie(r)}
+                      title="Deze belegging niet toevoegen"
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--red)', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <div style={{ padding: '0 0 12px', borderBottom: '1px solid var(--border-light)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)' }}>
+                      <input type="checkbox" checked={!!f.verkocht}
+                        onChange={e => updateMultiForm(r.symbol, 'verkocht', e.target.checked)} />
+                      Ondertussen verkocht
+                    </label>
+                    {f.verkocht && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8 }}>
+                        <input type="number" value={f.verkoopbedrag || ''} onChange={e => updateMultiForm(r.symbol, 'verkoopbedrag', e.target.value)}
+                          placeholder="Verkoopbedrag (totaal)" step="0.01"
+                          style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
+                        <input type="date" value={f.verkoopdatum || ''} onChange={e => updateMultiForm(r.symbol, 'verkoopdatum', e.target.value)}
+                          style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={r.symbol} style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 0.8fr 0.7fr 1.1fr 32px', gap: 10, padding: '12px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center' }}>
                 {/* Naam */}
@@ -441,11 +573,24 @@ export default function BeleggingToevoegen({ onClose }) {
           {/* Footer knoppen */}
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
 
-            <button className="btn btn-primary" onClick={opslaanMulti}
-              disabled={!selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; })}
-              style={{ opacity: !selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; }) ? 0.5 : 1 }}>
-              Opslaan ({selectie.filter(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; }).length}/{selectie.length})
-            </button>
+            {beperkteFout && (
+              <div style={{ width: '100%', marginBottom: 8, padding: '10px 14px', background: 'var(--red-bg)', color: 'var(--red)', borderRadius: 8, fontSize: 13 }}>
+                {beperkteFout}
+              </div>
+            )}
+            {!beperkteInfoModus ? (
+              <button className="btn btn-primary" onClick={opslaanMulti}
+                disabled={!selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; })}
+                style={{ opacity: !selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; }) ? 0.5 : 1 }}>
+                Opslaan ({selectie.filter(r => { const f = multiForms[r.symbol]; return f?.datum && f?.kostprijs && f?.aantal; }).length}/{selectie.length})
+              </button>
+            ) : (
+              <button className="btn btn-primary" onClick={opslaanMultiBeperkt}
+                disabled={beperkteOpslaanLoading || !selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.aankoopbedrag && (!f?.verkocht || (f?.verkoopbedrag && f?.verkoopdatum)); })}
+                style={{ opacity: !selectie.some(r => { const f = multiForms[r.symbol]; return f?.datum && f?.aankoopbedrag && (!f?.verkocht || (f?.verkoopbedrag && f?.verkoopdatum)); }) ? 0.5 : 1 }}>
+                {beperkteOpslaanLoading ? 'Historische koersen opzoeken...' : `Opslaan (${selectie.filter(r => { const f = multiForms[r.symbol]; return f?.datum && f?.aankoopbedrag && (!f?.verkocht || (f?.verkoopbedrag && f?.verkoopdatum)); }).length}/${selectie.length})`}
+              </button>
+            )}
           </div>
         </div>
       )}
