@@ -754,8 +754,13 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     const data = displayDataGefilterd.filter(d => d.tijd != null);
     if (data.length < 2) return { xTicks: undefined, xTickFormatter: v => v };
 
-    const eersteD = new Date(data[0].tijd);
-    const laatsteD = new Date(data[data.length - 1].tijd);
+    // Voor het bepalen van dagbereik/groepering gebruiken we altijd de échte
+    // kalenderdatum (het 'datum'-veld) — nooit het (voor het weekend
+    // gecorrigeerde) 'tijd'-veld, want dat zou voor niet-triviale weekend-
+    // correcties een verkeerde datum opleveren bij het terugvertalen.
+    const echteD = (d) => d.datum ? new Date(d.datum) : new Date(d.tijd);
+    const eersteD = echteD(data[0]);
+    const laatsteD = echteD(data[data.length - 1]);
     const dagen = (laatsteD - eersteD) / (1000 * 60 * 60 * 24);
 
     if (dagen <= 2) {
@@ -772,48 +777,53 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         if (spanMinuten / optie <= doelTicks) { stap = optie; break; }
       }
       const gezienBuckets = new Set();
+      const labelPerTijd = new Map();
       const ticks = data.filter(d => {
         const bucket = Math.floor(naarMinuten(d.tijd) / stap);
         if (gezienBuckets.has(bucket)) return false;
         gezienBuckets.add(bucket);
         return true;
-      }).map(d => d.tijd);
-      return { xTicks: ticks, xTickFormatter: (t) => new Date(t).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' }) };
+      }).map(d => { labelPerTijd.set(d.tijd, d.label); return d.tijd; });
+      return { xTicks: ticks, xTickFormatter: (t) => labelPerTijd.get(t) ?? new Date(t).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' }) };
     }
 
-    // Groepeerstrategie op basis van werkelijk bereik
+    // Groepeerstrategie op basis van werkelijk bereik — groeperen op de
+    // échte datum, niet op de (mogelijk gecorrigeerde) as-positie.
     let groepeerFn, formatFn;
 
     if (dagen <= 14) {
-      groepeerFn = (t) => new Date(t).toDateString();
+      groepeerFn = (dt) => dt.toDateString();
       formatFn = (dt) => `${dt.getDate()} ${maandKort[dt.getMonth()]}`;
     } else if (dagen <= 60) {
       const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-      groepeerFn = (t) => Math.floor(t / msPerWeek);
+      groepeerFn = (dt) => Math.floor(dt.getTime() / msPerWeek);
       formatFn = (dt) => `${dt.getDate()} ${maandKort[dt.getMonth()]}`;
     } else if (dagen <= 400) {
-      groepeerFn = (t) => { const dt = new Date(t); return `${dt.getFullYear()}-${dt.getMonth()}`; };
+      groepeerFn = (dt) => `${dt.getFullYear()}-${dt.getMonth()}`;
       formatFn = (dt) => dt.getMonth() === 0 ? `jan '${String(dt.getFullYear()).slice(2)}` : maandKort[dt.getMonth()];
     } else if (dagen <= 900) {
-      groepeerFn = (t) => { const dt = new Date(t); return `${dt.getFullYear()}-Q${Math.floor(dt.getMonth()/3)}`; };
+      groepeerFn = (dt) => `${dt.getFullYear()}-Q${Math.floor(dt.getMonth()/3)}`;
       formatFn = (dt) => {
         const kwartaalMaand = Math.floor(dt.getMonth()/3) * 3;
         return kwartaalMaand === 0 ? `${dt.getFullYear()}` : maandKort[kwartaalMaand];
       };
     } else {
-      groepeerFn = (t) => new Date(t).getFullYear();
+      groepeerFn = (dt) => dt.getFullYear();
       formatFn = (dt) => String(dt.getFullYear());
     }
 
     const gezien = new Set();
+    const labelPerTijd = new Map();
     const ticks = data.filter(d => {
-      const sleutel = groepeerFn(d.tijd);
+      const dt = echteD(d);
+      const sleutel = groepeerFn(dt);
       if (gezien.has(sleutel)) return false;
       gezien.add(sleutel);
+      labelPerTijd.set(d.tijd, formatFn(dt));
       return true;
     }).map(d => d.tijd);
 
-    return { xTicks: ticks, xTickFormatter: (t) => formatFn(new Date(t)) };
+    return { xTicks: ticks, xTickFormatter: (t) => labelPerTijd.get(t) ?? '' };
   })();
   const beursOpenPortfolio = beleggingen.some(b => isBeursOpen(b.munt || 'EUR', b.type));
 
