@@ -449,6 +449,48 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       });
 
       const maandKortInterp = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+
+      // Berekent de portefeuillewaarde op een willekeurige, exacte datum door
+      // per positie de eigen historische koers op (of net vóór) die datum op
+      // te zoeken — i.p.v. enkel de reeds-berekende totalen van omliggende
+      // punten lineair te interpoleren. Dat laatste hield geen rekening met
+      // het feit dat een positie precies op die datum pas is toegevoegd, en
+      // gaf daardoor een fout getal dat de volgende dag weer "rechtgetrokken"
+      // moest worden (vandaar de sprong-en-terugval die je zag).
+      const vindPrijsOpDatum = (symbolData, doelDatum) => {
+        if (!symbolData || symbolData.length === 0) return null;
+        let beste = null;
+        for (const p of symbolData) {
+          if (!p.datum) continue;
+          const pd = new Date(p.datum);
+          if (pd <= doelDatum && (!beste || pd > new Date(beste.datum))) beste = p;
+        }
+        if (!beste) beste = symbolData.find(p => p.datum) || symbolData[0];
+        return beste ? beste.prijs : null;
+      };
+      const berekenWaardeOpDatum = (doelDatum) => {
+        let totaal = 0;
+        beleggingVoorGrafiek.forEach(b => {
+          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+          const aankoopDatum = b.datum ? new Date(b.datum) : null;
+          if (aankoopDatum && doelDatum < aankoopDatum) return;
+          const prijs = vindPrijsOpDatum(historischeData[b.symbol], doelDatum);
+          if (prijs != null) totaal += prijs * b.aantal * factor;
+          else { const koers = koersen[b.symbol]; totaal += (koers ? koers.c : b.kostprijs) * b.aantal * factor; }
+        });
+        verkochtVoorGrafiek.forEach(b => {
+          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+          const aankoopDatum = b.datum ? new Date(b.datum) : null;
+          const verkoopDatum = parseDatum(b.verkoopdatum);
+          if (aankoopDatum && doelDatum < aankoopDatum) return;
+          if (verkoopDatum && doelDatum > verkoopDatum) return;
+          const prijs = vindPrijsOpDatum(historischeData[b.symbol], doelDatum);
+          if (prijs != null) totaal += prijs * b.aantalVerkocht * factor;
+          else totaal += (b.verkoopkoers || b.kostprijs) * b.aantalVerkocht * factor;
+        });
+        return totaal;
+      };
+
       gebeurtenisDatums.forEach(datumStr => {
         const datumObj = new Date(datumStr);
         if (isNaN(datumObj)) return;
@@ -465,17 +507,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         // de gekozen periode.
         if (datumObj < new Date(eerste.datum)) {
           if (begindatumFilter && datumObj < begindatumFilter) return;
-          let benaderdeWaarde = 0;
-          beleggingVoorGrafiek.forEach(b => {
-            if (!b.datum || new Date(b.datum) > datumObj) return;
-            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-            benaderdeWaarde += b.kostprijs * b.aantal * factor;
-          });
-          verkochtVoorGrafiek.forEach(b => {
-            if (!b.datum || new Date(b.datum) > datumObj) return;
-            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-            benaderdeWaarde += b.kostprijs * b.aantalVerkocht * factor;
-          });
+          const benaderdeWaarde = berekenWaardeOpDatum(datumObj);
           if (benaderdeWaarde > 0) {
             gecombineerd.unshift({
               label: `${datumObj.getDate()} ${maandKortInterp[datumObj.getMonth()]}`,
@@ -487,28 +519,20 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           return;
         }
 
-        let voor = null, na = null;
+        let voor = null;
         for (let i = 0; i < gecombineerd.length - 1; i++) {
           const d1 = gecombineerd[i].datum ? new Date(gecombineerd[i].datum) : null;
           const d2 = gecombineerd[i + 1].datum ? new Date(gecombineerd[i + 1].datum) : null;
-          if (d1 && d2 && datumObj >= d1 && datumObj <= d2) {
-            voor = { punt: gecombineerd[i], datum: d1, index: i };
-            na = { punt: gecombineerd[i + 1], datum: d2 };
-            break;
-          }
+          if (d1 && d2 && datumObj >= d1 && datumObj <= d2) { voor = { index: i }; break; }
         }
-        if (!voor || !na) return;
+        if (!voor) return;
 
-        const totaalSpanne = na.datum - voor.datum;
-        const positieSpanne = datumObj - voor.datum;
-        const fractie = totaalSpanne > 0 ? positieSpanne / totaalSpanne : 0;
-        const geinterpoleerdeWaarde = voor.punt.waarde + (na.punt.waarde - voor.punt.waarde) * fractie;
-
+        const nauwkeurigeWaarde = berekenWaardeOpDatum(datumObj);
         gecombineerd.splice(voor.index + 1, 0, {
           label: `${datumObj.getDate()} ${maandKortInterp[datumObj.getMonth()]}`,
           datum: datumStr,
           tijd: datumObj.getTime(),
-          waarde: Math.round(geinterpoleerdeWaarde * 100) / 100,
+          waarde: Math.round(nauwkeurigeWaarde * 100) / 100,
         });
       });
 
