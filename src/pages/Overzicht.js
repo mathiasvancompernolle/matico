@@ -1150,6 +1150,9 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     const puntLabel = payload[0]?.payload?.label ?? label;
                     const waarde = payload[0]?.value;
                     const puntD = datum ? new Date(datum) : null;
+                    const dagNaam = (tijdperk !== '1D' && puntD && !isNaN(puntD))
+                      ? puntD.toLocaleDateString('nl-BE', { weekday: 'long', timeZone: 'UTC' }).replace(/^./, c => c.toUpperCase())
+                      : null;
                     const beginPeriodeT = displayDataGefilterd.length > 0 && displayDataGefilterd[0].datum ? new Date(displayDataGefilterd[0].datum) : null;
 
                     // Op de intraday-weergave (1D) tonen we geen aankoop-/verkoopmarkeringen:
@@ -1158,7 +1161,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     if (tijdperk === '1D') {
                       return (
                         <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
-                          <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{puntLabel}</div>
+                          <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{puntLabel}{dagNaam ? ` (${dagNaam})` : ''}</div>
                           <div style={{ fontWeight: 600, color: 'var(--accent)' }}>
                             {t('ov_tooltip_portfolio')} : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
@@ -1198,7 +1201,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     const heeftEvents = aankopenOpDatum.length > 0 || verkopenOpDatum.length > 0;
                     return (
                       <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
-                        <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{puntLabel}</div>
+                        <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{puntLabel}{dagNaam ? ` (${dagNaam})` : ''}</div>
                         <div style={{ fontWeight: 600, color: 'var(--accent)', marginBottom: heeftEvents ? 8 : 0 }}>
                           {t('ov_tooltip_portfolio')} : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
