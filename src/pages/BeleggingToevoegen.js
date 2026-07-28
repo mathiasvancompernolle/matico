@@ -10,7 +10,7 @@ const TYPES = [
 ];
 
 export default function BeleggingToevoegen({ onClose }) {
-  const { setBeleggingen, fetchKoers } = useApp();
+  const { setBeleggingen, setVerkochteBeleggingen, fetchKoers } = useApp();
   const [stap, setStap] = useState('type');
   const [type, setType] = useState(null);
   const [zoekterm, setZoekterm] = useState('');
@@ -23,6 +23,11 @@ export default function BeleggingToevoegen({ onClose }) {
   const [multiForms, setMultiForms] = useState({}); // { symbol: { datum, kostprijs, aantal, munt, transactiekosten } }
   const [wisselkoersOpDatum, setWisselkoersOpDatum] = useState(1);
   const [wisselkoersLoading, setWisselkoersLoading] = useState(false);
+  // Beperkte info: enkel aan-/verkoopbedrag + datum gekend, de app schat de rest
+  const [beperkteInfoModus, setBeperkteInfoModus] = useState(false);
+  const [beperkteForm, setBeperkteForm] = useState({ aankoopbedrag: '', aankoopdatum: '', verkocht: false, verkoopbedrag: '', verkoopdatum: '' });
+  const [beperkteOpslaanLoading, setBeperkteOpslaanLoading] = useState(false);
+  const [beperkteFout, setBeperkteFout] = useState('');
 
   // Historische wisselkoers naar EUR ophalen wanneer munt of datum verandert
   useEffect(() => {
@@ -197,6 +202,77 @@ export default function BeleggingToevoegen({ onClose }) {
       munt: form.munt,
     };
     setBeleggingen(prev => [...prev, nieuw]);
+    onClose();
+  };
+
+  // Zoekt de laatst-bekende koers op (of net vóór) een bepaalde datum op —
+  // voor het geval de exacte datum geen handelsdag was (weekend/feestdag).
+  const haalHistorischeKoers = async (symbol, datumStr) => {
+    const doelDatum = new Date(datumStr);
+    const van = Math.floor(doelDatum.getTime() / 1000) - 5 * 24 * 60 * 60;
+    const tot = Math.floor(doelDatum.getTime() / 1000) + 24 * 60 * 60;
+    try {
+      const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(symbol)}&van=${van}&tot=${tot}&resolutie=D`);
+      const data = await res.json();
+      if (data?.s === 'ok' && data?.c?.length > 0) return data.c[data.c.length - 1];
+    } catch (e) {}
+    return null;
+  };
+
+  // Beperkte info: enkel aan-/verkoopbedrag + datum gekend. De app schat het
+  // aantal stuks (bedrag ÷ historische koers, afgerond naar een heel getal —
+  // gangbaar bij een traditionele bank) en rekent de kostprijs per stuk
+  // terug (bedrag ÷ geschat aantal), wat automatisch ook transactiekosten
+  // mee opslorpt zonder die apart te moeten kennen.
+  const opslaanBeperkt = async () => {
+    if (!geselecteerd || !beperkteForm.aankoopbedrag || !beperkteForm.aankoopdatum) return;
+    setBeperkteFout('');
+    setBeperkteOpslaanLoading(true);
+
+    const aankoopbedrag = parseFloat(beperkteForm.aankoopbedrag);
+    const historischeKoers = await haalHistorischeKoers(geselecteerd.symbol, beperkteForm.aankoopdatum);
+    if (!historischeKoers || historischeKoers <= 0) {
+      setBeperkteFout('Geen historische koers gevonden voor deze datum. Probeer de gewone invoer met een geschat aantal.');
+      setBeperkteOpslaanLoading(false);
+      return;
+    }
+
+    const geschatAantal = Math.max(1, Math.round(aankoopbedrag / historischeKoers));
+    const kostprijsPerStuk = aankoopbedrag / geschatAantal;
+
+    const basis = {
+      id: Date.now(),
+      symbol: geselecteerd.symbol,
+      naam: geselecteerd.naam || geselecteerd.description || geselecteerd.symbol,
+      logo: geselecteerd.logo || '',
+      type,
+      datum: beperkteForm.aankoopdatum,
+      kostprijs: kostprijsPerStuk,
+      transactiekosten: 0,
+      aantal: geschatAantal,
+      munt: 'EUR',
+      geschat: true,
+    };
+
+    if (beperkteForm.verkocht && beperkteForm.verkoopbedrag && beperkteForm.verkoopdatum) {
+      // Verkoopzijde is exact (geen schatting nodig): het aantal ligt al vast
+      // via de aankoopzijde, dus verkoopkoers = verkoopbedrag ÷ dat aantal.
+      const verkoopbedrag = parseFloat(beperkteForm.verkoopbedrag);
+      const verkoopkoersPerStuk = verkoopbedrag / geschatAantal;
+      const verkocht = {
+        ...basis,
+        verkoopdatum: beperkteForm.verkoopdatum,
+        aantalVerkocht: geschatAantal,
+        verkoopkoers: verkoopkoersPerStuk,
+        verkoopMunt: 'EUR',
+        winstverlies: verkoopbedrag - aankoopbedrag,
+      };
+      setVerkochteBeleggingen(prev => [...(prev || []), verkocht]);
+    } else {
+      setBeleggingen(prev => [...prev, basis]);
+    }
+
+    setBeperkteOpslaanLoading(false);
     onClose();
   };
 
@@ -384,8 +460,30 @@ export default function BeleggingToevoegen({ onClose }) {
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
               Automatisch opgevolgd door Kapitas
             </div>
-            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16 }}>
 
+            {(type === 'aandeel' || type === 'etf') && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                <button
+                  onClick={() => setBeperkteInfoModus(v => !v)}
+                  style={{
+                    background: beperkteInfoModus ? 'var(--accent-bg)' : 'transparent',
+                    color: beperkteInfoModus ? 'var(--accent)' : 'var(--text-muted)',
+                    border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  {beperkteInfoModus ? '✓ ' : ''}Beperkte info (enkel aan-/verkoopbedrag gekend)
+                </button>
+              </div>
+            )}
+            {beperkteInfoModus && (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+                Handig als je enkel weet hoeveel je betaalde (bv. bij een oudere aankoop via een traditionele bank). We zoeken de historische koers op die datum op en <strong>schatten</strong> het aantal stuks (afgerond naar een geheel getal) en de kostprijs per stuk daaruit.
+              </div>
+            )}
+            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16 }}>
+              {!beperkteInfoModus ? (
+                <>
               {/* Rij 1: Naam, datum, kostprijs */}
               <div className="toevoegen-row-header" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, padding: '8px 0', fontWeight: 600, fontSize: 12, color: 'var(--text-muted)' }}>
                 <span>Naam</span>
@@ -456,6 +554,52 @@ export default function BeleggingToevoegen({ onClose }) {
                   )}
                 </div>
               )}
+                </>
+              ) : (
+                <>
+                  {/* Naam + aankoopbedrag + aankoopdatum */}
+                  <div className="toevoegen-row-header" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, padding: '8px 0', fontWeight: 600, fontSize: 12, color: 'var(--text-muted)' }}>
+                    <span>Naam</span>
+                    <span>Aankoopbedrag (totaal)</span>
+                    <span>Aankoopdatum</span>
+                  </div>
+                  <div className="toevoegen-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{geselecteerd.naam || geselecteerd.description || geselecteerd.symbol}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{geselecteerd.symbol}</div>
+                    </div>
+                    <input type="number" className="form-input" placeholder="€ 0,00" value={beperkteForm.aankoopbedrag}
+                      onChange={e => setBeperkteForm(f => ({ ...f, aankoopbedrag: e.target.value }))} step="0.01" min="0" />
+                    <input type="date" className="form-input" value={beperkteForm.aankoopdatum}
+                      onChange={e => setBeperkteForm(f => ({ ...f, aankoopdatum: e.target.value }))} />
+                  </div>
+
+                  {/* Checkbox: ondertussen verkocht */}
+                  <div style={{ padding: '14px 0', borderTop: '1px solid var(--border-light)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                      <input type="checkbox" checked={beperkteForm.verkocht}
+                        onChange={e => setBeperkteForm(f => ({ ...f, verkocht: e.target.checked }))} />
+                      Deze positie is ondertussen verkocht
+                    </label>
+                  </div>
+
+                  {beperkteForm.verkocht && (
+                    <div className="toevoegen-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
+                      <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Verkoop</div>
+                      <input type="number" className="form-input" placeholder="Verkoopbedrag (totaal)" value={beperkteForm.verkoopbedrag}
+                        onChange={e => setBeperkteForm(f => ({ ...f, verkoopbedrag: e.target.value }))} step="0.01" min="0" />
+                      <input type="date" className="form-input" value={beperkteForm.verkoopdatum}
+                        onChange={e => setBeperkteForm(f => ({ ...f, verkoopdatum: e.target.value }))} />
+                    </div>
+                  )}
+
+                  {beperkteFout && (
+                    <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--red-bg)', color: 'var(--red)', borderRadius: 8, fontSize: 13 }}>
+                      {beperkteFout}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
@@ -472,11 +616,19 @@ export default function BeleggingToevoegen({ onClose }) {
             ) : (
               <>
 
-                <button className="btn btn-primary" onClick={opslaan}
-                  disabled={!form.datum || !form.kostprijs || !form.aantal}
-                  style={{ opacity: (!form.datum || !form.kostprijs || !form.aantal) ? 0.5 : 1 }}>
-                  Opslaan
-                </button>
+                {beperkteInfoModus ? (
+                  <button className="btn btn-primary" onClick={opslaanBeperkt}
+                    disabled={!beperkteForm.aankoopbedrag || !beperkteForm.aankoopdatum || beperkteOpslaanLoading || (beperkteForm.verkocht && (!beperkteForm.verkoopbedrag || !beperkteForm.verkoopdatum))}
+                    style={{ opacity: (!beperkteForm.aankoopbedrag || !beperkteForm.aankoopdatum || (beperkteForm.verkocht && (!beperkteForm.verkoopbedrag || !beperkteForm.verkoopdatum))) ? 0.5 : 1 }}>
+                    {beperkteOpslaanLoading ? 'Koers opzoeken...' : 'Opslaan'}
+                  </button>
+                ) : (
+                  <button className="btn btn-primary" onClick={opslaan}
+                    disabled={!form.datum || !form.kostprijs || !form.aantal}
+                    style={{ opacity: (!form.datum || !form.kostprijs || !form.aantal) ? 0.5 : 1 }}>
+                    Opslaan
+                  </button>
+                )}
               </>
             )}
           </div>
