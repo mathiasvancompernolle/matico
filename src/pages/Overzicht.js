@@ -55,7 +55,14 @@ function getBegindatumVoorTijdperk(tijdperk, beleggingen) {
     if (datums.length === 0) return null;
     return new Date(Math.min(...datums)); // vroegste aankoop
   }
-  return null; // Voor andere tijdperken filtert de API al correct
+  const nu = new Date();
+  if (tijdperk === '1W') { const d = new Date(nu); d.setDate(d.getDate() - 7); return d; }
+  if (tijdperk === '1M') { const d = new Date(nu); d.setMonth(d.getMonth() - 1); return d; }
+  if (tijdperk === 'YTD') { return new Date(nu.getFullYear(), 0, 1); }
+  if (tijdperk === '1J') { const d = new Date(nu); d.setFullYear(d.getFullYear() - 1); return d; }
+  if (tijdperk === '3J') { const d = new Date(nu); d.setFullYear(d.getFullYear() - 3); return d; }
+  if (tijdperk === '5J') { const d = new Date(nu); d.setFullYear(d.getFullYear() - 5); return d; }
+  return null; // Max: vroegste beschikbare data, geen ondergrens nodig
 }
 
 // ETF uitgever mapping
@@ -446,13 +453,13 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         if (!eerste || !laatste) return;
         if (datumObj > new Date(laatste.datum)) return; // na het laatste punt: niet relevant
 
-        // Vóór het allereerste bekende grafiekpunt: enkel bij "Totaal"/"Laatste"
-        // (die per definitie de volledige geschiedenis tonen) benaderen we de
-        // waarde en voegen we dat punt vooraan toe. Bij een vaste, kortere
-        // periode (1M, 1W, ...) valt zo'n gebeurtenis gewoon buiten het
-        // gekozen venster en slaan we die terecht over.
+        // Vóór het allereerste bekende grafiekpunt: enkel tonen als deze datum
+        // ook echt binnen de bedoelde periode valt (bv. "1J" = laatste jaar,
+        // "YTD" = sinds 1 januari). Valt de aankoop van vóór dat venster,
+        // dan zou dit de grafiek net onterecht verder laten teruglopen dan
+        // de gekozen periode.
         if (datumObj < new Date(eerste.datum)) {
-          if (tijdperk !== 'Totaal' && tijdperk !== 'Laatste') return;
+          if (begindatumFilter && datumObj < begindatumFilter) return;
           let benaderdeWaarde = 0;
           beleggingVoorGrafiek.forEach(b => {
             if (!b.datum || new Date(b.datum) > datumObj) return;
