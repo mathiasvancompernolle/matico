@@ -160,8 +160,8 @@ export default function BeleggingDetail({ belegging, onClose }) {
       const eersteMin = naarMinuten(data[0].label);
       const laatsteMin = naarMinuten(data[data.length - 1].label);
       const spanMinuten = laatsteMin - eersteMin;
-      const doelTicks = 16;
-      const opties = [10, 30, 60];
+      const doelTicks = 7;
+      const opties = [10, 30, 60, 120, 180, 240];
       let stap = opties[opties.length - 1];
       for (const optie of opties) {
         if (spanMinuten / optie <= doelTicks) { stap = optie; break; }
