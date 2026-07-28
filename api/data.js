@@ -390,25 +390,37 @@ module.exports = async function handler(req, res) {
       if (isCryptoSymbool(toYahooSymbol(symbol))) {
         try {
           const yfSym = toYahooSymbol(symbol);
-          const periode1 = middernachtBrusselUnixSeconden();
-          const periode2 = Math.floor(Date.now() / 1000);
-          const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?period1=${periode1}&period2=${periode2}&interval=5m`;
+          // Vraag een gewoon, ruim venster op (2 dagen) i.p.v. Yahoo's eigen
+          // interpretatie van period1/period2 te vertrouwen — en zoek zelf,
+          // op basis van de teruggegeven tijdstempels, de prijs net vóór
+          // Belgische middernacht op. Robuuster dan Yahoo's eigen daggrens.
+          const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=2d&interval=5m`;
           const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
           const yfData = await yfRes.json();
           const result = yfData?.chart?.result?.[0];
           if (result) {
             const meta = result.meta;
+            const timestamps = result.timestamp || [];
             const quotes = result.indicators?.quote?.[0];
-            const closes = quotes?.close?.filter(v => v != null) || [];
-            const huidigeKoers = meta.regularMarketPrice || closes[closes.length - 1] || 0;
-            const vorigeSlot = meta.chartPreviousClose || meta.previousClose || huidigeKoers;
-            if (huidigeKoers > 0) {
+            const closes = quotes?.close || [];
+            const middernacht = middernachtBrusselUnixSeconden();
+
+            let vorigeSlot = null;
+            for (let i = 0; i < timestamps.length; i++) {
+              if (timestamps[i] < middernacht && closes[i] != null) vorigeSlot = closes[i];
+              else if (timestamps[i] >= middernacht) break;
+            }
+            const geldigeCloses = closes.filter(v => v != null);
+            const huidigeKoers = meta.regularMarketPrice || geldigeCloses[geldigeCloses.length - 1] || 0;
+            const vandaagCloses = timestamps.map((t, i) => t >= middernacht ? closes[i] : null).filter(v => v != null);
+
+            if (huidigeKoers > 0 && vorigeSlot != null) {
               return res.json({
                 c: huidigeKoers,
                 pc: vorigeSlot,
-                o: closes[0] || huidigeKoers,
-                h: closes.length > 0 ? Math.max(...closes) : huidigeKoers,
-                l: closes.length > 0 ? Math.min(...closes) : huidigeKoers,
+                o: vandaagCloses[0] || huidigeKoers,
+                h: vandaagCloses.length > 0 ? Math.max(...vandaagCloses) : huidigeKoers,
+                l: vandaagCloses.length > 0 ? Math.min(...vandaagCloses) : huidigeKoers,
                 v: meta.regularMarketVolume || 0,
               });
             }
@@ -482,10 +494,9 @@ module.exports = async function handler(req, res) {
       try {
         const yfSym = toYahooSymbol(symbol);
         const isCryptoQd = isCryptoSymbool(yfSym);
-        const reeksParamQd = isCryptoQd
-          ? `period1=${middernachtBrusselUnixSeconden()}&period2=${Math.floor(Date.now() / 1000)}`
-          : `range=1d`;
-        const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?${reeksParamQd}&interval=1m`;
+        const yfUrl = isCryptoQd
+          ? `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=2d&interval=5m`
+          : `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=1d&interval=1m`;
         const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
         const yfData = await yfRes.json();
         const result = yfData?.chart?.result?.[0];
@@ -498,12 +509,34 @@ module.exports = async function handler(req, res) {
           const beursQd = exchangeMap[exchCodeQd] || meta.fullExchangeName || meta.exchangeName || '';
           const berekendOpenQd = isBeursOpenNu(beursQd);
           const marktOpenQd = berekendOpenQd !== null ? berekendOpenQd : meta.marketState === 'REGULAR';
+
+          // Crypto: zelf de prijs net vóór Belgische middernacht opzoeken
+          // i.p.v. Yahoo's eigen (2u 's nachts) daggrens te gebruiken.
+          let vorigeSlotQd = meta.chartPreviousClose || meta.previousClose || huidigeKoers;
+          let dagHoogQd = meta.regularMarketDayHigh || huidigeKoers;
+          let dagLaagQd = meta.regularMarketDayLow || huidigeKoers;
+          if (isCryptoQd) {
+            const timestamps = result.timestamp || [];
+            const middernacht = middernachtBrusselUnixSeconden();
+            let gevonden = null;
+            for (let i = 0; i < timestamps.length; i++) {
+              if (timestamps[i] < middernacht && closes[i] != null) gevonden = closes[i];
+              else if (timestamps[i] >= middernacht) break;
+            }
+            if (gevonden != null) vorigeSlotQd = gevonden;
+            const vandaagCloses = timestamps.map((t, i) => t >= middernacht ? closes[i] : null).filter(v => v != null);
+            if (vandaagCloses.length > 0) {
+              dagHoogQd = Math.max(...vandaagCloses);
+              dagLaagQd = Math.min(...vandaagCloses);
+            }
+          }
+
           return res.json({
             c: huidigeKoers,
-            pc: meta.chartPreviousClose || meta.previousClose || huidigeKoers,
+            pc: vorigeSlotQd,
             o: meta.regularMarketOpen || huidigeKoers,
-            h: meta.regularMarketDayHigh || huidigeKoers,
-            l: meta.regularMarketDayLow || huidigeKoers,
+            h: dagHoogQd,
+            l: dagLaagQd,
             v: meta.regularMarketVolume || 0,
             bid: meta.bid || null,
             ask: meta.ask || null,
