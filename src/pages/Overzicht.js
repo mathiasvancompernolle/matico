@@ -446,10 +446,13 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         if (!eerste || !laatste) return;
         if (datumObj > new Date(laatste.datum)) return; // na het laatste punt: niet relevant
 
-        // Vóór het allereerste bekende grafiekpunt (bv. je allereerste aankoop,
-        // van vóór de vroegste candle-data die we ophaalden): benader de
-        // waarde op die datum met de aankoopprijs van wat er dan al gekocht was.
+        // Vóór het allereerste bekende grafiekpunt: enkel bij "Totaal"/"Laatste"
+        // (die per definitie de volledige geschiedenis tonen) benaderen we de
+        // waarde en voegen we dat punt vooraan toe. Bij een vaste, kortere
+        // periode (1M, 1W, ...) valt zo'n gebeurtenis gewoon buiten het
+        // gekozen venster en slaan we die terecht over.
         if (datumObj < new Date(eerste.datum)) {
+          if (tijdperk !== 'Totaal' && tijdperk !== 'Laatste') return;
           let benaderdeWaarde = 0;
           beleggingVoorGrafiek.forEach(b => {
             if (!b.datum || new Date(b.datum) > datumObj) return;
