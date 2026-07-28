@@ -41,6 +41,7 @@ function detecteerBroker(hdrs) {
   if (set.has('Product') && set.has('Symbool/ISIN') && set.has('Slotkoers')) return 'degiro';
   if (set.has('ISIN') && set.has('Datum') && set.has('Transactiekosten en/of kosten van derden EUR')) return 'degiro-transacties';
   if (set.has('Quote Price') && set.has('Received / Paid Currency') && set.has('Type')) return 'bitvavo';
+  if (set.has('ISIN') && set.has('Aankoopprijs') && set.has('Belegde waarde')) return 'medirect';
   return null;
 }
 
@@ -237,6 +238,50 @@ async function transformeerDegiro(rijen, onVoortgang) {
   return resultaat;
 }
 
+// MeDirect: momentopname van je activa. Bevat, in tegenstelling tot Saxo en
+// DEGIRO's portefeuille-export, wél een echte aankoopprijs ("Aankoopprijs"),
+// maar geen aankoopdatum. ISIN wordt net als bij DEGIRO opgelost via OpenFIGI.
+function parseMedirectBedrag(s) {
+  if (!s) return 0;
+  return parseFloat(String(s).replace('€', '').replace(/\s/g, '').replace(',', '.')) || 0;
+}
+
+async function transformeerMedirect(rijen, onVoortgang) {
+  const posities = rijen.filter(r => (r['ISIN'] || '').trim());
+  const resultaat = [];
+  for (let i = 0; i < posities.length; i++) {
+    const r = posities[i];
+    const isin = r['ISIN'].trim();
+    let symbol = isin;
+    let naam = (r['Naam'] || isin).trim();
+    try {
+      const res = await fetch(`/api/data?endpoint=isin-naar-ticker&isin=${encodeURIComponent(isin)}`);
+      const d = await res.json();
+      if (d?.symbol) {
+        symbol = d.symbol;
+        if (d.naam) naam = d.naam;
+      }
+    } catch (e) { /* val terug op ISIN als ticker */ }
+
+    const naamGroot = (r['Naam'] || '').toUpperCase();
+    const type = naamGroot.includes('ETF') || naamGroot.includes('TRACKER') ? 'etf' : 'aandeel';
+
+    resultaat.push({
+      naam,
+      symbol,
+      broker: 'MeDirect',
+      type,
+      kostprijs: parseMedirectBedrag(r['Aankoopprijs']),
+      transactiekosten: 0,
+      aantal: parseFloat(String(r['Hoeveelheid'] || '0').replace(',', '.')) || 0,
+      munt: 'EUR',
+      datum: '',
+    });
+    onVoortgang && onVoortgang(i + 1, posities.length);
+  }
+  return resultaat;
+}
+
 // Een ISIN volgt altijd dit vaste patroon: 2 letters (landcode) + 9
 // letters/cijfers + 1 controlecijfer. Zo herkennen we, ongeacht welke broker
 // het bestand aanleverde, of een kolom eigenlijk een ISIN bevat i.p.v. een
@@ -406,6 +451,15 @@ export default function ImportBeleggingen({ onClose }) {
     if (broker === 'bitvavo') {
       const rijenOm = transformeerBitvavo(rijen);
       setBrokerNaam('Bitvavo');
+      setBrokerRijen(rijenOm);
+      setStap('broker-preview');
+      return;
+    }
+    if (broker === 'medirect') {
+      setBrokerNaam('MeDirect');
+      setStap('broker-laden');
+      setVoortgang({ huidig: 0, totaal: 0 });
+      const rijenOm = await transformeerMedirect(rijen, (huidig, totaal) => setVoortgang({ huidig, totaal }));
       setBrokerRijen(rijenOm);
       setStap('broker-preview');
       return;
