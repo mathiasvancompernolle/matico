@@ -570,7 +570,16 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         }
       }
 
-      setGrafiekData(gecombineerd);
+      // Beurzen zijn in het weekend gesloten — zaterdag en zondag tonen we
+      // dus nooit in de grafiek, ongeacht waar ze precies vandaan kwamen
+      // (candle-data, ingevoegd aankooppunt, nulpunt, of het "vandaag"-punt).
+      const gefilterdOpWeekend = gecombineerd.filter(p => {
+        if (!p.datum) return true;
+        const dag = new Date(p.datum).getUTCDay(); // 0 = zondag, 6 = zaterdag
+        return dag !== 0 && dag !== 6;
+      });
+
+      setGrafiekData(gefilterdOpWeekend);
       setGrafiekLoading(false);
     };
 
