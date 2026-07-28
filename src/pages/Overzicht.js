@@ -679,9 +679,41 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     return !isNaN(uur) && uur >= 9 && uur < 23;
   };
   const toontCryptoFilterPortfolio = tijdperk === '1D' && heeftCrypto && !alleenCrypto;
-  const displayDataGefilterd = (toontCryptoFilterPortfolio && !toonBuitenBeursuren)
+  const displayDataVoorWeekend = (toontCryptoFilterPortfolio && !toonBuitenBeursuren)
     ? displayData.filter(d => binnenBeursurenPortfolio(d.label))
     : displayData;
+
+  // Op de niet-intraday grafieken (alle periodes behalve 1D) mag het weekend
+  // geen ruimte innemen op de as — vrijdag naar maandag moet er even breed
+  // uitzien als eender welke andere opeenvolgende weekdag-stap. We rekenen
+  // daarom de cumulatieve "weekend-duur" uit elk punt se tijdstip weg.
+  const displayDataGefilterd = (tijdperk === '1D' || displayDataVoorWeekend.length === 0)
+    ? displayDataVoorWeekend
+    : (() => {
+        const puntenMetTijd = displayDataVoorWeekend.filter(p => p.tijd != null);
+        if (puntenMetTijd.length === 0) return displayDataVoorWeekend;
+        const eersteDag = new Date(puntenMetTijd[0].tijd);
+        eersteDag.setUTCHours(0, 0, 0, 0);
+        const laatsteTijd = puntenMetTijd[puntenMetTijd.length - 1].tijd;
+        const dagMs = 24 * 60 * 60 * 1000;
+
+        const cumulatieveWeekendMs = new Map();
+        let lopendeSom = 0;
+        for (let t = eersteDag.getTime(); t <= laatsteTijd + dagMs; t += dagMs) {
+          cumulatieveWeekendMs.set(t, lopendeSom);
+          const dagVanWeek = new Date(t).getUTCDay();
+          if (dagVanWeek === 0 || dagVanWeek === 6) lopendeSom += dagMs;
+        }
+
+        return displayDataVoorWeekend.map(p => {
+          if (p.tijd == null) return p;
+          const dagVanPunt = new Date(p.tijd);
+          dagVanPunt.setUTCHours(0, 0, 0, 0);
+          const weekendTotDeze = cumulatieveWeekendMs.get(dagVanPunt.getTime()) || 0;
+          return { ...p, tijd: p.tijd - weekendTotDeze };
+        });
+      })();
+
   const segmentDataPortfolio = (toontCryptoFilterPortfolio && toonBuitenBeursuren)
     ? displayDataGefilterd.map((d, i, arr) => {
         const isBinnen = binnenBeursurenPortfolio(d.label);
