@@ -262,6 +262,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
             });
             return {
               label: intradayData[eersteSymbol][i].label,
+              datum: new Date().toISOString().split('T')[0],
               waarde: Math.round(totaalWaarde * 100) / 100,
               gesloten: !iemandOpen,
             };
