@@ -6,7 +6,7 @@ const TYPES = [
   { id: 'aandeel', label: 'Aandeel', beschrijving: 'Zoek en voeg beursgenoteerde aandelen toe', icon: TrendingUp },
   { id: 'etf', label: 'ETF', beschrijving: 'Zoek en voeg een ETF/Tracker toe', icon: Building2 },
   { id: 'crypto', label: 'Crypto', beschrijving: 'Zoek en voeg crypto toe', icon: Bitcoin },
-  { id: 'manueel', label: 'Zelf op te volgen belegging', beschrijving: 'Handig voor cashrekeningen, pensioensparen, periodieke beleggingen en andere beleggingsplannen', icon: PiggyBank },
+  { id: 'manueel', label: 'Zelf op te volgen belegging', beschrijving: 'Handig voor cashrekeningen, pensioensparen, gestopte/failliete aandelen en andere beleggingsplannen die niet vindbaar zijn', icon: PiggyBank },
 ];
 
 export default function BeleggingToevoegen({ onClose }) {
@@ -28,6 +28,12 @@ export default function BeleggingToevoegen({ onClose }) {
   const [beperkteForm, setBeperkteForm] = useState({ aankoopbedrag: '', aankoopdatum: '', verkocht: false, verkoopbedrag: '', verkoopdatum: '' });
   const [beperkteOpslaanLoading, setBeperkteOpslaanLoading] = useState(false);
   const [beperkteFout, setBeperkteFout] = useState('');
+  // Volledig handmatig: geen live ticker, voor gestopte/failliete aandelen of
+  // andere niet-vindbare beleggingen.
+  const [handmatigForm, setHandmatigForm] = useState({
+    naam: '', symbool: '', aankoopprijs: '', aantal: '', datum: '', munt: 'EUR', transactiekosten: '',
+    verkocht: false, verkoopprijs: '', verkoopdatum: '',
+  });
 
   // Historische wisselkoers naar EUR ophalen wanneer munt of datum verandert
   useEffect(() => {
@@ -76,7 +82,7 @@ export default function BeleggingToevoegen({ onClose }) {
 
   const kiesType = (t) => {
     setType(t);
-    setStap('zoek');
+    setStap(t === 'manueel' ? 'handmatig' : 'zoek');
   };
 
   const kiesAandeel = async (r) => {
@@ -249,6 +255,50 @@ export default function BeleggingToevoegen({ onClose }) {
 
     setBeperkteOpslaanLoading(false);
     if (nieuweActief.length > 0 || nieuweVerkocht.length > 0) onClose();
+  };
+
+  // Volledig handmatig opslaan: geen live symbool, dus ook geen live
+  // koersopvolging nadien — precies wat je nodig hebt voor iets als een
+  // failliet aandeel, waarvan de waarde toch nooit meer verandert.
+  const opslaanHandmatig = () => {
+    const f = handmatigForm;
+    if (!f.naam || !f.aankoopprijs || !f.aantal || !f.datum) return;
+    if (f.verkocht && (!f.verkoopprijs || !f.verkoopdatum)) return;
+
+    const kostprijsPerStuk = parseFloat(f.aankoopprijs);
+    const aantalStuks = parseFloat(f.aantal);
+    const transactiekosten = parseFloat(f.transactiekosten) || 0;
+    // Synthetisch symbool, uniek genoeg om botsingen te vermijden — er is
+    // geen echte ticker voor dit soort beleggingen.
+    const symbool = (f.symbool || f.naam).trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || `MANUEEL${Date.now()}`;
+
+    const basis = {
+      id: Date.now(),
+      symbol: `MAN-${symbool}-${Date.now()}`,
+      naam: f.naam,
+      logo: '',
+      type: 'manueel',
+      datum: f.datum,
+      kostprijs: kostprijsPerStuk,
+      transactiekosten,
+      aantal: aantalStuks,
+      munt: f.munt,
+    };
+
+    if (f.verkocht) {
+      const verkoopkoersPerStuk = parseFloat(f.verkoopprijs);
+      setVerkochteBeleggingen(prev => [...(prev || []), {
+        ...basis,
+        verkoopdatum: f.verkoopdatum,
+        aantalVerkocht: aantalStuks,
+        verkoopkoers: verkoopkoersPerStuk,
+        verkoopMunt: f.munt,
+        winstverlies: (verkoopkoersPerStuk - kostprijsPerStuk) * aantalStuks - transactiekosten,
+      }]);
+    } else {
+      setBeleggingen(prev => [...prev, basis]);
+    }
+    onClose();
   };
 
   const opslaan = () => {
@@ -441,6 +491,100 @@ export default function BeleggingToevoegen({ onClose }) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Stap: volledig handmatig (geen live ticker) */}
+      {stap === 'handmatig' && (
+        <div style={{ padding: '0 32px' }}>
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Zelf op te volgen belegging
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              Geen live ticker nodig — handig voor iets dat niet (meer) vindbaar is, zoals een gestopt of failliet aandeel.
+            </div>
+            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Naam</label>
+                  <input className="form-input" placeholder="bv. Esperite" value={handmatigForm.naam}
+                    onChange={e => setHandmatigForm(f => ({ ...f, naam: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Ticker (optioneel)</label>
+                  <input className="form-input" placeholder="bv. ESP" value={handmatigForm.symbool}
+                    onChange={e => setHandmatigForm(f => ({ ...f, symbool: e.target.value }))} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Aankoopprijs per stuk</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input type="number" className="form-input" placeholder="0.00" value={handmatigForm.aankoopprijs}
+                      onChange={e => setHandmatigForm(f => ({ ...f, aankoopprijs: e.target.value }))} step="0.01" min="0" />
+                    <select className="form-input" style={{ width: 80 }} value={handmatigForm.munt}
+                      onChange={e => setHandmatigForm(f => ({ ...f, munt: e.target.value }))}>
+                      <option value="EUR">EUR</option>
+                      <option value="USD">USD</option>
+                      <option value="GBP">GBP</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Aantal</label>
+                  <input type="number" className="form-input" placeholder="1" value={handmatigForm.aantal}
+                    onChange={e => setHandmatigForm(f => ({ ...f, aantal: e.target.value }))} min="0" step="0.001" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Aankoopdatum</label>
+                  <input type="date" className="form-input" value={handmatigForm.datum}
+                    onChange={e => setHandmatigForm(f => ({ ...f, datum: e.target.value }))} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                  Transactiekosten
+                  <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>optioneel, later aan te passen</span>
+                </label>
+                <input type="number" className="form-input" placeholder="€0 (optioneel)" value={handmatigForm.transactiekosten}
+                  onChange={e => setHandmatigForm(f => ({ ...f, transactiekosten: e.target.value }))} step="0.01" min="0" style={{ maxWidth: 200 }} />
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                  <input type="checkbox" checked={handmatigForm.verkocht}
+                    onChange={e => setHandmatigForm(f => ({ ...f, verkocht: e.target.checked }))} />
+                  Deze positie is ondertussen verkocht (of waardeloos geworden, bv. door faillissement — vul dan €0 in)
+                </label>
+                {handmatigForm.verkocht && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Verkoopprijs per stuk</label>
+                      <input type="number" className="form-input" placeholder="0.00 (of 0 bij faillissement)" value={handmatigForm.verkoopprijs}
+                        onChange={e => setHandmatigForm(f => ({ ...f, verkoopprijs: e.target.value }))} step="0.01" min="0" />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Verkoopdatum</label>
+                      <input type="date" className="form-input" value={handmatigForm.verkoopdatum}
+                        onChange={e => setHandmatigForm(f => ({ ...f, verkoopdatum: e.target.value }))} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+            <button className="btn btn-ghost" onClick={() => setStap('type')}>← Terug</button>
+            <button className="btn btn-primary" onClick={opslaanHandmatig}
+              disabled={!handmatigForm.naam || !handmatigForm.aankoopprijs || !handmatigForm.aantal || !handmatigForm.datum || (handmatigForm.verkocht && (!handmatigForm.verkoopprijs || !handmatigForm.verkoopdatum))}
+              style={{ opacity: (!handmatigForm.naam || !handmatigForm.aankoopprijs || !handmatigForm.aantal || !handmatigForm.datum || (handmatigForm.verkocht && (!handmatigForm.verkoopprijs || !handmatigForm.verkoopdatum))) ? 0.5 : 1 }}>
+              Opslaan
+            </button>
           </div>
         </div>
       )}
