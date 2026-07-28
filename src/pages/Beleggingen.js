@@ -213,7 +213,8 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
   const [stap, setStap] = useState('kiezen'); // 'kiezen' | 'invullen'
   const [zoek, setZoek] = useState('');
   const [gekozen, setGekozen] = useState(null);
-  const [form, setForm] = useState({ datum: new Date().toISOString().slice(0, 10), aantal: '', koers: '', munt: 'EUR' });
+  const [form, setForm] = useState({ datum: new Date().toISOString().slice(0, 10), aantal: '', koers: '', munt: 'EUR', verkoopbedrag: '' });
+  const [beperkteInfoVerkoop, setBeperkteInfoVerkoop] = useState(false);
 
   // Pre-fill koers als beschikbaar
   useEffect(() => {
@@ -237,6 +238,18 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
   );
 
   const bevestig = () => {
+    if (beperkteInfoVerkoop) {
+      if (!form.datum || !form.aantal || !form.verkoopbedrag) return;
+      const aantalGetal = parseFloat(form.aantal);
+      onBevestig(gekozen, {
+        datum: form.datum,
+        aantal: aantalGetal,
+        koers: parseFloat(form.verkoopbedrag) / aantalGetal,
+        munt: form.munt,
+      });
+      onClose();
+      return;
+    }
     if (!form.datum || !form.aantal || !form.koers) return;
     onBevestig(gekozen, {
       datum: form.datum,
@@ -322,9 +335,22 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
           </>
         ) : (
           <>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>
               {t('bel_vul_verkoopgegevens')} <strong>{gekozen.naam} ({gekozen.symbol})</strong>
             </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+              <button
+                onClick={() => setBeperkteInfoVerkoop(v => !v)}
+                style={{
+                  background: beperkteInfoVerkoop ? 'var(--accent-bg)' : 'transparent',
+                  color: beperkteInfoVerkoop ? 'var(--accent)' : 'var(--text-muted)',
+                  border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                {beperkteInfoVerkoop ? '✓ ' : ''}Beperkte info (enkel verkoopbedrag gekend)
+              </button>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Verkoopdatum */}
               <div>
@@ -348,25 +374,46 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                   style={inputStyle}
                 />
               </div>
-              {/* Verkoopkoers */}
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('bel_verkoopkoers_per_stuk')}</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    type="number"
-                    value={form.koers}
-                    onChange={e => setForm(f => ({ ...f, koers: e.target.value }))}
-                    style={{ ...inputStyle, flex: 1 }}
-                  />
-                  <select value={form.munt} onChange={e => setForm(f => ({ ...f, munt: e.target.value }))}
-                    style={{ ...inputStyle, width: 80 }}>
-                    <option>EUR</option><option>USD</option><option>GBP</option>
-                  </select>
+              {!beperkteInfoVerkoop ? (
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('bel_verkoopkoers_per_stuk')}</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="number"
+                      value={form.koers}
+                      onChange={e => setForm(f => ({ ...f, koers: e.target.value }))}
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                    <select value={form.munt} onChange={e => setForm(f => ({ ...f, munt: e.target.value }))}
+                      style={{ ...inputStyle, width: 80 }}>
+                      <option>EUR</option><option>USD</option><option>GBP</option>
+                    </select>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                    {t('bel_ingevuld_op_basis')} {new Date().toLocaleDateString('nl-BE')}
+                  </p>
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-                  {t('bel_ingevuld_op_basis')} {new Date().toLocaleDateString('nl-BE')}
-                </p>
-              </div>
+              ) : (
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Verkoopbedrag (totaal)</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="number"
+                      value={form.verkoopbedrag}
+                      onChange={e => setForm(f => ({ ...f, verkoopbedrag: e.target.value }))}
+                      style={{ ...inputStyle, flex: 1 }}
+                      placeholder="€ 0,00"
+                    />
+                    <select value={form.munt} onChange={e => setForm(f => ({ ...f, munt: e.target.value }))}
+                      style={{ ...inputStyle, width: 80 }}>
+                      <option>EUR</option><option>USD</option><option>GBP</option>
+                    </select>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                    We rekenen de verkoopkoers per stuk terug ({t('bel_col_aantal').toLowerCase()} × koers = verkoopbedrag).
+                  </p>
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24 }}>
               <button onClick={() => setStap('kiezen')} style={{
