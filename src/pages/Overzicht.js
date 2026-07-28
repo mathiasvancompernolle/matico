@@ -381,6 +381,24 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       // Bepaal begindatum voor "Laatste" filtering
       const begindatumFilter = getBegindatumVoorTijdperk(tijdperk, beleggingVoorGrafiek);
 
+      // Zoekt de koers van een positie op (of net vóór) een bepaalde datum in
+      // haar eigen candle-reeks — i.p.v. terug te vallen op de rauwe
+      // array-index van het referentiepunt, wat verkeerd kan uitpakken als
+      // deze reeks ergens een gaatje heeft (bv. een feestdag die enkel op één
+      // beurs geldt) en daardoor voor die ene dag de verkeerde koers zou
+      // gebruiken (en de dag erna weer "corrigeren").
+      const vindPrijsOpDatum = (symbolData, doelDatum) => {
+        if (!symbolData || symbolData.length === 0 || !doelDatum) return null;
+        let beste = null;
+        for (const p of symbolData) {
+          if (!p.datum) continue;
+          const pd = new Date(p.datum);
+          if (pd <= doelDatum && (!beste || pd > new Date(beste.datum))) beste = p;
+        }
+        if (!beste) beste = symbolData.find(p => p.datum) || symbolData[0];
+        return beste ? beste.prijs : null;
+      };
+
       // Combineer per datumpunt — actieve + verkochte beleggingen, elk met hun tijdvenster
       const gecombineerd = allePunten
         .filter(punt => {
@@ -401,9 +419,8 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
             const symbolData = historischeData[b.symbol];
             if (symbolData) {
-              let gevondenPunt = punt.datum ? symbolData.find(p => p.datum === punt.datum) : null;
-              if (!gevondenPunt) gevondenPunt = symbolData[Math.min(i, symbolData.length - 1)];
-              if (gevondenPunt) totaalWaarde += gevondenPunt.prijs * b.aantal * factor;
+              const prijs = vindPrijsOpDatum(symbolData, puntDatum);
+              if (prijs != null) totaalWaarde += prijs * b.aantal * factor;
             } else {
               const koers = koersen[b.symbol];
               totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
@@ -422,9 +439,8 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
             const symbolData = historischeData[b.symbol];
             if (symbolData) {
-              let gevondenPunt = punt.datum ? symbolData.find(p => p.datum === punt.datum) : null;
-              if (!gevondenPunt) gevondenPunt = symbolData[Math.min(i, symbolData.length - 1)];
-              if (gevondenPunt) totaalWaarde += gevondenPunt.prijs * b.aantalVerkocht * factor;
+              const prijs = vindPrijsOpDatum(symbolData, puntDatum);
+              if (prijs != null) totaalWaarde += prijs * b.aantalVerkocht * factor;
             } else {
               // Geen historische data: gebruik verkoopkoers als benadering
               totaalWaarde += (b.verkoopkoers || b.kostprijs) * b.aantalVerkocht * factor;
@@ -450,24 +466,9 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
       const maandKortInterp = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
-      // Berekent de portefeuillewaarde op een willekeurige, exacte datum door
-      // per positie de eigen historische koers op (of net vóór) die datum op
-      // te zoeken — i.p.v. enkel de reeds-berekende totalen van omliggende
-      // punten lineair te interpoleren. Dat laatste hield geen rekening met
-      // het feit dat een positie precies op die datum pas is toegevoegd, en
-      // gaf daardoor een fout getal dat de volgende dag weer "rechtgetrokken"
-      // moest worden (vandaar de sprong-en-terugval die je zag).
-      const vindPrijsOpDatum = (symbolData, doelDatum) => {
-        if (!symbolData || symbolData.length === 0) return null;
-        let beste = null;
-        for (const p of symbolData) {
-          if (!p.datum) continue;
-          const pd = new Date(p.datum);
-          if (pd <= doelDatum && (!beste || pd > new Date(beste.datum))) beste = p;
-        }
-        if (!beste) beste = symbolData.find(p => p.datum) || symbolData[0];
-        return beste ? beste.prijs : null;
-      };
+      // Berekent de portefeuillewaarde op een willekeurige, exacte datum
+      // (voor de ingevoegde aankoop-/verkooppunten hieronder), op basis van
+      // dezelfde vindPrijsOpDatum-opzoeking als hierboven.
       const berekenWaardeOpDatum = (doelDatum) => {
         let totaal = 0;
         beleggingVoorGrafiek.forEach(b => {
