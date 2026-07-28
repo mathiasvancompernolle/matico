@@ -153,11 +153,24 @@ export default function BeleggingDetail({ belegging, onClose }) {
     let groepeerFn, formatFn;
 
     if (dagen <= 2) {
-      const gezienUren = new Set();
+      const naarMinuten = (label) => {
+        const [u, m] = (label || '0:0').split(':').map(Number);
+        return (u || 0) * 60 + (m || 0);
+      };
+      const eersteMin = naarMinuten(data[0].label);
+      const laatsteMin = naarMinuten(data[data.length - 1].label);
+      const spanMinuten = laatsteMin - eersteMin;
+      const doelTicks = 16;
+      const opties = [10, 30, 60];
+      let stap = opties[opties.length - 1];
+      for (const optie of opties) {
+        if (spanMinuten / optie <= doelTicks) { stap = optie; break; }
+      }
+      const gezienBuckets = new Set();
       const ticks = data.filter(d => {
-        const uur = (d.label || '').split(':')[0];
-        if (!uur || gezienUren.has(uur)) return false;
-        gezienUren.add(uur);
+        const bucket = Math.floor(naarMinuten(d.label) / stap);
+        if (gezienBuckets.has(bucket)) return false;
+        gezienBuckets.add(bucket);
         return true;
       }).map(d => d.label);
       return { detailXTicks: ticks, detailXFormatter: v => v };

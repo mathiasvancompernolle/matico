@@ -550,15 +550,28 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     let groepeerFn, formatFn;
 
     if (dagen <= 2) {
-      // Enkele dag(en): exact één label per uur, op basis van het uur in het
-      // tijdstip zelf (label = "HH:MM") — niet enkel een geschat aantal
-      // punten overslaan, want dat gaf te veel/te weinig labels naargelang
-      // hoeveel datapunten er precies zijn.
-      const gezienUren = new Set();
+      // Enkele dag(en): dynamische stapgrootte die vanzelf opschaalt naarmate
+      // de dag vordert en er meer punten bijkomen — begint fijn (om de 10
+      // min) en schakelt pas over naar grovere stappen (30 min, dan een uur)
+      // zodra dat nodig is om de as leesbaar te houden.
+      const naarMinuten = (label) => {
+        const [u, m] = (label || '0:0').split(':').map(Number);
+        return (u || 0) * 60 + (m || 0);
+      };
+      const eersteMin = naarMinuten(data[0].label);
+      const laatsteMin = naarMinuten(data[data.length - 1].label);
+      const spanMinuten = laatsteMin - eersteMin;
+      const doelTicks = 16;
+      const opties = [10, 30, 60];
+      let stap = opties[opties.length - 1];
+      for (const optie of opties) {
+        if (spanMinuten / optie <= doelTicks) { stap = optie; break; }
+      }
+      const gezienBuckets = new Set();
       const ticks = data.filter(d => {
-        const uur = (d.label || '').split(':')[0];
-        if (!uur || gezienUren.has(uur)) return false;
-        gezienUren.add(uur);
+        const bucket = Math.floor(naarMinuten(d.label) / stap);
+        if (gezienBuckets.has(bucket)) return false;
+        gezienBuckets.add(bucket);
         return true;
       }).map(d => d.label);
       return { xTicks: ticks, xTickFormatter: v => v };

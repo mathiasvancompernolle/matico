@@ -318,11 +318,24 @@ export default function EffectDetail({ effect, onTerug }) {
                 }
                 let xTicks, xInterval;
                 if (periode === '1d') {
-                  const gezienUren = new Set();
+                  const naarMinuten = (label) => {
+                    const [u, m] = (label || '0:0').split(':').map(Number);
+                    return (u || 0) * 60 + (m || 0);
+                  };
+                  const eersteMin = naarMinuten(weergaveData[0].label);
+                  const laatsteMin = naarMinuten(weergaveData[weergaveData.length - 1].label);
+                  const spanMinuten = laatsteMin - eersteMin;
+                  const doelTicks = 16;
+                  const opties = [10, 30, 60];
+                  let stap = opties[opties.length - 1];
+                  for (const optie of opties) {
+                    if (spanMinuten / optie <= doelTicks) { stap = optie; break; }
+                  }
+                  const gezienBuckets = new Set();
                   xTicks = weergaveData.filter(d => {
-                    const uur = (d.label || '').split(':')[0];
-                    if (!uur || gezienUren.has(uur)) return false;
-                    gezienUren.add(uur);
+                    const bucket = Math.floor(naarMinuten(d.label) / stap);
+                    if (gezienBuckets.has(bucket)) return false;
+                    gezienBuckets.add(bucket);
                     return true;
                   }).map(d => d.label);
                   xInterval = 0;
