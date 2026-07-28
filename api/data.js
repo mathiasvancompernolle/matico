@@ -849,7 +849,7 @@ module.exports = async function handler(req, res) {
               if (closes[i] == null) return null;
               const datum = new Date(t * 1000);
               return {
-                label: datum.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' }),
+                label: datum.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' }),
                 datum: datum.toISOString().split('T')[0],
                 prijs: Math.round(closes[i] * 100) / 100,
                 _minuut: datum.getMinutes(),
@@ -889,7 +889,8 @@ module.exports = async function handler(req, res) {
             return {
               label: datum.toLocaleDateString('nl-BE', {
                 day: 'numeric', month: 'short',
-                year: (tijdperk === '3J' || tijdperk === '5J' || tijdperk === 'Max') ? 'numeric' : undefined
+                year: (tijdperk === '3J' || tijdperk === '5J' || tijdperk === 'Max') ? 'numeric' : undefined,
+                timeZone: 'Europe/Brussels'
               }),
               datum: datum.toISOString().split('T')[0],
               prijs: Math.round(closes[i] * 100) / 100
