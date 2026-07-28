@@ -498,6 +498,38 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         });
       });
 
+      // Elke periode (behalve 1D) toont een startpunt op €0 de dag vóór je
+      // allereerste aankoop — maar enkel als die aankoop toevallig binnen de
+      // huidige periode valt (bv. deze week begonnen met beleggen en dan naar
+      // "1W" kijken). Bestond je portefeuille al vóór deze periode, dan zou
+      // zo'n nulpunt net misleidend zijn, en laten we het dus achterwege.
+      if (tijdperk !== '1D' && gecombineerd.length > 0) {
+        const eersteMetDatum = gecombineerd.find(p => p.datum);
+        if (eersteMetDatum) {
+          const alleAankoopdatums = [
+            ...beleggingVoorGrafiek.map(b => b.datum).filter(Boolean),
+            ...verkochtVoorGrafiek.map(b => b.datum).filter(Boolean),
+          ].map(d => new Date(d).toISOString().slice(0, 10));
+          const absoluteEersteDatum = alleAankoopdatums.length > 0
+            ? alleAankoopdatums.reduce((a, b) => a < b ? a : b)
+            : null;
+
+          if (absoluteEersteDatum && eersteMetDatum.datum === absoluteEersteDatum) {
+            const eersteDatumObj = new Date(eersteMetDatum.datum);
+            const dagErvoor = new Date(eersteDatumObj);
+            dagErvoor.setDate(dagErvoor.getDate() - 1);
+            const dagErvoorStr = dagErvoor.toISOString().slice(0, 10);
+            if (!gecombineerd.some(p => p.datum === dagErvoorStr)) {
+              gecombineerd.unshift({
+                label: `${dagErvoor.getDate()} ${maandKortInterp[dagErvoor.getMonth()]}`,
+                datum: dagErvoorStr,
+                waarde: 0,
+              });
+            }
+          }
+        }
+      }
+
       // Yahoo's dagelijkse candle-data toont de lopende, nog niet afgesloten
       // handelsdag soms nog niet — waardoor de grafiek een dag zou achterlopen
       // op het live cijfer bovenaan. Ontbreekt "vandaag" als laatste punt, dan
