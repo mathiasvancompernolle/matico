@@ -863,7 +863,10 @@ module.exports = async function handler(req, res) {
               .filter((p, i) => p._minuut % 10 === 0 || i === allePunten.length - 1)
               .map(({ _minuut, ...rest }) => rest);
 
-            if (punten.length > 1) return res.json({ punten });
+            if (punten.length > 1) {
+              const vorigeSlot = result.meta?.chartPreviousClose || result.meta?.previousClose || null;
+              return res.json({ punten, vorigeSlot: vorigeSlot ? Math.round(vorigeSlot * 100) / 100 : null });
+            }
 
             // Terugval als er geen minuutdata beschikbaar was (bv. buiten
             // handelsuren zonder recente sessie): vorige slotkoers + nu.
@@ -878,7 +881,7 @@ module.exports = async function handler(req, res) {
               return res.json({ punten: [
                 { label: vorigeLabel, datum: vorigeDatum.toISOString().split('T')[0], prijs: Math.round(vorigeSlot * 100) / 100 },
                 { label: 'Nu', datum: new Date().toISOString().split('T')[0], prijs: Math.round(huidig * 100) / 100 }
-              ]});
+              ], vorigeSlot: Math.round(vorigeSlot * 100) / 100 });
             }
           }
 

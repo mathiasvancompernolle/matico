@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import { Star } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -297,6 +297,15 @@ export default function EffectDetail({ effect, onTerug }) {
                       <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
                         tickFormatter={v => v.toLocaleString('nl-BE')} domain={yDomain} ticks={yTicks} width={55} />
                       <Tooltip content={<GrafiekTooltip />} />
+                      {periode === '1d' && vorigeSlot != null && (
+                        <ReferenceLine
+                          y={vorigeSlot}
+                          stroke="var(--text-muted)"
+                          strokeDasharray="4 4"
+                          strokeWidth={1.5}
+                          label={{ value: `Slot vorige dag: ${vorigeSlot.toLocaleString('nl-BE')}`, position: 'insideTopLeft', fontSize: 11, fill: 'var(--text-muted)' }}
+                        />
+                      )}
                       <Area type="monotone" dataKey="v" stroke={grafiekKleur} strokeWidth={2} fill="url(#effectGrad)" dot={false} activeDot={{ r: 4 }} />
                     </AreaChart>
                   </ResponsiveContainer>

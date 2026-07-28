@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, ReferenceLine } from 'recharts';
 import { SlidersHorizontal, GitCompare, Plus, ChevronDown, X, Check, Upload, Edit3 } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 import BeleggingDetail from '../components/BeleggingDetail';
@@ -167,6 +167,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   const [tijdperk, setTijdperk] = useState('1D');
   const [weergave, setWeergave] = useState('waarde');
   const [grafiekData, setGrafiekData] = useState([]);
+  const [portfolioVorigeSlot, setPortfolioVorigeSlot] = useState(null);
   const [grafiekLoading, setGrafiekLoading] = useState(false);
   const [vergelijkOpen, setVergelijkOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -211,13 +212,27 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       // 1D: echte intraday-reeks (per minuut), samengevoegd over alle posities
       if (tijdperk === '1D') {
         const intradayData = {};
+        const vorigeSlotPerSymbool = {};
         await Promise.all(beleggingVoorGrafiek.map(async (b) => {
           try {
             const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(b.symbol)}&tijdperk=1D`);
             const data = await res.json();
             if (data?.punten?.length > 1) intradayData[b.symbol] = data.punten;
+            if (data?.vorigeSlot != null) vorigeSlotPerSymbool[b.symbol] = data.vorigeSlot;
           } catch (e) {}
         }));
+
+        // Portfoliowaarde als alle posities nog op hun slotkoers van gisteren
+        // stonden — dit vormt de stippellijn "slot vorige dag" in de grafiek.
+        let portfolioSlot = 0;
+        let portfolioSlotVolledig = true;
+        beleggingVoorGrafiek.forEach(b => {
+          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+          const slot = vorigeSlotPerSymbool[b.symbol] ?? koersen[b.symbol]?.pc;
+          if (slot == null) { portfolioSlotVolledig = false; return; }
+          portfolioSlot += slot * b.aantal * factor;
+        });
+        setPortfolioVorigeSlot(portfolioSlotVolledig && beleggingVoorGrafiek.length > 0 ? Math.round(portfolioSlot * 100) / 100 : null);
 
         const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR', b.type));
 
@@ -302,6 +317,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       }
 
       // Bepaal API tijdperk
+      setPortfolioVorigeSlot(null);
       const apiTijdperk = getApiTijdperk(tijdperk, beleggingVoorGrafiek);
 
       // Helper: parse dd/mm/yyyy of yyyy-mm-dd naar Date
@@ -956,6 +972,15 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     );
                   }}
                 />
+                {tijdperk === '1D' && portfolioVorigeSlot != null && (
+                  <ReferenceLine
+                    y={portfolioVorigeSlot}
+                    stroke="var(--text-muted)"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{ value: `Slot vorige dag: €${portfolioVorigeSlot.toLocaleString('nl-BE')}`, position: 'insideTopLeft', fontSize: 11, fill: 'var(--text-muted)' }}
+                  />
+                )}
                 <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)" dot={(props) => {
                     const { cx, cy, payload, index } = props;
                     if (!payload || !payload.datum) return <g key={index}></g>;

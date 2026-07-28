@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { X, Loader, ExternalLink, Copy, Check } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 const TIJDPERKEN = ['1D', '1W', '1M', '1J', 'YTD', '3J', '5J', 'Max'];
 
@@ -300,6 +300,15 @@ export default function BeleggingDetail({ belegging, onClose }) {
                   formatter={v => [muntSym + v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 'Koers']}
                   contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }}
                 />
+                {tijdperk === '1D' && koers?.pc != null && (
+                  <ReferenceLine
+                    y={koers.pc}
+                    stroke="var(--text-muted)"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{ value: `Slot vorige dag: ${muntSym}${koers.pc.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, position: 'insideTopLeft', fontSize: 10, fill: 'var(--text-muted)' }}
+                  />
+                )}
                 <Area type="monotone" dataKey="prijs" stroke={grafiekKleur} strokeWidth={2} fill="url(#detailGrad)" dot={false} />
               </AreaChart>
             </ResponsiveContainer>
