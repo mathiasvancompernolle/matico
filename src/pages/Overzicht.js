@@ -955,6 +955,20 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     const puntD = datum ? new Date(datum) : null;
                     const beginPeriodeT = displayDataGefilterd.length > 0 && displayDataGefilterd[0].datum ? new Date(displayDataGefilterd[0].datum) : null;
 
+                    // Op de intraday-weergave (1D) tonen we geen aankoop-/verkoopmarkeringen:
+                    // een aankoop van vandaag zou daar een verwarrende sprong midden op de
+                    // lijn geven. Bij alle andere (langere) periodes tonen we ze wel.
+                    if (tijdperk === '1D') {
+                      return (
+                        <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
+                          <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{label}</div>
+                          <div style={{ fontWeight: 600, color: 'var(--accent)' }}>
+                            {t('ov_tooltip_portfolio')} : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                      );
+                    }
+
                     // Aankopen: actieve + (als niet inbezit-filter) verkochte beleggingen
                     const alleAankopen = [
                       ...beleggingVoorGrafiek,
@@ -1039,6 +1053,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 )}
                 <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)" dot={(props) => {
                     const { cx, cy, payload, index } = props;
+                    if (tijdperk === '1D') return <g key={index}></g>;
                     if (!payload || !payload.datum) return <g key={index}></g>;
                     const puntDatum = new Date(payload.datum);
                     const beginPeriode = displayDataGefilterd.length > 0 && displayDataGefilterd[0].datum ? new Date(displayDataGefilterd[0].datum) : null;
