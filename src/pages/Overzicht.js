@@ -742,8 +742,10 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   // Y-as: nette gehele getallen, vaste stapgrootte, Totaal start bij 0
   const { yDomain, yTicks } = (() => {
     if (displayData.length < 2) return { yDomain: ['auto', 'auto'], yTicks: undefined };
-    const min = Math.min(...displayData.map(d => d.waarde));
-    const max = Math.max(...displayData.map(d => d.waarde));
+    const waarden = displayData.map(d => d.waarde);
+    if (tijdperk === '1D' && portfolioVorigeSlot != null) waarden.push(portfolioVorigeSlot);
+    const min = Math.min(...waarden);
+    const max = Math.max(...waarden);
     const bodem = tijdperk === 'Totaal' ? 0 : min;
     const bereik = max - bodem;
     if (bereik === 0) return { yDomain: [0, max * 1.2], yTicks: undefined };

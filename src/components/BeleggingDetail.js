@@ -303,6 +303,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
                 {tijdperk === '1D' && koers?.pc != null && (
                   <ReferenceLine
                     y={koers.pc}
+                    ifOverflow="extendDomain"
                     stroke="var(--text-muted)"
                     strokeDasharray="4 4"
                     strokeWidth={1.5}

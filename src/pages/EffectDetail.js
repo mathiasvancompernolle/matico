@@ -263,6 +263,8 @@ export default function EffectDetail({ effect, onTerug }) {
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Geen data beschikbaar</div>
               ) : (() => {
                 const vals = grafiekData.map(d => d.v).filter(Boolean);
+                const toonVorigeSlot = periode === '1d' && vorigeSlot != null;
+                if (toonVorigeSlot) vals.push(vorigeSlot);
                 const bodem = Math.min(...vals);
                 const top = Math.max(...vals);
                 const bereik = top - bodem;
@@ -297,7 +299,7 @@ export default function EffectDetail({ effect, onTerug }) {
                       <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
                         tickFormatter={v => v.toLocaleString('nl-BE')} domain={yDomain} ticks={yTicks} width={55} />
                       <Tooltip content={<GrafiekTooltip />} />
-                      {periode === '1d' && vorigeSlot != null && (
+                      {toonVorigeSlot && (
                         <ReferenceLine
                           y={vorigeSlot}
                           stroke="var(--text-muted)"
