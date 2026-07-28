@@ -267,9 +267,14 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
               }
             });
+            const labelHuidig = intradayData[eersteSymbol][i].label;
+            const [uurHuidig, minHuidig] = (labelHuidig || '0:0').split(':').map(Number);
+            const tijdHuidig = new Date();
+            tijdHuidig.setHours(uurHuidig || 0, minHuidig || 0, 0, 0);
             return {
-              label: intradayData[eersteSymbol][i].label,
+              label: labelHuidig,
               datum: new Date().toISOString().split('T')[0],
+              tijd: tijdHuidig.getTime(),
               waarde: Math.round(totaalWaarde * 100) / 100,
               gesloten: !iemandOpen,
             };
@@ -318,8 +323,8 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         });
 
         setGrafiekData([
-          { label: vorigeLabel, waarde: Math.round(gisterenWaarde * 100) / 100, gesloten: !iemandOpen },
-          { label: 'Nu', waarde: Math.round((iemandOpen ? nuWaarde : gisterenWaarde) * 100) / 100, gesloten: !iemandOpen }
+          { label: vorigeLabel, tijd: vorigeD.getTime(), waarde: Math.round(gisterenWaarde * 100) / 100, gesloten: !iemandOpen },
+          { label: 'Nu', tijd: nu.getTime(), waarde: Math.round((iemandOpen ? nuWaarde : gisterenWaarde) * 100) / 100, gesloten: !iemandOpen }
         ]);
         setGrafiekLoading(false);
         return;
@@ -426,7 +431,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
             }
           });
 
-          return { label: punt.label, datum: punt.datum, waarde: Math.round(totaalWaarde * 100) / 100 };
+          return { label: punt.label, datum: punt.datum, tijd: puntDatum ? puntDatum.getTime() : null, waarde: Math.round(totaalWaarde * 100) / 100 };
         })
         .filter(p => p.waarde > 0);
 
@@ -475,6 +480,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
             gecombineerd.unshift({
               label: `${datumObj.getDate()} ${maandKortInterp[datumObj.getMonth()]}`,
               datum: datumStr,
+              tijd: datumObj.getTime(),
               waarde: Math.round(benaderdeWaarde * 100) / 100,
             });
           }
@@ -501,6 +507,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         gecombineerd.splice(voor.index + 1, 0, {
           label: `${datumObj.getDate()} ${maandKortInterp[datumObj.getMonth()]}`,
           datum: datumStr,
+          tijd: datumObj.getTime(),
           waarde: Math.round(geinterpoleerdeWaarde * 100) / 100,
         });
       });
@@ -530,6 +537,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               gecombineerd.unshift({
                 label: `${dagErvoor.getDate()} ${maandKortInterp[dagErvoor.getMonth()]}`,
                 datum: dagErvoorStr,
+                tijd: dagErvoor.getTime(),
                 waarde: 0,
               });
             }
@@ -556,6 +564,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           gecombineerd.push({
             label: `${vandaagObj.getDate()} ${maandKortVandaag[vandaagObj.getMonth()]}`,
             datum: vandaagStr,
+            tijd: vandaagObj.getTime(),
             waarde: Math.round(liveWaarde * 100) / 100,
           });
         }
@@ -676,30 +685,20 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   // ── Slimme X-as: meet werkelijk datumbereik, kies dan de beste interval ──
   const { xTicks, xTickFormatter } = (() => {
     const maandKort = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-    const data = displayDataGefilterd;
+    const data = displayDataGefilterd.filter(d => d.tijd != null);
     if (data.length < 2) return { xTicks: undefined, xTickFormatter: v => v };
 
-    const eersteD = data.find(d => d.datum)?.datum ? new Date(data.find(d => d.datum).datum) : null;
-    const laatsteD = [...data].reverse().find(d => d.datum)?.datum ? new Date([...data].reverse().find(d => d.datum).datum) : null;
-    if (!eersteD || !laatsteD) return { xTicks: undefined, xTickFormatter: v => v };
-
+    const eersteD = new Date(data[0].tijd);
+    const laatsteD = new Date(data[data.length - 1].tijd);
     const dagen = (laatsteD - eersteD) / (1000 * 60 * 60 * 24);
-
-    // Kies groeperingsstrategie op basis van werkelijk bereik
-    let groepeerFn, formatFn;
 
     if (dagen <= 2) {
       // Enkele dag(en): dynamische stapgrootte die vanzelf opschaalt naarmate
       // de dag vordert en er meer punten bijkomen — begint fijn (om de 10
       // min) en schakelt pas over naar grovere stappen (30 min, dan een uur)
       // zodra dat nodig is om de as leesbaar te houden.
-      const naarMinuten = (label) => {
-        const [u, m] = (label || '0:0').split(':').map(Number);
-        return (u || 0) * 60 + (m || 0);
-      };
-      const eersteMin = naarMinuten(data[0].label);
-      const laatsteMin = naarMinuten(data[data.length - 1].label);
-      const spanMinuten = laatsteMin - eersteMin;
+      const naarMinuten = (t) => { const d = new Date(t); return d.getHours() * 60 + d.getMinutes(); };
+      const spanMinuten = naarMinuten(data[data.length - 1].tijd) - naarMinuten(data[0].tijd);
       const doelTicks = 16;
       const opties = [10, 30, 60];
       let stap = opties[opties.length - 1];
@@ -708,64 +707,47 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       }
       const gezienBuckets = new Set();
       const ticks = data.filter(d => {
-        const bucket = Math.floor(naarMinuten(d.label) / stap);
+        const bucket = Math.floor(naarMinuten(d.tijd) / stap);
         if (gezienBuckets.has(bucket)) return false;
         gezienBuckets.add(bucket);
         return true;
-      }).map(d => d.label);
-      return { xTicks: ticks, xTickFormatter: v => v };
+      }).map(d => d.tijd);
+      return { xTicks: ticks, xTickFormatter: (t) => new Date(t).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' }) };
     }
+
+    // Groepeerstrategie op basis van werkelijk bereik
+    let groepeerFn, formatFn;
 
     if (dagen <= 14) {
-      // Tot 2 weken: elke dag
-      groepeerFn = d => new Date(d.datum).toDateString();
-      formatFn = d => { const dt = new Date(d.datum); return `${dt.getDate()} ${maandKort[dt.getMonth()]}`; };
+      groepeerFn = (t) => new Date(t).toDateString();
+      formatFn = (dt) => `${dt.getDate()} ${maandKort[dt.getMonth()]}`;
     } else if (dagen <= 60) {
-      // Tot 2 maanden: elke 7 dagen op vaste intervallen
       const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-      groepeerFn = d => Math.floor(new Date(d.datum).getTime() / msPerWeek);
-      formatFn = d => { const dt = new Date(d.datum); return `${dt.getDate()} ${maandKort[dt.getMonth()]}`; };
+      groepeerFn = (t) => Math.floor(t / msPerWeek);
+      formatFn = (dt) => `${dt.getDate()} ${maandKort[dt.getMonth()]}`;
     } else if (dagen <= 400) {
-      // Tot ~1 jaar: eerste handelsdag van elke maand
-      groepeerFn = d => { const dt = new Date(d.datum); return `${dt.getFullYear()}-${dt.getMonth()}`; };
-      formatFn = d => {
-        const dt = new Date(d.datum);
-        if (dt.getMonth() === 0) return `jan '${String(dt.getFullYear()).slice(2)}`;
-        return maandKort[dt.getMonth()];
-      };
+      groepeerFn = (t) => { const dt = new Date(t); return `${dt.getFullYear()}-${dt.getMonth()}`; };
+      formatFn = (dt) => dt.getMonth() === 0 ? `jan '${String(dt.getFullYear()).slice(2)}` : maandKort[dt.getMonth()];
     } else if (dagen <= 900) {
-      // Tot ~2.5 jaar: elk kwartaal
-      groepeerFn = d => { const dt = new Date(d.datum); return `${dt.getFullYear()}-Q${Math.floor(dt.getMonth()/3)}`; };
-      formatFn = d => {
-        const dt = new Date(d.datum);
+      groepeerFn = (t) => { const dt = new Date(t); return `${dt.getFullYear()}-Q${Math.floor(dt.getMonth()/3)}`; };
+      formatFn = (dt) => {
         const kwartaalMaand = Math.floor(dt.getMonth()/3) * 3;
-        if (kwartaalMaand === 0) return `${dt.getFullYear()}`;
-        return maandKort[kwartaalMaand];
+        return kwartaalMaand === 0 ? `${dt.getFullYear()}` : maandKort[kwartaalMaand];
       };
     } else {
-      // Meer dan 2.5 jaar: elk jaar
-      groepeerFn = d => new Date(d.datum).getFullYear();
-      formatFn = d => String(new Date(d.datum).getFullYear());
+      groepeerFn = (t) => new Date(t).getFullYear();
+      formatFn = (dt) => String(dt.getFullYear());
     }
 
-    // Filter data tot 1 tick per groep
     const gezien = new Set();
     const ticks = data.filter(d => {
-      if (!d.datum) return false;
-      const sleutel = groepeerFn(d);
+      const sleutel = groepeerFn(d.tijd);
       if (gezien.has(sleutel)) return false;
       gezien.add(sleutel);
       return true;
-    }).map(d => d.label);
+    }).map(d => d.tijd);
 
-    // Formatter zoekt het datapunt terug op label
-    const formatter = (label) => {
-      const punt = data.find(d => d.label === label);
-      if (!punt?.datum) return label;
-      return formatFn(punt);
-    };
-
-    return { xTicks: ticks, xTickFormatter: formatter };
+    return { xTicks: ticks, xTickFormatter: (t) => formatFn(new Date(t)) };
   })();
   const beursOpenPortfolio = beleggingen.some(b => isBeursOpen(b.munt || 'EUR', b.type));
 
@@ -1079,7 +1061,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} ticks={xTicks} tickFormatter={xTickFormatter} interval={0} />
+                <XAxis dataKey="tijd" type="number" domain={['dataMin', 'dataMax']} scale="time" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} ticks={xTicks} tickFormatter={xTickFormatter} interval={0} allowDuplicatedCategory={false} />
                 <YAxis
                   tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
                   tickFormatter={v => '€' + Math.round(v).toLocaleString('nl-BE')}
@@ -1089,6 +1071,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                   content={({ active, payload, label }) => {
                     if (!active || !payload?.length) return null;
                     const datum = payload[0]?.payload?.datum;
+                    const puntLabel = payload[0]?.payload?.label ?? label;
                     const waarde = payload[0]?.value;
                     const puntD = datum ? new Date(datum) : null;
                     const beginPeriodeT = displayDataGefilterd.length > 0 && displayDataGefilterd[0].datum ? new Date(displayDataGefilterd[0].datum) : null;
@@ -1099,7 +1082,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     if (tijdperk === '1D') {
                       return (
                         <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
-                          <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{label}</div>
+                          <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{puntLabel}</div>
                           <div style={{ fontWeight: 600, color: 'var(--accent)' }}>
                             {t('ov_tooltip_portfolio')} : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
@@ -1139,7 +1122,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     const heeftEvents = aankopenOpDatum.length > 0 || verkopenOpDatum.length > 0;
                     return (
                       <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
-                        <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{label}</div>
+                        <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{puntLabel}</div>
                         <div style={{ fontWeight: 600, color: 'var(--accent)', marginBottom: heeftEvents ? 8 : 0 }}>
                           {t('ov_tooltip_portfolio')} : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>

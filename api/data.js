@@ -902,9 +902,9 @@ module.exports = async function handler(req, res) {
         : tijdperk === '1W' ? '1d'
         : tijdperk === '1M' ? '1d'
         : tijdperk === '3M' ? '1d'
-        : tijdperk === '6M' ? '1wk'
-        : tijdperk === '1J' ? '1wk'
-        : tijdperk === 'YTD' ? '1wk'
+        : tijdperk === '6M' ? '1d'
+        : tijdperk === '1J' ? '1d'
+        : tijdperk === 'YTD' ? '1d'
         : '1wk';
 
       try {
