@@ -295,7 +295,7 @@ export default function EffectDetail({ effect, onTerug }) {
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Geen data beschikbaar</div>
               ) : (() => {
                 const vals = weergaveData.map(d => d.v).filter(Boolean);
-                const toonVorigeSlot = periode === '1d' && vorigeSlot != null;
+                const toonVorigeSlot = periode === '1d' && vorigeSlot != null && !isCrypto;
                 if (toonVorigeSlot) vals.push(vorigeSlot);
                 const bodem = Math.min(...vals);
                 const top = Math.max(...vals);
@@ -316,6 +316,20 @@ export default function EffectDetail({ effect, onTerug }) {
                   yTicks = [];
                   for (let t = axisMin; t <= axisMax + niceStap * 0.01; t += niceStap) yTicks.push(Math.round(t * 100) / 100);
                 }
+                let xTicks, xInterval;
+                if (periode === '1d') {
+                  const gezienUren = new Set();
+                  xTicks = weergaveData.filter(d => {
+                    const uur = (d.label || '').split(':')[0];
+                    if (!uur || gezienUren.has(uur)) return false;
+                    gezienUren.add(uur);
+                    return true;
+                  }).map(d => d.label);
+                  xInterval = 0;
+                } else {
+                  xTicks = undefined;
+                  xInterval = Math.floor(weergaveData.length / 6);
+                }
                 return (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={segmentData || weergaveData} margin={{ top: 5, right: 8, bottom: 5, left: 8 }}>
@@ -327,7 +341,7 @@ export default function EffectDetail({ effect, onTerug }) {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
                       <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
-                        interval={Math.floor(weergaveData.length / 6)} />
+                        ticks={xTicks} interval={xInterval} />
                       <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
                         tickFormatter={v => v.toLocaleString('nl-BE')} domain={yDomain} ticks={yTicks} width={55} />
                       <Tooltip content={<GrafiekTooltip />} />

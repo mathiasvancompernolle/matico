@@ -153,8 +153,13 @@ export default function BeleggingDetail({ belegging, onClose }) {
     let groepeerFn, formatFn;
 
     if (dagen <= 2) {
-      const stap = Math.max(1, Math.floor(data.length / 6));
-      const ticks = data.filter((_, i) => i % stap === 0 || i === data.length - 1).map(d => d.label);
+      const gezienUren = new Set();
+      const ticks = data.filter(d => {
+        const uur = (d.label || '').split(':')[0];
+        if (!uur || gezienUren.has(uur)) return false;
+        gezienUren.add(uur);
+        return true;
+      }).map(d => d.label);
       return { detailXTicks: ticks, detailXFormatter: v => v };
     } else if (dagen <= 14) {
       groepeerFn = d => new Date(d.datum).toDateString();
@@ -300,7 +305,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
                   formatter={v => [muntSym + v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 'Koers']}
                   contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }}
                 />
-                {tijdperk === '1D' && koers?.pc != null && (
+                {tijdperk === '1D' && koers?.pc != null && belegging.type !== 'crypto' && (
                   <ReferenceLine
                     y={koers.pc}
                     ifOverflow="extendDomain"
