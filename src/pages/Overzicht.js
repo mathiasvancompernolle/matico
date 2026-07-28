@@ -138,7 +138,10 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
   // Toon NIET als: weekend of nieuwe dag begonnen zonder dat beurs al open was
-  const isBeursOpen = (munt) => {
+  const isBeursOpen = (munt, type) => {
+    // Crypto handelt 24/7, het hele jaar door — geen "beurs gesloten"-concept.
+    if (type === 'crypto') return true;
+
     const nu = new Date();
     // Gebruik UTC-dag (consistent met de UTC-tijdscheck hieronder), anders loopt
     // dit rond middernacht lokale tijd (CEST = UTC+2) uit elkaar.
@@ -216,7 +219,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           } catch (e) {}
         }));
 
-        const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR'));
+        const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR', b.type));
 
         if (Object.keys(intradayData).length > 0) {
           // Neem de reeks met de meeste punten als gemeenschappelijke tijdsas.
@@ -569,11 +572,11 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
     return { xTicks: ticks, xTickFormatter: formatter };
   })();
-  const beursOpenPortfolio = beleggingen.some(b => isBeursOpen(b.munt || 'EUR'));
+  const beursOpenPortfolio = beleggingen.some(b => isBeursOpen(b.munt || 'EUR', b.type));
 
   // Voor 1D: bereken winst alleen op basis van beurzen die vandaag al open waren
   const dagWinst1D = beleggingen.reduce((s, b) => {
-    if (!isBeursOpen(b.munt || 'EUR')) return s; // sla gesloten beurzen over
+    if (!isBeursOpen(b.munt || 'EUR', b.type)) return s; // sla gesloten beurzen over
     const koers = koersen[b.symbol];
     if (!koers) return s;
     const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
@@ -581,7 +584,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   }, 0);
 
   const dagWaarde1D = beleggingen.reduce((s, b) => {
-    if (!isBeursOpen(b.munt || 'EUR')) return s;
+    if (!isBeursOpen(b.munt || 'EUR', b.type)) return s;
     const koers = koersen[b.symbol];
     const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
     return s + (koers ? koers.pc : b.kostprijs) * b.aantal * factor;
@@ -1042,7 +1045,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               const kostprijs = (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * factor;
               const winstTotaal = huidigeWaarde - kostprijs;
               const winstTotaalPct = kostprijs > 0 ? (winstTotaal / kostprijs) * 100 : 0;
-              const beursOpen = isBeursOpen(b.munt || 'EUR');
+              const beursOpen = isBeursOpen(b.munt || 'EUR', b.type);
               const dagVRaw = koers ? (koers.c - koers.pc) * b.aantal * factor : 0;
               const dagVPctRaw = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
               const dagV = beursOpen ? dagVRaw : 0;

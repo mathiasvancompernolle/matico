@@ -35,6 +35,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
 
   // Check of beurs open is voor dit aandeel
   const isBeursOpenNu = () => {
+    if (belegging.type === 'crypto') return true; // crypto handelt 24/7
     const nu = new Date();
     const dag = nu.getDay();
     if (dag === 0 || dag === 6) return false; // weekend
@@ -125,6 +126,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
 
   // Check of beurs open is voor dit aandeel
   const isBeursOpenDetail = () => {
+    if (belegging.type === 'crypto') return true; // crypto handelt 24/7
     const nu = new Date();
     const dag = nu.getDay();
     if (dag === 0 || dag === 6) return false;
