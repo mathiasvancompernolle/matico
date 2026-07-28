@@ -206,17 +206,23 @@ export default function BeleggingToevoegen({ onClose }) {
       const nativeMunt = bepaalNativeMunt(r);
       const bedragInNativeMunt = await zetBedragOmNaarNativeMunt(ingevoerdBedrag, ingevoerdeMunt, nativeMunt, f.datum);
 
-      const geschatAantal = Math.max(1, Math.round(bedragInNativeMunt / historischeKoers));
-      const kostprijsPerStuk = bedragInNativeMunt / geschatAantal;
+      // Ga uit van een realistisch gemiddeld kostenpercentage (i.p.v. 0%
+      // kosten) om het aantal stuks te schatten, en scheid nadien koers en
+      // kosten netjes: kostprijs = de échte historische koers, het verschil
+      // met je ingevulde bedrag komt in transactiekosten terecht.
+      const effectType = r.type || type || 'aandeel';
+      const kostenPct = GEMIDDELD_KOSTENPERCENTAGE[effectType] ?? 0.01;
+      const geschatAantal = Math.max(1, Math.round(bedragInNativeMunt / (historischeKoers * (1 + kostenPct))));
+      const geschatteTransactiekosten = Math.max(0, bedragInNativeMunt - (geschatAantal * historischeKoers));
       const basis = {
         id: Date.now() + Math.random(),
         symbol: r.symbol,
         naam: r.naam || r.symbol,
         logo: r.logo || '',
-        type: r.type || type || 'aandeel',
+        type: effectType,
         datum: f.datum,
-        kostprijs: kostprijsPerStuk,
-        transactiekosten: 0,
+        kostprijs: historischeKoers,
+        transactiekosten: Math.round(geschatteTransactiekosten * 100) / 100,
         aantal: geschatAantal,
         munt: nativeMunt,
         geschat: true,
@@ -269,6 +275,16 @@ export default function BeleggingToevoegen({ onClose }) {
 
   // Zoekt de laatst-bekende koers op (of net vóór) een bepaalde datum op —
   // voor het geval de exacte datum geen handelsdag was (weekend/feestdag).
+  // Gemiddeld kostenpercentage bij Belgische brokers (beurstaks + brokerkost
+  // samen), gebruikt om bij "Beperkte info" een realistischer aantal stuks
+  // te schatten dan wanneer we van 0% kosten zouden uitgaan. Aandelen: 0,35%
+  // beurstaks + een typische brokerkost, samen goed voor pakweg 1%. ETF's:
+  // meestal lagere beurstaks (0,12% bij de populaire, niet-Belgisch
+  // geregistreerde trackers) en vaak goedkopere/gratis ETF-tarieven, samen
+  // pakweg 0,5%. Dit is een gemiddelde benadering, geen exacte berekening
+  // voor één specifieke broker.
+  const GEMIDDELD_KOSTENPERCENTAGE = { aandeel: 0.01, etf: 0.005 };
+
   const haalHistorischeKoers = async (symbol, datumStr) => {
     const doelDatum = new Date(datumStr);
     const van = Math.floor(doelDatum.getTime() / 1000) - 5 * 24 * 60 * 60;
@@ -345,8 +361,9 @@ export default function BeleggingToevoegen({ onClose }) {
     const nativeMunt = bepaalNativeMunt(geselecteerd);
     const bedragInNativeMunt = await zetBedragOmNaarNativeMunt(aankoopbedrag, 'EUR', nativeMunt, beperkteForm.aankoopdatum);
 
-    const geschatAantal = Math.max(1, Math.round(bedragInNativeMunt / historischeKoers));
-    const kostprijsPerStuk = bedragInNativeMunt / geschatAantal;
+    const kostenPct = GEMIDDELD_KOSTENPERCENTAGE[type] ?? 0.01;
+    const geschatAantal = Math.max(1, Math.round(bedragInNativeMunt / (historischeKoers * (1 + kostenPct))));
+    const geschatteTransactiekosten = Math.max(0, bedragInNativeMunt - (geschatAantal * historischeKoers));
 
     const basis = {
       id: Date.now(),
@@ -355,8 +372,8 @@ export default function BeleggingToevoegen({ onClose }) {
       logo: geselecteerd.logo || '',
       type,
       datum: beperkteForm.aankoopdatum,
-      kostprijs: kostprijsPerStuk,
-      transactiekosten: 0,
+      kostprijs: historischeKoers,
+      transactiekosten: Math.round(geschatteTransactiekosten * 100) / 100,
       aantal: geschatAantal,
       munt: nativeMunt,
       geschat: true,
