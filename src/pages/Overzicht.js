@@ -423,6 +423,78 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         })
         .filter(p => p.waarde > 0);
 
+      // Elke unieke aankoop-/verkoopdatum krijgt een eigen punt op de exacte
+      // datum, ook als dat tussen twee bestaande (bv. wekelijkse) datapunten
+      // in valt — i.p.v. de gebeurtenis te laten aankleven aan het
+      // dichtstbijzijnde bestaande punt, wat meerdere verschillende datums
+      // ten onrechte samen zou tonen.
+      const gebeurtenisDatums = new Set();
+      beleggingVoorGrafiek.forEach(b => { if (b.datum) gebeurtenisDatums.add(new Date(b.datum).toISOString().slice(0, 10)); });
+      verkochtVoorGrafiek.forEach(b => {
+        if (b.datum) gebeurtenisDatums.add(new Date(b.datum).toISOString().slice(0, 10));
+        const vd = parseDatum(b.verkoopdatum);
+        if (vd && !isNaN(vd)) gebeurtenisDatums.add(vd.toISOString().slice(0, 10));
+      });
+
+      const maandKortInterp = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+      gebeurtenisDatums.forEach(datumStr => {
+        const datumObj = new Date(datumStr);
+        if (isNaN(datumObj)) return;
+        if (gecombineerd.some(p => p.datum === datumStr)) return; // al een exact punt aanwezig
+        const eerste = gecombineerd.find(p => p.datum);
+        const laatste = [...gecombineerd].reverse().find(p => p.datum);
+        if (!eerste || !laatste) return;
+        if (datumObj > new Date(laatste.datum)) return; // na het laatste punt: niet relevant
+
+        // Vóór het allereerste bekende grafiekpunt (bv. je allereerste aankoop,
+        // van vóór de vroegste candle-data die we ophaalden): benader de
+        // waarde op die datum met de aankoopprijs van wat er dan al gekocht was.
+        if (datumObj < new Date(eerste.datum)) {
+          let benaderdeWaarde = 0;
+          beleggingVoorGrafiek.forEach(b => {
+            if (!b.datum || new Date(b.datum) > datumObj) return;
+            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+            benaderdeWaarde += b.kostprijs * b.aantal * factor;
+          });
+          verkochtVoorGrafiek.forEach(b => {
+            if (!b.datum || new Date(b.datum) > datumObj) return;
+            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+            benaderdeWaarde += b.kostprijs * b.aantalVerkocht * factor;
+          });
+          if (benaderdeWaarde > 0) {
+            gecombineerd.unshift({
+              label: `${datumObj.getDate()} ${maandKortInterp[datumObj.getMonth()]}`,
+              datum: datumStr,
+              waarde: Math.round(benaderdeWaarde * 100) / 100,
+            });
+          }
+          return;
+        }
+
+        let voor = null, na = null;
+        for (let i = 0; i < gecombineerd.length - 1; i++) {
+          const d1 = gecombineerd[i].datum ? new Date(gecombineerd[i].datum) : null;
+          const d2 = gecombineerd[i + 1].datum ? new Date(gecombineerd[i + 1].datum) : null;
+          if (d1 && d2 && datumObj >= d1 && datumObj <= d2) {
+            voor = { punt: gecombineerd[i], datum: d1, index: i };
+            na = { punt: gecombineerd[i + 1], datum: d2 };
+            break;
+          }
+        }
+        if (!voor || !na) return;
+
+        const totaalSpanne = na.datum - voor.datum;
+        const positieSpanne = datumObj - voor.datum;
+        const fractie = totaalSpanne > 0 ? positieSpanne / totaalSpanne : 0;
+        const geinterpoleerdeWaarde = voor.punt.waarde + (na.punt.waarde - voor.punt.waarde) * fractie;
+
+        gecombineerd.splice(voor.index + 1, 0, {
+          label: `${datumObj.getDate()} ${maandKortInterp[datumObj.getMonth()]}`,
+          datum: datumStr,
+          waarde: Math.round(geinterpoleerdeWaarde * 100) / 100,
+        });
+      });
+
       // Yahoo's dagelijkse candle-data toont de lopende, nog niet afgesloten
       // handelsdag soms nog niet — waardoor de grafiek een dag zou achterlopen
       // op het live cijfer bovenaan. Ontbreekt "vandaag" als laatste punt, dan
@@ -1003,35 +1075,23 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       }).map(b => ({ ...b, aantal: b.aantalVerkocht })))
                     ];
                     const aankopenOpDatum = alleAankopen.filter(b => {
-                      if (!b.datum || !puntD) return false;
-                      const aankoopD = new Date(b.datum);
+                      if (!b.datum || !datum) return false;
+                      const aankoopDStr = new Date(b.datum).toISOString().slice(0, 10);
                       // Bij Totaal/Laatste: beginPeriode IS de aankoopdatum, dus niet filteren
                       const filterOpBegin = tijdperk !== 'Totaal' && tijdperk !== 'Laatste';
-                      if (filterOpBegin && beginPeriodeT && aankoopD < beginPeriodeT) return false;
-                      const verschilDit = Math.abs(puntD - aankoopD);
-                      const dichtstbij = displayDataGefilterd.reduce((best, p) => {
-                        if (!p.datum) return best;
-                        const v = Math.abs(new Date(p.datum) - aankoopD);
-                        return v < best ? v : best;
-                      }, Infinity);
-                      return verschilDit === dichtstbij;
+                      if (filterOpBegin && beginPeriodeT && new Date(b.datum) < beginPeriodeT) return false;
+                      return aankoopDStr === datum;
                     });
 
                     const verkopenOpDatum = (verkochteBeleggingen || []).filter(b => {
-                      if (!b.verkoopdatum || !puntD) return false;
+                      if (!b.verkoopdatum || !datum) return false;
                       const delen = b.verkoopdatum.split('/');
                       const verkoopD = delen.length === 3
                         ? new Date(`${delen[2]}-${delen[1]}-${delen[0]}`)
                         : new Date(b.verkoopdatum);
                       if (isNaN(verkoopD)) return false;
                       if (beginPeriodeT && verkoopD < beginPeriodeT) return false;
-                      const verschilDit = Math.abs(puntD - verkoopD);
-                      const dichtstbij = displayDataGefilterd.reduce((best, p) => {
-                        if (!p.datum) return best;
-                        const v = Math.abs(new Date(p.datum) - verkoopD);
-                        return v < best ? v : best;
-                      }, Infinity);
-                      return verschilDit === dichtstbij;
+                      return verkoopD.toISOString().slice(0, 10) === datum;
                     });
 
                     const heeftEvents = aankopenOpDatum.length > 0 || verkopenOpDatum.length > 0;
@@ -1093,17 +1153,11 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     ];
                     const isAankoop = alleAankoopDots.some(b => {
                       if (!b.datum) return false;
-                      const aankoopD = new Date(b.datum);
+                      const aankoopDStr = new Date(b.datum).toISOString().slice(0, 10);
                       // Bij Totaal/Laatste: beginPeriode IS de aankoopdatum, dus niet filteren
                       const filterOpBP = tijdperk !== 'Totaal' && tijdperk !== 'Laatste';
-                      if (filterOpBP && beginPeriode && aankoopD < beginPeriode) return false;
-                      const verschilDit = Math.abs(puntDatum - aankoopD);
-                      const dichtstbij = displayDataGefilterd.reduce((best, p) => {
-                        if (!p.datum) return best;
-                        const v = Math.abs(new Date(p.datum) - aankoopD);
-                        return v < best ? v : best;
-                      }, Infinity);
-                      return verschilDit === dichtstbij;
+                      if (filterOpBP && beginPeriode && new Date(b.datum) < beginPeriode) return false;
+                      return aankoopDStr === payload.datum;
                     });
 
                     // Check verkoop dot (niet tonen bij inbezit-filter)
@@ -1116,13 +1170,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                         : new Date(b.verkoopdatum);
                       if (isNaN(verkoopD)) return false;
                       if (beginPeriode && verkoopD < beginPeriode) return false;
-                      const verschilDit = Math.abs(puntDatum - verkoopD);
-                      const dichtstbij = displayDataGefilterd.reduce((best, p) => {
-                        if (!p.datum) return best;
-                        const v = Math.abs(new Date(p.datum) - verkoopD);
-                        return v < best ? v : best;
-                      }, Infinity);
-                      return verschilDit === dichtstbij;
+                      return verkoopD.toISOString().slice(0, 10) === payload.datum;
                     });
 
                     if (isVerkoop) {
