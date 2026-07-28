@@ -166,6 +166,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   };
   const [tijdperk, setTijdperk] = useState('1D');
   const [weergave, setWeergave] = useState('waarde');
+  const [toonBuitenBeursuren, setToonBuitenBeursuren] = useState(false);
   const [grafiekData, setGrafiekData] = useState([]);
   const [portfolioVorigeSlot, setPortfolioVorigeSlot] = useState(null);
   const [grafiekLoading, setGrafiekLoading] = useState(false);
@@ -507,10 +508,32 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
   const displayData = weergave === 'waarde' ? grafiekData : winstData;
 
+  // Crypto handelt 24/7 — standaard tonen we in de portfoliografiek enkel
+  // 9u-23u (Belgische tijd), met een knop om ook de volledige 24u te zien.
+  // Bij die volledige weergave maken we visueel onderscheid tussen "beurzen
+  // open" en "enkel crypto beweegt".
+  const heeftCrypto = beleggingVoorGrafiek.some(b => b.type === 'crypto');
+  const binnenBeursurenPortfolio = (label) => {
+    const uur = parseInt((label || '').split(':')[0], 10);
+    return !isNaN(uur) && uur >= 9 && uur < 23;
+  };
+  const toontCryptoFilterPortfolio = tijdperk === '1D' && heeftCrypto;
+  const displayDataGefilterd = (toontCryptoFilterPortfolio && !toonBuitenBeursuren)
+    ? displayData.filter(d => binnenBeursurenPortfolio(d.label))
+    : displayData;
+  const segmentDataPortfolio = (toontCryptoFilterPortfolio && toonBuitenBeursuren)
+    ? displayDataGefilterd.map((d, i, arr) => {
+        const isBinnen = binnenBeursurenPortfolio(d.label);
+        const buurAnders = (arr[i - 1] && binnenBeursurenPortfolio(arr[i - 1].label) !== isBinnen)
+          || (arr[i + 1] && binnenBeursurenPortfolio(arr[i + 1].label) !== isBinnen);
+        return { ...d, waardeBinnen: (isBinnen || buurAnders) ? d.waarde : null, waardeBuiten: (!isBinnen || buurAnders) ? d.waarde : null };
+      })
+    : null;
+
   // ── Slimme X-as: meet werkelijk datumbereik, kies dan de beste interval ──
   const { xTicks, xTickFormatter } = (() => {
     const maandKort = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-    const data = displayData;
+    const data = displayDataGefilterd;
     if (data.length < 2) return { xTicks: undefined, xTickFormatter: v => v };
 
     const eersteD = data.find(d => d.datum)?.datum ? new Date(data.find(d => d.datum).datum) : null;
@@ -730,19 +753,19 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   })();
   const periodeTekst = tijdperk === '1D' ? t('ov_prestatie_vandaag') : tijdperk === '1W' ? t('ov_prestatie_week') : tijdperk === '1M' ? t('ov_prestatie_maand') : tijdperk === '1J' ? t('ov_prestatie_jaar') : tijdperk === 'YTD' ? t('ov_prestatie_kalenderjaar') : tijdperk === 'Laatste' ? t('ov_prestatie_laatste') : t('ov_prestatie_eerste');
   const beursGesloten1D = tijdperk === '1D' && !beursOpenPortfolio;
-  // Als beurs gesloten: forceer platte displayData zodat grafiek recht is
-  const displayDataEff = beursGesloten1D && displayData.length > 0
-    ? displayData.map(d => ({ ...d, waarde: displayData[0].waarde }))
-    : displayData;
+  // Als beurs gesloten: forceer platte displayDataGefilterd zodat grafiek recht is
+  const displayDataEff = beursGesloten1D && displayDataGefilterd.length > 0
+    ? displayDataGefilterd.map(d => ({ ...d, waarde: displayDataGefilterd[0].waarde }))
+    : displayDataGefilterd;
   const grafiekKleur = beursGesloten1D
     ? '#94a3b8'
-    : displayData.length > 1 && displayData[displayData.length-1]?.waarde >= displayData[0]?.waarde ? '#1e3a8a' : '#ef4444';
+    : displayDataGefilterd.length > 1 && displayDataGefilterd[displayDataGefilterd.length-1]?.waarde >= displayDataGefilterd[0]?.waarde ? '#1e3a8a' : '#ef4444';
 
   // Y-as domein: altijd strak rond de data, nooit vanaf 0
   // Y-as: nette gehele getallen, vaste stapgrootte, Totaal start bij 0
   const { yDomain, yTicks } = (() => {
-    if (displayData.length < 2) return { yDomain: ['auto', 'auto'], yTicks: undefined };
-    const waarden = displayData.map(d => d.waarde);
+    if (displayDataGefilterd.length < 2) return { yDomain: ['auto', 'auto'], yTicks: undefined };
+    const waarden = displayDataGefilterd.map(d => d.waarde);
     if (tijdperk === '1D' && portfolioVorigeSlot != null) waarden.push(portfolioVorigeSlot);
     const min = Math.min(...waarden);
     const max = Math.max(...waarden);
@@ -807,12 +830,22 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         </div>
       </div>
 
-      <div style={{ padding: '0 32px', marginBottom: 24 }}>
+      <div style={{ padding: '0 32px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
         <div className="time-tabs" style={{ display: 'inline-flex' }}>
           {TIJDPERKEN.map(t => (
             <button key={t} className={`time-tab ${tijdperk === t ? 'active' : ''}`} onClick={() => setTijdperk(t)}>{t}</button>
           ))}
         </div>
+        {toontCryptoFilterPortfolio && (
+          <button onClick={() => setToonBuitenBeursuren(v => !v)} style={{
+            padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)',
+            background: toonBuitenBeursuren ? 'var(--accent-bg)' : 'transparent',
+            color: toonBuitenBeursuren ? 'var(--accent)' : 'var(--text-muted)',
+            fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+          }}>
+            {toonBuitenBeursuren ? '✓ ' : ''}Toon crypto buiten beursuren
+          </button>
+        )}
       </div>
 
       <div style={{ padding: '0 32px' }}>
@@ -882,7 +915,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 </div>
               )}
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={displayDataEff} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+              <AreaChart data={segmentDataPortfolio || displayDataEff} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
                 <defs>
                   <linearGradient id="portfolioGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={grafiekKleur} stopOpacity={0.15} />
@@ -902,7 +935,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     const datum = payload[0]?.payload?.datum;
                     const waarde = payload[0]?.value;
                     const puntD = datum ? new Date(datum) : null;
-                    const beginPeriodeT = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
+                    const beginPeriodeT = displayDataGefilterd.length > 0 && displayDataGefilterd[0].datum ? new Date(displayDataGefilterd[0].datum) : null;
 
                     // Aankopen: actieve + (als niet inbezit-filter) verkochte beleggingen
                     const alleAankopen = [
@@ -920,7 +953,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       const filterOpBegin = tijdperk !== 'Totaal' && tijdperk !== 'Laatste';
                       if (filterOpBegin && beginPeriodeT && aankoopD < beginPeriodeT) return false;
                       const verschilDit = Math.abs(puntD - aankoopD);
-                      const dichtstbij = displayData.reduce((best, p) => {
+                      const dichtstbij = displayDataGefilterd.reduce((best, p) => {
                         if (!p.datum) return best;
                         const v = Math.abs(new Date(p.datum) - aankoopD);
                         return v < best ? v : best;
@@ -937,7 +970,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       if (isNaN(verkoopD)) return false;
                       if (beginPeriodeT && verkoopD < beginPeriodeT) return false;
                       const verschilDit = Math.abs(puntD - verkoopD);
-                      const dichtstbij = displayData.reduce((best, p) => {
+                      const dichtstbij = displayDataGefilterd.reduce((best, p) => {
                         if (!p.datum) return best;
                         const v = Math.abs(new Date(p.datum) - verkoopD);
                         return v < best ? v : best;
@@ -983,11 +1016,14 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     label={{ value: `Slot vorige dag: €${portfolioVorigeSlot.toLocaleString('nl-BE')}`, position: 'insideTopLeft', fontSize: 11, fill: 'var(--text-muted)' }}
                   />
                 )}
+                {segmentDataPortfolio && (
+                  <Area type="monotone" dataKey="waardeBuiten" stroke="var(--text-muted)" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#portfolioGrad)" fillOpacity={0.4} dot={false} />
+                )}
                 <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)" dot={(props) => {
                     const { cx, cy, payload, index } = props;
                     if (!payload || !payload.datum) return <g key={index}></g>;
                     const puntDatum = new Date(payload.datum);
-                    const beginPeriode = displayData.length > 0 && displayData[0].datum ? new Date(displayData[0].datum) : null;
+                    const beginPeriode = displayDataGefilterd.length > 0 && displayDataGefilterd[0].datum ? new Date(displayDataGefilterd[0].datum) : null;
 
                     // Check aankoop dot — actieve + (als niet inbezit-filter) verkochte beleggingen
                     const alleAankoopDots = [
@@ -1005,7 +1041,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       const filterOpBP = tijdperk !== 'Totaal' && tijdperk !== 'Laatste';
                       if (filterOpBP && beginPeriode && aankoopD < beginPeriode) return false;
                       const verschilDit = Math.abs(puntDatum - aankoopD);
-                      const dichtstbij = displayData.reduce((best, p) => {
+                      const dichtstbij = displayDataGefilterd.reduce((best, p) => {
                         if (!p.datum) return best;
                         const v = Math.abs(new Date(p.datum) - aankoopD);
                         return v < best ? v : best;
@@ -1024,7 +1060,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       if (isNaN(verkoopD)) return false;
                       if (beginPeriode && verkoopD < beginPeriode) return false;
                       const verschilDit = Math.abs(puntDatum - verkoopD);
-                      const dichtstbij = displayData.reduce((best, p) => {
+                      const dichtstbij = displayDataGefilterd.reduce((best, p) => {
                         if (!p.datum) return best;
                         const v = Math.abs(new Date(p.datum) - verkoopD);
                         return v < best ? v : best;

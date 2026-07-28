@@ -101,6 +101,7 @@ export default function EffectDetail({ effect, onTerug }) {
   const [periode, setPeriode] = useState('1d');
   const [grafiekData, setGrafiekData] = useState([]);
   const [grafiekLaden, setGrafiekLaden] = useState(true);
+  const [toonBuitenBeursuren, setToonBuitenBeursuren] = useState(false);
   const [quote, setQuote] = useState(null);
   const [quoteLaden, setQuoteLaden] = useState(true);
   const [profiel, setProfiel] = useState(null);
@@ -159,6 +160,27 @@ export default function EffectDetail({ effect, onTerug }) {
   const valuta = quote?.valuta || effect.valuta || 'EUR';
   const naam = profiel?.name || effect.naam;
   const type = profiel?.type || effect.type;
+  const isCrypto = type === 'crypto';
+
+  // Crypto handelt 24/7 — standaard tonen we enkel 9u-23u (Belgische tijd),
+  // met een knop om ook de volledige 24u te zien. Bij die volledige weergave
+  // maken we visueel onderscheid tussen "beurzen open" en "enkel crypto".
+  const binnenBeursuren = (label) => {
+    const uur = parseInt((label || '').split(':')[0], 10);
+    return !isNaN(uur) && uur >= 9 && uur < 23;
+  };
+  const toontCryptoFilter = isCrypto && periode === '1d';
+  const weergaveData = (toontCryptoFilter && !toonBuitenBeursuren)
+    ? grafiekData.filter(d => binnenBeursuren(d.label))
+    : grafiekData;
+  const segmentData = (toontCryptoFilter && toonBuitenBeursuren)
+    ? weergaveData.map((d, i, arr) => {
+        const isBinnen = binnenBeursuren(d.label);
+        const buurAnders = (arr[i - 1] && binnenBeursuren(arr[i - 1].label) !== isBinnen)
+          || (arr[i + 1] && binnenBeursuren(arr[i + 1].label) !== isBinnen);
+        return { ...d, vBinnen: (isBinnen || buurAnders) ? d.v : null, vBuiten: (!isBinnen || buurAnders) ? d.v : null };
+      })
+    : null;
 
   return (
     <div className="markten-pagina">
@@ -254,15 +276,25 @@ export default function EffectDetail({ effect, onTerug }) {
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}>{p.label}</button>
               ))}
+              {toontCryptoFilter && (
+                <button onClick={() => setToonBuitenBeursuren(v => !v)} style={{
+                  marginLeft: 'auto', padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)',
+                  background: toonBuitenBeursuren ? 'var(--accent-bg)' : 'transparent',
+                  color: toonBuitenBeursuren ? 'var(--accent)' : 'var(--text-muted)',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                }}>
+                  {toonBuitenBeursuren ? '✓ ' : ''}Toon crypto buiten beursuren
+                </button>
+              )}
             </div>
 
             <div style={{ height: 300 }}>
               {grafiekLaden ? (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Laden...</div>
-              ) : grafiekData.length === 0 ? (
+              ) : weergaveData.length === 0 ? (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Geen data beschikbaar</div>
               ) : (() => {
-                const vals = grafiekData.map(d => d.v).filter(Boolean);
+                const vals = weergaveData.map(d => d.v).filter(Boolean);
                 const toonVorigeSlot = periode === '1d' && vorigeSlot != null;
                 if (toonVorigeSlot) vals.push(vorigeSlot);
                 const bodem = Math.min(...vals);
@@ -286,7 +318,7 @@ export default function EffectDetail({ effect, onTerug }) {
                 }
                 return (
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={grafiekData} margin={{ top: 5, right: 8, bottom: 5, left: 8 }}>
+                    <AreaChart data={segmentData || weergaveData} margin={{ top: 5, right: 8, bottom: 5, left: 8 }}>
                       <defs>
                         <linearGradient id="effectGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor={grafiekKleur} stopOpacity={0.15} />
@@ -295,7 +327,7 @@ export default function EffectDetail({ effect, onTerug }) {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
                       <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
-                        interval={Math.floor(grafiekData.length / 6)} />
+                        interval={Math.floor(weergaveData.length / 6)} />
                       <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
                         tickFormatter={v => v.toLocaleString('nl-BE')} domain={yDomain} ticks={yTicks} width={55} />
                       <Tooltip content={<GrafiekTooltip />} />
@@ -308,7 +340,13 @@ export default function EffectDetail({ effect, onTerug }) {
                           label={{ value: `Slot vorige dag: ${vorigeSlot.toLocaleString('nl-BE')}`, position: 'insideTopLeft', fontSize: 11, fill: 'var(--text-muted)' }}
                         />
                       )}
-                      <Area type="monotone" dataKey="v" stroke={grafiekKleur} strokeWidth={2} fill="url(#effectGrad)" dot={false} activeDot={{ r: 4 }} />
+                      <Area type="monotone" dataKey="v" stroke={grafiekKleur} strokeWidth={2} fill="url(#effectGrad)" dot={false} activeDot={{ r: 4 }} hide={!!segmentData} />
+                      {segmentData && (
+                        <>
+                          <Area type="monotone" dataKey="vBuiten" stroke="var(--text-muted)" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#effectGrad)" fillOpacity={0.4} dot={false} activeDot={{ r: 4 }} />
+                          <Area type="monotone" dataKey="vBinnen" stroke={grafiekKleur} strokeWidth={2} fill="url(#effectGrad)" dot={false} activeDot={{ r: 4 }} />
+                        </>
+                      )}
                     </AreaChart>
                   </ResponsiveContainer>
                 );

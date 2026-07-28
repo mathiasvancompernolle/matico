@@ -772,7 +772,27 @@ module.exports = async function handler(req, res) {
       return res.json({ rate: fallbackRates[van] || 1, datum, fallback: true });
     }
 
-    if (endpoint === 'candle') {
+    // Crypto handelt 24/7 en heeft dus geen "handelsdag" die Yahoo zelf bepaalt
+  // (in tegenstelling tot een beurs) — Yahoo's eigen range=1d-grens ligt
+  // intern op UTC-middernacht, wat in de zomer 2u Belgische tijd is. Voor
+  // crypto berekenen we daarom zelf een exact venster vanaf Belgische
+  // middernacht tot nu, i.p.v. Yahoo's eigen (verkeerd-getimede) dagvenster.
+  function isCryptoSymbool(symbol) {
+    return /^[A-Z0-9]+-(EUR|USD|GBP)$/i.test(symbol || '');
+  }
+  function getUtcOffsetMinuten(timeZone, datum) {
+    const utcDatum = new Date(datum.toLocaleString('en-US', { timeZone: 'UTC' }));
+    const tzDatum = new Date(datum.toLocaleString('en-US', { timeZone }));
+    return (tzDatum.getTime() - utcDatum.getTime()) / 60000;
+  }
+  function middernachtBrusselUnixSeconden(nu = new Date()) {
+    const offsetMin = getUtcOffsetMinuten('Europe/Brussels', nu);
+    const brusselLokaal = new Date(nu.getTime() + offsetMin * 60000);
+    const middernachtBrusselLokaal = new Date(Date.UTC(brusselLokaal.getUTCFullYear(), brusselLokaal.getUTCMonth(), brusselLokaal.getUTCDate(), 0, 0, 0));
+    return Math.floor((middernachtBrusselLokaal.getTime() - offsetMin * 60000) / 1000);
+  }
+
+  if (endpoint === 'candle') {
       const { symbol, tijdperk, van, tot, resolutie } = req.query;
 
       // ── Historische candle data via timestamp range (voor YTD berekening) ──
@@ -818,12 +838,17 @@ module.exports = async function handler(req, res) {
 
       try {
         const yfSym = toYahooSymbol(symbol);
+        const isCrypto1D = tijdperk === '1D' && isCryptoSymbool(yfSym);
+        const periode1 = isCrypto1D ? middernachtBrusselUnixSeconden() : null;
+        const periode2 = isCrypto1D ? Math.floor(Date.now() / 1000) : null;
+        const reeksParam = isCrypto1D ? `period1=${periode1}&period2=${periode2}` : `range=${yfRange}`;
+
         // Probeer eerst met v8 endpoint
         let result = null;
         const urls = [
-          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=${yfRange}&interval=${yfInterval}&events=div,splits`,
-          `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=${yfRange}&interval=${yfInterval}`,
-          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=${yfRange}&interval=${yfInterval}&includePrePost=false`,
+          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?${reeksParam}&interval=${yfInterval}&events=div,splits`,
+          `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?${reeksParam}&interval=${yfInterval}`,
+          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?${reeksParam}&interval=${yfInterval}&includePrePost=false`,
         ];
         const hdrs = [
           { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'application/json', 'Accept-Language': 'en-US,en;q=0.9' },
