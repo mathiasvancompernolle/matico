@@ -423,6 +423,30 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         })
         .filter(p => p.waarde > 0);
 
+      // Yahoo's dagelijkse candle-data toont de lopende, nog niet afgesloten
+      // handelsdag soms nog niet — waardoor de grafiek een dag zou achterlopen
+      // op het live cijfer bovenaan. Ontbreekt "vandaag" als laatste punt, dan
+      // voegen we het zelf toe met de actuele koersen.
+      const vandaagStr = new Date().toISOString().split('T')[0];
+      const laatstePunt = gecombineerd[gecombineerd.length - 1];
+      if (!laatstePunt || laatstePunt.datum !== vandaagStr) {
+        let liveWaarde = 0;
+        beleggingVoorGrafiek.forEach(b => {
+          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+          const koers = koersen[b.symbol];
+          liveWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
+        });
+        if (liveWaarde > 0) {
+          const maandKortVandaag = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+          const vandaagObj = new Date();
+          gecombineerd.push({
+            label: `${vandaagObj.getDate()} ${maandKortVandaag[vandaagObj.getMonth()]}`,
+            datum: vandaagStr,
+            waarde: Math.round(liveWaarde * 100) / 100,
+          });
+        }
+      }
+
       setGrafiekData(gecombineerd);
       setGrafiekLoading(false);
     };
