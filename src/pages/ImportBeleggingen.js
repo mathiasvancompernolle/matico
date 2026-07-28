@@ -229,6 +229,7 @@ async function transformeerDegiro(rijen, onVoortgang) {
       kostprijs: parseFloat(String(r['Slotkoers'] || '0').replace(',', '.')) || 0,
       kostprijsOnzeker: true,
       transactiekosten: 0, // DEGIRO's portefeuille-export bevat geen kosteninformatie
+      transactiekostenOnbekend: true,
       aantal: parseFloat(String(r['Aantal'] || '0').replace(',', '.')) || 0,
       munt: r['Lokale waarde'] || 'EUR', // let op: DEGIRO's eigen kolomkop hier is misleidend, de waarde zelf klopt wel
       datum: '',
@@ -273,6 +274,7 @@ async function transformeerMedirect(rijen, onVoortgang) {
       type,
       kostprijs: parseMedirectBedrag(r['Aankoopprijs']),
       transactiekosten: 0,
+      transactiekostenOnbekend: true,
       aantal: parseFloat(String(r['Hoeveelheid'] || '0').replace(',', '.')) || 0,
       munt: 'EUR',
       datum: '',
@@ -731,7 +733,12 @@ export default function ImportBeleggingen({ onClose }) {
                 <thead>
                   <tr style={{ background: 'var(--bg)' }}>
                     {['Naam', 'Symbool', 'Type', 'Aankoopprijs', 'Transactiekosten', 'Aantal', 'Munt', 'Aankoopdatum', ''].map(h => (
-                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600, color: 'var(--text-secondary)' }}>{h}</th>
+                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        {h}
+                        {h === 'Transactiekosten' && (
+                          <div style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted)', textTransform: 'none' }}>optioneel, later aan te passen</div>
+                        )}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -753,7 +760,11 @@ export default function ImportBeleggingen({ onClose }) {
                       <td style={{ padding: '4px 8px' }}>
                         <input type="number" step="0.01" value={r.transactiekosten || 0}
                           onChange={e => bewerkBrokerRij(i, 'transactiekosten', parseFloat(e.target.value) || 0)}
-                          style={{ width: 80, padding: '5px 8px', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--border)' }} />
+                          style={{
+                            width: 80, padding: '5px 8px', borderRadius: 6, fontSize: 13, fontFamily: 'inherit',
+                            border: r.transactiekostenOnbekend ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                            background: r.transactiekostenOnbekend ? '#fffbeb' : 'white',
+                          }} />
                       </td>
                       <td style={{ padding: '4px 8px' }}>
                         <input type="number" step="1" value={r.aantal}
@@ -787,6 +798,13 @@ export default function ImportBeleggingen({ onClose }) {
                 </tbody>
               </table>
             </div>
+
+            {brokerRijen.some(r => r.transactiekostenOnbekend) && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
+                <span style={{ width: 12, height: 12, borderRadius: 3, background: '#fffbeb', border: '1.5px solid #f59e0b', flexShrink: 0, marginTop: 2 }} />
+                <span>Bij oranje gemarkeerde velden kon {brokerNaam} geen transactiekosten terugvinden — de 0 hier is dus niet per se correct, gewoon onbekend.</span>
+              </div>
+            )}
 
             {fout && <div style={{ marginBottom: 16, color: 'var(--red)', fontSize: 13, padding: '10px 14px', background: 'var(--red-bg)', borderRadius: 8 }}>{fout}</div>}
 
