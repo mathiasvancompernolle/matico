@@ -1309,7 +1309,62 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 </span>
               ))}
             </div>
-            {gefilterdeBeleggingen.map(b => {
+            {(() => {
+              // Meerdere aankopen van hetzelfde effect (bv. op verschillende
+              // momenten) worden hier samengevoegd tot één rij — op de
+              // Beleggingen-pagina blijven ze wél apart zichtbaar, want daar
+              // is dat net nuttig om per aankoopmoment te zien.
+              const perSymbool = new Map();
+              gefilterdeBeleggingen.forEach(b => {
+                if (!perSymbool.has(b.symbol)) perSymbool.set(b.symbol, []);
+                perSymbool.get(b.symbol).push(b);
+              });
+              const gegroepeerdeBeleggingen = [...perSymbool.values()].map(lots => {
+                const eerste = lots[0];
+                const totaalAantal = lots.reduce((s, l) => s + l.aantal, 0);
+                const totaleKostprijsBasis = lots.reduce((s, l) => s + l.kostprijs * l.aantal + (l.transactiekosten || 0), 0);
+                const gewogenKostprijs = totaalAantal > 0 ? (totaleKostprijsBasis - lots.reduce((s, l) => s + (l.transactiekosten || 0), 0)) / totaalAantal : 0;
+                const vroegsteDatum = lots.reduce((vroegste, l) => (!vroegste || (l.datum && new Date(l.datum) < new Date(vroegste))) ? l.datum : vroegste, null);
+                return {
+                  ...eerste,
+                  id: `groep-${eerste.symbol}`,
+                  aantal: totaalAantal,
+                  kostprijs: gewogenKostprijs,
+                  transactiekosten: lots.reduce((s, l) => s + (l.transactiekosten || 0), 0),
+                  datum: vroegsteDatum,
+                  _lots: lots, // volledige onderliggende aankopen, voor de detailweergave
+                };
+              });
+
+              // Sorteren gebeurde hierboven al op de individuele aankopen —
+              // dat zegt niets meer over de samengevoegde totalen, dus
+              // sorteren we de gegroepeerde rijen hier opnieuw, op dezelfde
+              // manier maar dan met de samengevoegde waarden.
+              const totWaarde = gegroepeerdeBeleggingen.reduce((s, bb) => {
+                const k = koersen[bb.symbol]; const f = getMuntFactor ? getMuntFactor(bb.munt || 'EUR') : ((bb.munt||'EUR')==='USD'?0.865:1);
+                return s + (k ? k.c : bb.kostprijs) * bb.aantal * f;
+              }, 0);
+              gegroepeerdeBeleggingen.sort((a, b) => {
+                let va, vb;
+                const ka = koersen[a.symbol], kb = koersen[b.symbol];
+                const fa = getMuntFactor ? getMuntFactor(a.munt || 'EUR') : ((a.munt||'EUR')==='USD'?0.865:1);
+                const fb = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt||'EUR')==='USD'?0.865:1);
+                switch (sortCol) {
+                  case 'naam': va = a.naam?.toLowerCase(); vb = b.naam?.toLowerCase(); break;
+                  case 'koers': va = ka ? ka.c : a.kostprijs; vb = kb ? kb.c : b.kostprijs; break;
+                  case 'waarde': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa; vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb; break;
+                  case 'vandaag': va = ka ? (ka.c - ka.pc) * a.aantal * fa : 0; vb = kb ? (kb.c - kb.pc) * b.aantal * fb : 0; break;
+                  case 'totaal': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa - (a.kostprijs * a.aantal + (a.transactiekosten || 0)) * fa; vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb - (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * fb; break;
+                  case 'gewicht': va = totWaarde > 0 ? (ka?ka.c:a.kostprijs)*a.aantal*fa/totWaarde : 0; vb = totWaarde > 0 ? (kb?kb.c:b.kostprijs)*b.aantal*fb/totWaarde : 0; break;
+                  default: va = a.datum ? new Date(a.datum).getTime() : 0; vb = b.datum ? new Date(b.datum).getTime() : 0; break;
+                }
+                if (va < vb) return sortDir === 'asc' ? -1 : 1;
+                if (va > vb) return sortDir === 'asc' ? 1 : -1;
+                return 0;
+              });
+
+              return gegroepeerdeBeleggingen;
+            })().map(b => {
               const koers = koersen[b.symbol];
               const huidigePrijs = koers ? koers.c : b.kostprijs;
               const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
