@@ -511,13 +511,17 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   // Crypto handelt 24/7 — standaard tonen we in de portfoliografiek enkel
   // 9u-23u (Belgische tijd), met een knop om ook de volledige 24u te zien.
   // Bij die volledige weergave maken we visueel onderscheid tussen "beurzen
-  // open" en "enkel crypto beweegt".
+  // open" en "enkel crypto beweegt". Is de (gefilterde) selectie echter
+  // uitsluitend crypto (bv. via de filter "enkel crypto"), dan heeft die
+  // onderscheiding geen zin meer — dan tonen we altijd gewoon de volle 24u,
+  // als één ononderbroken lijn, net als bij een individueel crypto-effect.
   const heeftCrypto = beleggingVoorGrafiek.some(b => b.type === 'crypto');
+  const alleenCrypto = beleggingVoorGrafiek.length > 0 && beleggingVoorGrafiek.every(b => b.type === 'crypto');
   const binnenBeursurenPortfolio = (label) => {
     const uur = parseInt((label || '').split(':')[0], 10);
     return !isNaN(uur) && uur >= 9 && uur < 23;
   };
-  const toontCryptoFilterPortfolio = tijdperk === '1D' && heeftCrypto;
+  const toontCryptoFilterPortfolio = tijdperk === '1D' && heeftCrypto && !alleenCrypto;
   const displayDataGefilterd = (toontCryptoFilterPortfolio && !toonBuitenBeursuren)
     ? displayData.filter(d => binnenBeursurenPortfolio(d.label))
     : displayData;
@@ -766,7 +770,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   const { yDomain, yTicks } = (() => {
     if (displayDataGefilterd.length < 2) return { yDomain: ['auto', 'auto'], yTicks: undefined };
     const waarden = displayDataGefilterd.map(d => d.waarde);
-    if (tijdperk === '1D' && portfolioVorigeSlot != null) waarden.push(portfolioVorigeSlot);
+    if (tijdperk === '1D' && portfolioVorigeSlot != null && !alleenCrypto) waarden.push(portfolioVorigeSlot);
     const min = Math.min(...waarden);
     const max = Math.max(...waarden);
     const bodem = tijdperk === 'Totaal' ? 0 : min;
@@ -1007,7 +1011,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     );
                   }}
                 />
-                {tijdperk === '1D' && portfolioVorigeSlot != null && (
+                {tijdperk === '1D' && portfolioVorigeSlot != null && !alleenCrypto && (
                   <ReferenceLine
                     y={portfolioVorigeSlot}
                     stroke="var(--text-muted)"
