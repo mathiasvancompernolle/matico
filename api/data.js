@@ -896,6 +896,7 @@ module.exports = async function handler(req, res) {
         : tijdperk === 'YTD' ? 'ytd'
         : tijdperk === '3J' ? '3y'
         : tijdperk === '5J' ? '5y'
+        : tijdperk === 'Max' ? 'max'
         : '10y';
 
       const yfInterval = tijdperk === '1D' ? '1m'
