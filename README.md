@@ -1,4 +1,4 @@
-# 🟣 Matico — Persoonlijke Portfolio Tracker
+# 🟣 Kapitas — Persoonlijke Portfolio Tracker
 
 Een volledig Nederlandse portfolio tracker met real-time koersen, AI-analyse en vergelijking met benchmarks.
 
@@ -10,7 +10,7 @@ Een volledig Nederlandse portfolio tracker met real-time koersen, AI-analyse en 
 
 1. Ga naar [github.com](https://github.com) en log in
 2. Klik op **"New repository"** (groene knop rechtsboven)
-3. Geef het de naam `matico`
+3. Geef het de naam `kapitas`
 4. Klik op **"Create repository"**
 5. Upload alle bestanden van deze map naar die repository (sleep ze in de interface of gebruik Git)
 
@@ -18,7 +18,7 @@ Een volledig Nederlandse portfolio tracker met real-time koersen, AI-analyse en 
 
 1. Ga naar [vercel.com](https://vercel.com) en log in
 2. Klik op **"Add New Project"**
-3. Kies je `matico` GitHub repository
+3. Kies je `kapitas` GitHub repository
 4. Vercel detecteert automatisch dat het een React app is
 5. Klik **"Deploy"** — de eerste deployment werkt nog niet perfect zonder API keys
 
@@ -33,7 +33,7 @@ Een volledig Nederlandse portfolio tracker met real-time koersen, AI-analyse en 
 
 ### Stap 4: Klaar! 🎉
 
-Je krijgt een link zoals `matico-xyz.vercel.app` — die kun je delen met vrienden!
+Je krijgt een link zoals `kapitas-xyz.vercel.app` — die kun je delen met vrienden!
 
 ---
 
@@ -43,7 +43,7 @@ Je krijgt een link zoals `matico-xyz.vercel.app` — die kun je delen met vriend
 1. Open de Vercel link in Safari
 2. Druk op het **Deel** icoontje (vierkant met pijltje)
 3. Kies **"Zet op beginscherm"**
-4. Naam: Matico → **Voeg toe**
+4. Naam: Kapitas → **Voeg toe**
 
 ### Android (Chrome):
 1. Open de link in Chrome
