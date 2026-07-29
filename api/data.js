@@ -1197,13 +1197,18 @@ module.exports = async function handler(req, res) {
     if (endpoint === 'analyse-aandeel') {
       const { symbol } = req.query;
       let resultaat = {};
+
+      // Bron 1: EODHD (sector, waardering, winstgevendheid, dividend, schuldgraad).
+      // Let op: de Technicals-sectie (52w-bereik, 50d/200d-gemiddelde) komt
+      // hier bewust NIET vandaan — dat gaf al langer stilzwijgend niets terug
+      // (het EODHD-abonnement dekt geen Technicals/fundamentals-diepte voor
+      // Amerikaanse aandelen), dus die halen we hieronder apart bij Yahoo.
       try {
-        const eoRes = await fetch(`https://eodhd.com/api/fundamentals/${symbol}?filter=General,Highlights,Valuation,Technicals&api_token=${EODHD_KEY}&fmt=json`);
+        const eoRes = await fetch(`https://eodhd.com/api/fundamentals/${symbol}?filter=General,Highlights,Valuation&api_token=${EODHD_KEY}&fmt=json`);
         const eoData = await eoRes.json();
         const g = eoData?.General || {};
         const h = eoData?.Highlights || {};
         const v = eoData?.Valuation || {};
-        const t = eoData?.Technicals || {};
         resultaat = {
           sector: g.Sector ?? null,
           industry: g.Industry ?? null,
@@ -1216,14 +1221,51 @@ module.exports = async function handler(req, res) {
           payoutRatio: h.PayoutRatio ?? null,
           revenueGrowthYoY: h.QuarterlyRevenueGrowthYOY ?? null,
           earningsGrowthYoY: h.QuarterlyEarningsGrowthYOY ?? null,
-          debtToEquity: t.DebtToEquity ?? null,
-          weekHigh52: t['52WeekHigh'] ?? null,
-          weekLow52: t['52WeekLow'] ?? null,
-          gemiddelde50d: t['50DayMA'] ?? null,
-          gemiddelde200d: t['200DayMA'] ?? null,
-          beta: t.Beta ?? null,
+          debtToEquity: null, // was voorheen uit Technicals, zie hieronder
+          weekHigh52: null,
+          weekLow52: null,
+          gemiddelde50d: null,
+          gemiddelde200d: null,
+          beta: null,
         };
       } catch (e) {}
+
+      // Bron 2: Yahoo Finance — 52-weken-bereik via het gratis, key-loze
+      // chart-endpoint (zelfde bron als quote-detail, al bewezen betrouwbaar),
+      // en 50d/200d-gemiddelde + beta via quoteSummary (vereist de cookie+crumb
+      // die de rest van de app ook al gebruikt voor ETF-sectordata).
+      try {
+        const yfSym = toYahooSymbol(symbol);
+        const chartRes = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=1d&interval=1d`, {
+          headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
+        });
+        const chartData = await chartRes.json();
+        const meta = chartData?.chart?.result?.[0]?.meta;
+        if (meta) {
+          resultaat.weekHigh52 = meta.fiftyTwoWeekHigh ?? resultaat.weekHigh52;
+          resultaat.weekLow52 = meta.fiftyTwoWeekLow ?? resultaat.weekLow52;
+        }
+
+        const sessie = await haalYahooCookieEnCrumb();
+        const basisUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=summaryDetail,defaultKeyStatistics&formatted=false`;
+        const summaryUrl = sessie ? `${basisUrl}&crumb=${encodeURIComponent(sessie.crumb)}` : basisUrl;
+        const summaryRes = await fetch(summaryUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', ...(sessie ? { 'Cookie': sessie.cookie } : {}) },
+        });
+        const summaryData = await summaryRes.json();
+        // Yahoo geeft getallen soms terug als { raw, fmt } i.p.v. een gewoon getal
+        const yahooGetal = (v) => (v == null) ? null : (typeof v === 'number' ? v : (typeof v?.raw === 'number' ? v.raw : null));
+        const sd = summaryData?.quoteSummary?.result?.[0]?.summaryDetail;
+        const ks = summaryData?.quoteSummary?.result?.[0]?.defaultKeyStatistics;
+        if (sd) {
+          resultaat.gemiddelde50d = yahooGetal(sd.fiftyDayAverage) ?? resultaat.gemiddelde50d;
+          resultaat.gemiddelde200d = yahooGetal(sd.twoHundredDayAverage) ?? resultaat.gemiddelde200d;
+          resultaat.weekHigh52 = yahooGetal(sd.fiftyTwoWeekHigh) ?? resultaat.weekHigh52;
+          resultaat.weekLow52 = yahooGetal(sd.fiftyTwoWeekLow) ?? resultaat.weekLow52;
+        }
+        if (ks) resultaat.beta = yahooGetal(ks.beta) ?? resultaat.beta;
+      } catch (e) { console.error('analyse-aandeel Yahoo-fout:', e); }
+
       return res.json(resultaat);
     }
 
