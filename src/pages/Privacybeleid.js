@@ -2,7 +2,7 @@
 import React from 'react';
 import { heropenCookieBanner } from '../components/CookieConsent';
 
-// Privacybeleid-pagina. Inhoud is opgesteld op basis van hoe Matico
+// Privacybeleid-pagina. Inhoud is opgesteld op basis van hoe Kapitas
 // technisch in elkaar zit (Supabase-login, localStorage voor portefeuille-
 // data, gratis marktdata-API's zonder persoonsgegevens, Crisp voor chat).
 // Dit is een goede, eerlijke basis — geen juridisch advies. Laat dit
@@ -24,13 +24,13 @@ export default function Privacybeleid({ onTerug }) {
 
       <Sectie titel="1. Wie zijn wij">
         <p>
-          Matico ("wij", "ons") is een beleggingsdashboard voor de Belgische markt.
-          Dit privacybeleid legt uit welke gegevens we verzamelen wanneer je Matico
+          Kapitas ("wij", "ons") is een beleggingsdashboard voor de Belgische markt.
+          Dit privacybeleid legt uit welke gegevens we verzamelen wanneer je Kapitas
           gebruikt, waarom, en welke rechten je hebt.
         </p>
         <p>
           Verantwoordelijke voor de verwerking: [JOUW NAAM / BEDRIJFSNAAM INVULLEN]<br />
-          Contact: [E-MAILADRES INVULLEN]
+          Contact: mathiasvancompernolle1@gmail.com
         </p>
       </Sectie>
 
@@ -45,7 +45,7 @@ export default function Privacybeleid({ onTerug }) {
         <p>
           De beleggingen die je toevoegt (naam, aantal, aankoopprijs, aankoopdatum, ...)
           worden lokaal opgeslagen in de browser van jouw toestel (localStorage), niet
-          in een centrale database. Dit betekent dat wij als beheerders van Matico deze
+          in een centrale database. Dit betekent dat wij als beheerders van Kapitas deze
           gegevens niet kunnen inzien, en dat ze verloren gaan als je je browsergegevens
           wist of van toestel wisselt.
         </p>
@@ -57,7 +57,7 @@ export default function Privacybeleid({ onTerug }) {
       </Sectie>
 
       <Sectie titel="3. Externe partijen waarmee we gegevens delen">
-        <p>Matico maakt gebruik van volgende externe dienstverleners (verwerkers):</p>
+        <p>Kapitas maakt gebruik van volgende externe dienstverleners (verwerkers):</p>
         <Tabel
           rijen={[
             ['Supabase', 'Authenticatie (Google-login)', 'EU/VS'],
@@ -75,7 +75,7 @@ export default function Privacybeleid({ onTerug }) {
 
       <Sectie titel="4. Cookies">
         <p>
-          Matico gebruikt volgende cookies:
+          Kapitas gebruikt volgende cookies:
         </p>
         <ul style={{ margin: '8px 0 8px 20px', lineHeight: 1.8 }}>
           <li><strong>Functionele/noodzakelijke cookies</strong> — voor het bijhouden van je ingelogde sessie (via Supabase). Deze zijn nodig om de app te laten werken en vragen geen toestemming.</li>
@@ -111,7 +111,7 @@ export default function Privacybeleid({ onTerug }) {
           <li>je gegevens in een overdraagbaar formaat te ontvangen (dataportabiliteit).</li>
         </ul>
         <p>
-          Om een van deze rechten uit te oefenen, contacteer je ons via [E-MAILADRES INVULLEN].
+          Om een van deze rechten uit te oefenen, contacteer je ons via mathiasvancompernolle1@gmail.com.
           Je hebt ook het recht om een klacht in te dienen bij de Belgische
           Gegevensbeschermingsautoriteit (GBA) via <em>gegevensbeschermingsautoriteit.be</em>.
         </p>
@@ -135,7 +135,7 @@ export default function Privacybeleid({ onTerug }) {
       <Sectie titel="9. Contact">
         <p>
           Vragen over dit privacybeleid of over hoe we met je gegevens omgaan?
-          Contacteer ons via [E-MAILADRES INVULLEN], of gebruik de chat rechtsonder.
+          Contacteer ons via mathiasvancompernolle1@gmail.com, of gebruik de chat rechtsonder.
         </p>
       </Sectie>
     </div>
