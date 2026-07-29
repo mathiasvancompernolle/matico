@@ -50,7 +50,7 @@ export default function CookieConsent({ onWijziging }) {
       display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
     }}>
       <div style={{ flex: '1 1 320px', fontSize: 13, color: 'var(--text-secondary, #475569)', lineHeight: 1.5 }}>
-        We gebruiken enkel noodzakelijke cookies om Matico te laten werken. Met jouw toestemming activeren we
+        We gebruiken enkel noodzakelijke cookies om Kapitas te laten werken. Met jouw toestemming activeren we
         ook een chatwidget (Crisp) zodat je ons rechtstreeks vragen of feedback kan sturen. Zie ons privacybeleid
         voor meer info.
       </div>

@@ -68,12 +68,12 @@ export default function Instellingen({ sidebarCollapsed, onToggleSidebar }) {
         {actieveTab === 'portfolio' && (
           <div style={{ maxWidth: 500 }}>
             <div className="card">
-              <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Over Matico</h3>
+              <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Over Kapitas</h3>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                Matico is je persoonlijke portfolio tracker. Real-time koersen via Finnhub.io, AI-analyses via Claude (Anthropic). Alle data wordt lokaal in je browser opgeslagen.
+                Kapitas is je persoonlijke portfolio tracker. Real-time koersen via Finnhub.io, AI-analyses via Claude (Anthropic). Alle data wordt lokaal in je browser opgeslagen.
               </p>
               <div style={{ marginTop: 16, padding: 12, background: 'var(--bg)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-                Versie 1.0.0 · © 2026 Matico
+                Versie 1.0.0 · © 2026 Kapitas
               </div>
             </div>
           </div>

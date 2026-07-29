@@ -590,7 +590,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
           )}
           {analyse && (
             <div className="analyse-ai-box">
-              <h4>🤖 Matico AI Analyse</h4>
+              <h4>🤖 Kapitas AI Analyse</h4>
               <p>{analyse}</p>
             </div>
           )}
