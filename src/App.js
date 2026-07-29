@@ -75,7 +75,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
       <div className="top-nav-inner" style={{ flex: 1 }}>
         <button className={`top-nav-tab ${actieveSectie === 'portefeuille' ? 'actief' : ''}`} onClick={() => onSectieWissel('portefeuille')}>{t('nav_portefeuille')}</button>
         <button className={`top-nav-tab ${actieveSectie === 'markten' ? 'actief' : ''}`} onClick={() => onSectieWissel('markten')}>{t('nav_markten')}</button>
-        {gebruiker?.email === 'mathiasvancompernolle@gmail.com' && (
+        {gebruiker?.email?.trim().toLowerCase() === 'mathiasvancompernolle@gmail.com' && (
           <button className={`top-nav-tab ${actieveSectie === 'analyseren' ? 'actief' : ''}`} onClick={() => onSectieWissel('analyseren')}>Analyseren</button>
         )}
       </div>
