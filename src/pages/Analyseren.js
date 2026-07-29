@@ -350,10 +350,14 @@ export default function Analyseren() {
       // limiet van 4,5 MB heeft), dus grote jaarrekeningen zijn geen
       // probleem.
       setVoortgang('Bestand uploaden naar opslag...');
-      const blob = await upload(uploadBestand.name, uploadBestand, {
-        access: 'public',
-        handleUploadUrl: '/api/data?endpoint=blob-upload-token',
-      });
+      const timeoutBelofte = new Promise((_, reject) => setTimeout(() => reject(new Error('Uploaden lukte niet binnen 90 seconden. Kijk in de Developer Tools (Network-tabblad) naar de aanvraag met "blob" in de naam voor de exacte fout.')), 90000));
+      const blob = await Promise.race([
+        upload(uploadBestand.name, uploadBestand, {
+          access: 'public',
+          handleUploadUrl: '/api/data?endpoint=blob-upload-token',
+        }),
+        timeoutBelofte,
+      ]);
 
       setVoortgang('Huidige koers ophalen...');
       const [qRes, techRes] = await Promise.all([
