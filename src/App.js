@@ -319,7 +319,10 @@ function NaamInstellen() {
 
 export default function App() {
   const [toonLanding, setToonLanding] = React.useState(true);
-  const [toonPubliekPrivacybeleid, setToonPubliekPrivacybeleid] = React.useState(false);
+  const [toonPubliekPrivacybeleid, setToonPubliekPrivacybeleid] = React.useState(() => {
+    const pad = window.location.pathname.toLowerCase().replace(/\/$/, '');
+    return pad === '/privacybeleid';
+  });
   const [authStartModus, setAuthStartModus] = React.useState('login');
   const [gebruiker, setGebruiker] = React.useState(null);
   const [authLaden, setAuthLaden] = React.useState(true);
@@ -356,14 +359,14 @@ export default function App() {
 
   if (toonLanding && !gebruiker) {
     if (toonPubliekPrivacybeleid) {
-      return <Privacybeleid onTerug={() => setToonPubliekPrivacybeleid(false)} />;
+      return <Privacybeleid onTerug={() => { window.history.pushState(null, '', '/'); setToonPubliekPrivacybeleid(false); }} />;
     }
     return <Landing onNaarApp={(modus) => { setToonLanding(false); setAuthStartModus(modus || 'login'); }} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} />;
   }
 
   if (!gebruiker) {
     if (toonPubliekPrivacybeleid) {
-      return <Privacybeleid onTerug={() => setToonPubliekPrivacybeleid(false)} />;
+      return <Privacybeleid onTerug={() => { window.history.pushState(null, '', '/'); setToonPubliekPrivacybeleid(false); }} />;
     }
     return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} startModus={authStartModus} onTerugNaarLanding={() => setToonLanding(true)} />;
   }
