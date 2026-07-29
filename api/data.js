@@ -1273,14 +1273,15 @@ module.exports = async function handler(req, res) {
     // tijdelijke, beveiligde token dat de browser daarvoor nodig heeft.
     if (endpoint === 'blob-upload-token') {
       try {
-        // handleUpload verwacht een web-standaard Request-object — Vercel's
-        // gewone Node.js-functies (zoals deze) geven een ander soort object
-        // door, dus bouwen we er zelf een op, met de originele headers en
-        // methode, zodat handleUpload's interne verwerking correct verloopt.
-        const protocol = req.headers['x-forwarded-proto'] || 'https';
-        const webRequest = new Request(`${protocol}://${req.headers.host}${req.url}`, {
-          method: req.method,
-          headers: req.headers,
+        // handleUpload verwacht een web-standaard Request-object. Onze
+        // eerdere poging om dat zelf op te bouwen met de originele headers
+        // ging fout: 'host' mag om veiligheidsredenen niet zomaar in een
+        // nieuw Request-object gezet worden, waardoor die opbouw stiekem
+        // onvolledig bleef. handleUpload gebruikt vooral de apart
+        // meegegeven 'body' — een eenvoudig, geldig placeholder-object
+        // volstaat hier.
+        const webRequest = new Request('https://kapitas.be/api/data?endpoint=blob-upload-token', {
+          method: 'POST',
         });
         const jsonResponse = await handleUpload({
           body: req.body,
