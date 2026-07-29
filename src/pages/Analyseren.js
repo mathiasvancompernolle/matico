@@ -21,21 +21,116 @@ const SECTOR_DREMPELS = {
   default:     { naam: 'Consument / Industrie / Gezondheidszorg', pe: [15, 25], schuld: [0.5, 1.5], dividendVerwacht: false, dividendDrempels: [2, 3.5] },
 };
 
-// ── Handmatige invoer: cijfer-per-cijfer stappenplan ────────────────────────
+// ── Handmatige invoer: eerst een 5-staps screening, dan pas de volledige
+// analyse ────────────────────────────────────────────────────────────────
 // Vervangt de jaarrekening-upload (PDF + AI-extractie). De gebruiker zoekt
-// het gewenste ratio's zelf op (bv. via de jaarrekening, of sites zoals
-// stockanalysis.com / macrotrends.net) en geeft ze hier één voor één in.
-// Dezelfde ratio-berekening als voorheen wordt hierna toegepast op deze
-// ruwe cijfers.
-const HANDMATIGE_VELDEN = [
-  { key: 'omzetHuidig', label: 'Omzet — meest recente boekjaar', hint: 'Totale omzet ("revenue" / "net sales") van het laatste volledige boekjaar, in de rapportagemunt van het bedrijf (meestal USD).' },
-  { key: 'omzetVorig', label: 'Omzet — boekjaar ervoor', hint: 'Zelfde cijfer, maar van het jaar dáárvoor — nodig om de omzetgroei te berekenen.' },
-  { key: 'nettoWinst', label: 'Netto winst — meest recente boekjaar', hint: '"Net income" van het laatste boekjaar. Vul een negatief getal in bij verlies.' },
-  { key: 'eigenVermogen', label: 'Eigen vermogen', hint: '"Total stockholders\' equity" op de balans, meest recente boekjaar.' },
+// de cijfers zelf op (bv. via de jaarrekening, of sites zoals
+// stockanalysis.com/macrotrends.net) en geeft ze hier één voor één in.
+// Elke screening-stap kan de analyse meteen stopzetten met een duidelijke
+// melding — pas als alle 5 slagen, gaat het door naar de bestaande,
+// uitgebreide Lange-termijn/Korte-termijn-scoring.
+const GATE_TITELS = {
+  A: '1. Omzetgroei (minstens 10% per jaar)',
+  B: '2. K/W-ratio (Price/Earnings, onder 25)',
+  C: '3. PEG-ratio (Price/Earnings to Growth, onder 2)',
+  D: '4. Rendement op eigen vermogen — laatste 5 boekjaren (gemiddeld minstens 5%)',
+  E: '5. Quick ratio (boven 1,5)',
+};
+
+const SCREENING_VELDEN = [
+  { gate: 'A', key: 'omzetHuidig', label: 'Omzet — meest recente boekjaar', hint: 'Totale omzet ("revenue" / "net sales") van het laatste volledige boekjaar.' },
+  { gate: 'A', key: 'omzetVorig', label: 'Omzet — boekjaar ervoor', hint: 'Zelfde cijfer van het jaar dáárvoor — nodig om de omzetgroei te berekenen.' },
+  { gate: 'B', key: 'nettoWinst', label: 'Netto winst — meest recente boekjaar', hint: '"Net income" van het laatste boekjaar. Vul een negatief getal in bij verlies.' },
+  { gate: 'B', key: 'aantalAandelenUitstaand', label: 'Aantal uitstaande aandelen', hint: '"Diluted weighted average shares outstanding" — bovenaan de winst-en-verliesrekening.' },
+  { gate: 'C', key: 'nettoWinstVorig', label: 'Netto winst — boekjaar ervoor', hint: '"Net income" van het jaar vóór het meest recente boekjaar — nodig om de winstgroei (voor de PEG-ratio) te berekenen.' },
+  { gate: 'D', key: 'eigenVermogen', label: 'Eigen vermogen — jaar 1 (meest recente boekjaar)', hint: '"Total stockholders\' equity" op de balans van het laatste boekjaar.' },
+  { gate: 'D', key: 'eigenVermogenVorig', label: 'Eigen vermogen — jaar 2', hint: '"Total stockholders\' equity" van het jaar daarvóór.' },
+  { gate: 'D', key: 'nettoWinstJaar3', label: 'Netto winst — jaar 3', hint: '"Net income" van 2 boekjaren geleden.' },
+  { gate: 'D', key: 'eigenVermogenJaar3', label: 'Eigen vermogen — jaar 3', hint: '"Total stockholders\' equity" van 2 boekjaren geleden.' },
+  { gate: 'D', key: 'nettoWinstJaar4', label: 'Netto winst — jaar 4', hint: '"Net income" van 3 boekjaren geleden.' },
+  { gate: 'D', key: 'eigenVermogenJaar4', label: 'Eigen vermogen — jaar 4', hint: '"Total stockholders\' equity" van 3 boekjaren geleden.' },
+  { gate: 'D', key: 'nettoWinstJaar5', label: 'Netto winst — jaar 5 (oudste boekjaar)', hint: '"Net income" van 4 boekjaren geleden.' },
+  { gate: 'D', key: 'eigenVermogenJaar5', label: 'Eigen vermogen — jaar 5 (oudste boekjaar)', hint: '"Total stockholders\' equity" van 4 boekjaren geleden.' },
+  { gate: 'E', key: 'kortlopendeActiva', label: 'Kortlopende activa', hint: '"Total current assets" op de balans, meest recente boekjaar.' },
+  { gate: 'E', key: 'voorraden', label: 'Voorraden', hint: '"Inventories" op de balans, meest recente boekjaar.' },
+  { gate: 'E', key: 'kortlopendeSchulden', label: 'Kortlopende schulden', hint: '"Total current liabilities" op de balans, meest recente boekjaar.' },
+];
+
+// Cijfers die pas ná een geslaagde screening nog nodig zijn voor de
+// bestaande, uitgebreide scoring (alles daarvoor is dan al gevraagd).
+const VERVOLG_VELDEN = [
   { key: 'totaleSchulden', label: 'Totale schulden', hint: '"Total liabilities" op de balans, meest recente boekjaar.' },
   { key: 'dividendenBetaald', label: 'Totaal uitgekeerd dividend', hint: 'Totaal bedrag aan dividenden uitgekeerd dit boekjaar. Vul 0 in als er geen dividend is.' },
-  { key: 'aantalAandelenUitstaand', label: 'Aantal uitstaande aandelen', hint: '"Diluted weighted average shares outstanding" — te vinden bovenaan de winst-en-verliesrekening.' },
 ];
+
+function evalGateA(c) {
+  if (c.omzetHuidig == null || !c.omzetVorig) return { geslaagd: false, waarde: null, tekst: 'Onvoldoende gegevens om de omzetgroei te berekenen.' };
+  const groei = ((c.omzetHuidig - c.omzetVorig) / c.omzetVorig) * 100;
+  const geslaagd = groei >= 10;
+  return { geslaagd, waarde: groei, tekst: geslaagd
+    ? `Omzet groeide ${groei.toFixed(1)}% t.o.v. vorig jaar — voldoet aan de drempel van minstens 10% per jaar.`
+    : `Omzet groeide slechts ${groei.toFixed(1)}% t.o.v. vorig jaar — dat is minder dan de vereiste 10% per jaar. Dit is op dit moment geen goed effect om in te beleggen.` };
+}
+
+function evalGateB(c, huidigeKoers) {
+  const eps = c.aantalAandelenUitstaand ? c.nettoWinst / c.aantalAandelenUitstaand : null;
+  const pe = (eps != null && eps > 0 && huidigeKoers) ? huidigeKoers / eps : null;
+  if (pe == null) return { geslaagd: false, waarde: null, tekst: 'Kon de K/W-ratio niet berekenen (negatieve of ontbrekende winst per aandeel). Dit is op dit moment geen goed effect om in te beleggen.' };
+  const geslaagd = pe < 25;
+  return { geslaagd, waarde: pe, tekst: geslaagd
+    ? `K/W-ratio van ${pe.toFixed(1)} — onder de drempel van 25.`
+    : `K/W-ratio van ${pe.toFixed(1)} — dat is 25 of hoger. Dit aandeel is mogelijks overgewaardeerd en het is op dit moment niet slim om hierin te beleggen.` };
+}
+
+function evalGateC(c, peWaarde) {
+  const epsHuidig = c.aantalAandelenUitstaand ? c.nettoWinst / c.aantalAandelenUitstaand : null;
+  const epsVorig = c.aantalAandelenUitstaand ? c.nettoWinstVorig / c.aantalAandelenUitstaand : null;
+  const groeiPct = (epsVorig != null && epsVorig > 0 && epsHuidig != null) ? ((epsHuidig - epsVorig) / epsVorig) * 100 : null;
+  const peg = (groeiPct != null && groeiPct > 0 && peWaarde != null) ? peWaarde / groeiPct : null;
+  if (peg == null) return { geslaagd: false, waarde: null, tekst: 'Kon de PEG-ratio niet berekenen (de winst per aandeel groeide niet t.o.v. vorig jaar). Dit is op dit moment geen goed effect om in te beleggen.' };
+  const geslaagd = peg < 2;
+  return { geslaagd, waarde: peg, tekst: geslaagd
+    ? `PEG-ratio van ${peg.toFixed(2)} — onder de drempel van 2, de waardering houdt gelijke tred met de winstgroei.`
+    : `PEG-ratio van ${peg.toFixed(2)} — dat is 2 of hoger. Je betaalt een stevige premie voor de groei, dus dit is op dit moment niet interessant om in te beleggen.` };
+}
+
+function evalGateD(c) {
+  const jaren = [
+    { netto: c.nettoWinst, eigen: c.eigenVermogen },
+    { netto: c.nettoWinstVorig, eigen: c.eigenVermogenVorig },
+    { netto: c.nettoWinstJaar3, eigen: c.eigenVermogenJaar3 },
+    { netto: c.nettoWinstJaar4, eigen: c.eigenVermogenJaar4 },
+    { netto: c.nettoWinstJaar5, eigen: c.eigenVermogenJaar5 },
+  ];
+  const roes = jaren.map(j => (j.netto != null && j.eigen) ? (j.netto / j.eigen) * 100 : null).filter(v => v != null);
+  if (roes.length === 0) return { geslaagd: false, waarde: null, tekst: 'Kon het rendement op eigen vermogen niet berekenen.' };
+  const gemiddeld = roes.reduce((s, v) => s + v, 0) / roes.length;
+  const geslaagd = gemiddeld >= 5;
+  return { geslaagd, waarde: gemiddeld, tekst: geslaagd
+    ? `Gemiddeld rendement op eigen vermogen van ${gemiddeld.toFixed(1)}% over de laatste ${roes.length} boekjaren — goede winstmarges.`
+    : `Gemiddeld rendement op eigen vermogen van slechts ${gemiddeld.toFixed(1)}% over de laatste ${roes.length} boekjaren — dat is onder de drempel van 5%. De winstmarges zijn niet zo goed, en het is op dit moment niet slim om hierin te beleggen.` };
+}
+
+function evalGateE(c) {
+  const quick = c.kortlopendeSchulden ? (c.kortlopendeActiva - c.voorraden) / c.kortlopendeSchulden : null;
+  if (quick == null) return { geslaagd: false, waarde: null, tekst: 'Kon de quick ratio niet berekenen.' };
+  const geslaagd = quick > 1.5;
+  return { geslaagd, waarde: quick, tekst: geslaagd
+    ? `Quick ratio van ${quick.toFixed(2)} — boven 1,5, het bedrijf kan zijn kortlopende rekeningen goed betalen.`
+    : `Quick ratio van ${quick.toFixed(2)} — 1,5 of lager. Het bedrijf kan zijn kortlopende rekeningen mogelijks niet goed betalen, dus het is op dit moment niet slim om hierin te beleggen.` };
+}
+
+// Evalueert een gate op basis van de tot dusver ingegeven cijfers + context
+// (huidige koers, en het resultaat van voorgaande gates waar nodig — de PEG
+// heeft bv. de K/W-ratio uit gate B nodig).
+function evalueerGate(gateId, cijfers, ctx) {
+  if (gateId === 'A') return evalGateA(cijfers);
+  if (gateId === 'B') return evalGateB(cijfers, ctx.huidigeKoers);
+  if (gateId === 'C') return evalGateC(cijfers, ctx.gateResultaten.B?.waarde);
+  if (gateId === 'D') return evalGateD(cijfers);
+  if (gateId === 'E') return evalGateE(cijfers);
+  return { geslaagd: false, waarde: null, tekst: 'Onbekende screeningstap.' };
+}
 
 // Zet de ruwe, handmatig ingevoerde cijfers om naar dezelfde afgeleide
 // ratio's die de rest van de scoringslogica verwacht (identiek aan de
@@ -306,15 +401,21 @@ export default function Analyseren() {
   const [voortgang, setVoortgang] = useState('');
   const [fout, setFout] = useState('');
 
-  // Handmatige invoer (cijfer-per-cijfer, vervangt de jaarrekening-upload)
+  // Handmatige invoer: fase-machine (aandeel → sector → screening (5 gates,
+  // elk kan stoppen) → succes-scherm → vervolgcijfers → volledige score)
   const [handmatigModus, setHandmatigModus] = useState(false);
-  const [handmatigStap, setHandmatigStap] = useState(0); // 0 = aandeel kiezen, 1 = sector kiezen, 2..2+N-1 = cijfers, laatste = klaar
+  const [handmatigFase, setHandmatigFase] = useState('aandeel'); // aandeel | sector | screening | gefaald | succes | vervolg
   const [handmatigSymbool, setHandmatigSymbool] = useState(null);
   const [handmatigZoekQuery, setHandmatigZoekQuery] = useState('');
   const [handmatigZoekResultaten, setHandmatigZoekResultaten] = useState([]);
   const [handmatigSector, setHandmatigSector] = useState('default');
   const [handmatigCijfers, setHandmatigCijfers] = useState({});
   const [handmatigInvoer, setHandmatigInvoer] = useState('');
+  const [handmatigVeldIndex, setHandmatigVeldIndex] = useState(0);
+  const [handmatigKoers, setHandmatigKoers] = useState(null);
+  const [handmatigTechData, setHandmatigTechData] = useState(null);
+  const [gateResultaten, setGateResultaten] = useState({});
+  const [gefaaldeGate, setGefaaldeGate] = useState(null); // { id, tekst }
 
   const zoek = async (q) => {
     setZoekQuery(q);
@@ -374,80 +475,137 @@ export default function Analyseren() {
     setHandmatigSymbool(r);
     setHandmatigZoekResultaten([]);
     setHandmatigZoekQuery('');
-    setHandmatigStap(1);
+    setHandmatigFase('sector');
   };
 
-  const kiesHandmatigSector = (sector) => {
+  // Sector kiezen start meteen de screening: koers + technische cijfers
+  // worden hier één keer opgehaald (nodig voor de K/W-ratio in gate B), en
+  // alle screening-state wordt gereset voor het geval er al eerder een
+  // andere analyse werd gestart.
+  const kiesHandmatigSectorEnStart = async (sector) => {
     setHandmatigSector(sector);
     setHandmatigCijfers({});
     setHandmatigInvoer('');
-    setHandmatigStap(2);
-  };
-
-  const huidigVeld = HANDMATIGE_VELDEN[handmatigStap - 2]; // stap 2 = eerste cijfer
-
-  const volgendCijfer = () => {
-    if (handmatigInvoer.trim() === '') return;
-    const waarde = parseFloat(handmatigInvoer.replace(',', '.'));
-    if (Number.isNaN(waarde)) { setFout('Vul een geldig getal in.'); return; }
-    setFout('');
-    const nieuweCijfers = { ...handmatigCijfers, [huidigVeld.key]: waarde };
-    setHandmatigCijfers(nieuweCijfers);
-    setHandmatigInvoer('');
-    if (handmatigStap - 2 < HANDMATIGE_VELDEN.length - 1) {
-      setHandmatigStap(handmatigStap + 1);
-    } else {
-      berekenHandmatig(nieuweCijfers);
-    }
-  };
-
-  const vorigeStapHandmatig = () => {
-    setFout('');
-    if (handmatigStap > 2) {
-      const vorigVeld = HANDMATIGE_VELDEN[handmatigStap - 3];
-      setHandmatigInvoer(handmatigCijfers[vorigVeld.key] != null ? String(handmatigCijfers[vorigVeld.key]) : '');
-      setHandmatigStap(handmatigStap - 1);
-    } else {
-      setHandmatigStap(1);
-    }
-  };
-
-  const berekenHandmatig = async (cijfers) => {
-    setStappenLange(null);
-    setStappenKorte(null);
+    setHandmatigVeldIndex(0);
+    setGateResultaten({});
+    setGefaaldeGate(null);
     setFout('');
     setLaden(true);
-    setGekozen(handmatigSymbool);
-    setIsCrypto(false);
+    setVoortgang('Huidige koers en technische cijfers ophalen...');
     try {
-      // Huidige koers en 52w-bereik/voortschrijdende gemiddeldes halen we
-      // gewoon automatisch op — enkel de fundamentele boekjaar-cijfers
-      // (die gratis bronnen voor Amerikaanse aandelen niet aanbieden)
-      // worden hier handmatig ingevuld door de gebruiker zelf.
       const [qRes, techRes] = await Promise.all([
         fetch(`/api/data?endpoint=quote&symbol=${encodeURIComponent(handmatigSymbool.symbol)}`),
         fetch(`/api/data?endpoint=analyse-aandeel&symbol=${encodeURIComponent(handmatigSymbool.symbol)}`),
       ]);
       const qData = await qRes.json();
       const techData = await techRes.json();
-      const huidigeKoers = qData?.c;
-      if (!huidigeKoers) { setFout('Kon de huidige koers niet ophalen — nodig om de K/W-ratio en het dividendrendement te berekenen.'); setLaden(false); return; }
-
-      const ratios = berekenRatiosUitRuweCijfers(cijfers, handmatigSector, huidigeKoers);
-      const gecombineerd = {
-        ...ratios,
-        weekHigh52: techData.weekHigh52,
-        weekLow52: techData.weekLow52,
-        gemiddelde50d: techData.gemiddelde50d,
-        gemiddelde200d: techData.gemiddelde200d,
-      };
-      setStappenLange(scoreAandeelLangeTermijn(gecombineerd));
-      setStappenKorte(scoreAandeelKorteTermijn(gecombineerd, huidigeKoers));
-      setHandmatigStap(2 + HANDMATIGE_VELDEN.length); // wizard afgerond, resultaat toont eronder
+      if (!qData?.c) { setFout('Kon de huidige koers niet ophalen — nodig voor de K/W-ratio.'); setLaden(false); return; }
+      setHandmatigKoers(qData.c);
+      setHandmatigTechData(techData);
+      setHandmatigFase('screening');
     } catch (e) {
-      setFout(`Er ging iets mis bij het ophalen van de koers/technische cijfers: ${e.message}`);
+      setFout(`Kon de koers/technische cijfers niet ophalen: ${e.message}`);
     }
+    setVoortgang('');
     setLaden(false);
+  };
+
+  const huidigScreeningVeld = SCREENING_VELDEN[handmatigVeldIndex];
+  const huidigVervolgVeld = VERVOLG_VELDEN[handmatigVeldIndex];
+
+  const volgendeScreeningVeld = () => {
+    if (handmatigInvoer.trim() === '') return;
+    const waarde = parseFloat(handmatigInvoer.replace(',', '.'));
+    if (Number.isNaN(waarde)) { setFout('Vul een geldig getal in.'); return; }
+    setFout('');
+    const nieuweCijfers = { ...handmatigCijfers, [huidigScreeningVeld.key]: waarde };
+    setHandmatigCijfers(nieuweCijfers);
+    setHandmatigInvoer('');
+
+    const volgendVeld = SCREENING_VELDEN[handmatigVeldIndex + 1];
+    const isLaatsteVanGate = !volgendVeld || volgendVeld.gate !== huidigScreeningVeld.gate;
+
+    if (!isLaatsteVanGate) {
+      setHandmatigVeldIndex(handmatigVeldIndex + 1);
+      return;
+    }
+
+    // Laatste cijfer van deze gate ingevuld — evalueer meteen
+    const resultaat = evalueerGate(huidigScreeningVeld.gate, nieuweCijfers, { huidigeKoers: handmatigKoers, gateResultaten });
+    const nieuweGateResultaten = { ...gateResultaten, [huidigScreeningVeld.gate]: resultaat };
+    setGateResultaten(nieuweGateResultaten);
+
+    if (!resultaat.geslaagd) {
+      setGefaaldeGate({ id: huidigScreeningVeld.gate, tekst: resultaat.tekst });
+      setHandmatigFase('gefaald');
+    } else if (!volgendVeld) {
+      // Dat was gate E, de laatste — alle 5 geslaagd
+      setHandmatigFase('succes');
+    } else {
+      setHandmatigVeldIndex(handmatigVeldIndex + 1);
+    }
+  };
+
+  const vorigeScreeningVeld = () => {
+    setFout('');
+    if (handmatigVeldIndex > 0) {
+      const vorigVeld = SCREENING_VELDEN[handmatigVeldIndex - 1];
+      setHandmatigInvoer(handmatigCijfers[vorigVeld.key] != null ? String(handmatigCijfers[vorigVeld.key]) : '');
+      setHandmatigVeldIndex(handmatigVeldIndex - 1);
+    } else {
+      setHandmatigFase('sector');
+    }
+  };
+
+  const startVervolgVragen = () => {
+    setHandmatigVeldIndex(0);
+    setHandmatigInvoer('');
+    setFout('');
+    setHandmatigFase('vervolg');
+  };
+
+  const volgendeVervolgVeld = () => {
+    if (handmatigInvoer.trim() === '') return;
+    const waarde = parseFloat(handmatigInvoer.replace(',', '.'));
+    if (Number.isNaN(waarde)) { setFout('Vul een geldig getal in.'); return; }
+    setFout('');
+    const nieuweCijfers = { ...handmatigCijfers, [huidigVervolgVeld.key]: waarde };
+    setHandmatigCijfers(nieuweCijfers);
+    setHandmatigInvoer('');
+    if (handmatigVeldIndex < VERVOLG_VELDEN.length - 1) {
+      setHandmatigVeldIndex(handmatigVeldIndex + 1);
+    } else {
+      berekenHandmatig(nieuweCijfers);
+    }
+  };
+
+  const vorigeVervolgVeld = () => {
+    setFout('');
+    if (handmatigVeldIndex > 0) {
+      const vorigVeld = VERVOLG_VELDEN[handmatigVeldIndex - 1];
+      setHandmatigInvoer(handmatigCijfers[vorigVeld.key] != null ? String(handmatigCijfers[vorigVeld.key]) : '');
+      setHandmatigVeldIndex(handmatigVeldIndex - 1);
+    } else {
+      setHandmatigFase('succes');
+    }
+  };
+
+  const berekenHandmatig = (cijfers) => {
+    setStappenLange(null);
+    setStappenKorte(null);
+    setGekozen(handmatigSymbool);
+    setIsCrypto(false);
+    const ratios = berekenRatiosUitRuweCijfers(cijfers, handmatigSector, handmatigKoers);
+    const gecombineerd = {
+      ...ratios,
+      weekHigh52: handmatigTechData?.weekHigh52,
+      weekLow52: handmatigTechData?.weekLow52,
+      gemiddelde50d: handmatigTechData?.gemiddelde50d,
+      gemiddelde200d: handmatigTechData?.gemiddelde200d,
+    };
+    setStappenLange(scoreAandeelLangeTermijn(gecombineerd));
+    setStappenKorte(scoreAandeelKorteTermijn(gecombineerd, handmatigKoers));
+    setHandmatigFase('klaar');
   };
 
   const herbeginHandmatig = () => {
@@ -455,7 +613,12 @@ export default function Analyseren() {
     setHandmatigSector('default');
     setHandmatigCijfers({});
     setHandmatigInvoer('');
-    setHandmatigStap(0);
+    setHandmatigVeldIndex(0);
+    setHandmatigKoers(null);
+    setHandmatigTechData(null);
+    setGateResultaten({});
+    setGefaaldeGate(null);
+    setHandmatigFase('aandeel');
     setStappenLange(null);
     setStappenKorte(null);
     setFout('');
@@ -502,11 +665,11 @@ export default function Analyseren() {
       {handmatigModus ? (
         <div className="card" style={{ padding: 20, marginBottom: 24 }}>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
-            Geef zelf de kerncijfers van een Amerikaans beursgenoteerd bedrijf in (bv. uit de jaarrekening of via stockanalysis.com/macrotrends.net) — gratis databronnen bieden dit voor Amerikaanse fundamentele cijfers namelijk niet aan. De huidige koers en het 52-weken-bereik halen we automatisch op.
+            Geef zelf de kerncijfers van een Amerikaans beursgenoteerd bedrijf in (bv. uit de jaarrekening of via stockanalysis.com/macrotrends.net) — gratis databronnen bieden dit voor Amerikaanse fundamentele cijfers namelijk niet aan. Eerst doorloop je een screening van 5 stappen (omzetgroei, K/W-ratio, PEG-ratio, rendement op eigen vermogen, quick ratio) — zakt het aandeel op één daarvan door, dan stopt de analyse meteen met een duidelijke melding. Slaagt het op alle 5, dan ga je door naar de volledige Lange-termijn/Korte-termijn-analyse. De huidige koers en het 52-weken-bereik halen we automatisch op.
           </div>
 
-          {/* Stap 0: effect kiezen */}
-          {handmatigStap === 0 && (
+          {/* Fase: effect kiezen */}
+          {handmatigFase === 'aandeel' && (
             <div style={{ position: 'relative' }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Om welk aandeel gaat het?</label>
               <input
@@ -533,12 +696,12 @@ export default function Analyseren() {
             </div>
           )}
 
-          {/* Stap 1: sector kiezen */}
-          {handmatigStap === 1 && (
+          {/* Fase: sector kiezen */}
+          {handmatigFase === 'sector' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, marginBottom: 16 }}>
                 <span>{handmatigSymbool.naam} · {handmatigSymbool.symbol}</span>
-                <button onClick={() => setHandmatigStap(0)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12 }}>Wijzigen</button>
+                <button onClick={() => setHandmatigFase('aandeel')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12 }}>Wijzigen</button>
               </div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>In welke sector zit dit bedrijf?</label>
               <select value={handmatigSector} onChange={e => setHandmatigSector(e.target.value)}
@@ -551,56 +714,142 @@ export default function Analyseren() {
                 <option value="default">Consument / Industrie / Gezondheidszorg</option>
               </select>
               <button
-                onClick={() => kiesHandmatigSector(handmatigSector)}
-                style={{ width: '100%', padding: '12px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                onClick={() => kiesHandmatigSectorEnStart(handmatigSector)}
+                disabled={laden}
+                style={{ width: '100%', padding: '12px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: laden ? 0.5 : 1 }}
               >
-                Verder <ArrowRight size={15} />
+                {laden && <Loader size={15} className="spin" />}
+                Start screening <ArrowRight size={15} />
               </button>
             </div>
           )}
 
-          {/* Stappen 2..2+N-1: cijfer per cijfer */}
-          {handmatigStap >= 2 && handmatigStap < 2 + HANDMATIGE_VELDEN.length && (
+          {/* Fase: screening — 5 gates, elk met eigen cijfers en een meteen-evaluatie */}
+          {handmatigFase === 'screening' && huidigScreeningVeld && (
             <div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
-                Cijfer {handmatigStap - 1} van {HANDMATIGE_VELDEN.length}
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>
+                {GATE_TITELS[huidigScreeningVeld.gate]}
               </div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{huidigVeld.label}</label>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.4 }}>{huidigVeld.hint}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14 }}>
+                Cijfer {handmatigVeldIndex + 1} van {SCREENING_VELDEN.length}
+              </div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{huidigScreeningVeld.label}</label>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.4 }}>{huidigScreeningVeld.hint}</div>
               <input
                 type="text"
                 inputMode="decimal"
                 value={handmatigInvoer}
                 onChange={e => setHandmatigInvoer(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') volgendCijfer(); }}
+                onKeyDown={e => { if (e.key === 'Enter') volgendeScreeningVeld(); }}
                 placeholder="Bv. 12500000000"
                 autoFocus
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 16 }}
               />
               <div style={{ display: 'flex', gap: 10 }}>
                 <button
-                  onClick={vorigeStapHandmatig}
+                  onClick={vorigeScreeningVeld}
                   style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
                 >
                   <ArrowLeft size={15} /> Vorige
                 </button>
                 <button
-                  onClick={volgendCijfer}
-                  disabled={laden || handmatigInvoer.trim() === ''}
+                  onClick={volgendeScreeningVeld}
+                  disabled={handmatigInvoer.trim() === ''}
                   style={{
                     flex: 1, padding: '12px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white',
                     fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    opacity: (laden || handmatigInvoer.trim() === '') ? 0.5 : 1,
+                    opacity: handmatigInvoer.trim() === '' ? 0.5 : 1,
                   }}
                 >
-                  {laden && <Loader size={15} className="spin" />}
-                  {handmatigStap - 2 < HANDMATIGE_VELDEN.length - 1 ? <>Volgende <ArrowRight size={15} /></> : 'Berekenen'}
+                  Volgende <ArrowRight size={15} />
                 </button>
               </div>
             </div>
           )}
 
-          {handmatigStap >= 2 + HANDMATIGE_VELDEN.length && !laden && (
+          {/* Fase: gefaald — een screening-gate is niet geslaagd, analyse stopt hier */}
+          {handmatigFase === 'gefaald' && gefaaldeGate && (
+            <div>
+              <div style={{ padding: '16px 18px', background: 'var(--red-bg)', borderRadius: 10, marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)', marginBottom: 6 }}>
+                  {GATE_TITELS[gefaaldeGate.id]} — niet geslaagd
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--red)', lineHeight: 1.5 }}>{gefaaldeGate.tekst}</div>
+              </div>
+              <button
+                onClick={herbeginHandmatig}
+                style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Nieuw aandeel analyseren
+              </button>
+            </div>
+          )}
+
+          {/* Fase: succes — alle 5 gates geslaagd, keuze om verder te gaan naar de volledige analyse */}
+          {handmatigFase === 'succes' && (
+            <div>
+              <div style={{ padding: '16px 18px', background: 'var(--green-bg, #ecfdf5)', borderRadius: 10, marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#059669', marginBottom: 10 }}>
+                  Zeer goed! Dit bedrijf scoort goed op alle 5 aspecten van de screening.
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {['A', 'B', 'C', 'D', 'E'].map(id => (
+                    <div key={id} style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      <strong>{GATE_TITELS[id].replace(/^\d\.\s*/, '')}:</strong> {gateResultaten[id]?.tekst}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={startVervolgVragen}
+                style={{ width: '100%', padding: '12px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                Ga verder naar de volledige analyse <ArrowRight size={15} />
+              </button>
+            </div>
+          )}
+
+          {/* Fase: vervolg — de laatste, nog niet gevraagde cijfers voor de volledige score */}
+          {handmatigFase === 'vervolg' && huidigVervolgVeld && (
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14 }}>
+                Nog {VERVOLG_VELDEN.length - handmatigVeldIndex} cijfer{VERVOLG_VELDEN.length - handmatigVeldIndex !== 1 ? 's' : ''} voor de volledige analyse
+              </div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{huidigVervolgVeld.label}</label>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.4 }}>{huidigVervolgVeld.hint}</div>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={handmatigInvoer}
+                onChange={e => setHandmatigInvoer(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') volgendeVervolgVeld(); }}
+                placeholder="Bv. 12500000000"
+                autoFocus
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 16 }}
+              />
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={vorigeVervolgVeld}
+                  style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <ArrowLeft size={15} /> Vorige
+                </button>
+                <button
+                  onClick={volgendeVervolgVeld}
+                  disabled={handmatigInvoer.trim() === ''}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white',
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    opacity: handmatigInvoer.trim() === '' ? 0.5 : 1,
+                  }}
+                >
+                  {handmatigVeldIndex < VERVOLG_VELDEN.length - 1 ? <>Volgende <ArrowRight size={15} /></> : 'Berekenen'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {handmatigFase === 'klaar' && (
             <button
               onClick={herbeginHandmatig}
               style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
@@ -721,7 +970,7 @@ export default function Analyseren() {
         </>
       )}
 
-      {!klaarOmTeTonen && !laden && !fout && (
+      {!klaarOmTeTonen && !laden && !fout && !handmatigModus && (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
           <TrendingUp size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
           <div>Zoek een aandeel, ETF of crypto hierboven om te beginnen.</div>
