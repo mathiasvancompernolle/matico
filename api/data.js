@@ -1286,6 +1286,11 @@ module.exports = async function handler(req, res) {
         const jsonResponse = await handleUpload({
           body: req.body,
           request: webRequest,
+          // Expliciet het klassieke token forceren — zonder dit probeert de
+          // SDK mogelijk eerst een nieuwer OIDC-systeem (BLOB_STORE_ID +
+          // VERCEL_OIDC_TOKEN samen), en als die laatste ontbreekt, faalt
+          // dat stilzwijgend zonder terug te vallen op dit token.
+          token: process.env.BLOB_READ_WRITE_TOKEN,
           onBeforeGenerateToken: async () => ({
             allowedContentTypes: ['application/pdf'],
             addRandomSuffix: true,
