@@ -271,6 +271,14 @@ export default function Analyseren() {
   const [laden, setLaden] = useState(false);
   const [fout, setFout] = useState('');
 
+  // Jaarrekening-upload (enkel voor Amerikaanse aandelen)
+  const [uploadModus, setUploadModus] = useState(false);
+  const [uploadSector, setUploadSector] = useState('default');
+  const [uploadBestand, setUploadBestand] = useState(null);
+  const [uploadSymbool, setUploadSymbool] = useState(null);
+  const [uploadZoekQuery, setUploadZoekQuery] = useState('');
+  const [uploadZoekResultaten, setUploadZoekResultaten] = useState([]);
+
   const zoek = async (q) => {
     setZoekQuery(q);
     if (q.length < 2) { setZoekResultaten([]); return; }
@@ -315,6 +323,68 @@ export default function Analyseren() {
     setLaden(false);
   };
 
+  const zoekUpload = async (q) => {
+    setUploadZoekQuery(q);
+    if (q.length < 2) { setUploadZoekResultaten([]); return; }
+    try {
+      const res = await fetch(`/api/data?endpoint=search&q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      setUploadZoekResultaten((data?.resultaten || []).filter(r => r.type !== 'crypto'));
+    } catch (e) { setUploadZoekResultaten([]); }
+  };
+
+  const bestandNaarBase64 = (bestand) => new Promise((resolve, reject) => {
+    const lezer = new FileReader();
+    lezer.onload = () => resolve(lezer.result.split(',')[1]);
+    lezer.onerror = reject;
+    lezer.readAsDataURL(bestand);
+  });
+
+  const analyseerJaarrekening = async () => {
+    if (!uploadBestand || !uploadSymbool) return;
+    setStappenLange(null);
+    setStappenKorte(null);
+    setFout('');
+    setLaden(true);
+    setGekozen(uploadSymbool);
+    setIsCrypto(false);
+    try {
+      const [pdfBase64, qRes, techRes] = await Promise.all([
+        bestandNaarBase64(uploadBestand),
+        fetch(`/api/data?endpoint=quote&symbol=${encodeURIComponent(uploadSymbool.symbol)}`),
+        fetch(`/api/data?endpoint=analyse-aandeel&symbol=${encodeURIComponent(uploadSymbool.symbol)}`),
+      ]);
+      const qData = await qRes.json();
+      const techData = await techRes.json(); // enkel voor 52w-bereik en 50/200-daags gemiddelde
+      const huidigeKoers = qData?.c;
+      if (!huidigeKoers) { setFout('Kon de huidige koers niet ophalen — nodig om de K/W-ratio en dividendrendement te berekenen.'); setLaden(false); return; }
+
+      const jrRes = await fetch('/api/data?endpoint=analyse-jaarrekening', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfBase64, sector: uploadSector, huidigeKoers }),
+      });
+      const jrData = await jrRes.json();
+      if (jrData.fout) { setFout(jrData.fout); setLaden(false); return; }
+
+      // Combineer: fundamentele cijfers uit de jaarrekening + 52w-bereik/
+      // voortschrijdende gemiddeldes uit de bestaande koers-data (die staan
+      // niet in een jaarrekening, enkel historische boekjaar-cijfers).
+      const gecombineerd = {
+        ...jrData,
+        weekHigh52: techData.weekHigh52,
+        weekLow52: techData.weekLow52,
+        gemiddelde50d: techData.gemiddelde50d,
+        gemiddelde200d: techData.gemiddelde200d,
+      };
+      setStappenLange(scoreAandeelLangeTermijn(gecombineerd));
+      setStappenKorte(scoreAandeelKorteTermijn(gecombineerd, huidigeKoers));
+    } catch (e) {
+      setFout('Er ging iets mis bij het verwerken van de jaarrekening.');
+    }
+    setLaden(false);
+  };
+
   const berekenTotaal = (stappen) => {
     if (!stappen) return null;
     const geldig = stappen.filter(s => s.score !== null);
@@ -338,6 +408,95 @@ export default function Analyseren() {
       </div>
 
       {/* Zoekbalk */}
+      {/* Omschakelknop tussen normale zoekopdracht en jaarrekening-upload */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button
+          onClick={() => setUploadModus(v => !v)}
+          style={{
+            background: uploadModus ? 'var(--accent-bg)' : 'transparent',
+            color: uploadModus ? 'var(--accent)' : 'var(--text-muted)',
+            border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px',
+            fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          {uploadModus ? '✓ ' : ''}Jaarrekening uploaden (enkel Amerikaanse aandelen)
+        </button>
+      </div>
+
+      {uploadModus ? (
+        <div className="card" style={{ padding: 20, marginBottom: 24 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+            Upload het volledige jaarverslag (10-K, als PDF) van een Amerikaans beursgenoteerd bedrijf. We laten een AI-model de cijfers eruit halen en berekenen zelf de nodige ratio's — gratis databronnen bieden dit voor Amerikaanse fundamentele cijfers namelijk niet aan.
+          </div>
+
+          {/* Effect kiezen (voor live koers + 52w-bereik) */}
+          <div style={{ marginBottom: 14, position: 'relative' }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Om welk effect gaat het?</label>
+            {uploadSymbool ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }}>
+                <span>{uploadSymbool.naam} · {uploadSymbool.symbol}</span>
+                <button onClick={() => setUploadSymbool(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12 }}>Wijzigen</button>
+              </div>
+            ) : (
+              <>
+                <input
+                  value={uploadZoekQuery}
+                  onChange={e => zoekUpload(e.target.value)}
+                  placeholder="Zoek het Amerikaanse aandeel..."
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                />
+                {uploadZoekResultaten.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: 'var(--shadow-md)', maxHeight: 240, overflowY: 'auto', zIndex: 20 }}>
+                    {uploadZoekResultaten.map((r, i) => (
+                      <div key={i} onClick={() => { setUploadSymbool(r); setUploadZoekResultaten([]); setUploadZoekQuery(''); }}
+                        style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: i < uploadZoekResultaten.length - 1 ? '1px solid var(--border-light)' : 'none' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{r.naam}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.symbol} · {r.beurs}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Sector kiezen */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Sector</label>
+            <select value={uploadSector} onChange={e => setUploadSector(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, fontFamily: 'inherit', background: 'var(--bg-white)' }}>
+              <option value="technologie">Technologie / Communicatie</option>
+              <option value="financieel">Financieel / Banken</option>
+              <option value="nutsbedrijf">Nutsbedrijf</option>
+              <option value="vastgoed">Vastgoed (REIT)</option>
+              <option value="energie">Energie / Materialen</option>
+              <option value="default">Consument / Industrie / Gezondheidszorg</option>
+            </select>
+          </div>
+
+          {/* Bestand kiezen */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Jaarrekening (PDF)</label>
+            <input type="file" accept="application/pdf" onChange={e => setUploadBestand(e.target.files?.[0] || null)}
+              style={{ width: '100%', fontSize: 13 }} />
+          </div>
+
+          <button
+            onClick={analyseerJaarrekening}
+            disabled={!uploadBestand || !uploadSymbool || laden}
+            style={{
+              width: '100%', padding: '12px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white',
+              fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              opacity: (!uploadBestand || !uploadSymbool || laden) ? 0.5 : 1,
+            }}
+          >
+            Analyseer jaarrekening
+          </button>
+        </div>
+      ) : (
       <div style={{ position: 'relative', marginBottom: 24 }}>
         <div style={{ position: 'relative' }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -367,6 +526,7 @@ export default function Analyseren() {
           </div>
         )}
       </div>
+      )}
 
       {laden && (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>

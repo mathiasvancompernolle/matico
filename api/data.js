@@ -1265,6 +1265,76 @@ module.exports = async function handler(req, res) {
       return res.json(resultaat);
     }
 
+    // ── Jaarrekening-upload: laat een goedkoop AI-model (Gemini 2.5
+    // Flash-Lite via OpenRouter) de ruwe cijfers uit een geüpload
+    // jaarverslag (10-K) halen, en bereken daarmee zelf de nodige ratio's —
+    // want die staan niet letterlijk zo in het document, enkel de ruwe
+    // cijfers waaruit ze berekend moeten worden.
+    if (endpoint === 'analyse-jaarrekening') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
+      const { pdfBase64, sector, huidigeKoers } = body;
+      if (!pdfBase64 || !huidigeKoers) return res.status(400).json({ fout: 'PDF en huidige koers zijn verplicht.' });
+
+      const prompt = `Je krijgt het jaarverslag (10-K) van een Amerikaans beursgenoteerd bedrijf. Zoek in de geconsolideerde winst-en-verliesrekening, balans, en het kasstroomoverzicht de volgende cijfers op, voor het meest recente boekjaar (en het jaar ervoor waar aangegeven). Geef ENKEL en UITSLUITEND geldige JSON terug, zonder markdown-opmaak, zonder uitleg, exact in dit formaat (gebruik null als een cijfer niet gevonden wordt):
+
+{
+  "omzetHuidig": <getal in USD, meest recente boekjaar>,
+  "omzetVorig": <getal in USD, boekjaar ervoor, voor groeiberekening>,
+  "nettoWinst": <getal in USD, meest recente boekjaar>,
+  "totaleActiva": <getal in USD>,
+  "totaleSchulden": <getal in USD, totale verplichtingen>,
+  "eigenVermogen": <getal in USD, total stockholders' equity>,
+  "operationeleKasstroom": <getal in USD, cash from operating activities>,
+  "investeringenVasteActiva": <getal in USD, capital expenditures / purchases of property and equipment>,
+  "dividendenBetaald": <getal in USD, totaal uitgekeerd dividend, 0 als er geen is>,
+  "aantalAandelenUitstaand": <getal, diluted weighted average shares outstanding>
+}`;
+
+      try {
+        const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'HTTP-Referer': 'https://kapitas.be', 'X-Title': 'Kapitas' },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash-lite',
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                { type: 'file', file: { filename: 'jaarrekening.pdf', file_data: `data:application/pdf;base64,${pdfBase64}` } },
+              ],
+            }],
+          }),
+        });
+        const d = await r.json();
+        const ruweTekst = d.choices?.[0]?.message?.content || '';
+        const jsonMatch = ruweTekst.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) return res.status(422).json({ fout: 'Kon geen cijfers uit het document halen. Controleer of het een geldige jaarrekening is.' });
+        const c = JSON.parse(jsonMatch[0]);
+
+        // Zelf de ratio's berekenen — deze staan niet letterlijk in het document
+        const eps = (c.nettoWinst != null && c.aantalAandelenUitstaand) ? c.nettoWinst / c.aantalAandelenUitstaand : null;
+        const vrijeKasstroom = (c.operationeleKasstroom != null && c.investeringenVasteActiva != null) ? c.operationeleKasstroom - c.investeringenVasteActiva : null;
+        const dividendPerAandeel = (c.dividendenBetaald != null && c.aantalAandelenUitstaand) ? c.dividendenBetaald / c.aantalAandelenUitstaand : null;
+
+        const resultaat = {
+          sector: sector || null,
+          peRatio: (eps != null && eps > 0) ? huidigeKoers / eps : null,
+          profitMargin: (c.nettoWinst != null && c.omzetHuidig) ? c.nettoWinst / c.omzetHuidig : null,
+          returnOnEquity: (c.nettoWinst != null && c.eigenVermogen) ? c.nettoWinst / c.eigenVermogen : null,
+          debtToEquity: (c.totaleSchulden != null && c.eigenVermogen) ? c.totaleSchulden / c.eigenVermogen : null,
+          revenueGrowthYoY: (c.omzetHuidig != null && c.omzetVorig) ? (c.omzetHuidig - c.omzetVorig) / c.omzetVorig : null,
+          dividendYield: (dividendPerAandeel != null && huidigeKoers) ? dividendPerAandeel / huidigeKoers : null,
+          payoutRatio: (c.dividendenBetaald != null && c.nettoWinst) ? c.dividendenBetaald / c.nettoWinst : null,
+          vrijeKasstroom,
+          nettoWinstPositief: c.nettoWinst != null ? c.nettoWinst > 0 : null,
+          ruweCijfers: c, // voor eventueel later hergebruik/debug
+        };
+        return res.json(resultaat);
+      } catch (e) {
+        return res.status(500).json({ fout: 'Er ging iets mis bij het verwerken van de jaarrekening.' });
+      }
+    }
+
     if (endpoint === 'metrics') {
       const { symbol } = req.query;
       try {
