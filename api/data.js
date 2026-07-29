@@ -1273,9 +1273,18 @@ module.exports = async function handler(req, res) {
     // tijdelijke, beveiligde token dat de browser daarvoor nodig heeft.
     if (endpoint === 'blob-upload-token') {
       try {
+        // handleUpload verwacht een web-standaard Request-object — Vercel's
+        // gewone Node.js-functies (zoals deze) geven een ander soort object
+        // door, dus bouwen we er zelf een op, met de originele headers en
+        // methode, zodat handleUpload's interne verwerking correct verloopt.
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const webRequest = new Request(`${protocol}://${req.headers.host}${req.url}`, {
+          method: req.method,
+          headers: req.headers,
+        });
         const jsonResponse = await handleUpload({
           body: req.body,
-          request: req,
+          request: webRequest,
           onBeforeGenerateToken: async () => ({
             allowedContentTypes: ['application/pdf'],
             addRandomSuffix: true,
