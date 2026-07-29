@@ -1303,13 +1303,28 @@ module.exports = async function handler(req, res) {
                 { type: 'file', file: { filename: 'jaarrekening.pdf', file_data: `data:application/pdf;base64,${pdfBase64}` } },
               ],
             }],
+            plugins: [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }],
           }),
         });
         const d = await r.json();
+
+        // OpenRouter geeft bij een fout geen 'choices' terug, maar een
+        // 'error'-veld — toon dat expliciet i.p.v. stilzwijgend te falen.
+        if (d.error) return res.status(502).json({ fout: `OpenRouter-fout: ${d.error.message || JSON.stringify(d.error)}` });
+        if (!r.ok) return res.status(502).json({ fout: `OpenRouter gaf status ${r.status} terug: ${JSON.stringify(d).slice(0, 300)}` });
+
         const ruweTekst = d.choices?.[0]?.message?.content || '';
+        if (!ruweTekst) return res.status(422).json({ fout: `Geen inhoud teruggekregen van het AI-model. Volledige respons: ${JSON.stringify(d).slice(0, 300)}` });
+
         const jsonMatch = ruweTekst.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) return res.status(422).json({ fout: 'Kon geen cijfers uit het document halen. Controleer of het een geldige jaarrekening is.' });
-        const c = JSON.parse(jsonMatch[0]);
+        if (!jsonMatch) return res.status(422).json({ fout: `Kon geen cijfers uit het document halen. Antwoord van het model: "${ruweTekst.slice(0, 300)}"` });
+
+        let c;
+        try {
+          c = JSON.parse(jsonMatch[0]);
+        } catch (parseFout) {
+          return res.status(422).json({ fout: `Het model gaf geen geldige JSON terug: "${jsonMatch[0].slice(0, 300)}"` });
+        }
 
         // Zelf de ratio's berekenen — deze staan niet letterlijk in het document
         const eps = (c.nettoWinst != null && c.aantalAandelenUitstaand) ? c.nettoWinst / c.aantalAandelenUitstaand : null;
@@ -1331,7 +1346,7 @@ module.exports = async function handler(req, res) {
         };
         return res.json(resultaat);
       } catch (e) {
-        return res.status(500).json({ fout: 'Er ging iets mis bij het verwerken van de jaarrekening.' });
+        return res.status(500).json({ fout: `Er ging iets mis bij het verwerken van de jaarrekening: ${e.message}` });
       }
     }
 

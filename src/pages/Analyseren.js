@@ -364,7 +364,15 @@ export default function Analyseren() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pdfBase64, sector: uploadSector, huidigeKoers }),
       });
-      const jrData = await jrRes.json();
+      let jrData;
+      try {
+        jrData = await jrRes.json();
+      } catch (parseFout) {
+        const ruweTekst = await jrRes.text().catch(() => '');
+        setFout(`Server gaf geen geldig antwoord terug (status ${jrRes.status}). Mogelijk is het bestand te groot. Details: ${ruweTekst.slice(0, 200)}`);
+        setLaden(false);
+        return;
+      }
       if (jrData.fout) { setFout(jrData.fout); setLaden(false); return; }
 
       // Combineer: fundamentele cijfers uit de jaarrekening + 52w-bereik/
@@ -380,7 +388,7 @@ export default function Analyseren() {
       setStappenLange(scoreAandeelLangeTermijn(gecombineerd));
       setStappenKorte(scoreAandeelKorteTermijn(gecombineerd, huidigeKoers));
     } catch (e) {
-      setFout('Er ging iets mis bij het verwerken van de jaarrekening.');
+      setFout(`Er ging iets mis bij het verwerken van de jaarrekening: ${e.message}`);
     }
     setLaden(false);
   };
