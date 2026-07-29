@@ -59,6 +59,8 @@ function cacheKey(req) {
   return Object.keys(q).sort().map(k => `${k}=${q[k]}`).join('&');
 }
 
+const { handleUpload } = require('@vercel/blob/client');
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -1265,6 +1267,28 @@ module.exports = async function handler(req, res) {
       return res.json(resultaat);
     }
 
+    // ── Client-upload-token voor Vercel Blob: de browser uploadt de PDF
+    // rechtstreeks naar Vercel Blob (dus niet via deze functie, die een
+    // harde limiet van 4,5 MB heeft) — dit endpoint genereert enkel het
+    // tijdelijke, beveiligde token dat de browser daarvoor nodig heeft.
+    if (endpoint === 'blob-upload-token') {
+      try {
+        const jsonResponse = await handleUpload({
+          body: req.body,
+          request: req,
+          onBeforeGenerateToken: async () => ({
+            allowedContentTypes: ['application/pdf'],
+            addRandomSuffix: true,
+            maximumSizeInBytes: 25 * 1024 * 1024, // 25 MB, ruim genoeg voor een jaarrekening
+          }),
+          onUploadCompleted: async () => {},
+        });
+        return res.json(jsonResponse);
+      } catch (error) {
+        return res.status(400).json({ fout: error.message });
+      }
+    }
+
     // ── Jaarrekening-upload: laat een goedkoop AI-model (Gemini 2.5
     // Flash-Lite via OpenRouter) de ruwe cijfers uit een geüpload
     // jaarverslag (10-K) halen, en bereken daarmee zelf de nodige ratio's —
@@ -1272,8 +1296,22 @@ module.exports = async function handler(req, res) {
     // cijfers waaruit ze berekend moeten worden.
     if (endpoint === 'analyse-jaarrekening') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
-      const { pdfBase64, sector, huidigeKoers } = body;
-      if (!pdfBase64 || !huidigeKoers) return res.status(400).json({ fout: 'PDF en huidige koers zijn verplicht.' });
+      const { pdfUrl, sector, huidigeKoers } = body;
+      if (!pdfUrl || !huidigeKoers) return res.status(400).json({ fout: 'PDF en huidige koers zijn verplicht.' });
+
+      // De PDF staat op Vercel Blob (rechtstreeks vanuit de browser
+      // geüpload) — we halen ze hier zelf op en zetten ze om naar base64
+      // voor OpenRouter. Dit "ophalen" heeft geen 4,5 MB-limiet, enkel het
+      // "ontvangen" van een binnenkomend verzoek heeft die grens.
+      let pdfBase64;
+      try {
+        const pdfRes = await fetch(pdfUrl);
+        if (!pdfRes.ok) return res.status(502).json({ fout: `Kon de geüploade PDF niet ophalen (status ${pdfRes.status}).` });
+        const buffer = await pdfRes.arrayBuffer();
+        pdfBase64 = Buffer.from(buffer).toString('base64');
+      } catch (e) {
+        return res.status(502).json({ fout: `Kon de geüploade PDF niet ophalen: ${e.message}` });
+      }
 
       const prompt = `Je krijgt het jaarverslag (10-K) van een Amerikaans beursgenoteerd bedrijf. Zoek in de geconsolideerde winst-en-verliesrekening, balans, en het kasstroomoverzicht de volgende cijfers op, voor het meest recente boekjaar (en het jaar ervoor waar aangegeven). Geef ENKEL en UITSLUITEND geldige JSON terug, zonder markdown-opmaak, zonder uitleg, exact in dit formaat (gebruik null als een cijfer niet gevonden wordt):
 

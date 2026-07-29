@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Loader, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { upload } from '@vercel/blob/client';
 
 // ── Scoringslogica — apart voor aandelen/ETF's en crypto ────────────────────
 // Elke stap geeft een score op 10, met een korte, mensleesbare toelichting.
@@ -333,13 +334,6 @@ export default function Analyseren() {
     } catch (e) { setUploadZoekResultaten([]); }
   };
 
-  const bestandNaarBase64 = (bestand) => new Promise((resolve, reject) => {
-    const lezer = new FileReader();
-    lezer.onload = () => resolve(lezer.result.split(',')[1]);
-    lezer.onerror = reject;
-    lezer.readAsDataURL(bestand);
-  });
-
   const analyseerJaarrekening = async () => {
     if (!uploadBestand || !uploadSymbool) return;
     setStappenLange(null);
@@ -349,8 +343,16 @@ export default function Analyseren() {
     setGekozen(uploadSymbool);
     setIsCrypto(false);
     try {
-      const [pdfBase64, qRes, techRes] = await Promise.all([
-        bestandNaarBase64(uploadBestand),
+      // Stap 1: bestand rechtstreeks vanuit de browser naar Vercel Blob
+      // uploaden — dit gaat NIET via onze eigen server (die een harde
+      // limiet van 4,5 MB heeft), dus grote jaarrekeningen zijn geen
+      // probleem.
+      const blob = await upload(uploadBestand.name, uploadBestand, {
+        access: 'public',
+        handleUploadUrl: '/api/data?endpoint=blob-upload-token',
+      });
+
+      const [qRes, techRes] = await Promise.all([
         fetch(`/api/data?endpoint=quote&symbol=${encodeURIComponent(uploadSymbool.symbol)}`),
         fetch(`/api/data?endpoint=analyse-aandeel&symbol=${encodeURIComponent(uploadSymbool.symbol)}`),
       ]);
@@ -359,17 +361,19 @@ export default function Analyseren() {
       const huidigeKoers = qData?.c;
       if (!huidigeKoers) { setFout('Kon de huidige koers niet ophalen — nodig om de K/W-ratio en dividendrendement te berekenen.'); setLaden(false); return; }
 
+      // Stap 2: onze server haalt de PDF nu zelf op via de Blob-URL
+      // (gewoon "ophalen" heeft geen 4,5 MB-limiet, enkel "ontvangen" wel).
       const jrRes = await fetch('/api/data?endpoint=analyse-jaarrekening', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfBase64, sector: uploadSector, huidigeKoers }),
+        body: JSON.stringify({ pdfUrl: blob.url, sector: uploadSector, huidigeKoers }),
       });
       let jrData;
       try {
         jrData = await jrRes.json();
       } catch (parseFout) {
         const ruweTekst = await jrRes.text().catch(() => '');
-        setFout(`Server gaf geen geldig antwoord terug (status ${jrRes.status}). Mogelijk is het bestand te groot. Details: ${ruweTekst.slice(0, 200)}`);
+        setFout(`Server gaf geen geldig antwoord terug (status ${jrRes.status}). Details: ${ruweTekst.slice(0, 200)}`);
         setLaden(false);
         return;
       }
