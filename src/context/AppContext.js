@@ -68,7 +68,7 @@ function herstelBelegging(b) {
   };
 }
 
-export function AppProvider({ children }) {
+export function AppProvider({ children, supabaseGebruiker }) {
   const [gebruiker, setGebruiker] = useState(() => {
     const saved = localStorage.getItem('matico_gebruiker');
     const parsed = saved ? JSON.parse(saved) : { voornaam: '', achternaam: '' };
@@ -82,6 +82,17 @@ export function AppProvider({ children }) {
 
   // Vertaalfunctie, gebonden aan de huidige taalvoorkeur van de gebruiker
   const t = (sleutel) => vertaal(gebruiker.taal || 'nl', sleutel);
+
+  // Het echte e-mailadres (en, als fallback, naam) komt van de Supabase-
+  // sessie in App.js — die twee 'gebruiker'-objecten liepen voorheen
+  // volledig los van elkaar, waardoor dit e-mailveld hier altijd leeg bleef.
+  useEffect(() => {
+    if (!supabaseGebruiker) return;
+    setGebruiker(g => {
+      if (g.email === supabaseGebruiker.email) return g; // niets veranderd
+      return { ...g, email: supabaseGebruiker.email || g.email };
+    });
+  }, [supabaseGebruiker?.email]);
 
   // ── Dark mode ──
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('matico_darkmode') === 'true');
