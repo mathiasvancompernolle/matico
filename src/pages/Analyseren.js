@@ -270,6 +270,7 @@ export default function Analyseren() {
   const [stappenKorte, setStappenKorte] = useState(null);
   const [isCrypto, setIsCrypto] = useState(false);
   const [laden, setLaden] = useState(false);
+  const [voortgang, setVoortgang] = useState('');
   const [fout, setFout] = useState('');
 
   // Jaarrekening-upload (enkel voor Amerikaanse aandelen)
@@ -339,6 +340,7 @@ export default function Analyseren() {
     setStappenLange(null);
     setStappenKorte(null);
     setFout('');
+    setVoortgang('');
     setLaden(true);
     setGekozen(uploadSymbool);
     setIsCrypto(false);
@@ -347,11 +349,13 @@ export default function Analyseren() {
       // uploaden — dit gaat NIET via onze eigen server (die een harde
       // limiet van 4,5 MB heeft), dus grote jaarrekeningen zijn geen
       // probleem.
+      setVoortgang('Bestand uploaden naar opslag...');
       const blob = await upload(uploadBestand.name, uploadBestand, {
         access: 'public',
         handleUploadUrl: '/api/data?endpoint=blob-upload-token',
       });
 
+      setVoortgang('Huidige koers ophalen...');
       const [qRes, techRes] = await Promise.all([
         fetch(`/api/data?endpoint=quote&symbol=${encodeURIComponent(uploadSymbool.symbol)}`),
         fetch(`/api/data?endpoint=analyse-aandeel&symbol=${encodeURIComponent(uploadSymbool.symbol)}`),
@@ -363,11 +367,13 @@ export default function Analyseren() {
 
       // Stap 2: onze server haalt de PDF nu zelf op via de Blob-URL
       // (gewoon "ophalen" heeft geen 4,5 MB-limiet, enkel "ontvangen" wel).
+      setVoortgang('AI-model leest de jaarrekening (dit kan tot een minuut duren)...');
       const jrRes = await fetch('/api/data?endpoint=analyse-jaarrekening', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pdfUrl: blob.url, sector: uploadSector, huidigeKoers }),
       });
+      setVoortgang('Antwoord verwerken...');
       let jrData;
       try {
         jrData = await jrRes.json();
@@ -392,7 +398,7 @@ export default function Analyseren() {
       setStappenLange(scoreAandeelLangeTermijn(gecombineerd));
       setStappenKorte(scoreAandeelKorteTermijn(gecombineerd, huidigeKoers));
     } catch (e) {
-      setFout(`Er ging iets mis bij het verwerken van de jaarrekening: ${e.message}`);
+      setFout(`Er ging iets mis tijdens "${voortgang}": ${e.message}`);
     }
     setLaden(false);
   };
@@ -543,7 +549,7 @@ export default function Analyseren() {
       {laden && (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
           <Loader size={20} className="spin" style={{ marginBottom: 8 }} />
-          <div>Cijfers ophalen voor {gekozen?.naam}...</div>
+          <div>{voortgang || `Cijfers ophalen voor ${gekozen?.naam}...`}</div>
         </div>
       )}
 
