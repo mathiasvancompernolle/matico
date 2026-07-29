@@ -79,7 +79,9 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
           <button className={`top-nav-tab ${actieveSectie === 'analyseren' ? 'actief' : ''}`} onClick={() => onSectieWissel('analyseren')}>Analyseren</button>
         )}
         {/* TIJDELIJK debug — verwijder dit weer eens het probleem gevonden is */}
-        <span style={{ fontSize: 10, color: 'red', marginLeft: 8 }}>DEBUG e-mail: "{gebruiker?.email}"</span>
+        <span style={{ fontSize: 10, color: 'red', marginLeft: 8 }}>
+          DEBUG keys: {Object.keys(gebruiker || {}).join(', ')} | email: "{gebruiker?.email}" | meta.email: "{gebruiker?.user_metadata?.email}" | identity.email: "{gebruiker?.identities?.[0]?.identity_data?.email}"
+        </span>
       </div>
 
       {/* Rechter iconen */}
