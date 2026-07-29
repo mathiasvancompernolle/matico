@@ -6,18 +6,47 @@ import { Search, Loader, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 // Dit is een gestructureerde, heuristische kijk op de cijfers — geen
 // professioneel beleggingsadvies.
 
-function scoreAandeel(f, koers) {
+// ── Sectorgevoelige drempelwaarden ──────────────────────────────────────────
+// Gebaseerd op opgezochte, actuele gemiddeldes (medio 2026) uit meerdere
+// financiële-databronnen (Siblis Research, FullRatio, Eqvista, Wisesheets,
+// CSIMarket, e.a.). Vaste vuistregels per sector — geen live sectorgemiddelde
+// (dat zou te veel extra API-aanroepen vergen) maar wel duidelijk beter dan
+// één en dezelfde drempel voor alle sectoren door elkaar.
+const SECTOR_DREMPELS = {
+  technologie: { naam: 'Technologie / Communicatie', pe: [20, 40], schuld: [0.3, 0.7], dividendVerwacht: false, dividendDrempels: [2, 4] },
+  financieel:  { naam: 'Financieel / Banken', pe: [10, 18], schuld: null, dividendVerwacht: true, dividendDrempels: [2, 4] },
+  nutsbedrijf: { naam: 'Nutsbedrijf', pe: [14, 22], schuld: [1.0, 2.5], dividendVerwacht: true, dividendDrempels: [3, 5] },
+  vastgoed:    { naam: 'Vastgoed (REIT)', pe: [15, 30], schuld: [1.0, 2.5], dividendVerwacht: true, dividendDrempels: [4, 7] },
+  energie:     { naam: 'Energie / Materialen', pe: [10, 18], schuld: [0.4, 1.0], dividendVerwacht: true, dividendDrempels: [3, 6] },
+  default:     { naam: 'Consument / Industrie / Gezondheidszorg', pe: [15, 25], schuld: [0.5, 1.5], dividendVerwacht: false, dividendDrempels: [2, 3.5] },
+};
+
+function bepaalSectorCategorie(sector) {
+  const s = (sector || '').toLowerCase();
+  if (s.includes('technology') || s.includes('communication')) return 'technologie';
+  if (s.includes('financial') || s.includes('bank')) return 'financieel';
+  if (s.includes('utilit')) return 'nutsbedrijf';
+  if (s.includes('real estate') || s.includes('reit')) return 'vastgoed';
+  if (s.includes('energy') || s.includes('material')) return 'energie';
+  return 'default';
+}
+
+// ── Lange termijn: waardering, fundamentele gezondheid, dividend ──────────
+function scoreAandeelLangeTermijn(f) {
+  const categorie = bepaalSectorCategorie(f.sector);
+  const drempels = SECTOR_DREMPELS[categorie];
   const stappen = [];
 
-  // 1. Waardering (K/W-ratio)
+  // 1. Waardering (K/W-ratio), sectorgevoelig
   const pe = f.peRatio;
-  let peScore = 5, peTekst = 'Geen K/W-ratio beschikbaar voor dit effect.';
+  let peScore = 5, peTekst = `Geen K/W-ratio beschikbaar voor dit effect.`;
   if (pe != null && pe > 0) {
-    if (pe < 15) { peScore = 9; peTekst = `K/W van ${pe.toFixed(1)} is laag — het aandeel is relatief goedkoop t.o.v. de winst.`; }
-    else if (pe < 25) { peScore = 6; peTekst = `K/W van ${pe.toFixed(1)} zit in een normaal bereik.`; }
-    else { peScore = 3; peTekst = `K/W van ${pe.toFixed(1)} is hoog — de markt verwacht veel toekomstige groei, of het aandeel is duur.`; }
+    const [laagDrempel, hoogDrempel] = drempels.pe;
+    if (pe < laagDrempel) { peScore = 9; peTekst = `K/W van ${pe.toFixed(1)} is laag voor de sector "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — relatief goedkoop.`; }
+    else if (pe < hoogDrempel) { peScore = 6; peTekst = `K/W van ${pe.toFixed(1)} zit in het normale bereik voor "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}).`; }
+    else { peScore = 3; peTekst = `K/W van ${pe.toFixed(1)} is hoog voor de sector "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — duur, of de markt verwacht veel groei.`; }
   }
-  stappen.push({ titel: 'Waardering', sub: 'Koers/Winst-verhouding', score: peScore, toelichting: peTekst });
+  stappen.push({ titel: 'Waardering', sub: `Koers/Winst-verhouding (sector: ${drempels.naam})`, score: peScore, toelichting: peTekst });
 
   // 2. Groei
   const groei = f.revenueGrowthYoY;
@@ -46,29 +75,52 @@ function scoreAandeel(f, koers) {
   }
   stappen.push({ titel: 'Winstgevendheid', sub: 'Winstmarge & rendement op eigen vermogen', score: winstScore, toelichting: winstTekst });
 
-  // 4. Financiële gezondheid
-  const dte = f.debtToEquity;
-  let schuldScore = 5, schuldTekst = 'Geen schuldgraad-cijfers beschikbaar.';
-  if (dte != null) {
-    if (dte < 0.5) { schuldScore = 9; schuldTekst = `Schuldgraad van ${dte.toFixed(2)} is laag — financieel gezond, weinig schulden.`; }
-    else if (dte < 1.5) { schuldScore = 6; schuldTekst = `Schuldgraad van ${dte.toFixed(2)} is aanvaardbaar.`; }
-    else { schuldScore = 3; schuldTekst = `Schuldgraad van ${dte.toFixed(2)} is hoog — meer financieel risico.`; }
+  // 4. Financiële gezondheid (schuldgraad) — sectorgevoelig, overgeslagen bij
+  // banken/financiële instellingen: hun "schuld" bestaat grotendeels uit
+  // klantendeposito's en is fundamenteel niet vergelijkbaar met een gewoon
+  // bedrijf. Bij hen zeggen kapitaalratio's (die we hier niet ophalen) meer.
+  if (drempels.schuld) {
+    const dte = f.debtToEquity;
+    const [laagDrempel, hoogDrempel] = drempels.schuld;
+    let schuldScore = 5, schuldTekst = 'Geen schuldgraad-cijfers beschikbaar.';
+    if (dte != null) {
+      if (dte < laagDrempel) { schuldScore = 9; schuldTekst = `Schuldgraad van ${dte.toFixed(2)} is laag voor "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — financieel gezond.`; }
+      else if (dte < hoogDrempel) { schuldScore = 6; schuldTekst = `Schuldgraad van ${dte.toFixed(2)} is normaal voor deze sector (typisch ${laagDrempel}-${hoogDrempel}).`; }
+      else { schuldScore = 3; schuldTekst = `Schuldgraad van ${dte.toFixed(2)} is hoog, zelfs voor "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — meer financieel risico.`; }
+    }
+    stappen.push({ titel: 'Financiële gezondheid', sub: `Schuldgraad (sector: ${drempels.naam})`, score: schuldScore, toelichting: schuldTekst });
+  } else {
+    stappen.push({ titel: 'Financiële gezondheid', sub: 'Schuldgraad', score: null, toelichting: `Overgeslagen voor de sector "${drempels.naam}": schulden bij banken/financiële instellingen bestaan grotendeels uit klantendeposito's en zijn niet vergelijkbaar met een gewoon bedrijf. Kapitaalratio's zouden hier een beter, maar hier niet opgehaald, criterium zijn.` });
   }
-  stappen.push({ titel: 'Financiële gezondheid', sub: 'Schuldgraad (schulden t.o.v. eigen vermogen)', score: schuldScore, toelichting: schuldTekst });
 
-  // 5. Dividend
+  // 5. Dividend — sectorgevoelig (bij tech is geen dividend normaal, bij
+  // nutsbedrijven/REIT's wordt een stevig dividend net verwacht)
   const div = f.dividendYield, payout = f.payoutRatio;
-  let divScore = 5, divTekst = 'Dit aandeel keert geen (of geen gekend) dividend uit — niet per se negatief, vaak het geval bij groeibedrijven.';
-  if (div != null && div > 0) {
+  const [divLaag, divHoog] = drempels.dividendDrempels;
+  let divScore = 5, divTekst;
+  if (div == null || div === 0) {
+    divTekst = drempels.dividendVerwacht
+      ? `Geen dividend, terwijl dat in de sector "${drempels.naam}" net gebruikelijk is (typisch ${divLaag}-${divHoog}%) — opvallend, de moeite waard om na te gaan waarom.`
+      : `Geen (of geen gekend) dividend — niet ongewoon voor "${drempels.naam}", vaak het geval bij groeibedrijven.`;
+    divScore = drempels.dividendVerwacht ? 4 : 5;
+  } else {
     const divPct = div * 100;
     const payoutPct = payout != null ? payout * 100 : null;
-    if (divPct > 3 && (payoutPct == null || payoutPct < 70)) { divScore = 9; divTekst = `Dividendrendement van ${divPct.toFixed(2)}%, met een houdbare uitkeringsratio.`; }
-    else if (payoutPct != null && payoutPct > 90) { divScore = 4; divTekst = `Dividendrendement van ${divPct.toFixed(2)}%, maar een erg hoge uitkeringsratio (${payoutPct.toFixed(0)}%) — risico op verlaging.`; }
-    else { divScore = 6; divTekst = `Dividendrendement van ${divPct.toFixed(2)}%.`; }
+    const payoutDrempel = (categorie === 'nutsbedrijf' || categorie === 'vastgoed') ? 85 : 70; // REIT's/nutsbedrijven keren wettelijk/gebruikelijk meer uit
+    if (divPct >= divLaag && (payoutPct == null || payoutPct < payoutDrempel)) { divScore = 9; divTekst = `Dividendrendement van ${divPct.toFixed(2)}% past bij (of overtreft) wat gebruikelijk is voor "${drempels.naam}" (typisch ${divLaag}-${divHoog}%), met een houdbare uitkeringsratio.`; }
+    else if (payoutPct != null && payoutPct > 95) { divScore = 3; divTekst = `Dividendrendement van ${divPct.toFixed(2)}%, maar een erg hoge uitkeringsratio (${payoutPct.toFixed(0)}%) — risico op verlaging.`; }
+    else { divScore = 6; divTekst = `Dividendrendement van ${divPct.toFixed(2)}% (sectortypisch: ${divLaag}-${divHoog}%).`; }
   }
-  stappen.push({ titel: 'Dividend', sub: 'Dividendrendement & uitkeringsratio', score: divScore, toelichting: divTekst });
+  stappen.push({ titel: 'Dividend', sub: `Dividendrendement & uitkeringsratio (sector: ${drempels.naam})`, score: divScore, toelichting: divTekst });
 
-  // 6. Momentum (koers t.o.v. 52-weken bereik)
+  return stappen.filter(s => s.score !== null || s.toelichting); // "overgeslagen" stap blijft zichtbaar met uitleg, telt niet mee in het totaal
+}
+
+// ── Korte termijn: momentum ─────────────────────────────────────────────────
+function scoreAandeelKorteTermijn(f, koers) {
+  const stappen = [];
+
+  // 1. Positie t.o.v. 52-weken bereik
   const hoog = f.weekHigh52, laag = f.weekLow52, huidig = koers;
   let momScore = 5, momTekst = 'Geen 52-weken-bereik beschikbaar.';
   if (hoog != null && laag != null && huidig != null && hoog > laag) {
@@ -77,7 +129,19 @@ function scoreAandeel(f, koers) {
     else if (positie > 40) { momScore = 6; momTekst = `Koers staat op ${positie.toFixed(0)}% van het 52-weken-bereik — neutrale positie.`; }
     else { momScore = 5; momTekst = `Koers staat op ${positie.toFixed(0)}% van het 52-weken-bereik — dicht bij het jaardal. Kan een koopkans zijn, of wijzen op een neerwaartse trend.`; }
   }
-  stappen.push({ titel: 'Momentum', sub: 'Koers t.o.v. 52-weken hoog/laag', score: momScore, toelichting: momTekst });
+  stappen.push({ titel: 'Jaarbereik', sub: 'Koers t.o.v. 52-weken hoog/laag', score: momScore, toelichting: momTekst });
+
+  // 2. Koers t.o.v. 50-daags en 200-daags voortschrijdend gemiddelde
+  const ma50 = f.gemiddelde50d, ma200 = f.gemiddelde200d;
+  let trendScore = 5, trendTekst = 'Geen voortschrijdende-gemiddeldes beschikbaar.';
+  if (ma50 != null && ma200 != null && huidig != null) {
+    const bovenBeide = huidig > ma50 && huidig > ma200;
+    const onderBeide = huidig < ma50 && huidig < ma200;
+    if (bovenBeide) { trendScore = 8; trendTekst = `Koers staat boven zowel het 50-daags als het 200-daags gemiddelde — opwaartse trend.`; }
+    else if (onderBeide) { trendScore = 3; trendTekst = `Koers staat onder zowel het 50-daags als het 200-daags gemiddelde — neerwaartse trend.`; }
+    else { trendScore = 5; trendTekst = `Koers zit tussen het 50-daags en 200-daags gemiddelde in — gemengd signaal, geen duidelijke trend.`; }
+  }
+  stappen.push({ titel: 'Trend', sub: 'Koers t.o.v. 50- en 200-daags gemiddelde', score: trendScore, toelichting: trendTekst });
 
   return stappen;
 }
@@ -176,12 +240,34 @@ function ScoreBadge({ score }) {
   );
 }
 
+function StapKaart({ index, stap }) {
+  const overgeslagen = stap.score === null;
+  return (
+    <div className="card" style={{ display: 'flex', gap: 16, alignItems: 'flex-start', padding: 18, opacity: overgeslagen ? 0.7 : 1 }}>
+      {overgeslagen ? (
+        <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--bg-subtle)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+          n.v.t.
+        </div>
+      ) : (
+        <ScoreBadge score={stap.score} />
+      )}
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 15 }}>{index + 1}. {stap.titel}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{stap.sub}</div>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{stap.toelichting}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function Analyseren() {
   const [zoekQuery, setZoekQuery] = useState('');
   const [zoekResultaten, setZoekResultaten] = useState([]);
   const [zoekLoading, setZoekLoading] = useState(false);
   const [gekozen, setGekozen] = useState(null);
-  const [stappen, setStappen] = useState(null);
+  const [stappenLange, setStappenLange] = useState(null);
+  const [stappenKorte, setStappenKorte] = useState(null);
+  const [isCrypto, setIsCrypto] = useState(false);
   const [laden, setLaden] = useState(false);
   const [fout, setFout] = useState('');
 
@@ -201,23 +287,27 @@ export default function Analyseren() {
     setGekozen(r);
     setZoekResultaten([]);
     setZoekQuery('');
-    setStappen(null);
+    setStappenLange(null);
+    setStappenKorte(null);
     setFout('');
     setLaden(true);
     try {
       if (r.type === 'crypto') {
+        setIsCrypto(true);
         const res = await fetch(`/api/data?endpoint=analyse-crypto&symbol=${encodeURIComponent(r.symbol)}`);
         const data = await res.json();
         if (Object.keys(data).length === 0) { setFout('Geen cijfers gevonden voor deze munt.'); setLaden(false); return; }
-        setStappen(scoreCrypto(data));
+        setStappenKorte(scoreCrypto(data));
       } else {
+        setIsCrypto(false);
         const [fRes, qRes] = await Promise.all([
           fetch(`/api/data?endpoint=analyse-aandeel&symbol=${encodeURIComponent(r.symbol)}`),
           fetch(`/api/data?endpoint=quote&symbol=${encodeURIComponent(r.symbol)}`),
         ]);
         const fData = await fRes.json();
         const qData = await qRes.json();
-        setStappen(scoreAandeel(fData, qData?.c));
+        setStappenLange(scoreAandeelLangeTermijn(fData));
+        setStappenKorte(scoreAandeelKorteTermijn(fData, qData?.c));
       }
     } catch (e) {
       setFout('Er ging iets mis bij het ophalen van de cijfers.');
@@ -225,9 +315,18 @@ export default function Analyseren() {
     setLaden(false);
   };
 
-  const totaal = stappen ? stappen.reduce((s, st) => s + st.score, 0) : 0;
-  const totaalPct = stappen ? (totaal / (stappen.length * 10)) * 100 : 0;
-  const eindoordeel = stappen ? verdict(totaalPct) : null;
+  const berekenTotaal = (stappen) => {
+    if (!stappen) return null;
+    const geldig = stappen.filter(s => s.score !== null);
+    if (geldig.length === 0) return null;
+    const totaal = geldig.reduce((s, st) => s + st.score, 0);
+    const pct = (totaal / (geldig.length * 10)) * 100;
+    return { totaal, max: geldig.length * 10, pct, oordeel: verdict(pct) };
+  };
+
+  const langeTotaal = berekenTotaal(stappenLange);
+  const korteTotaal = berekenTotaal(stappenKorte);
+  const klaarOmTeTonen = isCrypto ? stappenKorte : (stappenLange && stappenKorte);
 
   return (
     <div className="markten-pagina" style={{ padding: 32, maxWidth: 800, margin: '0 auto' }}>
@@ -280,35 +379,68 @@ export default function Analyseren() {
         <div style={{ padding: '12px 16px', background: 'var(--red-bg)', color: 'var(--red)', borderRadius: 8, fontSize: 13 }}>{fout}</div>
       )}
 
-      {stappen && !laden && (
+      {klaarOmTeTonen && !laden && (
         <>
-          {/* Totaaloordeel */}
-          <div className="card" style={{ marginBottom: 20, textAlign: 'center', padding: 24 }}>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{gekozen.naam} · {gekozen.symbol}</div>
-            <div style={{
-              display: 'inline-block', padding: '8px 24px', borderRadius: 999, fontSize: 22, fontWeight: 700,
-              color: eindoordeel.kleur, background: eindoordeel.achtergrond, marginBottom: 8,
-            }}>
-              {eindoordeel.label}
-            </div>
-            <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
-              Totaalscore: <strong style={{ color: 'var(--text-primary)' }}>{totaal}/{stappen.length * 10}</strong> ({totaalPct.toFixed(0)}%)
-            </div>
-          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{gekozen.naam} · {gekozen.symbol}</div>
 
-          {/* Stappen */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {stappen.map((s, i) => (
-              <div key={i} className="card" style={{ display: 'flex', gap: 16, alignItems: 'flex-start', padding: 18 }}>
-                <ScoreBadge score={s.score} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{i + 1}. {s.titel}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{s.sub}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{s.toelichting}</div>
+          {isCrypto ? (
+            <>
+              {/* Crypto: één gecombineerde score */}
+              <div className="card" style={{ marginBottom: 20, textAlign: 'center', padding: 24 }}>
+                <div style={{
+                  display: 'inline-block', padding: '8px 24px', borderRadius: 999, fontSize: 22, fontWeight: 700,
+                  color: korteTotaal.oordeel.kleur, background: korteTotaal.oordeel.achtergrond, marginBottom: 8,
+                }}>
+                  {korteTotaal.oordeel.label}
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+                  Totaalscore: <strong style={{ color: 'var(--text-primary)' }}>{korteTotaal.totaal}/{korteTotaal.max}</strong> ({korteTotaal.pct.toFixed(0)}%)
                 </div>
               </div>
-            ))}
-          </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {stappenKorte.map((s, i) => (
+                  <StapKaart key={i} index={i} stap={s} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Aandeel/ETF: lange termijn + korte termijn apart, want die kunnen
+                  elkaar tegenspreken (bv. sterk bedrijf maar tijdelijk overbought) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div className="card" style={{ textAlign: 'center', padding: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Lange termijn</div>
+                  <div style={{
+                    display: 'inline-block', padding: '6px 18px', borderRadius: 999, fontSize: 18, fontWeight: 700,
+                    color: langeTotaal.oordeel.kleur, background: langeTotaal.oordeel.achtergrond, marginBottom: 8,
+                  }}>
+                    {langeTotaal.oordeel.label}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{langeTotaal.totaal}/{langeTotaal.max} ({langeTotaal.pct.toFixed(0)}%)</div>
+                </div>
+                <div className="card" style={{ textAlign: 'center', padding: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Korte termijn</div>
+                  <div style={{
+                    display: 'inline-block', padding: '6px 18px', borderRadius: 999, fontSize: 18, fontWeight: 700,
+                    color: korteTotaal.oordeel.kleur, background: korteTotaal.oordeel.achtergrond, marginBottom: 8,
+                  }}>
+                    {korteTotaal.oordeel.label}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{korteTotaal.totaal}/{korteTotaal.max} ({korteTotaal.pct.toFixed(0)}%)</div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Lange termijn — waardering, gezondheid, dividend</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+                {stappenLange.map((s, i) => <StapKaart key={i} index={i} stap={s} />)}
+              </div>
+
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Korte termijn — momentum</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {stappenKorte.map((s, i) => <StapKaart key={i} index={i} stap={s} />)}
+              </div>
+            </>
+          )}
 
           <div style={{ marginTop: 20, padding: '14px 16px', background: 'var(--bg-subtle)', borderRadius: 10, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
             Dit is een gestructureerde, heuristische kijk op enkele kerncijfers — geen professioneel beleggingsadvies. Neem ook zaken mee die hier niet in cijfers te vatten zijn (bedrijfsnieuws, sectorvooruitzichten, je eigen risicotolerantie) vóór je een beslissing neemt.
@@ -316,7 +448,7 @@ export default function Analyseren() {
         </>
       )}
 
-      {!stappen && !laden && !fout && (
+      {!klaarOmTeTonen && !laden && !fout && (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
           <TrendingUp size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
           <div>Zoek een aandeel, ETF of crypto hierboven om te beginnen.</div>

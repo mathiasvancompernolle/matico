@@ -1198,12 +1198,15 @@ module.exports = async function handler(req, res) {
       const { symbol } = req.query;
       let resultaat = {};
       try {
-        const eoRes = await fetch(`https://eodhd.com/api/fundamentals/${symbol}?filter=Highlights,Valuation,Technicals&api_token=${EODHD_KEY}&fmt=json`);
+        const eoRes = await fetch(`https://eodhd.com/api/fundamentals/${symbol}?filter=General,Highlights,Valuation,Technicals&api_token=${EODHD_KEY}&fmt=json`);
         const eoData = await eoRes.json();
+        const g = eoData?.General || {};
         const h = eoData?.Highlights || {};
         const v = eoData?.Valuation || {};
         const t = eoData?.Technicals || {};
         resultaat = {
+          sector: g.Sector ?? null,
+          industry: g.Industry ?? null,
           peRatio: h.PERatio ?? null,
           pegRatio: h.PEGRatio ?? null,
           priceToBook: v.PriceBookMRQ ?? null,
@@ -1216,6 +1219,8 @@ module.exports = async function handler(req, res) {
           debtToEquity: t.DebtToEquity ?? null,
           weekHigh52: t['52WeekHigh'] ?? null,
           weekLow52: t['52WeekLow'] ?? null,
+          gemiddelde50d: t['50DayMA'] ?? null,
+          gemiddelde200d: t['200DayMA'] ?? null,
           beta: t.Beta ?? null,
         };
       } catch (e) {}
