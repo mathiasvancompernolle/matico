@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Loader, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { upload } from '@vercel/blob/client';
+import { Search, Loader, TrendingUp, TrendingDown, Minus, ArrowRight, ArrowLeft } from 'lucide-react';
 
 // ── Scoringslogica — apart voor aandelen/ETF's en crypto ────────────────────
 // Elke stap geeft een score op 10, met een korte, mensleesbare toelichting.
@@ -21,6 +20,40 @@ const SECTOR_DREMPELS = {
   energie:     { naam: 'Energie / Materialen', pe: [10, 18], schuld: [0.4, 1.0], dividendVerwacht: true, dividendDrempels: [3, 6] },
   default:     { naam: 'Consument / Industrie / Gezondheidszorg', pe: [15, 25], schuld: [0.5, 1.5], dividendVerwacht: false, dividendDrempels: [2, 3.5] },
 };
+
+// ── Handmatige invoer: cijfer-per-cijfer stappenplan ────────────────────────
+// Vervangt de jaarrekening-upload (PDF + AI-extractie). De gebruiker zoekt
+// het gewenste ratio's zelf op (bv. via de jaarrekening, of sites zoals
+// stockanalysis.com / macrotrends.net) en geeft ze hier één voor één in.
+// Dezelfde ratio-berekening als voorheen wordt hierna toegepast op deze
+// ruwe cijfers.
+const HANDMATIGE_VELDEN = [
+  { key: 'omzetHuidig', label: 'Omzet — meest recente boekjaar', hint: 'Totale omzet ("revenue" / "net sales") van het laatste volledige boekjaar, in de rapportagemunt van het bedrijf (meestal USD).' },
+  { key: 'omzetVorig', label: 'Omzet — boekjaar ervoor', hint: 'Zelfde cijfer, maar van het jaar dáárvoor — nodig om de omzetgroei te berekenen.' },
+  { key: 'nettoWinst', label: 'Netto winst — meest recente boekjaar', hint: '"Net income" van het laatste boekjaar. Vul een negatief getal in bij verlies.' },
+  { key: 'eigenVermogen', label: 'Eigen vermogen', hint: '"Total stockholders\' equity" op de balans, meest recente boekjaar.' },
+  { key: 'totaleSchulden', label: 'Totale schulden', hint: '"Total liabilities" op de balans, meest recente boekjaar.' },
+  { key: 'dividendenBetaald', label: 'Totaal uitgekeerd dividend', hint: 'Totaal bedrag aan dividenden uitgekeerd dit boekjaar. Vul 0 in als er geen dividend is.' },
+  { key: 'aantalAandelenUitstaand', label: 'Aantal uitstaande aandelen', hint: '"Diluted weighted average shares outstanding" — te vinden bovenaan de winst-en-verliesrekening.' },
+];
+
+// Zet de ruwe, handmatig ingevoerde cijfers om naar dezelfde afgeleide
+// ratio's die de rest van de scoringslogica verwacht (identiek aan de
+// berekening die vroeger na de PDF-extractie gebeurde).
+function berekenRatiosUitRuweCijfers(c, sector, huidigeKoers) {
+  const eps = (c.nettoWinst != null && c.aantalAandelenUitstaand) ? c.nettoWinst / c.aantalAandelenUitstaand : null;
+  const dividendPerAandeel = (c.dividendenBetaald != null && c.aantalAandelenUitstaand) ? c.dividendenBetaald / c.aantalAandelenUitstaand : null;
+  return {
+    sector: sector || null,
+    peRatio: (eps != null && eps > 0 && huidigeKoers) ? huidigeKoers / eps : null,
+    profitMargin: (c.nettoWinst != null && c.omzetHuidig) ? c.nettoWinst / c.omzetHuidig : null,
+    returnOnEquity: (c.nettoWinst != null && c.eigenVermogen) ? c.nettoWinst / c.eigenVermogen : null,
+    debtToEquity: (c.totaleSchulden != null && c.eigenVermogen) ? c.totaleSchulden / c.eigenVermogen : null,
+    revenueGrowthYoY: (c.omzetHuidig != null && c.omzetVorig) ? (c.omzetHuidig - c.omzetVorig) / c.omzetVorig : null,
+    dividendYield: (dividendPerAandeel != null && huidigeKoers) ? dividendPerAandeel / huidigeKoers : null,
+    payoutRatio: (c.dividendenBetaald != null && c.nettoWinst) ? c.dividendenBetaald / c.nettoWinst : null,
+  };
+}
 
 function bepaalSectorCategorie(sector) {
   const s = (sector || '').toLowerCase();
@@ -273,13 +306,15 @@ export default function Analyseren() {
   const [voortgang, setVoortgang] = useState('');
   const [fout, setFout] = useState('');
 
-  // Jaarrekening-upload (enkel voor Amerikaanse aandelen)
-  const [uploadModus, setUploadModus] = useState(false);
-  const [uploadSector, setUploadSector] = useState('default');
-  const [uploadBestand, setUploadBestand] = useState(null);
-  const [uploadSymbool, setUploadSymbool] = useState(null);
-  const [uploadZoekQuery, setUploadZoekQuery] = useState('');
-  const [uploadZoekResultaten, setUploadZoekResultaten] = useState([]);
+  // Handmatige invoer (cijfer-per-cijfer, vervangt de jaarrekening-upload)
+  const [handmatigModus, setHandmatigModus] = useState(false);
+  const [handmatigStap, setHandmatigStap] = useState(0); // 0 = aandeel kiezen, 1 = sector kiezen, 2..2+N-1 = cijfers, laatste = klaar
+  const [handmatigSymbool, setHandmatigSymbool] = useState(null);
+  const [handmatigZoekQuery, setHandmatigZoekQuery] = useState('');
+  const [handmatigZoekResultaten, setHandmatigZoekResultaten] = useState([]);
+  const [handmatigSector, setHandmatigSector] = useState('default');
+  const [handmatigCijfers, setHandmatigCijfers] = useState({});
+  const [handmatigInvoer, setHandmatigInvoer] = useState('');
 
   const zoek = async (q) => {
     setZoekQuery(q);
@@ -325,75 +360,82 @@ export default function Analyseren() {
     setLaden(false);
   };
 
-  const zoekUpload = async (q) => {
-    setUploadZoekQuery(q);
-    if (q.length < 2) { setUploadZoekResultaten([]); return; }
+  const zoekHandmatig = async (q) => {
+    setHandmatigZoekQuery(q);
+    if (q.length < 2) { setHandmatigZoekResultaten([]); return; }
     try {
       const res = await fetch(`/api/data?endpoint=search&q=${encodeURIComponent(q)}`);
       const data = await res.json();
-      setUploadZoekResultaten((data?.resultaten || []).filter(r => r.type !== 'crypto'));
-    } catch (e) { setUploadZoekResultaten([]); }
+      setHandmatigZoekResultaten((data?.resultaten || []).filter(r => r.type !== 'crypto'));
+    } catch (e) { setHandmatigZoekResultaten([]); }
   };
 
-  const analyseerJaarrekening = async () => {
-    if (!uploadBestand || !uploadSymbool) return;
+  const kiesHandmatigAandeel = (r) => {
+    setHandmatigSymbool(r);
+    setHandmatigZoekResultaten([]);
+    setHandmatigZoekQuery('');
+    setHandmatigStap(1);
+  };
+
+  const kiesHandmatigSector = (sector) => {
+    setHandmatigSector(sector);
+    setHandmatigCijfers({});
+    setHandmatigInvoer('');
+    setHandmatigStap(2);
+  };
+
+  const huidigVeld = HANDMATIGE_VELDEN[handmatigStap - 2]; // stap 2 = eerste cijfer
+
+  const volgendCijfer = () => {
+    if (handmatigInvoer.trim() === '') return;
+    const waarde = parseFloat(handmatigInvoer.replace(',', '.'));
+    if (Number.isNaN(waarde)) { setFout('Vul een geldig getal in.'); return; }
+    setFout('');
+    const nieuweCijfers = { ...handmatigCijfers, [huidigVeld.key]: waarde };
+    setHandmatigCijfers(nieuweCijfers);
+    setHandmatigInvoer('');
+    if (handmatigStap - 2 < HANDMATIGE_VELDEN.length - 1) {
+      setHandmatigStap(handmatigStap + 1);
+    } else {
+      berekenHandmatig(nieuweCijfers);
+    }
+  };
+
+  const vorigeStapHandmatig = () => {
+    setFout('');
+    if (handmatigStap > 2) {
+      const vorigVeld = HANDMATIGE_VELDEN[handmatigStap - 3];
+      setHandmatigInvoer(handmatigCijfers[vorigVeld.key] != null ? String(handmatigCijfers[vorigVeld.key]) : '');
+      setHandmatigStap(handmatigStap - 1);
+    } else {
+      setHandmatigStap(1);
+    }
+  };
+
+  const berekenHandmatig = async (cijfers) => {
     setStappenLange(null);
     setStappenKorte(null);
     setFout('');
-    setVoortgang('');
     setLaden(true);
-    setGekozen(uploadSymbool);
+    setGekozen(handmatigSymbool);
     setIsCrypto(false);
     try {
-      // Stap 1: bestand rechtstreeks vanuit de browser naar Vercel Blob
-      // uploaden — dit gaat NIET via onze eigen server (die een harde
-      // limiet van 4,5 MB heeft), dus grote jaarrekeningen zijn geen
-      // probleem.
-      setVoortgang('Bestand uploaden naar opslag...');
-      const timeoutBelofte = new Promise((_, reject) => setTimeout(() => reject(new Error('Uploaden lukte niet binnen 90 seconden. Kijk in de Developer Tools (Network-tabblad) naar de aanvraag met "blob" in de naam voor de exacte fout.')), 90000));
-      const blob = await Promise.race([
-        upload(uploadBestand.name, uploadBestand, {
-          access: 'public',
-          handleUploadUrl: '/api/data?endpoint=blob-upload-token',
-        }),
-        timeoutBelofte,
-      ]);
-
-      setVoortgang('Huidige koers ophalen...');
+      // Huidige koers en 52w-bereik/voortschrijdende gemiddeldes halen we
+      // gewoon automatisch op — enkel de fundamentele boekjaar-cijfers
+      // (die gratis bronnen voor Amerikaanse aandelen niet aanbieden)
+      // worden hier handmatig ingevuld door de gebruiker zelf.
       const [qRes, techRes] = await Promise.all([
-        fetch(`/api/data?endpoint=quote&symbol=${encodeURIComponent(uploadSymbool.symbol)}`),
-        fetch(`/api/data?endpoint=analyse-aandeel&symbol=${encodeURIComponent(uploadSymbool.symbol)}`),
+        fetch(`/api/data?endpoint=quote&symbol=${encodeURIComponent(handmatigSymbool.symbol)}`),
+        fetch(`/api/data?endpoint=analyse-aandeel&symbol=${encodeURIComponent(handmatigSymbool.symbol)}`),
       ]);
       const qData = await qRes.json();
-      const techData = await techRes.json(); // enkel voor 52w-bereik en 50/200-daags gemiddelde
+      const techData = await techRes.json();
       const huidigeKoers = qData?.c;
-      if (!huidigeKoers) { setFout('Kon de huidige koers niet ophalen — nodig om de K/W-ratio en dividendrendement te berekenen.'); setLaden(false); return; }
+      if (!huidigeKoers) { setFout('Kon de huidige koers niet ophalen — nodig om de K/W-ratio en het dividendrendement te berekenen.'); setLaden(false); return; }
 
-      // Stap 2: onze server haalt de PDF nu zelf op via de Blob-URL
-      // (gewoon "ophalen" heeft geen 4,5 MB-limiet, enkel "ontvangen" wel).
-      setVoortgang('AI-model leest de jaarrekening (dit kan tot een minuut duren)...');
-      const jrRes = await fetch('/api/data?endpoint=analyse-jaarrekening', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfUrl: blob.url, sector: uploadSector, huidigeKoers }),
-      });
-      setVoortgang('Antwoord verwerken...');
-      let jrData;
-      try {
-        jrData = await jrRes.json();
-      } catch (parseFout) {
-        const ruweTekst = await jrRes.text().catch(() => '');
-        setFout(`Server gaf geen geldig antwoord terug (status ${jrRes.status}). Details: ${ruweTekst.slice(0, 200)}`);
-        setLaden(false);
-        return;
-      }
-      if (jrData.fout) { setFout(jrData.fout); setLaden(false); return; }
-
-      // Combineer: fundamentele cijfers uit de jaarrekening + 52w-bereik/
-      // voortschrijdende gemiddeldes uit de bestaande koers-data (die staan
-      // niet in een jaarrekening, enkel historische boekjaar-cijfers).
+      const ratios = berekenRatiosUitRuweCijfers(cijfers, handmatigSector, huidigeKoers);
       const gecombineerd = {
-        ...jrData,
+        ...ratios,
         weekHigh52: techData.weekHigh52,
         weekLow52: techData.weekLow52,
         gemiddelde50d: techData.gemiddelde50d,
@@ -401,10 +443,22 @@ export default function Analyseren() {
       };
       setStappenLange(scoreAandeelLangeTermijn(gecombineerd));
       setStappenKorte(scoreAandeelKorteTermijn(gecombineerd, huidigeKoers));
+      setHandmatigStap(2 + HANDMATIGE_VELDEN.length); // wizard afgerond, resultaat toont eronder
     } catch (e) {
-      setFout(`Er ging iets mis tijdens "${voortgang}": ${e.message}`);
+      setFout(`Er ging iets mis bij het ophalen van de koers/technische cijfers: ${e.message}`);
     }
     setLaden(false);
+  };
+
+  const herbeginHandmatig = () => {
+    setHandmatigSymbool(null);
+    setHandmatigSector('default');
+    setHandmatigCijfers({});
+    setHandmatigInvoer('');
+    setHandmatigStap(0);
+    setStappenLange(null);
+    setStappenKorte(null);
+    setFout('');
   };
 
   const berekenTotaal = (stappen) => {
@@ -433,90 +487,127 @@ export default function Analyseren() {
       {/* Omschakelknop tussen normale zoekopdracht en jaarrekening-upload */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         <button
-          onClick={() => setUploadModus(v => !v)}
+          onClick={() => { setHandmatigModus(v => !v); herbeginHandmatig(); }}
           style={{
-            background: uploadModus ? 'var(--accent-bg)' : 'transparent',
-            color: uploadModus ? 'var(--accent)' : 'var(--text-muted)',
+            background: handmatigModus ? 'var(--accent-bg)' : 'transparent',
+            color: handmatigModus ? 'var(--accent)' : 'var(--text-muted)',
             border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px',
             fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
           }}
         >
-          {uploadModus ? '✓ ' : ''}Jaarrekening uploaden (enkel Amerikaanse aandelen)
+          {handmatigModus ? '✓ ' : ''}Cijfers zelf ingeven (enkel Amerikaanse aandelen)
         </button>
       </div>
 
-      {uploadModus ? (
+      {handmatigModus ? (
         <div className="card" style={{ padding: 20, marginBottom: 24 }}>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
-            Upload het volledige jaarverslag (10-K, als PDF) van een Amerikaans beursgenoteerd bedrijf. We laten een AI-model de cijfers eruit halen en berekenen zelf de nodige ratio's — gratis databronnen bieden dit voor Amerikaanse fundamentele cijfers namelijk niet aan.
+            Geef zelf de kerncijfers van een Amerikaans beursgenoteerd bedrijf in (bv. uit de jaarrekening of via stockanalysis.com/macrotrends.net) — gratis databronnen bieden dit voor Amerikaanse fundamentele cijfers namelijk niet aan. De huidige koers en het 52-weken-bereik halen we automatisch op.
           </div>
 
-          {/* Effect kiezen (voor live koers + 52w-bereik) */}
-          <div style={{ marginBottom: 14, position: 'relative' }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Om welk effect gaat het?</label>
-            {uploadSymbool ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }}>
-                <span>{uploadSymbool.naam} · {uploadSymbool.symbol}</span>
-                <button onClick={() => setUploadSymbool(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12 }}>Wijzigen</button>
+          {/* Stap 0: effect kiezen */}
+          {handmatigStap === 0 && (
+            <div style={{ position: 'relative' }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Om welk aandeel gaat het?</label>
+              <input
+                value={handmatigZoekQuery}
+                onChange={e => zoekHandmatig(e.target.value)}
+                placeholder="Zoek het Amerikaanse aandeel..."
+                autoFocus
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
+              />
+              {handmatigZoekResultaten.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: 'var(--shadow-md)', maxHeight: 240, overflowY: 'auto', zIndex: 20 }}>
+                  {handmatigZoekResultaten.map((r, i) => (
+                    <div key={i} onClick={() => kiesHandmatigAandeel(r)}
+                      style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: i < handmatigZoekResultaten.length - 1 ? '1px solid var(--border-light)' : 'none' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{r.naam}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.symbol} · {r.beurs}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Stap 1: sector kiezen */}
+          {handmatigStap === 1 && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, marginBottom: 16 }}>
+                <span>{handmatigSymbool.naam} · {handmatigSymbool.symbol}</span>
+                <button onClick={() => setHandmatigStap(0)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12 }}>Wijzigen</button>
               </div>
-            ) : (
-              <>
-                <input
-                  value={uploadZoekQuery}
-                  onChange={e => zoekUpload(e.target.value)}
-                  placeholder="Zoek het Amerikaanse aandeel..."
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
-                />
-                {uploadZoekResultaten.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: 'var(--shadow-md)', maxHeight: 240, overflowY: 'auto', zIndex: 20 }}>
-                    {uploadZoekResultaten.map((r, i) => (
-                      <div key={i} onClick={() => { setUploadSymbool(r); setUploadZoekResultaten([]); setUploadZoekQuery(''); }}
-                        style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: i < uploadZoekResultaten.length - 1 ? '1px solid var(--border-light)' : 'none' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <div style={{ fontSize: 13, fontWeight: 600 }}>{r.naam}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.symbol} · {r.beurs}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>In welke sector zit dit bedrijf?</label>
+              <select value={handmatigSector} onChange={e => setHandmatigSector(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, fontFamily: 'inherit', background: 'var(--bg-white)', marginBottom: 16 }}>
+                <option value="technologie">Technologie / Communicatie</option>
+                <option value="financieel">Financieel / Banken</option>
+                <option value="nutsbedrijf">Nutsbedrijf</option>
+                <option value="vastgoed">Vastgoed (REIT)</option>
+                <option value="energie">Energie / Materialen</option>
+                <option value="default">Consument / Industrie / Gezondheidszorg</option>
+              </select>
+              <button
+                onClick={() => kiesHandmatigSector(handmatigSector)}
+                style={{ width: '100%', padding: '12px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                Verder <ArrowRight size={15} />
+              </button>
+            </div>
+          )}
 
-          {/* Sector kiezen */}
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Sector</label>
-            <select value={uploadSector} onChange={e => setUploadSector(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, fontFamily: 'inherit', background: 'var(--bg-white)' }}>
-              <option value="technologie">Technologie / Communicatie</option>
-              <option value="financieel">Financieel / Banken</option>
-              <option value="nutsbedrijf">Nutsbedrijf</option>
-              <option value="vastgoed">Vastgoed (REIT)</option>
-              <option value="energie">Energie / Materialen</option>
-              <option value="default">Consument / Industrie / Gezondheidszorg</option>
-            </select>
-          </div>
+          {/* Stappen 2..2+N-1: cijfer per cijfer */}
+          {handmatigStap >= 2 && handmatigStap < 2 + HANDMATIGE_VELDEN.length && (
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+                Cijfer {handmatigStap - 1} van {HANDMATIGE_VELDEN.length}
+              </div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{huidigVeld.label}</label>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.4 }}>{huidigVeld.hint}</div>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={handmatigInvoer}
+                onChange={e => setHandmatigInvoer(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') volgendCijfer(); }}
+                placeholder="Bv. 12500000000"
+                autoFocus
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 16 }}
+              />
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={vorigeStapHandmatig}
+                  style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <ArrowLeft size={15} /> Vorige
+                </button>
+                <button
+                  onClick={volgendCijfer}
+                  disabled={laden || handmatigInvoer.trim() === ''}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white',
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    opacity: (laden || handmatigInvoer.trim() === '') ? 0.5 : 1,
+                  }}
+                >
+                  {laden && <Loader size={15} className="spin" />}
+                  {handmatigStap - 2 < HANDMATIGE_VELDEN.length - 1 ? <>Volgende <ArrowRight size={15} /></> : 'Berekenen'}
+                </button>
+              </div>
+            </div>
+          )}
 
-          {/* Bestand kiezen */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Jaarrekening (PDF)</label>
-            <input type="file" accept="application/pdf" onChange={e => setUploadBestand(e.target.files?.[0] || null)}
-              style={{ width: '100%', fontSize: 13 }} />
-          </div>
-
-          <button
-            onClick={analyseerJaarrekening}
-            disabled={!uploadBestand || !uploadSymbool || laden}
-            style={{
-              width: '100%', padding: '12px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white',
-              fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              opacity: (!uploadBestand || !uploadSymbool || laden) ? 0.5 : 1,
-            }}
-          >
-            Analyseer jaarrekening
-          </button>
+          {handmatigStap >= 2 + HANDMATIGE_VELDEN.length && !laden && (
+            <button
+              onClick={herbeginHandmatig}
+              style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Nieuw aandeel analyseren
+            </button>
+          )}
         </div>
       ) : (
       <div style={{ position: 'relative', marginBottom: 24 }}>
