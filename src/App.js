@@ -10,6 +10,7 @@ import Instellingen from './pages/Instellingen';
 import BeleggingToevoegen from './pages/BeleggingToevoegen';
 import ImportBeleggingen from './pages/ImportBeleggingen';
 import Markten from './pages/Markten';
+import Analyseren from './pages/Analyseren';
 import EffectDetail from './pages/EffectDetail';
 import CookieConsent from './components/CookieConsent';
 import CrispChat from './components/CrispChat';
@@ -74,6 +75,9 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
       <div className="top-nav-inner" style={{ flex: 1 }}>
         <button className={`top-nav-tab ${actieveSectie === 'portefeuille' ? 'actief' : ''}`} onClick={() => onSectieWissel('portefeuille')}>{t('nav_portefeuille')}</button>
         <button className={`top-nav-tab ${actieveSectie === 'markten' ? 'actief' : ''}`} onClick={() => onSectieWissel('markten')}>{t('nav_markten')}</button>
+        {gebruiker?.email === 'mathiasvancompernolle@gmail.com' && (
+          <button className={`top-nav-tab ${actieveSectie === 'analyseren' ? 'actief' : ''}`} onClick={() => onSectieWissel('analyseren')}>Analyseren</button>
+        )}
       </div>
 
       {/* Rechter iconen */}
@@ -222,7 +226,7 @@ function AppInner() {
   };
 
   const naarHome = () => {
-    if (actieveSectie === 'markten') {
+    if (actieveSectie === 'markten' || actieveSectie === 'analyseren') {
       setActieveSectie('portefeuille');
       return;
     }
@@ -247,6 +251,7 @@ function AppInner() {
   const renderPage = () => {
     if (effectDetail) return <EffectDetail effect={effectDetail} onTerug={() => setEffectDetail(null)} />;
     if (actieveSectie === 'markten') return <Markten onSelectEffect={setEffectDetail} />;
+    if (actieveSectie === 'analyseren') return <Analyseren />;
     if (importOpen) return <ImportBeleggingen onClose={() => setImportOpen(false)} />;
     if (toevoegenOpen) return <BeleggingToevoegen onClose={() => setToevoegenOpen(false)} />;
     const openToevoegen = () => setToevoegenOpen(true);

@@ -1193,6 +1193,73 @@ module.exports = async function handler(req, res) {
       return res.json(resultaat);
     }
 
+    // ── Analyse-tab: fundamentele cijfers voor het stap-voor-stap koop/hou/verkoop-stappenplan ──
+    if (endpoint === 'analyse-aandeel') {
+      const { symbol } = req.query;
+      let resultaat = {};
+      try {
+        const eoRes = await fetch(`https://eodhd.com/api/fundamentals/${symbol}?filter=Highlights,Valuation,Technicals&api_token=${EODHD_KEY}&fmt=json`);
+        const eoData = await eoRes.json();
+        const h = eoData?.Highlights || {};
+        const v = eoData?.Valuation || {};
+        const t = eoData?.Technicals || {};
+        resultaat = {
+          peRatio: h.PERatio ?? null,
+          pegRatio: h.PEGRatio ?? null,
+          priceToBook: v.PriceBookMRQ ?? null,
+          profitMargin: h.ProfitMargin ?? null,
+          returnOnEquity: h.ReturnOnEquityTTM ?? null,
+          dividendYield: h.DividendYield ?? null,
+          payoutRatio: h.PayoutRatio ?? null,
+          revenueGrowthYoY: h.QuarterlyRevenueGrowthYOY ?? null,
+          earningsGrowthYoY: h.QuarterlyEarningsGrowthYOY ?? null,
+          debtToEquity: t.DebtToEquity ?? null,
+          weekHigh52: t['52WeekHigh'] ?? null,
+          weekLow52: t['52WeekLow'] ?? null,
+          beta: t.Beta ?? null,
+        };
+      } catch (e) {}
+      return res.json(resultaat);
+    }
+
+    if (endpoint === 'analyse-crypto') {
+      const { symbol } = req.query;
+      const basis = (symbol || '').replace(/-EUR$|-USD$|-GBP$|-USDT$/, '').toLowerCase();
+      const coinMap = {
+        'btc': 'bitcoin', 'eth': 'ethereum', 'sol': 'solana', 'xrp': 'ripple',
+        'ada': 'cardano', 'dot': 'polkadot', 'doge': 'dogecoin', 'avax': 'avalanche-2',
+        'link': 'chainlink', 'matic': 'matic-network', 'uni': 'uniswap', 'ltc': 'litecoin',
+        'bch': 'bitcoin-cash', 'xlm': 'stellar', 'atom': 'cosmos', 'algo': 'algorand',
+        'vet': 'vechain', 'fil': 'filecoin', 'trx': 'tron', 'etc': 'ethereum-classic',
+        'aave': 'aave', 'shib': 'shiba-inu', 'bnb': 'binancecoin', 'ton': 'the-open-network',
+        'near': 'near', 'op': 'optimism', 'arb': 'arbitrum', 'sui': 'sui',
+        'inj': 'injective-protocol', 'rune': 'thorchain', 'pepe': 'pepe',
+        'wld': 'worldcoin-wld', 'bonk': 'bonk', 'apt': 'aptos',
+      };
+      const geckoId = coinMap[basis];
+      let resultaat = {};
+      if (geckoId) {
+        try {
+          const cgRes = await fetch(`https://api.coingecko.com/api/v3/coins/${geckoId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false`);
+          const d = await cgRes.json();
+          const m = d?.market_data || {};
+          resultaat = {
+            marketCapRank: d?.market_cap_rank ?? null,
+            athChangePercentage: m.ath_change_percentage?.eur ?? m.ath_change_percentage?.usd ?? null,
+            priceChange24h: m.price_change_percentage_24h ?? null,
+            priceChange7d: m.price_change_percentage_7d ?? null,
+            priceChange30d: m.price_change_percentage_30d ?? null,
+            totalVolume: m.total_volume?.eur ?? m.total_volume?.usd ?? null,
+            marketCap: m.market_cap?.eur ?? m.market_cap?.usd ?? null,
+            circulatingSupply: m.circulating_supply ?? null,
+            maxSupply: m.max_supply ?? null,
+            totalSupply: m.total_supply ?? null,
+          };
+        } catch (e) {}
+      }
+      return res.json(resultaat);
+    }
+
     if (endpoint === 'metrics') {
       const { symbol } = req.query;
       try {
