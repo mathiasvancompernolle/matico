@@ -35,6 +35,7 @@ const TTL = {
   metrics:          () => 60 * 60_000,      // 1 uur
   dividend:         () => 6 * 60 * 60_000,  // 6 uur
   'etf-holdings':   () => 6 * 60 * 60_000,  // 6 uur
+  'cijfers-datum':  () => 24 * 60 * 60_000, // 24 uur — wijzigt hooguit 1x per kwartaal
   search:           () => 5 * 60_000,        // 5 min
   'ai-analyse':     () => 30 * 60_000,       // 30 min (duur endpoint)
 };
@@ -553,6 +554,39 @@ module.exports = async function handler(req, res) {
         }
       } catch (e) { console.error('quote-detail fout:', e); }
       return res.json({});
+    }
+
+    // ── Meldingen: datum van het laatst gerapporteerde kwartaal per aandeel ──
+    // (een jaarrekening is in de praktijk gewoon het Q4-rapport, dus die wordt
+    // hiermee automatisch mee gedekt — geen aparte logica nodig). De frontend
+    // vergelijkt deze datum met wat eerder in localStorage werd gezien, en
+    // toont een melding bij het belletje-icoon zodra er een nieuwere datum is.
+    if (endpoint === 'cijfers-datum') {
+      const { symbols } = req.query;
+      if (!symbols) return res.json({});
+      const lijst = [...new Set(symbols.split(',').map(s => s.trim()).filter(Boolean))].slice(0, 50);
+      const resultaat = {};
+      const sessie = await haalYahooCookieEnCrumb();
+      const getal = (v) => (v == null) ? null : (typeof v === 'number' ? v : (typeof v?.raw === 'number' ? v.raw : null));
+      await Promise.all(lijst.map(async (symbol) => {
+        try {
+          const yfSym = toYahooSymbol(symbol);
+          const basisUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=defaultKeyStatistics&formatted=false`;
+          const url = sessie ? `${basisUrl}&crumb=${encodeURIComponent(sessie.crumb)}` : basisUrl;
+          const r = await fetch(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', ...(sessie ? { 'Cookie': sessie.cookie } : {}) },
+          });
+          const d = await r.json();
+          const ks = d?.quoteSummary?.result?.[0]?.defaultKeyStatistics;
+          const raw = getal(ks?.mostRecentQuarter);
+          // Yahoo geeft dit als Unix-timestamp in seconden — omzetten naar
+          // milliseconden voor gebruik met JS Date aan de frontend-kant.
+          resultaat[symbol] = raw ? raw * 1000 : null;
+        } catch (e) {
+          resultaat[symbol] = null;
+        }
+      }));
+      return res.json(resultaat);
     }
 
     // ── ISIN → ticker omzetting (voor broker-imports zoals DEGIRO die enkel

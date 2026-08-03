@@ -23,22 +23,25 @@ import { supabase } from './supabaseClient';
 import kapitasLogo from './assets/kapitas-logo.png';
 
 function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSelectEffect }) {
-  const { t, favorieten, toggleFavoriet } = useApp();
+  const { t, favorieten, toggleFavoriet, meldingen, ongelezenMeldingen, markeerMeldingGelezen, markeerAlleMeldingenGelezen } = useApp();
   const [zoekOpen, setZoekOpen] = React.useState(false);
   const [zoekQuery, setZoekQuery] = React.useState('');
   const [zoekResultaten, setZoekResultaten] = React.useState([]);
   const [zoekLaden, setZoekLaden] = React.useState(false);
   const [profielOpen, setProfielOpen] = React.useState(false);
   const [favorietenOpen, setFavorietenOpen] = React.useState(false);
+  const [meldingenOpen, setMeldingenOpen] = React.useState(false);
   const zoekRef = React.useRef(null);
   const profielRef = React.useRef(null);
   const favorietenRef = React.useRef(null);
+  const meldingenRef = React.useRef(null);
 
   React.useEffect(() => {
     const handler = (e) => {
       if (zoekRef.current && !zoekRef.current.contains(e.target)) { setZoekOpen(false); setZoekQuery(''); setZoekResultaten([]); }
       if (profielRef.current && !profielRef.current.contains(e.target)) setProfielOpen(false);
       if (favorietenRef.current && !favorietenRef.current.contains(e.target)) setFavorietenOpen(false);
+      if (meldingenRef.current && !meldingenRef.current.contains(e.target)) setMeldingenOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -151,9 +154,54 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
         </div>
 
         {/* Meldingen */}
-        <button style={{ width: 32, height: 32, border: 'none', borderRadius: 8, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="16" height="16" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        </button>
+        <div ref={meldingenRef} style={{ position: 'relative' }}>
+          <button onClick={() => setMeldingenOpen(v => !v)} style={{ width: 32, height: 32, border: 'none', borderRadius: 8, background: meldingenOpen ? '#eef1f8' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <svg width="16" height="16" fill="none" stroke={meldingenOpen ? '#1e3a8a' : 'var(--text-muted)'} strokeWidth="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            {ongelezenMeldingen > 0 && (
+              <span style={{ position: 'absolute', top: 2, right: 3, minWidth: 15, height: 15, padding: '0 3px', borderRadius: 8, background: '#dc2626', color: 'white', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+                {ongelezenMeldingen > 9 ? '9+' : ongelezenMeldingen}
+              </span>
+            )}
+          </button>
+          {meldingenOpen && (
+            <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 300, maxHeight: 360, overflowY: 'auto', zIndex: 300 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>Meldingen</div>
+                {ongelezenMeldingen > 0 && (
+                  <button onClick={markeerAlleMeldingenGelezen} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#1e3a8a', fontSize: 11, fontWeight: 600 }}>
+                    Alles gelezen
+                  </button>
+                )}
+              </div>
+              {meldingen.length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                  Nog geen meldingen. Je krijgt hier bericht zodra een aandeel uit je portefeuille nieuwe kwartaal- of jaarcijfers publiceert.
+                </div>
+              ) : (
+                meldingen.map(m => (
+                  <div key={m.id}
+                    onClick={() => {
+                      markeerMeldingGelezen(m.id);
+                      setMeldingenOpen(false);
+                      onSelectEffect && onSelectEffect({ symbol: m.symbol, naam: m.naam });
+                    }}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', background: m.gelezen ? 'transparent' : '#eef1f8' }}
+                    onMouseEnter={e => e.currentTarget.style.background = m.gelezen ? 'var(--bg)' : '#e2e8f7'}
+                    onMouseLeave={e => e.currentTarget.style.background = m.gelezen ? 'transparent' : '#eef1f8'}
+                  >
+                    {!m.gelezen && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#1e3a8a', marginTop: 5, flexShrink: 0 }} />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{m.naam}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        Nieuwe cijfers gepubliceerd · {new Date(m.datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Profiel */}
         <div ref={profielRef} style={{ position: 'relative', marginLeft: 4 }}>

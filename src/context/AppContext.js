@@ -123,6 +123,80 @@ export function AppProvider({ children, supabaseGebruiker }) {
 
   const isFavoriet = (symbol) => favorieten.some(f => f.symbol === symbol);
 
+  // ── Meldingen: nieuwe kwartaal-/jaarcijfers van portefeuille-aandelen ──
+  // Een jaarrekening is in de praktijk gewoon het Q4-rapport, dus die wordt
+  // hiermee automatisch mee gedekt. We checken via Yahoo's "mostRecentQuarter"
+  // (endpoint cijfers-datum) en vergelijken dat met wat we de vorige keer al
+  // zagen, per symbool opgeslagen in localStorage.
+  const NIEUWE_CIJFERS_CHECK_INTERVAL = 12 * 60 * 60 * 1000; // 12 uur
+
+  const [meldingen, setMeldingen] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('matico_meldingen') || '[]'); }
+    catch { return []; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('matico_meldingen', JSON.stringify(meldingen));
+  }, [meldingen]);
+
+  const markeerMeldingGelezen = (id) => {
+    setMeldingen(prev => prev.map(m => m.id === id ? { ...m, gelezen: true } : m));
+  };
+  const markeerAlleMeldingenGelezen = () => {
+    setMeldingen(prev => prev.map(m => ({ ...m, gelezen: true })));
+  };
+  const ongelezenMeldingen = meldingen.filter(m => !m.gelezen).length;
+
+  const checkNieuweCijfers = async () => {
+    const nietCrypto = beleggingen.filter(b => b.type !== 'crypto');
+    const symbolen = [...new Set(nietCrypto.map(b => b.symbol))];
+    if (symbolen.length === 0) return;
+    try {
+      const res = await fetch(`/api/data?endpoint=cijfers-datum&symbols=${encodeURIComponent(symbolen.join(','))}`);
+      const data = await res.json();
+      const nieuwe = [];
+      symbolen.forEach(symbol => {
+        const nieuweDatum = data[symbol];
+        if (!nieuweDatum) return;
+        const key = `matico_laatste_cijfers_${symbol}`;
+        const vorigeDatum = localStorage.getItem(key);
+        // Enkel een melding maken als we deze aandeel al eerder checkten (dus
+        // een echt nieuw rapport t.o.v. wat we kenden) — bij de allereerste
+        // check voor een symbool leggen we gewoon stilzwijgend de basis vast.
+        if (vorigeDatum && Number(vorigeDatum) < nieuweDatum) {
+          const belegging = nietCrypto.find(b => b.symbol === symbol);
+          nieuwe.push({
+            id: `${symbol}_${nieuweDatum}`,
+            symbol,
+            naam: belegging?.naam || symbol,
+            datum: new Date(nieuweDatum).toISOString(),
+            gelezen: false,
+            aangemaakt: new Date().toISOString(),
+          });
+        }
+        if (!vorigeDatum || Number(vorigeDatum) < nieuweDatum) {
+          localStorage.setItem(key, String(nieuweDatum));
+        }
+      });
+      if (nieuwe.length > 0) {
+        setMeldingen(prev => {
+          const bestaandeIds = new Set(prev.map(m => m.id));
+          const toeTeVoegen = nieuwe.filter(m => !bestaandeIds.has(m.id));
+          return [...toeTeVoegen, ...prev].slice(0, 50);
+        });
+      }
+      localStorage.setItem('matico_laatste_cijfercheck', String(Date.now()));
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (beleggingen.length === 0) return;
+    const magChecken = () => (Date.now() - Number(localStorage.getItem('matico_laatste_cijfercheck') || 0)) > NIEUWE_CIJFERS_CHECK_INTERVAL;
+    if (magChecken()) checkNieuweCijfers();
+    const interval = setInterval(() => { if (magChecken()) checkNieuweCijfers(); }, 60 * 60_000);
+    return () => clearInterval(interval);
+  }, [actiefPortfolioId, beleggingen.length]);
+
   // ── Multi-portfolio state ──
   const [portfolios, setPortfolios] = useState(() => laadPortfolios());
   const [actiefPortfolioId, setActiefPortfolioId] = useState(() => {
@@ -422,6 +496,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
       gebruiker, setGebruiker, t,
       darkMode, setDarkMode,
       favorieten, toggleFavoriet, isFavoriet,
+      meldingen, ongelezenMeldingen, markeerMeldingGelezen, markeerAlleMeldingenGelezen, checkNieuweCijfers,
       portfolios, actiefPortfolio, actiefPortfolioId,
       wisselPortfolio, voegPortfolioToe, verwijderPortfolio,
       hernoemPortfolio: hernoemPortfolioFn,
