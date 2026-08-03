@@ -148,8 +148,11 @@ export function AppProvider({ children, supabaseGebruiker }) {
   const ongelezenMeldingen = meldingen.filter(m => !m.gelezen).length;
 
   const checkNieuweCijfers = async () => {
-    const nietCrypto = beleggingen.filter(b => b.type !== 'crypto');
-    const symbolen = [...new Set(nietCrypto.map(b => b.symbol))];
+    // Enkel echte aandelen — ETF's zijn fondsen (geen kwartaalcijfers/
+    // jaarrekening in de zin die hier bedoeld wordt) en crypto handelt
+    // sowieso 24/7 zonder rapportageverplichting.
+    const alleenAandelen = beleggingen.filter(b => b.type === 'aandeel');
+    const symbolen = [...new Set(alleenAandelen.map(b => b.symbol))];
     if (symbolen.length === 0) return;
     try {
       const res = await fetch(`/api/data?endpoint=cijfers-datum&symbols=${encodeURIComponent(symbolen.join(','))}`);
@@ -164,7 +167,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
         // een echt nieuw rapport t.o.v. wat we kenden) — bij de allereerste
         // check voor een symbool leggen we gewoon stilzwijgend de basis vast.
         if (vorigeDatum && Number(vorigeDatum) < nieuweDatum) {
-          const belegging = nietCrypto.find(b => b.symbol === symbol);
+          const belegging = alleenAandelen.find(b => b.symbol === symbol);
           nieuwe.push({
             id: `${symbol}_${nieuweDatum}`,
             symbol,
