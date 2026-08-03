@@ -17,6 +17,27 @@ const KNOWN_ETF_SYMBOLS = new Set([
 ]);
 const isEtfBelegging = (b) => b.type === 'etf' || KNOWN_ETF_SYMBOLS.has((b.symbol || '').toUpperCase().split('.')[0]);
 
+// Obligatie-ETF's (vooral staatsobligaties) hebben geen GICS-sector — dat
+// classificatiesysteem is uitsluitend voor aandelen ontworpen. Wanneer de
+// live sector-data dus leeg terugkomt (geen fout, gewoon niet van
+// toepassing), tonen we daarom "Overheid" i.p.v. het misleidende "Overige"
+// (dat een datagat suggereert i.p.v. "deze vraag is hier niet relevant").
+// Eerst een kleine lijst bekende (vooral Europese UCITS) staatsobligatie-
+// ETF-tickers, aangevuld met een naam-keyword-check als vangnet voor
+// tickers die hier nog niet in staan.
+const OBLIGATIE_ETF_SYMBOLS = new Set([
+  'IBGS', 'IBGL', 'IBGM', 'IBTS', 'IBTM', 'IBTL', 'IEAG', 'IGLS', 'IGLT', 'IGLO',
+  'VGOV', 'VETY', 'AGGH', 'AGGU', 'EMB', 'IEF', 'IEI', 'TLT', 'SHY', 'GOVT',
+  'BND', 'AGG', 'VGIT', 'VGLT', 'VGSH', 'SPTL', 'SPTS', 'SGLO', 'DTLA',
+]);
+const OBLIGATIE_KEYWORDS = ['bond', 'treasury', 'govt', 'government', 'gilt', 'bund', 'sovereign', 'obligatie', 'staatslening'];
+const isObligatieEtf = (b) => {
+  const sym = (b.symbol || '').toUpperCase().split('.')[0];
+  if (OBLIGATIE_ETF_SYMBOLS.has(sym)) return true;
+  const naam = (b.naam || '').toLowerCase();
+  return OBLIGATIE_KEYWORDS.some(w => naam.includes(w));
+};
+
 // Sector mapping op basis van type/symbol
 const SECTOR_MAP = {
   // ── VS ──
@@ -556,8 +577,10 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
             map[cat] = (map[cat] || 0) + w * (pctInEtf / 100);
           });
         } else {
-          // Geen data: toon als "Wereldwijd" of "Overige"
-          const fallback = isRegio ? 'Wereldwijd' : 'Overige';
+          // Geen sectordata: bij obligatie-ETF's is dat normaal (GICS-sectoren
+          // bestaan niet voor obligaties) — toon dan "Overheid" i.p.v. het
+          // misleidende "Overige". Regio blijft "Wereldwijd" zoals voorheen.
+          const fallback = isRegio ? 'Wereldwijd' : (isObligatieEtf(b) ? 'Overheid' : 'Overige');
           map[fallback] = (map[fallback] || 0) + w;
         }
       } else {
@@ -744,7 +767,8 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
             sectorMap[cat] = (sectorMap[cat] || 0) + w * (pctInEtf / 100);
           });
         } else {
-          sectorMap['Overige'] = (sectorMap['Overige'] || 0) + w;
+          const sectorFallback = isObligatieEtf(b) ? 'Overheid' : 'Overige';
+          sectorMap[sectorFallback] = (sectorMap[sectorFallback] || 0) + w;
         }
         const regioGewichten = getEtfGewichten(b.symbol, 'regio', liveEtfData);
         if (regioGewichten) {
