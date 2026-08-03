@@ -281,6 +281,10 @@ export function AppProvider({ children, supabaseGebruiker }) {
   };
   const ongelezenMeldingen = meldingen.filter(m => !m.gelezen).length;
 
+  // Hoeveel dagen op voorhand je een vooraankondiging krijgt ("dit bedrijf
+  // publiceert binnenkort cijfers").
+  const VOORAANKONDIGING_DAGEN = 7;
+
   const checkNieuweCijfers = async () => {
     // Enkel echte aandelen — ETF's zijn fondsen (geen kwartaalcijfers/
     // jaarrekening in de zin die hier bedoeld wordt) en crypto handelt
@@ -292,29 +296,61 @@ export function AppProvider({ children, supabaseGebruiker }) {
       const res = await fetch(`/api/data?endpoint=cijfers-datum&symbols=${encodeURIComponent(symbolen.join(','))}`);
       const data = await res.json();
       const nieuwe = [];
+      const nu = Date.now();
+      const vooraankondigingGrens = VOORAANKONDIGING_DAGEN * 24 * 60 * 60 * 1000;
+
       symbolen.forEach(symbol => {
-        const nieuweDatum = data[symbol];
-        if (!nieuweDatum) return;
-        const key = `matico_laatste_cijfers_${symbol}`;
-        const vorigeDatum = localStorage.getItem(key);
-        // Enkel een melding maken als we deze aandeel al eerder checkten (dus
-        // een echt nieuw rapport t.o.v. wat we kenden) — bij de allereerste
-        // check voor een symbool leggen we gewoon stilzwijgend de basis vast.
-        if (vorigeDatum && Number(vorigeDatum) < nieuweDatum) {
-          const belegging = alleenAandelen.find(b => b.symbol === symbol);
-          nieuwe.push({
-            id: `${symbol}_${nieuweDatum}`,
-            symbol,
-            naam: belegging?.naam || symbol,
-            datum: new Date(nieuweDatum).toISOString(),
-            gelezen: false,
-            aangemaakt: new Date().toISOString(),
-          });
+        const info = data[symbol];
+        if (!info) return;
+        const belegging = alleenAandelen.find(b => b.symbol === symbol);
+        const naam = belegging?.naam || symbol;
+
+        // ── 1. Cijfers zijn net gepubliceerd (achteraf) ──
+        const nieuweDatum = info.laatsteRapport;
+        if (nieuweDatum) {
+          const key = `matico_laatste_cijfers_${symbol}`;
+          const vorigeDatum = localStorage.getItem(key);
+          // Enkel een melding maken als we dit aandeel al eerder checkten
+          // (dus een echt nieuw rapport t.o.v. wat we kenden) — bij de
+          // allereerste check voor een symbool leggen we stilzwijgend de
+          // basis vast.
+          if (vorigeDatum && Number(vorigeDatum) < nieuweDatum) {
+            nieuwe.push({
+              id: `${symbol}_nieuw_${nieuweDatum}`,
+              type: 'nieuw',
+              symbol, naam,
+              datum: new Date(nieuweDatum).toISOString(),
+              gelezen: false,
+              aangemaakt: new Date().toISOString(),
+            });
+          }
+          if (!vorigeDatum || Number(vorigeDatum) < nieuweDatum) {
+            localStorage.setItem(key, String(nieuweDatum));
+          }
         }
-        if (!vorigeDatum || Number(vorigeDatum) < nieuweDatum) {
-          localStorage.setItem(key, String(nieuweDatum));
+
+        // ── 2. Cijfers komen binnenkort (vooraf, binnen VOORAANKONDIGING_DAGEN) ──
+        const volgendeDatum = info.volgendeCijfers;
+        if (volgendeDatum && volgendeDatum > nu && (volgendeDatum - nu) <= vooraankondigingGrens) {
+          const key = `matico_aankondiging_${symbol}`;
+          const alGemeld = localStorage.getItem(key);
+          // Enkel melden als we voor déze specifieke datum nog geen
+          // vooraankondiging gaven (voorkomt een nieuwe melding bij elke
+          // 12-uurlijkse check zolang de datum ongewijzigd blijft).
+          if (alGemeld !== String(volgendeDatum)) {
+            nieuwe.push({
+              id: `${symbol}_aankomend_${volgendeDatum}`,
+              type: 'aankomend',
+              symbol, naam,
+              datum: new Date(volgendeDatum).toISOString(),
+              gelezen: false,
+              aangemaakt: new Date().toISOString(),
+            });
+            localStorage.setItem(key, String(volgendeDatum));
+          }
         }
       });
+
       if (nieuwe.length > 0) {
         setMeldingen(prev => {
           const bestaandeIds = new Set(prev.map(m => m.id));

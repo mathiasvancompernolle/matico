@@ -556,11 +556,13 @@ module.exports = async function handler(req, res) {
       return res.json({});
     }
 
-    // ── Meldingen: datum van het laatst gerapporteerde kwartaal per aandeel ──
+    // ── Meldingen: datum van het laatst gerapporteerde kwartaal, plus de
+    // eerstvolgende (aangekondigde) cijferdatum, per aandeel ────────────────
     // (een jaarrekening is in de praktijk gewoon het Q4-rapport, dus die wordt
     // hiermee automatisch mee gedekt — geen aparte logica nodig). De frontend
-    // vergelijkt deze datum met wat eerder in localStorage werd gezien, en
-    // toont een melding bij het belletje-icoon zodra er een nieuwere datum is.
+    // vergelijkt "laatsteRapport" met wat eerder in localStorage werd gezien
+    // (melding: nieuwe cijfers zijn er), en gebruikt "volgendeCijfers" voor
+    // een vooraankondiging in de week ervoor.
     if (endpoint === 'cijfers-datum') {
       const { symbols } = req.query;
       if (!symbols) return res.json({});
@@ -571,19 +573,28 @@ module.exports = async function handler(req, res) {
       await Promise.all(lijst.map(async (symbol) => {
         try {
           const yfSym = toYahooSymbol(symbol);
-          const basisUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=defaultKeyStatistics&formatted=false`;
+          const basisUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=defaultKeyStatistics,calendarEvents&formatted=false`;
           const url = sessie ? `${basisUrl}&crumb=${encodeURIComponent(sessie.crumb)}` : basisUrl;
           const r = await fetch(url, {
             headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', ...(sessie ? { 'Cookie': sessie.cookie } : {}) },
           });
           const d = await r.json();
-          const ks = d?.quoteSummary?.result?.[0]?.defaultKeyStatistics;
-          const raw = getal(ks?.mostRecentQuarter);
+          const res0 = d?.quoteSummary?.result?.[0];
+          const ks = res0?.defaultKeyStatistics;
+          const ce = res0?.calendarEvents;
+          const laatsteRapport = getal(ks?.mostRecentQuarter);
+          // earningsDate is een array (soms een bereik van 2 dagen als de
+          // exacte dag nog niet bevestigd is) — we nemen de vroegste.
+          const aankomendeData = (ce?.earnings?.earningsDate || []).map(getal).filter(v => v != null);
+          const volgendeCijfers = aankomendeData.length > 0 ? Math.min(...aankomendeData) : null;
           // Yahoo geeft dit als Unix-timestamp in seconden — omzetten naar
           // milliseconden voor gebruik met JS Date aan de frontend-kant.
-          resultaat[symbol] = raw ? raw * 1000 : null;
+          resultaat[symbol] = {
+            laatsteRapport: laatsteRapport ? laatsteRapport * 1000 : null,
+            volgendeCijfers: volgendeCijfers ? volgendeCijfers * 1000 : null,
+          };
         } catch (e) {
-          resultaat[symbol] = null;
+          resultaat[symbol] = { laatsteRapport: null, volgendeCijfers: null };
         }
       }));
       return res.json(resultaat);

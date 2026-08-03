@@ -175,29 +175,35 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
               </div>
               {meldingen.length === 0 ? (
                 <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                  Nog geen meldingen. Je krijgt hier bericht zodra een aandeel uit je portefeuille nieuwe kwartaal- of jaarcijfers publiceert.
+                  Nog geen meldingen. Je krijgt hier bericht wanneer een aandeel uit je portefeuille binnenkort cijfers publiceert, en opnieuw zodra ze effectief bekend zijn.
                 </div>
               ) : (
-                meldingen.map(m => (
+                meldingen.map(m => {
+                  const isAankomend = m.type === 'aankomend';
+                  return (
                   <div key={m.id}
                     onClick={() => {
                       markeerMeldingGelezen(m.id);
                       setMeldingenOpen(false);
                       onSelectEffect && onSelectEffect({ symbol: m.symbol, naam: m.naam });
                     }}
-                    style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', background: m.gelezen ? 'transparent' : '#eef1f8' }}
-                    onMouseEnter={e => e.currentTarget.style.background = m.gelezen ? 'var(--bg)' : '#e2e8f7'}
-                    onMouseLeave={e => e.currentTarget.style.background = m.gelezen ? 'transparent' : '#eef1f8'}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', background: m.gelezen ? 'transparent' : (isAankomend ? '#fff7ed' : '#eef1f8') }}
+                    onMouseEnter={e => e.currentTarget.style.background = m.gelezen ? 'var(--bg)' : (isAankomend ? '#ffedd5' : '#e2e8f7')}
+                    onMouseLeave={e => e.currentTarget.style.background = m.gelezen ? 'transparent' : (isAankomend ? '#fff7ed' : '#eef1f8')}
                   >
-                    {!m.gelezen && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#1e3a8a', marginTop: 5, flexShrink: 0 }} />}
+                    {!m.gelezen && <div style={{ width: 7, height: 7, borderRadius: '50%', background: isAankomend ? '#d97706' : '#1e3a8a', marginTop: 5, flexShrink: 0 }} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{m.naam}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                        Nieuwe cijfers gepubliceerd · {new Date(m.datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {isAankomend
+                          ? <>Publiceert binnenkort cijfers · verwacht {new Date(m.datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' })} — hou dit in de gaten</>
+                          : <>Nieuwe cijfers gepubliceerd · {new Date(m.datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' })}</>
+                        }
                       </div>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
