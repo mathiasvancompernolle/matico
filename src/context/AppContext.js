@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { vertaal, detecteerBrowserTaal } from '../translations';
+import { supabase } from '../supabaseClient';
 
 const AppContext = createContext();
 
@@ -161,14 +162,115 @@ export function AppProvider({ children, supabaseGebruiker }) {
   const [activeNav, setActiveNav] = useState('overzicht');
   const [wisselkoers, setWisselkoers] = useState({ usdEur: 0.865 });
 
+  // ── Supabase-synchronisatie: portefeuille aan het account hangen, niet
+  // aan het toestel ──────────────────────────────────────────────────────
+  // Zolang dit false is, wordt er nog niets naar Supabase geschreven (om te
+  // voorkomen dat we bij het opstarten leeg/verouderd lokaal data over de
+  // écht actuele Supabase-data heen zouden schrijven).
+  const [supabaseGereed, setSupabaseGereed] = useState(false);
+
+  const laadOfMigreerHoldings = async (userId, portfolioId, lokaleBeleggingen, lokaleVerkochte) => {
+    const { data, error } = await supabase
+      .from('holdings')
+      .select('beleggingen, verkochte_beleggingen')
+      .eq('user_id', userId)
+      .eq('portfolio_id', portfolioId)
+      .maybeSingle();
+
+    if (error) { console.error('Holdings ophalen mislukt:', error); return; }
+
+    if (data) {
+      // Supabase heeft al data voor dit portfolio — dat is de waarheid.
+      const nieuweBeleggingen = (data.beleggingen || []).map(b => herstelBelegging(b));
+      const nieuweVerkochte = data.verkochte_beleggingen || [];
+      setBeleggingen(nieuweBeleggingen);
+      setVerkochteBeleggingen(nieuweVerkochte);
+      localStorage.setItem(`matico_beleggingen_${portfolioId}`, JSON.stringify(nieuweBeleggingen));
+      localStorage.setItem(`matico_verkochte_${portfolioId}`, JSON.stringify(nieuweVerkochte));
+    } else {
+      // Nog geen holdings-rij in Supabase voor dit portfolio (nieuw account,
+      // of een bestaand account dat nog moet migreren) — de huidige lokale
+      // data (uit localStorage) eenmalig omhoog sturen als beginpunt.
+      const { error: upsertFout } = await supabase.from('holdings').upsert({
+        user_id: userId, portfolio_id: portfolioId,
+        beleggingen: lokaleBeleggingen, verkochte_beleggingen: lokaleVerkochte,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,portfolio_id' });
+      if (upsertFout) console.error('Migratie van beleggingen naar Supabase mislukt:', upsertFout);
+    }
+  };
+
+  useEffect(() => {
+    const userId = supabaseGebruiker?.id;
+    if (!userId) return;
+
+    const initialiseer = async () => {
+      const { data: remotePortfolios, error: pFout } = await supabase
+        .from('portfolios')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (pFout) { console.error('Portfolios ophalen mislukt:', pFout); return; }
+
+      let actueleId = actiefPortfolioId;
+
+      if (remotePortfolios && remotePortfolios.length > 0) {
+        const gesynchroniseerd = remotePortfolios
+          .map(p => ({ id: p.portfolio_id, naam: p.naam, type: p.type, aangemaakt: p.aangemaakt }))
+          .sort((a, b) => new Date(a.aangemaakt) - new Date(b.aangemaakt));
+        localStorage.setItem('matico_portfolios', JSON.stringify(gesynchroniseerd));
+        setPortfolios(gesynchroniseerd);
+        actueleId = gesynchroniseerd.find(p => p.id === actiefPortfolioId) ? actiefPortfolioId : gesynchroniseerd[0]?.id;
+        if (actueleId && actueleId !== actiefPortfolioId) setActiefPortfolioId(actueleId);
+      } else {
+        // Nieuw account op Supabase, of een bestaand account dat nog moet
+        // migreren — stuur de huidige lokale portfolio's omhoog.
+        const rijen = portfolios.map(p => ({
+          user_id: userId, portfolio_id: p.id, naam: p.naam, type: p.type, aangemaakt: p.aangemaakt,
+        }));
+        if (rijen.length > 0) {
+          const { error: upsertFout } = await supabase.from('portfolios').upsert(rijen, { onConflict: 'user_id,portfolio_id' });
+          if (upsertFout) console.error('Migratie van portfolio-lijst naar Supabase mislukt:', upsertFout);
+        }
+      }
+
+      if (actueleId) await laadOfMigreerHoldings(userId, actueleId, beleggingen, verkochteBeleggingen);
+      setSupabaseGereed(true);
+    };
+
+    initialiseer();
+    // Enkel opnieuw draaien als de ingelogde gebruiker zelf wijzigt (bv. bij
+    // uitloggen/inloggen met een ander account) — niet bij elke render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabaseGebruiker?.id]);
+
   // ── Portfolio wisselen ──
-  const wisselPortfolio = (id) => {
+  const wisselPortfolio = async (id) => {
     if (id === actiefPortfolioId) return;
     localStorage.setItem('matico_actief_portfolio', id);
     setActiefPortfolioId(id);
     setKoersen({});
+    // Eerst de lokale cache tonen (snel, geen laadspinner nodig)...
     try { setBeleggingen((JSON.parse(localStorage.getItem(`matico_beleggingen_${id}`) || '[]')).map(b => herstelBelegging(b))); } catch { setBeleggingen([]); }
     try { setVerkochteBeleggingen(JSON.parse(localStorage.getItem(`matico_verkochte_${id}`) || '[]')); } catch { setVerkochteBeleggingen([]); }
+    // ...en dan de actuele data van Supabase ophalen — belangrijk op een
+    // nieuw toestel, waar de lokale cache voor dit portfolio nog leeg is.
+    const userId = supabaseGebruiker?.id;
+    if (userId) {
+      const { data, error } = await supabase
+        .from('holdings')
+        .select('beleggingen, verkochte_beleggingen')
+        .eq('user_id', userId)
+        .eq('portfolio_id', id)
+        .maybeSingle();
+      if (!error && data) {
+        const nieuweBeleggingen = (data.beleggingen || []).map(b => herstelBelegging(b));
+        setBeleggingen(nieuweBeleggingen);
+        setVerkochteBeleggingen(data.verkochte_beleggingen || []);
+        localStorage.setItem(`matico_beleggingen_${id}`, JSON.stringify(nieuweBeleggingen));
+        localStorage.setItem(`matico_verkochte_${id}`, JSON.stringify(data.verkochte_beleggingen || []));
+      }
+    }
   };
 
   // ── Portfolio toevoegen ──
@@ -181,6 +283,13 @@ export function AppProvider({ children, supabaseGebruiker }) {
     localStorage.setItem(`matico_verkochte_${id}`, JSON.stringify([]));
     setPortfolios(bijgewerkt);
     wisselPortfolio(id);
+    const userId = supabaseGebruiker?.id;
+    if (userId) {
+      supabase.from('portfolios').upsert({ user_id: userId, portfolio_id: id, naam, type, aangemaakt: nieuw.aangemaakt }, { onConflict: 'user_id,portfolio_id' })
+        .then(({ error }) => { if (error) console.error('Nieuw portfolio synchroniseren mislukt:', error); });
+      supabase.from('holdings').upsert({ user_id: userId, portfolio_id: id, beleggingen: [], verkochte_beleggingen: [], updated_at: new Date().toISOString() }, { onConflict: 'user_id,portfolio_id' })
+        .then(({ error }) => { if (error) console.error('Nieuw portfolio (holdings) synchroniseren mislukt:', error); });
+    }
     return nieuw;
   };
 
@@ -193,6 +302,13 @@ export function AppProvider({ children, supabaseGebruiker }) {
     localStorage.removeItem(`matico_verkochte_${id}`);
     setPortfolios(bijgewerkt);
     if (actiefPortfolioId === id) wisselPortfolio(bijgewerkt[0].id);
+    const userId = supabaseGebruiker?.id;
+    if (userId) {
+      supabase.from('portfolios').delete().eq('user_id', userId).eq('portfolio_id', id)
+        .then(({ error }) => { if (error) console.error('Portfolio verwijderen (Supabase) mislukt:', error); });
+      supabase.from('holdings').delete().eq('user_id', userId).eq('portfolio_id', id)
+        .then(({ error }) => { if (error) console.error('Holdings verwijderen (Supabase) mislukt:', error); });
+    }
   };
 
   // ── Portfolio hernoemen ──
@@ -200,6 +316,11 @@ export function AppProvider({ children, supabaseGebruiker }) {
     const bijgewerkt = portfolios.map(p => p.id === id ? { ...p, naam: nieuweNaam } : p);
     localStorage.setItem('matico_portfolios', JSON.stringify(bijgewerkt));
     setPortfolios(bijgewerkt);
+    const userId = supabaseGebruiker?.id;
+    if (userId) {
+      supabase.from('portfolios').update({ naam: nieuweNaam }).eq('user_id', userId).eq('portfolio_id', id)
+        .then(({ error }) => { if (error) console.error('Portfolio hernoemen (Supabase) mislukt:', error); });
+    }
   };
 
   // ── Actief portfolio object ──
@@ -212,10 +333,22 @@ export function AppProvider({ children, supabaseGebruiker }) {
 
   useEffect(() => {
     localStorage.setItem(`matico_beleggingen_${actiefPortfolioId}`, JSON.stringify(beleggingen));
+    const userId = supabaseGebruiker?.id;
+    if (supabaseGereed && userId) {
+      supabase.from('holdings').upsert({
+        user_id: userId, portfolio_id: actiefPortfolioId, beleggingen, updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,portfolio_id' }).then(({ error }) => { if (error) console.error('Beleggingen synchroniseren mislukt:', error); });
+    }
   }, [beleggingen, actiefPortfolioId]);
 
   useEffect(() => {
     localStorage.setItem(`matico_verkochte_${actiefPortfolioId}`, JSON.stringify(verkochteBeleggingen));
+    const userId = supabaseGebruiker?.id;
+    if (supabaseGereed && userId) {
+      supabase.from('holdings').upsert({
+        user_id: userId, portfolio_id: actiefPortfolioId, verkochte_beleggingen: verkochteBeleggingen, updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,portfolio_id' }).then(({ error }) => { if (error) console.error('Verkochte beleggingen synchroniseren mislukt:', error); });
+    }
   }, [verkochteBeleggingen, actiefPortfolioId]);
 
   // ── Live wisselkoers ──
