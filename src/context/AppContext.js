@@ -239,9 +239,6 @@ export function AppProvider({ children, supabaseGebruiker }) {
     };
 
     initialiseer();
-    // Enkel opnieuw draaien als de ingelogde gebruiker zelf wijzigt (bv. bij
-    // uitloggen/inloggen met een ander account) — niet bij elke render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabaseGebruiker?.id]);
 
   // ── Portfolio wisselen ──
