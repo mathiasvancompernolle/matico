@@ -373,7 +373,20 @@ export function AppProvider({ children, supabaseGebruiker }) {
 
   const refreshAlleKoersen = async () => {
     const symbolen = [...new Set(beleggingen.map(b => b.symbol))];
-    for (const s of symbolen) await fetchKoers(s);
+    if (symbolen.length === 0) return;
+    try {
+      // Vroeger: één aanvraag per symbool (fetchKoers-lus) — dat werd al
+      // gauw honderdduizenden Edge Requests per maand bij een portefeuille
+      // met meerdere posities, ververst elke minuut. Nu: alle koersen van
+      // de portefeuille in één keer via het batch-endpoint 'quotes'.
+      const res = await fetch(`/api/data?endpoint=quotes&symbols=${encodeURIComponent(symbolen.join(','))}`);
+      const data = await res.json();
+      setKoersen(prev => {
+        const bijgewerkt = { ...prev };
+        symbolen.forEach(s => { if (data[s]?.c) bijgewerkt[s] = data[s]; });
+        return bijgewerkt;
+      });
+    } catch (e) {}
   };
 
   useEffect(() => {
@@ -383,8 +396,20 @@ export function AppProvider({ children, supabaseGebruiker }) {
   useEffect(() => {
     if (beleggingen.length === 0) return;
     refreshAlleKoersen();
-    const interval = setInterval(() => refreshAlleKoersen(), 60000);
-    return () => clearInterval(interval);
+    // Om de 3 minuten i.p.v. elke minuut — koersen van een persoonlijke
+    // portefeuille hoeven niet sneller te verversen dan dat, en dit
+    // scheelt op zich al 3x minder aanvragen. Bovendien: enkel verversen
+    // terwijl het tabblad ook echt zichtbaar is (geen zin om te blijven
+    // pollen als iemand een ander tabblad/venster open heeft staan).
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') refreshAlleKoersen();
+    }, 3 * 60_000);
+    const onZichtbaar = () => { if (document.visibilityState === 'visible') refreshAlleKoersen(); };
+    document.addEventListener('visibilitychange', onZichtbaar);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onZichtbaar);
+    };
   }, [actiefPortfolioId]);
 
   // ── Meldingen: nieuwe kwartaal-/jaarcijfers van portefeuille-aandelen ──

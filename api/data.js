@@ -18,6 +18,7 @@ function beursIsOpen() {
 const TTL = {
   // Live koersen: kort als beurs open, lang als gesloten
   quote:            () => beursIsOpen() ? 60_000        : 15 * 60_000,   // 1 min / 15 min
+  quotes:           () => beursIsOpen() ? 60_000        : 15 * 60_000,   // 1 min / 15 min — batch-versie van 'quote'
   'quote-detail':   () => beursIsOpen() ? 60_000        : 15 * 60_000,   // 1 min / 15 min
   forex:            () => beursIsOpen() ? 60_000        : 60 * 60_000,   // 1 min / 1 uur
   'forex-history':  () => 4 * 60 * 60_000,                              // 4 uur
@@ -379,8 +380,13 @@ module.exports = async function handler(req, res) {
       return _origJson(data);
     };
 
-    if (endpoint === 'quote') {
-      const { symbol } = req.query;
+    // Haalt de koers voor één symbool op — herbruikbare functie, gebruikt
+    // door zowel het (single-symbool) 'quote'-endpoint als het nieuwe
+    // batch-endpoint 'quotes' hieronder. Dezelfde logica als voorheen,
+    // enkel losgemaakt van de request/response zodat ze voor meerdere
+    // symbolen tegelijk (binnen dezelfde Vercel-functie-aanroep, dus
+    // zonder extra Edge Requests) hergebruikt kan worden.
+    async function haalQuoteVoorSymbool(symbol) {
       const isEuropees = symbol.includes('.DE') || symbol.includes('.PA') || symbol.includes('.AS') || symbol.includes('.BR') || symbol.includes('.L') || symbol.includes('.SW') || symbol.includes('.MI');
 
       // Crypto: handelt 24/7, dus geen "handelsdag" die Yahoo zelf bepaalt.
@@ -391,10 +397,6 @@ module.exports = async function handler(req, res) {
       if (isCryptoSymbool(toYahooSymbol(symbol))) {
         try {
           const yfSym = toYahooSymbol(symbol);
-          // Vraag een gewoon, ruim venster op (2 dagen) i.p.v. Yahoo's eigen
-          // interpretatie van period1/period2 te vertrouwen — en zoek zelf,
-          // op basis van de teruggegeven tijdstempels, de prijs net vóór
-          // Belgische middernacht op. Robuuster dan Yahoo's eigen daggrens.
           const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=2d&interval=5m`;
           const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
           const yfData = await yfRes.json();
@@ -416,14 +418,14 @@ module.exports = async function handler(req, res) {
             const vandaagCloses = timestamps.map((t, i) => t >= middernacht ? closes[i] : null).filter(v => v != null);
 
             if (huidigeKoers > 0 && vorigeSlot != null) {
-              return res.json({
+              return {
                 c: huidigeKoers,
                 pc: vorigeSlot,
                 o: vandaagCloses[0] || huidigeKoers,
                 h: vandaagCloses.length > 0 ? Math.max(...vandaagCloses) : huidigeKoers,
                 l: vandaagCloses.length > 0 ? Math.min(...vandaagCloses) : huidigeKoers,
                 v: meta.regularMarketVolume || 0,
-              });
+              };
             }
           }
         } catch (e) { console.error('Crypto quote fout:', e); }
@@ -444,14 +446,14 @@ module.exports = async function handler(req, res) {
             const huidigeKoers = meta.regularMarketPrice || closes[closes.length - 1] || 0;
             const vorigeSlot = meta.chartPreviousClose || meta.previousClose || huidigeKoers;
             if (huidigeKoers > 0) {
-              return res.json({
+              return {
                 c: huidigeKoers,
                 pc: vorigeSlot,
                 o: meta.regularMarketOpen || huidigeKoers,
                 h: meta.regularMarketDayHigh || huidigeKoers,
                 l: meta.regularMarketDayLow || huidigeKoers,
                 v: meta.regularMarketVolume || 0,
-              });
+              };
             }
           }
         } catch (e) { console.error('Yahoo quote fout:', e); }
@@ -461,7 +463,7 @@ module.exports = async function handler(req, res) {
       try {
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
         const d = await r.json();
-        if (d.c && d.c > 0) return res.json(d);
+        if (d.c && d.c > 0) return d;
       } catch (e) {}
 
       // Laatste fallback: Yahoo Finance voor alles
@@ -473,18 +475,42 @@ module.exports = async function handler(req, res) {
         const result = yfData?.chart?.result?.[0];
         if (result?.meta?.regularMarketPrice) {
           const meta = result.meta;
-          return res.json({
+          return {
             c: meta.regularMarketPrice,
             pc: meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice,
             o: meta.regularMarketOpen || meta.regularMarketPrice,
             h: meta.regularMarketDayHigh || meta.regularMarketPrice,
             l: meta.regularMarketDayLow || meta.regularMarketPrice,
             v: meta.regularMarketVolume || 0,
-          });
+          };
         }
       } catch (e) {}
 
-      return res.json({ c: 0, pc: 0, o: 0, h: 0, l: 0, v: 0 });
+      return { c: 0, pc: 0, o: 0, h: 0, l: 0, v: 0 };
+    }
+
+    if (endpoint === 'quote') {
+      const { symbol } = req.query;
+      const resultaat = await haalQuoteVoorSymbool(symbol);
+      return res.json(resultaat);
+    }
+
+    // ── Batch-versie van 'quote': alle koersen van een portefeuille in ÉÉN
+    // Edge Request i.p.v. één aanvraag per symbool. Dit is de belangrijkste
+    // hefboom om het Edge-Requests-verbruik (Vercel Hobby-limiet) drastisch
+    // te verlagen — de losse Yahoo/Finnhub-aanroepen gebeuren nog steeds
+    // per symbool, maar allemaal binnen dezelfde functie-aanroep, dus
+    // tellen ze maar als 1 Edge Request voor de browser.
+    if (endpoint === 'quotes') {
+      const { symbols } = req.query;
+      if (!symbols) return res.json({});
+      const lijst = [...new Set(symbols.split(',').map(s => s.trim()).filter(Boolean))].slice(0, 100);
+      const resultaat = {};
+      await Promise.all(lijst.map(async (symbol) => {
+        try { resultaat[symbol] = await haalQuoteVoorSymbool(symbol); }
+        catch (e) { resultaat[symbol] = { c: 0, pc: 0, o: 0, h: 0, l: 0, v: 0 }; }
+      }));
+      return res.json(resultaat);
     }
 
     if (endpoint === 'quote-detail') {
