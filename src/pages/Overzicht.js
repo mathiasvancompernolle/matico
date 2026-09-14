@@ -212,6 +212,15 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     return true;
   });
 
+  // 'koersen' via een ref bijhouden: de grafiek-effect hieronder moet de
+  // meest actuele koersen kunnen lezen (bv. als terugval als er geen
+  // historische data is), maar mag NIET herstarten telkens koersen
+  // verversen — anders wordt bij elke ververs-beurt (om de 3 minuten, of
+  // vaker vlak na het laden) de volledige historiek van elk aandeel
+  // opnieuw opgehaald, wat nodeloos veel Edge Requests veroorzaakt.
+  const koersenRef = useRef(koersen);
+  useEffect(() => { koersenRef.current = koersen; }, [koersen]);
+
   useEffect(() => {
     const laadGrafiek = async () => {
       if (beleggingVoorGrafiek.length === 0) { setGrafiekData([]); return; }
@@ -236,7 +245,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         let portfolioSlotVolledig = true;
         beleggingVoorGrafiek.forEach(b => {
           const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-          const slot = vorigeSlotPerSymbool[b.symbol] ?? koersen[b.symbol]?.pc;
+          const slot = vorigeSlotPerSymbool[b.symbol] ?? koersenRef.current[b.symbol]?.pc;
           if (slot == null) { portfolioSlotVolledig = false; return; }
           portfolioSlot += slot * b.aantal * factor;
         });
@@ -263,7 +272,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 const punt = reeks[Math.min(i, reeks.length - 1)];
                 totaalWaarde += punt.prijs * b.aantal * factor;
               } else {
-                const koers = koersen[b.symbol];
+                const koers = koersenRef.current[b.symbol];
                 totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
               }
             });
@@ -317,7 +326,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         let gisterenWaarde = 0, nuWaarde = 0;
         beleggingVoorGrafiek.forEach(b => {
           const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-          const koers = koersen[b.symbol];
+          const koers = koersenRef.current[b.symbol];
           gisterenWaarde += (slotKoersen[b.symbol] || koers?.pc || b.kostprijs) * b.aantal * factor;
           nuWaarde += (koers?.c || b.kostprijs) * b.aantal * factor;
         });
@@ -422,7 +431,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               const prijs = vindPrijsOpDatum(symbolData, puntDatum);
               if (prijs != null) totaalWaarde += prijs * b.aantal * factor;
             } else {
-              const koers = koersen[b.symbol];
+              const koers = koersenRef.current[b.symbol];
               totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
             }
           });
@@ -477,7 +486,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           if (aankoopDatum && doelDatum < aankoopDatum) return;
           const prijs = vindPrijsOpDatum(historischeData[b.symbol], doelDatum);
           if (prijs != null) totaal += prijs * b.aantal * factor;
-          else { const koers = koersen[b.symbol]; totaal += (koers ? koers.c : b.kostprijs) * b.aantal * factor; }
+          else { const koers = koersenRef.current[b.symbol]; totaal += (koers ? koers.c : b.kostprijs) * b.aantal * factor; }
         });
         verkochtVoorGrafiek.forEach(b => {
           const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
@@ -580,7 +589,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         let liveWaarde = 0;
         beleggingVoorGrafiek.forEach(b => {
           const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-          const koers = koersen[b.symbol];
+          const koers = koersenRef.current[b.symbol];
           liveWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
         });
         if (liveWaarde > 0) {
@@ -609,7 +618,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     };
 
     laadGrafiek();
-  }, [beleggingVoorGrafiek.length, koersen, tijdperk, filterType, filterSymbolen, filterBezit, (verkochteBeleggingen || []).length]);
+  }, [beleggingVoorGrafiek.length, tijdperk, filterType, filterSymbolen, filterBezit, (verkochteBeleggingen || []).length]);
 
   useEffect(() => {
     refreshAlleKoersen();
