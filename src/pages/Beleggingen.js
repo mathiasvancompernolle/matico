@@ -255,6 +255,24 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
     return null;
   };
 
+  // Bij het kiezen van een verkoopdatum: automatisch de slotkoers van die dag
+  // opzoeken en invullen — de gebruiker kan die waarde nadien nog altijd zelf
+  // aanpassen. Bij "beperkte info" gebeurt de koers-opzoeking pas bij het
+  // bevestigen (die flow gebruikt de koers anders, om het aantal te schatten).
+  const kiesDatum = async (nieuweDatumStr) => {
+    setForm(f => ({ ...f, datum: nieuweDatumStr }));
+    if (beperkteInfoVerkoop || !nieuweDatumStr) return;
+    setHistorischLoading(true);
+    setHistorischeFout('');
+    const prijs = await haalHistorischeKoers(gekozen.symbol, nieuweDatumStr);
+    if (prijs) {
+      setForm(f => ({ ...f, koers: prijs.toFixed(2) }));
+    } else {
+      setHistorischeFout('Kon de koers van die dag niet automatisch ophalen — vul zelf in.');
+    }
+    setHistorischLoading(false);
+  };
+
   const bevestig = async () => {
     if (beperkteInfoVerkoop && aantalOnbekend) {
       // Aantal is niet gekend — enkel verkoopbedrag + datum. Net als bij
@@ -401,14 +419,13 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
               {/* Verkoopdatum */}
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('bel_col_verkoopdatum')}</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    value={form.datum}
-                    onChange={e => setForm(f => ({ ...f, datum: e.target.value }))}
-                    style={inputStyle}
-                  />
-                  <Calendar size={15} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                </div>
+                <input
+                  type="date"
+                  value={form.datum}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={e => kiesDatum(e.target.value)}
+                  style={inputStyle}
+                />
               </div>
               {/* Aantal */}
               {!(beperkteInfoVerkoop && aantalOnbekend) && (
@@ -444,9 +461,15 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                       <option>EUR</option><option>USD</option><option>GBP</option>
                     </select>
                   </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-                    {t('bel_ingevuld_op_basis')} {new Date().toLocaleDateString('nl-BE')}
-                  </p>
+                  {historischLoading ? (
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>Koers van die dag opzoeken...</p>
+                  ) : historischeFout ? (
+                    <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 6 }}>{historischeFout}</p>
+                  ) : (
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                      {t('bel_ingevuld_op_basis')} {new Date(form.datum).toLocaleDateString('nl-BE')} — pas gerust aan indien nodig.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div>
