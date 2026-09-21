@@ -669,7 +669,7 @@ export default function BeleggingToevoegen({ onClose }) {
           {!beperkteInfoModus ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 0.8fr 0.7fr 1.1fr 32px', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
             <span>Naam</span>
-            <span>Aankoopprijs</span>
+            <span>Koers per stuk</span>
             <span>
               Transactiekosten
               <div style={{ fontWeight: 400, fontSize: 10, color: 'var(--text-muted)', textTransform: 'none', letterSpacing: 'normal' }}>optioneel, later aan te passen</div>
