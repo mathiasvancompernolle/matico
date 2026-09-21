@@ -345,7 +345,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
               />
             </div>
             {/* Lijst */}
-            <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 20 }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflowY: 'auto', maxHeight: '45vh', marginBottom: 20 }}>
               {gefilterd.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                   {t('bel_geen_beleggingen_gevonden')}
