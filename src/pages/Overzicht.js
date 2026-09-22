@@ -142,6 +142,18 @@ function BeleggingAvatar({ b }) {
 export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed, onToggleSidebar }) {
   const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen, t } = useApp();
 
+  // ── Schermbreedte bijhouden ──────────────────────────────────────────────
+  // Nodig om bv. het aantal tijd-labels onder de grafiek af te stemmen op
+  // de effectief beschikbare ruimte (op mobiel passen er veel minder dan
+  // op een breed scherm, anders overlappen ze).
+  const [breedte, setBreedte] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1200));
+  useEffect(() => {
+    const onResize = () => setBreedte(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const isMobielScherm = breedte < 640;
+
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
   // Toon NIET als: weekend of nieuwe dag begonnen zonder dat beurs al open was
@@ -779,7 +791,10 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       // zodra dat nodig is om de as leesbaar te houden.
       const naarMinuten = (t) => { const d = new Date(t); return d.getHours() * 60 + d.getMinutes(); };
       const spanMinuten = naarMinuten(data[data.length - 1].tijd) - naarMinuten(data[0].tijd);
-      const doelTicks = 16;
+      // Op een smal (mobiel) scherm is er simpelweg geen plaats voor evenveel
+      // "HH:MM"-labels als op desktop — minder ticks vragen voorkomt dat ze
+      // over elkaar heen komen te staan.
+      const doelTicks = isMobielScherm ? 5 : 16;
       const opties = [10, 30, 60];
       let stap = opties[opties.length - 1];
       for (const optie of opties) {
@@ -1019,7 +1034,9 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     <div style={{ padding: '0 0 40px' }}>
       <div className="page-header" style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+          <div className="mobiel-verbergen">
+            <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+          </div>
           <h1>{begroeting()}, {gebruiker.voornaam}</h1>
         </div>
         <div style={{ position: 'relative' }} ref={menuRef}>
