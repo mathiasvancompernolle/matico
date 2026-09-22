@@ -293,8 +293,16 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   const [filterSymbolen, setFilterSymbolen] = useState([]);
   const [filterBezit, setFilterBezit] = useState('inbezit'); // 'alles' | 'inbezit'
   const [detailBelegging, setDetailBelegging] = useState(null);
-  const [sortCol, setSortCol] = useState('datum'); // standaard: oudste naar nieuwste
-  const [sortDir, setSortDir] = useState('asc');
+  // Sortering van de "Beleggingen"-lijst: standaard oudste-naar-nieuwste
+  // (op aankoopdatum), maar zodra je zelf op een kolom klikt, onthouden we
+  // die keuze — ze blijft staan tot je ze zelf weer wijzigt, ook na het
+  // herladen van de pagina of opnieuw inloggen.
+  const [sortCol, setSortCol] = useState(() => localStorage.getItem('matico_sort_col') || 'datum');
+  const [sortDir, setSortDir] = useState(() => localStorage.getItem('matico_sort_dir') || 'asc');
+  useEffect(() => {
+    localStorage.setItem('matico_sort_col', sortCol);
+    localStorage.setItem('matico_sort_dir', sortDir);
+  }, [sortCol, sortDir]);
   const [toevoegenMenuOpen, setToevoegenMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const fabMenuRef = useRef(null); // de vaste "+"-knop (mobiel) heeft een eigen dropdown, apart van die in de header
