@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, ReferenceLine } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, ReferenceLine, ReferenceArea } from 'recharts';
 import { SlidersHorizontal, GitCompare, Plus, ChevronDown, X, Check, Upload, Edit3 } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 import BeleggingDetail from '../components/BeleggingDetail';
@@ -220,6 +220,34 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     if (swipeBezigRef.current) { swipeBezigRef.current = false; return; }
     if (swipeRowId === b.id && swipeX !== 0) { setSwipeRowId(null); setSwipeX(0); return; }
     setDetailBelegging(b);
+  };
+
+  // ── Grafiek: indrukken en slepen om 2 momenten te vergelijken ───────────
+  // Druk in op een punt, sleep naar een later (of vroeger) moment, en zie
+  // ondertussen het verschil tussen die twee punten (in € en %). Loslaten
+  // zet de grafiek terug naar normaal (gewone tik-tooltip per punt).
+  const [sleepStart, setSleepStart] = useState(null); // { tijd, waarde }
+  const [sleepEind, setSleepEind] = useState(null);
+  const [aanHetSlepen, setAanHetSlepen] = useState(false);
+
+  const grafiekSleepStart = (e) => {
+    if (!e || e.activeLabel == null) return;
+    const waarde = e.activePayload?.[0]?.value;
+    if (waarde == null) return;
+    setSleepStart({ tijd: e.activeLabel, waarde });
+    setSleepEind({ tijd: e.activeLabel, waarde });
+    setAanHetSlepen(true);
+  };
+  const grafiekSleepBeweeg = (e) => {
+    if (!aanHetSlepen || !e || e.activeLabel == null) return;
+    const waarde = e.activePayload?.[0]?.value;
+    if (waarde == null) return;
+    setSleepEind({ tijd: e.activeLabel, waarde });
+  };
+  const grafiekSleepEinde = () => {
+    setAanHetSlepen(false);
+    setSleepStart(null);
+    setSleepEind(null);
   };
 
   // ── Check of dagpercentage getoond mag worden ──
@@ -1245,7 +1273,17 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 </div>
               )}
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={segmentDataPortfolio || displayDataEff} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+              <AreaChart
+                data={segmentDataPortfolio || displayDataEff}
+                margin={{ top: 5, right: 5, bottom: 5, left: 0 }}
+                onMouseDown={grafiekSleepStart}
+                onMouseMove={grafiekSleepBeweeg}
+                onMouseUp={grafiekSleepEinde}
+                onMouseLeave={grafiekSleepEinde}
+                onTouchStart={grafiekSleepStart}
+                onTouchMove={grafiekSleepBeweeg}
+                onTouchEnd={grafiekSleepEinde}
+              >
                 <defs>
                   <linearGradient id="portfolioGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={grafiekKleur} stopOpacity={0.15} />
@@ -1261,6 +1299,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
+                    if (aanHetSlepen) return null;
                     if (!active || !payload?.length) return null;
                     const datum = payload[0]?.payload?.datum;
                     const puntLabel = payload[0]?.payload?.label ?? label;
@@ -1402,6 +1441,41 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     return <g key={index}></g>;
                   }}
                   activeDot={{ r: 5, fill: grafiekKleur }} />
+                {aanHetSlepen && sleepStart && sleepEind && sleepStart.tijd !== sleepEind.tijd && (() => {
+                  const eerstePunt = sleepStart.tijd <= sleepEind.tijd ? sleepStart : sleepEind;
+                  const laatstePunt = sleepStart.tijd <= sleepEind.tijd ? sleepEind : sleepStart;
+                  const verschil = laatstePunt.waarde - eerstePunt.waarde;
+                  const verschilPct = eerstePunt.waarde !== 0 ? (verschil / eerstePunt.waarde) * 100 : 0;
+                  const positief = verschil >= 0;
+                  const kleur = positief ? 'var(--green)' : 'var(--red)';
+                  const tekst = `${positief ? '+' : '-'}€${Math.abs(verschil).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${positief ? '+' : ''}${verschilPct.toFixed(2)}%)`;
+                  return (
+                    <ReferenceArea
+                      x1={eerstePunt.tijd}
+                      x2={laatstePunt.tijd}
+                      fill={kleur}
+                      fillOpacity={0.12}
+                      stroke={kleur}
+                      strokeOpacity={0.5}
+                      strokeDasharray="3 3"
+                      label={(props) => {
+                        const { viewBox } = props;
+                        const breedte = Math.max(8 * tekst.length + 20, 90);
+                        const hoogte = 24;
+                        const x = viewBox.x + viewBox.width / 2 - breedte / 2;
+                        const y = Math.max(viewBox.y + 6, 4);
+                        return (
+                          <g>
+                            <rect x={x} y={y} width={breedte} height={hoogte} rx={6} fill={kleur} />
+                            <text x={x + breedte / 2} y={y + hoogte / 2 + 4} textAnchor="middle" fill="#fff" fontSize={12} fontWeight={700}>
+                              {tekst}
+                            </text>
+                          </g>
+                        );
+                      }}
+                    />
+                  );
+                })()}
               </AreaChart>
             </ResponsiveContainer>
             </div>
