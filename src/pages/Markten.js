@@ -733,7 +733,13 @@ function AandelenPagina({ actieveRegio, onToonAlles, onSelectEffect }) {
                   />
                   <Tooltip content={<GrafiekTooltip periode={periode} />} />
                   {data.prevClose > 0 && (
-                    <ReferenceLine y={data.prevClose} stroke="var(--text-muted)" strokeDasharray="4 3" strokeWidth={1} />
+                    <ReferenceLine
+                      y={data.prevClose}
+                      stroke="var(--accent)"
+                      strokeDasharray="4 3"
+                      strokeWidth={1}
+                      label={{ value: fmtPrijs(data.prevClose), position: 'left', fill: 'var(--accent)', fontSize: 11, fontWeight: 600 }}
+                    />
                   )}
                   <Area
                     type="monotone"
