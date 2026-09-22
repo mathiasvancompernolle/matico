@@ -311,6 +311,9 @@ module.exports = async function handler(req, res) {
     dax: [], // niet in gebruik — DAX-40-samenstelling nog niet geverifieerd
     stoxx50: [], // niet in gebruik — Euro Stoxx 50-samenstelling nog niet geverifieerd
     stoxx600: [], // niet in gebruik — 600 bedrijven, niet praktisch hier met de hand te onderhouden
+    hangsengcomp: [], // niet in gebruik — 480 bedrijven, niet praktisch hier met de hand te onderhouden
+    hangsengfin: [], // niet in gebruik — samenstelling nog niet geverifieerd
+    asx200: [], // niet in gebruik — samenstelling nog niet geverifieerd
   };
   const GEKENDE_TICKERS = new Set(Object.values(componenten).flat());
 
@@ -1818,6 +1821,7 @@ module.exports = async function handler(req, res) {
         bel20: '^BFX', 'bel-midcap': 'BELM.BR', 'bel-smallcap': 'BELS.BR',
         aex: '^AEX', sp500: '^GSPC', nasdaq: '^NDX', nikkei: '^N225', hangseng: '^HSI',
         cac40: '^FCHI', dax: '^GDAXI', stoxx50: '^STOXX50E', stoxx600: '^STOXX',
+        hangsengcomp: '^HSCI', hangsengfin: '^HSNF', asx200: '^AXJO',
       };
 
       // Grafiek interval+range (voor de index curve)
