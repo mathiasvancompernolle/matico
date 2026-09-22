@@ -1715,7 +1715,7 @@ function VergelijkModal({ onClose, vergelijk1, setVergelijk1, vergelijk2, setVer
           scrollen, in plaats van de header-knop die uit beeld verdwijnt
           zodra je naar beneden scrolt. */}
       {isMobielScherm && (
-        <div ref={fabMenuRef} style={{ position: 'fixed', left: 18, bottom: 88, zIndex: 250 }}>
+        <div ref={fabMenuRef} style={{ position: 'fixed', left: 18, bottom: 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)', zIndex: 250 }}>
           {toevoegenMenuOpen && (
             <div style={{
               position: 'absolute', bottom: '100%', left: 0, marginBottom: 8,
