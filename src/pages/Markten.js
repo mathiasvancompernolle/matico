@@ -170,11 +170,7 @@ function IndexDetailPagina({ index, onTerug }) {
   };
   const subindex = subindexMap[index.symbol];
 
-  const PERIODES = ['bel-midcap','bel-smallcap'].includes(subindex) ? [
-    { id: '1d', label: 'Intraday' },
-    { id: '1w', label: '1 W' },
-    { id: 'max', label: 'Max' },
-  ] : [
+  const PERIODES = [
     { id: '1d', label: 'Intraday' },
     { id: '1w', label: '1 W' },
     { id: '1m', label: '1M' },
@@ -687,10 +683,7 @@ function AandelenPagina({ actieveRegio, onToonAlles, onSelectEffect }) {
             <div className="aandelen-grafiek-header">
               <span className="aandelen-grafiek-titel">Grafiek</span>
               <div className="aandelen-periode-knoppen">
-                {((['bel-midcap','bel-smallcap'].includes(actieveSub))
-                  ? PERIODES.filter(p => ['1d','1w','max'].includes(p.id))
-                  : PERIODES
-                ).map(p => (
+                {PERIODES.map(p => (
                   <button
                     key={p.id}
                     className={`aandelen-periode-knop ${periode === p.id ? 'actief' : ''}`}
