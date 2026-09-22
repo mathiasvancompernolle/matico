@@ -1821,7 +1821,7 @@ module.exports = async function handler(req, res) {
         bel20: '^BFX', 'bel-midcap': 'BELM.BR', 'bel-smallcap': 'BELS.BR',
         aex: '^AEX', sp500: '^GSPC', nasdaq: '^NDX', nikkei: '^N225', hangseng: '^HSI',
         cac40: '^FCHI', dax: '^GDAXI', stoxx50: '^STOXX50E', stoxx600: '^STOXX',
-        hangsengcomp: 'HSCI.I', hangsengfin: '^HSNF', asx200: '^AXJO',
+        hangsengcomp: '^HSCI.HK', hangsengfin: '^HSNF', asx200: '^AXJO',
       };
 
       // Grafiek interval+range (voor de index curve)
