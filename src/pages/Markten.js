@@ -735,10 +735,10 @@ function AandelenPagina({ actieveRegio, onToonAlles, onSelectEffect }) {
                   {data.prevClose > 0 && (
                     <ReferenceLine
                       y={data.prevClose}
-                      stroke="var(--accent)"
+                      stroke={grafiekKleur}
                       strokeDasharray="4 3"
                       strokeWidth={1}
-                      label={{ value: fmtPrijs(data.prevClose), position: 'left', fill: 'var(--accent)', fontSize: 11, fontWeight: 600 }}
+                      label={{ value: fmtPrijs(data.prevClose), position: 'insideBottomLeft', fill: grafiekKleur, fontSize: 11, fontWeight: 600, dy: 4 }}
                     />
                   )}
                   <Area
