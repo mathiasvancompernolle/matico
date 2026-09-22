@@ -167,7 +167,7 @@ function IndexDetailPagina({ index, onTerug }) {
     '^AEX': 'aex', '^FCHI': 'cac40', '^GDAXI': 'dax', '^STOXX': 'stoxx600',
     '^FTSE': 'ftse100', '^STOXX50E': 'stoxx50',
     '^GSPC': 'sp500', '^NDX': 'nasdaq100', '^DJI': 'dowjones',
-    '^HSCI': 'hangsengcomp', '^HSNF': 'hangsengfin', '^AXJO': 'asx200',
+    'HSCI.I': 'hangsengcomp', '^HSNF': 'hangsengfin', '^AXJO': 'asx200',
   };
   const subindex = subindexMap[index.symbol];
 
