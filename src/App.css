@@ -1557,6 +1557,7 @@ body.dark .top-nav {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  overflow-x: auto;
   box-shadow: var(--shadow-sm);
 }
 
@@ -1617,6 +1618,7 @@ body.dark .top-nav {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  overflow-x: auto;
   box-shadow: var(--shadow-sm);
 }
 
@@ -1712,6 +1714,7 @@ body.dark .top-nav {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  overflow-x: auto;
   box-shadow: var(--shadow-sm);
 }
 
