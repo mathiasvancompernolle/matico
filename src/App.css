@@ -710,12 +710,12 @@ body {
     position: fixed;
     bottom: 0; left: 0; right: 0; top: auto;
     width: 100% !important;
-    height: 64px;
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     flex-direction: row;
     border-right: none;
     border-top: 1px solid var(--border);
     z-index: 100;
-    padding: 0;
     overflow: hidden;
     background: white;
     box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
@@ -769,7 +769,7 @@ body {
   /* ── Main content ── */
   .app-main {
     margin-left: 0 !important;
-    padding-bottom: 72px; /* ruimte voor bottom nav */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); /* ruimte voor bottom nav + veilige zone */
     width: 100%;
   }
 
