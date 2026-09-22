@@ -154,6 +154,74 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   }, []);
   const isMobielScherm = breedte < 768;
 
+  // ── Trek-om-te-verversen (pull-to-refresh), enkel op mobiel ──────────────
+  const [pullAfstand, setPullAfstand] = useState(0);
+  const [ververst, setVerverst] = useState(false);
+  const pullStartY = useRef(null);
+  const PULL_DREMPEL = 70;
+
+  const onPullStart = (e) => {
+    if (!isMobielScherm || ververst) return;
+    const scrollEl = document.querySelector('.app-main');
+    if (scrollEl && scrollEl.scrollTop > 0) return; // enkel bovenaan de pagina
+    pullStartY.current = e.touches[0].clientY;
+  };
+  const onPullMove = (e) => {
+    if (pullStartY.current == null) return;
+    const delta = e.touches[0].clientY - pullStartY.current;
+    if (delta > 0) setPullAfstand(Math.min(delta * 0.5, 90)); // met weerstand, max. 90px
+  };
+  const onPullEnd = async () => {
+    if (pullStartY.current == null) return;
+    pullStartY.current = null;
+    if (pullAfstand >= PULL_DREMPEL) {
+      setVerverst(true);
+      setPullAfstand(PULL_DREMPEL);
+      try { await refreshAlleKoersen(); } catch (e) {}
+      setVerverst(false);
+    }
+    setPullAfstand(0);
+  };
+
+  // ── Swipe op een belegging-rij → onthult een "Verkopen"-snelknop ────────
+  const SWIPE_ACTIE_BREEDTE = 84;
+  const [swipeRowId, setSwipeRowId] = useState(null);
+  const [swipeX, setSwipeX] = useState(0);
+  const swipeStartXRef = useRef(null);
+  const swipeBezigRef = useRef(false); // onderscheidt een swipe van een gewone tik
+
+  const onRijTouchStart = (id, e) => {
+    if (!isMobielScherm) return;
+    if (swipeRowId && swipeRowId !== id) { setSwipeRowId(null); setSwipeX(0); }
+    swipeStartXRef.current = e.touches[0].clientX;
+    swipeBezigRef.current = false;
+    setSwipeRowId(id);
+  };
+  const onRijTouchMove = (id, e) => {
+    if (swipeStartXRef.current == null || swipeRowId !== id) return;
+    const delta = e.touches[0].clientX - swipeStartXRef.current;
+    if (Math.abs(delta) > 8) swipeBezigRef.current = true;
+    const nieuweX = Math.max(-SWIPE_ACTIE_BREEDTE - 20, Math.min(0, delta));
+    setSwipeX(nieuweX);
+  };
+  const onRijTouchEnd = (id) => {
+    if (swipeRowId !== id) return;
+    swipeStartXRef.current = null;
+    if (swipeX <= -SWIPE_ACTIE_BREEDTE / 2) {
+      setSwipeX(-SWIPE_ACTIE_BREEDTE);
+    } else {
+      setSwipeX(0);
+      setSwipeRowId(null);
+    }
+  };
+  const onRijKlik = (b) => {
+    // Een swipe mag niet ook als tik gelden; en als de rij al open staat,
+    // sluit een volgende tik hem eerst weer i.p.v. meteen het detail te openen.
+    if (swipeBezigRef.current) { swipeBezigRef.current = false; return; }
+    if (swipeRowId === b.id && swipeX !== 0) { setSwipeRowId(null); setSwipeX(0); return; }
+    setDetailBelegging(b);
+  };
+
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
   // Toon NIET als: weekend of nieuwe dag begonnen zonder dat beurs al open was
@@ -201,6 +269,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   const [sortDir, setSortDir] = useState('asc');
   const [toevoegenMenuOpen, setToevoegenMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const fabMenuRef = useRef(null); // de vaste "+"-knop (mobiel) heeft een eigen dropdown, apart van die in de header
 
   const begroeting = () => {
     const h = new Date().getHours();
@@ -211,7 +280,9 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
   useEffect(() => {
     const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setToevoegenMenuOpen(false);
+      const inHeaderMenu = menuRef.current && menuRef.current.contains(e.target);
+      const inFabMenu = fabMenuRef.current && fabMenuRef.current.contains(e.target);
+      if (!inHeaderMenu && !inFabMenu) setToevoegenMenuOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -1031,7 +1102,26 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   })();
 
   return (
-    <div style={{ padding: '0 0 40px' }}>
+    <div
+      style={{ padding: '0 0 40px', position: 'relative' }}
+      onTouchStart={onPullStart}
+      onTouchMove={onPullMove}
+      onTouchEnd={onPullEnd}
+    >
+      {isMobielScherm && (pullAfstand > 0 || ververst) && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: pullAfstand,
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          paddingBottom: 8, overflow: 'hidden', transition: pullStartY.current ? 'none' : 'height 0.2s',
+        }}>
+          <div style={{
+            width: 22, height: 22, borderRadius: '50%',
+            border: '2.5px solid var(--border)', borderTopColor: 'var(--accent)',
+            animation: (ververst || pullAfstand >= PULL_DREMPEL) ? 'spin 0.7s linear infinite' : 'none',
+            transform: `rotate(${pullAfstand * 3}deg)`,
+          }} />
+        </div>
+      )}
       <div className="page-header" style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div className="mobiel-verbergen">
@@ -1039,7 +1129,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           </div>
           <h1>{begroeting()}, {gebruiker.voornaam}</h1>
         </div>
-        <div style={{ position: 'relative' }} ref={menuRef}>
+        <div className="mobiel-verbergen" style={{ position: 'relative' }} ref={menuRef}>
           <button className="btn btn-primary" onClick={() => setToevoegenMenuOpen(!toevoegenMenuOpen)} style={{ padding: '12px 20px', fontSize: 15 }}>
             <Plus size={18} /> {t('ov_beleggingen_toevoegen')} <ChevronDown size={16} />
           </button>
@@ -1141,7 +1231,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               <span style={{ fontSize: 13 }}>{t('ov_grafiek_laden')}</span>
             </div>
           ) : (
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', touchAction: 'pan-y' }}>
               {beursGesloten1D && (
                 <div style={{
                   position: 'absolute', top: '50%', left: '50%',
@@ -1412,7 +1502,31 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               const muntSym = (b.munt || 'EUR') === 'USD' ? '$' : '€';
 
               return (
-                <div key={b.id} className="tabel-rij belegging-grid" onClick={() => setDetailBelegging(b)}>
+                <div key={b.id} style={{ position: 'relative', overflow: 'hidden' }}>
+                  {isMobielScherm && (
+                    <div
+                      onClick={() => { setDetailBelegging(b); setSwipeRowId(null); setSwipeX(0); }}
+                      style={{
+                        position: 'absolute', top: 0, right: 0, bottom: 0, width: SWIPE_ACTIE_BREEDTE,
+                        background: 'var(--red)', color: 'white', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                      }}
+                    >
+                      Verkopen
+                    </div>
+                  )}
+                  <div
+                    className="tabel-rij belegging-grid"
+                    onClick={() => onRijKlik(b)}
+                    onTouchStart={isMobielScherm ? (e) => onRijTouchStart(b.id, e) : undefined}
+                    onTouchMove={isMobielScherm ? (e) => onRijTouchMove(b.id, e) : undefined}
+                    onTouchEnd={isMobielScherm ? () => onRijTouchEnd(b.id) : undefined}
+                    style={{
+                      position: 'relative', zIndex: 1, background: 'var(--bg-white)',
+                      transform: swipeRowId === b.id ? `translateX(${swipeX}px)` : 'translateX(0)',
+                      transition: (swipeRowId === b.id && swipeStartXRef.current != null) ? 'none' : 'transform 0.2s',
+                    }}
+                  >
                   <div className="belegging-naam">
                     <BeleggingAvatar b={b} />
                     <div>
@@ -1443,6 +1557,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     </span>
                   </div>
                   <div style={{ fontWeight: 600 }}>{gewicht.toFixed(1)}%</div>
+                  </div>
                 </div>
               );
             })}
@@ -1595,6 +1710,46 @@ function VergelijkModal({ onClose, vergelijk1, setVergelijk1, vergelijk2, setVer
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Vaste "+"-knop (enkel mobiel) — blijft zichtbaar tijdens het
+          scrollen, in plaats van de header-knop die uit beeld verdwijnt
+          zodra je naar beneden scrolt. */}
+      {isMobielScherm && (
+        <div ref={fabMenuRef} style={{ position: 'fixed', right: 18, bottom: 88, zIndex: 250 }}>
+          {toevoegenMenuOpen && (
+            <div style={{
+              position: 'absolute', bottom: '100%', right: 0, marginBottom: 8,
+              background: 'white', border: '1px solid var(--border)', borderRadius: 10,
+              boxShadow: 'var(--shadow-md)', minWidth: 200, overflow: 'hidden'
+            }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', cursor: 'pointer', fontSize: 14 }}
+                onClick={() => { setToevoegenMenuOpen(false); onToevoegen(); }}
+              >
+                <Edit3 size={15} color="var(--text-muted)" /> {t('ov_manueel')}
+              </div>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', cursor: 'pointer', fontSize: 14, borderTop: '1px solid var(--border-light)' }}
+                onClick={() => { setToevoegenMenuOpen(false); onImporteren && onImporteren(); }}
+              >
+                <Upload size={15} color="var(--text-muted)" /> {t('ov_importeer')}
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => setToevoegenMenuOpen(v => !v)}
+            style={{
+              width: 56, height: 56, borderRadius: '50%', border: 'none',
+              background: 'var(--accent)', color: 'white', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 16px rgba(30,58,138,0.4)',
+            }}
+            aria-label={t('ov_beleggingen_toevoegen')}
+          >
+            <Plus size={26} style={{ transform: toevoegenMenuOpen ? 'rotate(45deg)' : 'none', transition: 'transform 0.15s' }} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
