@@ -304,6 +304,13 @@ module.exports = async function handler(req, res) {
       'VIE.PA',    // Veolia
       'DG.PA',     // Vinci
     ],
+    // Index zelf (koers/grafiek) werkt volledig via het eigen indexsymbool
+    // (zie indexSymbolen hierboven) — voor deze 3 is er nog geen eigen,
+    // geverifieerde samenstellingslijst, dus de "best/slechtst presterend"-
+    // ranglijst blijft hier leeg (zelfde patroon als sp500 hieronder).
+    dax: [], // niet in gebruik — DAX-40-samenstelling nog niet geverifieerd
+    stoxx50: [], // niet in gebruik — Euro Stoxx 50-samenstelling nog niet geverifieerd
+    stoxx600: [], // niet in gebruik — 600 bedrijven, niet praktisch hier met de hand te onderhouden
   };
   const GEKENDE_TICKERS = new Set(Object.values(componenten).flat());
 
@@ -1810,6 +1817,7 @@ module.exports = async function handler(req, res) {
       const indexSymbolen = {
         bel20: '^BFX', 'bel-midcap': 'BELM.BR', 'bel-smallcap': 'BELS.BR',
         aex: '^AEX', sp500: '^GSPC', nasdaq: '^NDX', nikkei: '^N225', hangseng: '^HSI',
+        cac40: '^FCHI', dax: '^GDAXI', stoxx50: '^STOXX50E', stoxx600: '^STOXX',
       };
 
       // Grafiek interval+range (voor de index curve)

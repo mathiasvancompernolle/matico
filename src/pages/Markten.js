@@ -22,7 +22,7 @@ const CATEGORIEEN = [
 // Subindices per regio voor aandelen
 const SUBINDICES = {
   lokaal:        [{ id: 'bel20', label: 'BEL20 Index' }, { id: 'bel-midcap', label: 'BEL Midcap Index' }, { id: 'bel-smallcap', label: 'BEL Smallcap Index' }],
-  europa:        [{ id: 'aex',   label: 'AEX Index' }],
+  europa:        [{ id: 'stoxx50', label: 'EURO STOXX 50 Index' }, { id: 'dax', label: 'DAX Index' }, { id: 'cac40', label: 'CAC 40 Index' }, { id: 'stoxx600', label: 'STOXX Europe 600' }],
   'noord-amerika': [{ id: 'nasdaq', label: 'Nasdaq 100' }],
   'azie-pacific':  [{ id: 'nikkei', label: 'Nikkei 225' }, { id: 'hangseng', label: 'Hang Seng' }],
 };
@@ -164,7 +164,7 @@ function IndexDetailPagina({ index, onTerug }) {
 
   const subindexMap = {
     '^BFX': 'bel20', 'BELM.BR': 'bel-midcap', 'BELS.BR': 'bel-smallcap',
-    '^AEX': 'aex', '^FCHI': 'cac40', '^GDAXI': 'dax',
+    '^AEX': 'aex', '^FCHI': 'cac40', '^GDAXI': 'dax', '^STOXX': 'stoxx600',
     '^FTSE': 'ftse100', '^STOXX50E': 'stoxx50',
     '^GSPC': 'sp500', '^NDX': 'nasdaq100', '^DJI': 'dowjones',
   };
