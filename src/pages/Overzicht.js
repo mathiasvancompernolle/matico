@@ -281,7 +281,6 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   };
   const [tijdperk, setTijdperk] = useState('1D');
   const [weergave, setWeergave] = useState('waarde');
-  const [toonBuitenBeursuren, setToonBuitenBeursuren] = useState(false);
   const [grafiekData, setGrafiekData] = useState([]);
   const [portfolioVorigeSlot, setPortfolioVorigeSlot] = useState(null);
   const [grafiekLoading, setGrafiekLoading] = useState(false);
@@ -818,21 +817,22 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
   const displayData = weergave === 'waarde' ? grafiekData : winstData;
 
-  // Crypto handelt 24/7 — standaard tonen we in de portfoliografiek enkel
-  // 9u-23u (Belgische tijd), met een knop om ook de volledige 24u te zien.
-  // Bij die volledige weergave maken we visueel onderscheid tussen "beurzen
-  // open" en "enkel crypto beweegt". Is de (gefilterde) selectie echter
-  // uitsluitend crypto (bv. via de filter "enkel crypto"), dan heeft die
-  // onderscheiding geen zin meer — dan tonen we altijd gewoon de volle 24u,
-  // als één ononderbroken lijn, net als bij een individueel crypto-effect.
-  const heeftCrypto = beleggingVoorGrafiek.some(b => b.type === 'crypto');
+  // De 1D-grafiek toont altijd het venster 9u-22u (Belgische tijd) — de
+  // Europese en Amerikaanse beursuren samen. Is de (gefilterde) selectie
+  // echter uitsluitend crypto (bv. via de filter "enkel crypto"), dan is
+  // zo'n beursuren-venster zinloos — dan tonen we gewoon de volle 24u, als
+  // één ononderbroken lijn, net als bij een individueel crypto-effect.
   const alleenCrypto = beleggingVoorGrafiek.length > 0 && beleggingVoorGrafiek.every(b => b.type === 'crypto');
   const binnenBeursurenPortfolio = (label) => {
     const uur = parseInt((label || '').split(':')[0], 10);
-    return !isNaN(uur) && uur >= 9 && uur < 23;
+    return !isNaN(uur) && uur >= 9 && uur < 22;
   };
-  const toontCryptoFilterPortfolio = tijdperk === '1D' && heeftCrypto && !alleenCrypto;
-  const displayDataVoorWeekend = (toontCryptoFilterPortfolio && !toonBuitenBeursuren)
+  // De 1D-grafiek toont altijd het venster 9u (opening Europese beurzen) tot
+  // 22u (sluiting Amerikaanse beurzen) — ongeacht of de portefeuille crypto
+  // bevat. Enkel bij een portefeuille die uitsluitend uit crypto bestaat
+  // tonen we de volle 24u, want daar is een "beursuren"-venster zinloos.
+  const toontCryptoFilterPortfolio = tijdperk === '1D' && !alleenCrypto;
+  const displayDataVoorWeekend = toontCryptoFilterPortfolio
     ? displayData.filter(d => binnenBeursurenPortfolio(d.label))
     : displayData;
 
@@ -867,14 +867,6 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         });
       })();
 
-  const segmentDataPortfolio = (toontCryptoFilterPortfolio && toonBuitenBeursuren)
-    ? displayDataGefilterd.map((d, i, arr) => {
-        const isBinnen = binnenBeursurenPortfolio(d.label);
-        const buurAnders = (arr[i - 1] && binnenBeursurenPortfolio(arr[i - 1].label) !== isBinnen)
-          || (arr[i + 1] && binnenBeursurenPortfolio(arr[i + 1].label) !== isBinnen);
-        return { ...d, waardeBinnen: (isBinnen || buurAnders) ? d.waarde : null, waardeBuiten: (!isBinnen || buurAnders) ? d.waarde : null };
-      })
-    : null;
 
   // ── Slimme X-as: meet werkelijk datumbereik, kies dan de beste interval ──
   const { xTicks, xTickFormatter } = (() => {
@@ -1202,16 +1194,6 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
             <button key={t} className={`time-tab ${tijdperk === t ? 'active' : ''}`} onClick={() => setTijdperk(t)}>{t}</button>
           ))}
         </div>
-        {toontCryptoFilterPortfolio && (
-          <button onClick={() => setToonBuitenBeursuren(v => !v)} style={{
-            padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)',
-            background: toonBuitenBeursuren ? 'var(--accent-bg)' : 'transparent',
-            color: toonBuitenBeursuren ? 'var(--accent)' : 'var(--text-muted)',
-            fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-          }}>
-            {toonBuitenBeursuren ? '✓ ' : ''}Toon crypto buiten beursuren
-          </button>
-        )}
       </div>
 
       <div className="ov-sectie">
@@ -1282,7 +1264,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               )}
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart
-                data={segmentDataPortfolio || displayDataEff}
+                data={displayDataEff}
                 margin={{ top: 5, right: 5, bottom: 5, left: 0 }}
                 onMouseDown={grafiekSleepStart}
                 onMouseMove={grafiekSleepBeweeg}
@@ -1398,9 +1380,6 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     strokeWidth={1.5}
                     label={{ value: `Slot vorige dag: €${portfolioVorigeSlot.toLocaleString('nl-BE')}`, position: 'insideTopLeft', fontSize: 11, fill: 'var(--text-muted)' }}
                   />
-                )}
-                {segmentDataPortfolio && (
-                  <Area type="monotone" dataKey="waardeBuiten" stroke="var(--text-muted)" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#portfolioGrad)" fillOpacity={0.4} dot={false} />
                 )}
                 <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)" dot={(props) => {
                     const { cx, cy, payload, index } = props;
