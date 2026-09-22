@@ -732,6 +732,15 @@ function AandelenPagina({ actieveRegio, onToonAlles, onSelectEffect }) {
                     width={70}
                   />
                   <Tooltip content={<GrafiekTooltip periode={periode} />} />
+                  <Area
+                    type="monotone"
+                    dataKey="v"
+                    stroke={grafiekKleur}
+                    strokeWidth={2}
+                    fill="url(#grafiekGrad)"
+                    dot={false}
+                    activeDot={{ r: 4, fill: grafiekKleur }}
+                  />
                   {data.prevClose > 0 && (
                     <ReferenceLine
                       y={data.prevClose}
@@ -756,15 +765,6 @@ function AandelenPagina({ actieveRegio, onToonAlles, onSelectEffect }) {
                       }}
                     />
                   )}
-                  <Area
-                    type="monotone"
-                    dataKey="v"
-                    stroke={grafiekKleur}
-                    strokeWidth={2}
-                    fill="url(#grafiekGrad)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: grafiekKleur }}
-                  />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
