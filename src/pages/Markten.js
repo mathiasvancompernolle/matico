@@ -24,7 +24,7 @@ const SUBINDICES = {
   lokaal:        [{ id: 'bel20', label: 'BEL20 Index' }, { id: 'bel-midcap', label: 'BEL Midcap Index' }, { id: 'bel-smallcap', label: 'BEL Smallcap Index' }],
   europa:        [{ id: 'stoxx50', label: 'EURO STOXX 50 Index' }, { id: 'dax', label: 'DAX Index' }, { id: 'cac40', label: 'CAC 40 Index' }, { id: 'stoxx600', label: 'STOXX Europe 600' }],
   'noord-amerika': [{ id: 'nasdaq', label: 'Nasdaq 100' }],
-  'azie-pacific':  [{ id: 'hangsengfin', label: 'Hang Seng Finance Index' }, { id: 'asx200', label: 'S&P/ASX 200 Index' }, { id: 'hangsengcomp', label: 'Hang Seng Comp Index' }],
+  'azie-pacific':  [{ id: 'hangsengfin', label: 'Hang Seng Finance Index' }, { id: 'asx200', label: 'S&P/ASX 200 Index' }],
 };
 
 const PERIODES = [
@@ -167,7 +167,7 @@ function IndexDetailPagina({ index, onTerug }) {
     '^AEX': 'aex', '^FCHI': 'cac40', '^GDAXI': 'dax', '^STOXX': 'stoxx600',
     '^FTSE': 'ftse100', '^STOXX50E': 'stoxx50',
     '^GSPC': 'sp500', '^NDX': 'nasdaq100', '^DJI': 'dowjones',
-    '^HSCI.HK': 'hangsengcomp', '^HSNF': 'hangsengfin', '^AXJO': 'asx200',
+    '^HSNF': 'hangsengfin', '^AXJO': 'asx200',
   };
   const subindex = subindexMap[index.symbol];
 

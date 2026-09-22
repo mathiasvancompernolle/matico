@@ -308,10 +308,54 @@ module.exports = async function handler(req, res) {
     // (zie indexSymbolen hierboven) — voor deze 3 is er nog geen eigen,
     // geverifieerde samenstellingslijst, dus de "best/slechtst presterend"-
     // ranglijst blijft hier leeg (zelfde patroon als sp500 hieronder).
-    dax: [], // niet in gebruik — DAX-40-samenstelling nog niet geverifieerd
+    // Bron: Deutsche Börse (via topforeignstocks.com), stand okt. 2024 — een
+    // secundaire bron, dus mogelijk 1-2 wijzigingen door latere kwartaal-
+    // herzieningen nog niet verwerkt. Check bij twijfel de actuele
+    // samenstelling op deutsche-boerse.com.
+    dax: [
+      'ADS.DE',   // Adidas
+      'AIR.DE',   // Airbus
+      'ALV.DE',   // Allianz
+      'BAS.DE',   // BASF
+      'BMW.DE',   // BMW
+      'BAYN.DE',  // Bayer
+      'BEI.DE',   // Beiersdorf
+      'BNR.DE',   // Brenntag
+      'CBK.DE',   // Commerzbank
+      'CON.DE',   // Continental
+      '1COV.DE',  // Covestro
+      'DTG.DE',   // Daimler Truck
+      'DBK.DE',   // Deutsche Bank
+      'DB1.DE',   // Deutsche Börse
+      'DHL.DE',   // DHL Group (voorheen Deutsche Post)
+      'P911.DE',  // Porsche AG
+      'DTE.DE',   // Deutsche Telekom
+      'EOAN.DE',  // E.On
+      'FRE.DE',   // Fresenius
+      'HNR1.DE',  // Hannover Rück
+      'HEI.DE',   // Heidelberg Materials
+      'HEN3.DE',  // Henkel (Vz)
+      'IFX.DE',   // Infineon
+      'MBG.DE',   // Mercedes-Benz Group
+      'MRK.DE',   // Merck KGaA
+      'MTX.DE',   // MTU Aero Engines
+      'MUV2.DE',  // Munich Re
+      'PAH3.DE',  // Porsche Automobil Holding (Vz)
+      'QIA.DE',   // Qiagen
+      'RHM.DE',   // Rheinmetall
+      'RWE.DE',   // RWE
+      'SAP.DE',   // SAP
+      'SRT3.DE',  // Sartorius (Vz)
+      'SIE.DE',   // Siemens
+      'ENR.DE',   // Siemens Energy
+      'SHL.DE',   // Siemens Healthineers
+      'SY1.DE',   // Symrise
+      'VOW3.DE',  // Volkswagen (Vz)
+      'VNA.DE',   // Vonovia
+      'ZAL.DE',   // Zalando
+    ],
     stoxx50: [], // niet in gebruik — Euro Stoxx 50-samenstelling nog niet geverifieerd
     stoxx600: [], // niet in gebruik — 600 bedrijven, niet praktisch hier met de hand te onderhouden
-    hangsengcomp: [], // niet in gebruik — 480 bedrijven, niet praktisch hier met de hand te onderhouden
     hangsengfin: [], // niet in gebruik — samenstelling nog niet geverifieerd
     asx200: [], // niet in gebruik — samenstelling nog niet geverifieerd
   };
@@ -1821,7 +1865,7 @@ module.exports = async function handler(req, res) {
         bel20: '^BFX', 'bel-midcap': 'BELM.BR', 'bel-smallcap': 'BELS.BR',
         aex: '^AEX', sp500: '^GSPC', nasdaq: '^NDX', nikkei: '^N225', hangseng: '^HSI',
         cac40: '^FCHI', dax: '^GDAXI', stoxx50: '^STOXX50E', stoxx600: '^STOXX',
-        hangsengcomp: '^HSCI.HK', hangsengfin: '^HSNF', asx200: '^AXJO',
+        hangsengfin: '^HSNF', asx200: '^AXJO',
       };
 
       // Grafiek interval+range (voor de index curve)
