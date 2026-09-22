@@ -858,6 +858,25 @@ body {
     display: none !important;
   }
 
+  /* ── Bovenbalk (TopNav) compacter op mobiel ── */
+  .top-nav {
+    padding: 0 10px !important;
+    gap: 4px !important;
+  }
+  .top-nav-inner {
+    gap: 0 !important;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .top-nav-inner::-webkit-scrollbar {
+    display: none;
+  }
+  .top-nav-tab {
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    white-space: nowrap;
+  }
+
   /* ── BeleggingToevoegen: type-keuze (Aandeel/ETF/Crypto/Zelf) → 1 kolom ── */
   .toevoegen-grid {
     grid-template-columns: 1fr !important;

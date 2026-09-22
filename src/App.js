@@ -23,7 +23,10 @@ import { supabase } from './supabaseClient';
 import kapitasLogo from './assets/kapitas-logo.png';
 
 function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSelectEffect }) {
-  const { t, favorieten, toggleFavoriet, meldingen, ongelezenMeldingen, markeerMeldingGelezen, markeerAlleMeldingenGelezen } = useApp();
+  const {
+    t, favorieten, toggleFavoriet, meldingen, ongelezenMeldingen, markeerMeldingGelezen, markeerAlleMeldingenGelezen,
+    portfolios, actiefPortfolio, actiefPortfolioId, wisselPortfolio,
+  } = useApp();
   const [zoekOpen, setZoekOpen] = React.useState(false);
   const [zoekQuery, setZoekQuery] = React.useState('');
   const [zoekResultaten, setZoekResultaten] = React.useState([]);
@@ -31,10 +34,23 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
   const [profielOpen, setProfielOpen] = React.useState(false);
   const [favorietenOpen, setFavorietenOpen] = React.useState(false);
   const [meldingenOpen, setMeldingenOpen] = React.useState(false);
+  const [portfolioOpen, setPortfolioOpen] = React.useState(false);
   const zoekRef = React.useRef(null);
   const profielRef = React.useRef(null);
   const favorietenRef = React.useRef(null);
   const meldingenRef = React.useRef(null);
+  const portfolioRef = React.useRef(null);
+
+  // ── Mobiel: zoekbalk wordt een icoon i.p.v. altijd een 220px-breed veld,
+  // en de portfolio-wisselaar (op mobiel onbereikbaar via de zijbalk, die
+  // daar de bottom-navigatiebalk wordt) krijgt hier een plekje. ──────────
+  const [breedte, setBreedte] = React.useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1200));
+  React.useEffect(() => {
+    const onResize = () => setBreedte(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const isMobiel = breedte < 768;
 
   React.useEffect(() => {
     const handler = (e) => {
@@ -42,6 +58,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
       if (profielRef.current && !profielRef.current.contains(e.target)) setProfielOpen(false);
       if (favorietenRef.current && !favorietenRef.current.contains(e.target)) setFavorietenOpen(false);
       if (meldingenRef.current && !meldingenRef.current.contains(e.target)) setMeldingenOpen(false);
+      if (portfolioRef.current && !portfolioRef.current.contains(e.target)) setPortfolioOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -74,8 +91,40 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
         <img src={kapitasLogo} alt="Kapitas" style={{ height: '80%', width: 'auto', display: 'block' }} />
       </div>
 
+      {/* Portfolio-wisselaar — enkel op mobiel, en enkel in de Portefeuille-
+          sectie: op mobiel wordt de zijbalk (waar dit normaal staat) de
+          bottom-navigatiebalk, en heeft geen plaats meer voor de
+          portfolio-lijst. Hier is dus de enige plek waar je op mobiel nog
+          kan wisselen tussen bv. "Portfolio" en "Pensioensparen". */}
+      {isMobiel && actieveSectie === 'portefeuille' && (
+        <div ref={portfolioRef} style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            onClick={() => setPortfolioOpen(v => !v)}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, background: portfolioOpen ? '#eef1f8' : 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', maxWidth: 110 }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {actiefPortfolio?.naam || 'Portfolio'}
+            </span>
+            <svg width="12" height="12" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, transform: portfolioOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          {portfolioOpen && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 180, zIndex: 300, overflow: 'hidden' }}>
+              {portfolios.map(p => (
+                <div key={p.id}
+                  onClick={() => { wisselPortfolio(p.id); setPortfolioOpen(false); }}
+                  style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', background: p.id === actiefPortfolioId ? 'var(--accent-bg)' : 'transparent' }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: p.id === actiefPortfolioId ? 700 : 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.naam}</span>
+                  {p.id === actiefPortfolioId && <span style={{ color: '#1e3a8a', fontSize: 14 }}>✓</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tabs */}
-      <div className="top-nav-inner" style={{ flex: 1 }}>
+      <div className="top-nav-inner" style={{ flex: 1, overflowX: 'auto' }}>
         <button className={`top-nav-tab ${actieveSectie === 'portefeuille' ? 'actief' : ''}`} onClick={() => onSectieWissel('portefeuille')}>{t('nav_portefeuille')}</button>
         <button className={`top-nav-tab ${actieveSectie === 'markten' ? 'actief' : ''}`} onClick={() => onSectieWissel('markten')}>{t('nav_markten')}</button>
         {gebruiker?.email?.trim().toLowerCase() === 'mathiasvancompernolle@gmail.com' && (
@@ -86,38 +135,82 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
       {/* Rechter iconen */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
 
-        {/* Zoekbalk */}
+        {/* Zoekbalk — op mobiel enkel een icoon, dat een volledige-breedte
+            overlay opent (in plaats van altijd een vast 220px-veld te tonen,
+            wat op een smal scherm niet past) */}
         <div ref={zoekRef} style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-white)', border: `1px solid ${zoekOpen ? '#1e3a8a' : 'var(--border)'}`, borderRadius: 8, padding: '5px 10px', width: 220 }}>
-            <svg width="15" height="15" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input id="topnav-zoek" value={zoekQuery} onChange={e => { setZoekQuery(e.target.value); setZoekOpen(true); }} onFocus={() => setZoekOpen(true)} placeholder="Zoeken naam/ISIN..." style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--text-primary)', width: '100%', fontFamily: 'inherit' }} />
-          </div>
-          {zoekOpen && zoekQuery.length >= 2 && (
-            <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 300, maxHeight: 340, overflowY: 'auto', zIndex: 300 }}>
-              {zoekLaden ? <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Zoeken...</div>
-              : zoekResultaten.length === 0 ? <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Geen resultaten</div>
-              : zoekResultaten.map((r, i) => (
-                <div key={i} style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: i < zoekResultaten.length-1 ? '1px solid var(--border-light)' : 'none' }}
-                  onClick={() => {
-                    onSelectEffect && onSelectEffect(r);
-                    setZoekOpen(false); setZoekQuery(''); setZoekResultaten([]);
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: r.type === 'etf' ? '#eef1f8' : '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: r.type === 'etf' ? '#1e3a8a' : '#d97706', flexShrink: 0 }}>{r.type === 'etf' ? 'ETF' : 'EQ'}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.naam}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.symbol}</div>
+          {isMobiel ? (
+            <>
+              <button onClick={() => setZoekOpen(v => !v)} style={{ width: 32, height: 32, border: 'none', borderRadius: 8, background: zoekOpen ? '#eef1f8' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="16" height="16" fill="none" stroke={zoekOpen ? '#1e3a8a' : 'var(--text-muted)'} strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              </button>
+              {zoekOpen && (
+                <div style={{ position: 'fixed', top: 72, left: 0, right: 0, background: 'var(--bg-white)', borderBottom: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 300, padding: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px' }}>
+                    <svg width="15" height="15" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input autoFocus value={zoekQuery} onChange={e => setZoekQuery(e.target.value)} placeholder="Zoeken naam/ISIN..." style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--text-primary)', width: '100%', fontFamily: 'inherit' }} />
+                    <button onClick={() => { setZoekOpen(false); setZoekQuery(''); setZoekResultaten([]); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0, display: 'flex' }}>
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                   </div>
+                  {zoekQuery.length >= 2 && (
+                    <div style={{ marginTop: 8, maxHeight: '60vh', overflowY: 'auto' }}>
+                      {zoekLaden ? <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Zoeken...</div>
+                      : zoekResultaten.length === 0 ? <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Geen resultaten</div>
+                      : zoekResultaten.map((r, i) => (
+                        <div key={i} style={{ padding: '10px 4px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: i < zoekResultaten.length-1 ? '1px solid var(--border-light)' : 'none' }}
+                          onClick={() => {
+                            onSelectEffect && onSelectEffect(r);
+                            setZoekOpen(false); setZoekQuery(''); setZoekResultaten([]);
+                          }}
+                        >
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: r.type === 'etf' ? '#eef1f8' : '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: r.type === 'etf' ? '#1e3a8a' : '#d97706', flexShrink: 0 }}>{r.type === 'etf' ? 'ETF' : 'EQ'}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.naam}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.symbol}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-white)', border: `1px solid ${zoekOpen ? '#1e3a8a' : 'var(--border)'}`, borderRadius: 8, padding: '5px 10px', width: 220 }}>
+                <svg width="15" height="15" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input id="topnav-zoek" value={zoekQuery} onChange={e => { setZoekQuery(e.target.value); setZoekOpen(true); }} onFocus={() => setZoekOpen(true)} placeholder="Zoeken naam/ISIN..." style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--text-primary)', width: '100%', fontFamily: 'inherit' }} />
+              </div>
+              {zoekOpen && zoekQuery.length >= 2 && (
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 300, maxHeight: 340, overflowY: 'auto', zIndex: 300 }}>
+                  {zoekLaden ? <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Zoeken...</div>
+                  : zoekResultaten.length === 0 ? <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Geen resultaten</div>
+                  : zoekResultaten.map((r, i) => (
+                    <div key={i} style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: i < zoekResultaten.length-1 ? '1px solid var(--border-light)' : 'none' }}
+                      onClick={() => {
+                        onSelectEffect && onSelectEffect(r);
+                        setZoekOpen(false); setZoekQuery(''); setZoekResultaten([]);
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: r.type === 'etf' ? '#eef1f8' : '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: r.type === 'etf' ? '#1e3a8a' : '#d97706', flexShrink: 0 }}>{r.type === 'etf' ? 'ETF' : 'EQ'}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.naam}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.symbol}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        {/* Favorieten */}
+        {/* Favorieten — op mobiel verborgen (ruimtegebrek); blijft bereikbaar via de ster op een effect-detailpagina */}
+        {!isMobiel && (
         <div ref={favorietenRef} style={{ position: 'relative' }}>
           <button onClick={() => setFavorietenOpen(v => !v)} style={{ width: 32, height: 32, border: 'none', borderRadius: 8, background: favorietenOpen ? '#eef1f8' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="16" height="16" fill="none" stroke={favorietenOpen ? '#1e3a8a' : 'var(--text-muted)'} strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -152,6 +245,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
             </div>
           )}
         </div>
+        )}
 
         {/* Meldingen */}
         <div ref={meldingenRef} style={{ position: 'relative' }}>

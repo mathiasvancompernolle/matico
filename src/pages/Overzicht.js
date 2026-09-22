@@ -152,7 +152,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
-  const isMobielScherm = breedte < 640;
+  const isMobielScherm = breedte < 768;
 
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
