@@ -1070,7 +1070,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         </div>
       </div>
 
-      <div style={{ padding: '0 32px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+      <div className="ov-sectie" style={{ marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
         <div className="time-tabs" style={{ display: 'inline-flex' }}>
           {TIJDPERKEN.map(t => (
             <button key={t} className={`time-tab ${tijdperk === t ? 'active' : ''}`} onClick={() => setTijdperk(t)}>{t}</button>
@@ -1088,7 +1088,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         )}
       </div>
 
-      <div style={{ padding: '0 32px' }}>
+      <div className="ov-sectie">
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="overzicht-portfolio-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>

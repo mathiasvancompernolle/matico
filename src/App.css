@@ -262,6 +262,12 @@ body {
 
 .page-header h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; }
 
+/* Herbruikbare zijmarge voor pagina-secties (bv. Overzicht: periodetabs-rij,
+   grafiek-kaart) — consistent met .page-header, en verkleint op mobiel. */
+.ov-sectie {
+  padding: 0 32px;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -771,6 +777,10 @@ body {
 
   .page-header h1 {
     font-size: 20px;
+  }
+
+  .ov-sectie {
+    padding: 0 18px;
   }
 
   /* ── Cards ── */
