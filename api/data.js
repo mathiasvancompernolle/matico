@@ -354,7 +354,59 @@ module.exports = async function handler(req, res) {
       'VNA.DE',   // Vonovia
       'ZAL.DE',   // Zalando
     ],
-    stoxx50: [], // niet in gebruik — Euro Stoxx 50-samenstelling nog niet geverifieerd
+    // Bron: Investing.com (actuele koerslijst, stand sep. 2026) — 48 van de
+    // 50 gevonden; check bij twijfel de volledige, officiële lijst op
+    // stoxx.com.
+    stoxx50: [
+      'INGA.AS',  // ING Groep
+      'PHIA.AS',  // Philips
+      'BAS.DE',   // BASF
+      'BAYN.DE',  // Bayer
+      'ALV.DE',   // Allianz
+      'ADS.DE',   // Adidas
+      'SIE.DE',   // Siemens
+      'DBK.DE',   // Deutsche Bank
+      'DHL.DE',   // Deutsche Post / DHL Group
+      'MBG.DE',   // Mercedes-Benz Group
+      'DB1.DE',   // Deutsche Börse
+      'AI.PA',    // Air Liquide
+      'CS.PA',    // AXA
+      'BN.PA',    // Danone
+      'BNP.PA',   // BNP Paribas
+      'MC.PA',    // LVMH
+      'OR.PA',    // L'Oréal
+      'SU.PA',    // Schneider Electric
+      'EL.PA',    // EssilorLuxottica
+      'AIR.PA',   // Airbus
+      'SAN.PA',   // Sanofi
+      'TTE.PA',   // TotalEnergies
+      'DG.PA',    // Vinci
+      'BBVA.MC',  // BBVA
+      'ITX.MC',   // Inditex
+      'IBE.MC',   // Iberdrola
+      'SAN.MC',   // Santander
+      'KNEBV.HE', // KONE
+      'BMW.DE',   // BMW
+      'DTE.DE',   // Deutsche Telekom
+      'IFX.DE',   // Infineon
+      'MUV2.DE',  // Munich Re
+      'SAP.DE',   // SAP
+      'KER.PA',   // Kering
+      'AD.AS',    // Ahold Delhaize
+      'ASML.AS',  // ASML Holding
+      'ISP.MI',   // Intesa Sanpaolo
+      'ENEL.MI',  // Enel
+      'ENI.MI',   // Eni
+      'RMS.PA',   // Hermès
+      'SAF.PA',   // Safran
+      'ABI.BR',   // AB InBev
+      'VOW3.DE',  // Volkswagen (Vz)
+      'ARGX.AS',  // argenx
+      'RACE.MI',  // Ferrari
+      'ADYEN.AS', // Adyen
+      'PRX.AS',   // Prosus
+      'ENR.DE',   // Siemens Energy
+    ],
     stoxx600: [], // niet in gebruik — 600 bedrijven, niet praktisch hier met de hand te onderhouden
     hangsengfin: [], // niet in gebruik — samenstelling nog niet geverifieerd
     asx200: [], // niet in gebruik — samenstelling nog niet geverifieerd
