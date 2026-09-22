@@ -1508,11 +1508,11 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       onClick={() => { setDetailBelegging(b); setSwipeRowId(null); setSwipeX(0); }}
                       style={{
                         position: 'absolute', top: 0, right: 0, bottom: 0, width: SWIPE_ACTIE_BREEDTE,
-                        background: 'var(--red)', color: 'white', display: 'flex', alignItems: 'center',
+                        background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center',
                         justifyContent: 'center', fontWeight: 600, fontSize: 13, cursor: 'pointer',
                       }}
                     >
-                      Verkopen
+                      Detail
                     </div>
                   )}
                   <div
@@ -1715,10 +1715,10 @@ function VergelijkModal({ onClose, vergelijk1, setVergelijk1, vergelijk2, setVer
           scrollen, in plaats van de header-knop die uit beeld verdwijnt
           zodra je naar beneden scrolt. */}
       {isMobielScherm && (
-        <div ref={fabMenuRef} style={{ position: 'fixed', right: 18, bottom: 88, zIndex: 250 }}>
+        <div ref={fabMenuRef} style={{ position: 'fixed', left: 18, bottom: 88, zIndex: 250 }}>
           {toevoegenMenuOpen && (
             <div style={{
-              position: 'absolute', bottom: '100%', right: 0, marginBottom: 8,
+              position: 'absolute', bottom: '100%', left: 0, marginBottom: 8,
               background: 'white', border: '1px solid var(--border)', borderRadius: 10,
               boxShadow: 'var(--shadow-md)', minWidth: 200, overflow: 'hidden'
             }}>
