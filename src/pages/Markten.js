@@ -738,7 +738,22 @@ function AandelenPagina({ actieveRegio, onToonAlles, onSelectEffect }) {
                       stroke={grafiekKleur}
                       strokeDasharray="4 3"
                       strokeWidth={1}
-                      label={{ value: fmtPrijs(data.prevClose), position: 'insideBottomLeft', fill: grafiekKleur, fontSize: 11, fontWeight: 600, dy: 4 }}
+                      label={(props) => {
+                        const { viewBox } = props;
+                        const tekst = fmtPrijs(data.prevClose);
+                        const breedte = 8 * tekst.length + 16;
+                        const hoogte = 18;
+                        const x = viewBox.x + viewBox.width - breedte;
+                        const y = viewBox.y - hoogte / 2;
+                        return (
+                          <g>
+                            <rect x={x} y={y} width={breedte} height={hoogte} rx={4} fill={grafiekKleur} />
+                            <text x={x + breedte / 2} y={y + hoogte / 2 + 4} textAnchor="middle" fill="#fff" fontSize={11} fontWeight={700}>
+                              {tekst}
+                            </text>
+                          </g>
+                        );
+                      }}
                     />
                   )}
                   <Area
