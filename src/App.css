@@ -836,6 +836,23 @@ body {
     color: var(--text-muted);
     margin-bottom: 2px;
   }
+
+  /* Lange namen (vooral ETF's) mogen op mobiel niet oneindig doorwikkelen —
+     max. 2 regels, daarna afkappen met "..." */
+  .belegging-naam-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.3;
+  }
+
+  /* Desktop-only elementen (bv. het zijbalk-inklapknopje) die op mobiel
+     geen functie hebben, omdat de zijbalk daar al de bottom-navigatiebalk
+     is geworden */
+  .mobiel-verbergen {
+    display: none !important;
+  }
   /* €-bedrag in de winst-badges verbergen op mobiel, enkel % tonen (te weinig plaats) */
   .mobile-hide-amount {
     display: none !important;
