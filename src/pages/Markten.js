@@ -754,7 +754,10 @@ function AandelenPagina({ actieveRegio, onToonAlles, onSelectEffect }) {
           </div>
         </div>
 
-        {/* Rechter kolom: best/minst presterend */}
+        {/* Rechter kolom: best/minst presterend — enkel tonen als er
+            effectief samenstellingsgegevens zijn voor deze index (anders
+            lege kolommen tonen is verwarrender dan ze gewoon weg te laten) */}
+        {data?.alleQuotes?.length > 0 && (
         <div className="aandelen-ranking-kolom">
           <RankingTabel
             titel="Best presterend"
@@ -777,9 +780,8 @@ function AandelenPagina({ actieveRegio, onToonAlles, onSelectEffect }) {
             onSelectEffect={onSelectEffect}
           />
         </div>
+        )}
       </div>
-
-
     </div>
   );
 }
