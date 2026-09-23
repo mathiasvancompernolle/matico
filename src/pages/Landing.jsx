@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import kapitasLogo from '../assets/kapitas-logo.png';
 
-export default function Landing({ onNaarApp, onPrivacybeleid }) {
+export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
   const [faqOpen, setFaqOpen] = useState(null);
 
   useEffect(() => {
@@ -72,10 +72,11 @@ export default function Landing({ onNaarApp, onPrivacybeleid }) {
       {/* ── NAV ── */}
       <nav style={{ position:'sticky',top:0,zIndex:100,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(12px)',borderBottom:'1px solid #e2e8f0',padding:'0 24px',height:64,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
         <img src={kapitasLogo} alt="Kapitas" style={{ height: 40, width: 'auto', display: 'block' }} />
-        <ul className="l-hide-mobile" style={{ display:'flex',gap:32,listStyle:'none' }}>
+        <ul className="l-hide-mobile" style={{ display:'flex',gap:32,listStyle:'none',alignItems:'center' }}>
           {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
             <li key={i}><a href={h} style={{ textDecoration:'none',color:'#64748b',fontSize:14,fontWeight:500 }}>{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a></li>
           ))}
+          <li><span onClick={onGids} style={{ cursor:'pointer',color:'#64748b',fontSize:14,fontWeight:500 }}>Leren beleggen</span></li>
         </ul>
         <div style={{ display:'flex',gap:10 }}>
           <button onClick={() => onNaarApp('login')} className="l-btn" style={{ background:'none',color:'#64748b',fontSize:14 }}>Inloggen</button>
@@ -387,10 +388,10 @@ export default function Landing({ onNaarApp, onPrivacybeleid }) {
             <div style={{ fontSize:13,lineHeight:1.7,marginBottom:16 }}>Het slimste beleggingsdashboard voor Belgische beleggers. Portfolio, markten, ETFs en belastingen op één plek.</div>
             <div style={{ fontSize:11,color:'rgba(255,255,255,0.3)',lineHeight:1.6 }}>⚠️ Kapitas biedt geen beleggingsadvies. Alle informatie is louter informatief. Raadpleeg een erkend financieel adviseur voor persoonlijk advies.</div>
           </div>
-          {[['Product',['Features','Prijzen','Live demo','Hoe werkt het']],['Belgisch',['Belastingmodule','TOB calculator','Meerwaardebelasting','Reynders-taks']],['Info',['Privacybeleid','Algemene voorwaarden','Disclaimer','Contact']]].map(([titel,links]) => (
+          {[['Product',['Features','Prijzen','Live demo','Hoe werkt het']],['Belgisch',['Belastingmodule','TOB calculator','Meerwaardebelasting','Reynders-taks']],['Info',['Gids voor beginners','Privacybeleid','Algemene voorwaarden','Disclaimer','Contact']]].map(([titel,links]) => (
             <div key={titel}>
               <h4 style={{ fontSize:13,fontWeight:700,color:'white',marginBottom:14 }}>{titel}</h4>
-              {links.map(l => <div key={l} style={{ fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer' }} onClick={l==='Contact'?()=>window.location.href='mailto:hello@kapitas.be':l==='Privacybeleid'?onPrivacybeleid:() => onNaarApp('registreren')}>{l}</div>)}
+              {links.map(l => <div key={l} style={{ fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer' }} onClick={l==='Contact'?()=>window.location.href='mailto:hello@kapitas.be':l==='Privacybeleid'?onPrivacybeleid:l==='Gids voor beginners'?onGids:() => onNaarApp('registreren')}>{l}</div>)}
             </div>
           ))}
         </div>

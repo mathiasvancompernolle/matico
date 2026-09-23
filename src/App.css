@@ -873,6 +873,32 @@ body {
     display: none !important;
   }
 
+  /* ── Gids-pagina (beginnersgids) ── */
+  .gids-header {
+    padding: 0 20px !important;
+  }
+  .gids-sectie {
+    padding: 40px 20px !important;
+  }
+  .gids-h1 {
+    font-size: 38px !important;
+  }
+  .gids-h2 {
+    font-size: 26px !important;
+  }
+  .gids-h2-cta {
+    font-size: 32px !important;
+  }
+  .gids-grid-3,
+  .gids-grid-2,
+  .gids-grid-5 {
+    grid-template-columns: 1fr !important;
+  }
+  .gids-kosten-rij {
+    grid-template-columns: 1fr !important;
+    gap: 4px !important;
+  }
+
   /* ── Bovenbalk (TopNav) compacter op mobiel ── */
   .top-nav {
     padding: 0 10px !important;

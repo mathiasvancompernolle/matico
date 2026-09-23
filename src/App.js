@@ -15,6 +15,7 @@ import EffectDetail from './pages/EffectDetail';
 import CookieConsent from './components/CookieConsent';
 import CrispChat from './components/CrispChat';
 import Privacybeleid from './pages/Privacybeleid';
+import Gids from './pages/Gids';
 import MijnProfiel from './pages/MijnProfiel';
 import './App.css';
 import Landing from './pages/Landing';
@@ -319,6 +320,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
                 {[
                   { label: t('profiel_mijn_profiel'), sub: t('profiel_mijn_profiel_sub'), route: 'mijn-profiel' },
                   { label: t('profiel_billing'), sub: t('profiel_billing_sub'), route: 'instellingen' },
+                  { label: 'Gids voor beginners', sub: 'Nog eens de basis doornemen', route: 'gids' },
                   { label: t('profiel_privacybeleid'), sub: t('profiel_privacybeleid_sub'), route: 'privacybeleid' },
                 ].map(({ label, sub, route }) => (
                   <div key={label} onClick={() => { navigeerNaar(route); setProfielOpen(false); }}
@@ -412,6 +414,7 @@ function AppInner() {
       case 'belastingen': return <Belastingen sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
       case 'instellingen': return <Instellingen sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
       case 'privacybeleid': return <Privacybeleid />;
+      case 'gids': return <Gids />;
       case 'mijn-profiel': return <MijnProfiel sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />;
       default: return <Overzicht key={overzichtResetKey} onToevoegen={openToevoegen} onImporteren={openImporteren} />;
     }
@@ -476,6 +479,10 @@ export default function App() {
     const pad = window.location.pathname.toLowerCase().replace(/\/$/, '');
     return pad === '/privacybeleid';
   });
+  const [toonPubliekGids, setToonPubliekGids] = React.useState(() => {
+    const pad = window.location.pathname.toLowerCase().replace(/\/$/, '');
+    return pad === '/gids';
+  });
   const [authStartModus, setAuthStartModus] = React.useState('login');
   const [gebruiker, setGebruiker] = React.useState(null);
   const [authLaden, setAuthLaden] = React.useState(true);
@@ -514,12 +521,18 @@ export default function App() {
     if (toonPubliekPrivacybeleid) {
       return <Privacybeleid onTerug={() => { window.history.pushState(null, '', '/'); setToonPubliekPrivacybeleid(false); }} />;
     }
-    return <Landing onNaarApp={(modus) => { setToonLanding(false); setAuthStartModus(modus || 'login'); }} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} />;
+    if (toonPubliekGids) {
+      return <Gids onTerug={() => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); }} onNaarApp={(modus) => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); setToonLanding(false); setAuthStartModus(modus || 'registreren'); }} />;
+    }
+    return <Landing onNaarApp={(modus) => { setToonLanding(false); setAuthStartModus(modus || 'login'); }} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} onGids={() => setToonPubliekGids(true)} />;
   }
 
   if (!gebruiker) {
     if (toonPubliekPrivacybeleid) {
       return <Privacybeleid onTerug={() => { window.history.pushState(null, '', '/'); setToonPubliekPrivacybeleid(false); }} />;
+    }
+    if (toonPubliekGids) {
+      return <Gids onTerug={() => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); }} onNaarApp={(modus) => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); setAuthStartModus(modus || 'registreren'); }} />;
     }
     return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} startModus={authStartModus} onTerugNaarLanding={() => setToonLanding(true)} />;
   }
