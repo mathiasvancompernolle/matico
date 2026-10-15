@@ -1282,7 +1282,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               <span style={{ fontSize: 13 }}>{t('ov_grafiek_laden')}</span>
             </div>
           ) : (
-            <div style={{ position: 'relative', touchAction: 'pan-y' }}>
+            <div style={{ position: 'relative', touchAction: 'pan-y', userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none' }}>
               {beursGesloten1D && (
                 <div style={{
                   position: 'absolute', top: '50%', left: '50%',
