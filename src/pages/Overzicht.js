@@ -280,6 +280,14 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     }
   };
   const [tijdperk, setTijdperk] = useState('1D');
+  // Elke 5 minuten een nieuwe "tick" zodat de 1D-grafiek vers blijft terwijl
+  // iemand het scherm open laat staan — zonder dit bleef de intraday-lijn
+  // precies op de koersen van het moment van laden staan, de rest van de dag.
+  const [grafiekTick, setGrafiekTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setGrafiekTick(t => t + 1), 5 * 60000);
+    return () => clearInterval(interval);
+  }, []);
   const [weergave, setWeergave] = useState('waarde');
   const [grafiekData, setGrafiekData] = useState([]);
   const [portfolioVorigeSlot, setPortfolioVorigeSlot] = useState(null);
@@ -372,32 +380,57 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR', b.type));
 
         if (Object.keys(intradayData).length > 0) {
-          // Neem de reeks met de meeste punten als gemeenschappelijke tijdsas.
-          const eersteSymbol = Object.keys(intradayData).reduce((a, bb) =>
-            intradayData[a].length >= intradayData[bb].length ? a : bb
-          );
-          const aantalPunten = intradayData[eersteSymbol].length;
+          // Combineer de reeksen op WERKELIJK tijdstip, niet op index.
+          // Vroeger werd de reeks met de meeste punten als "meester" genomen
+          // en werden alle andere symbolen gewoon op positie i ernaast gelegd
+          // (reeks[i]). Dat klopt alleen als elk symbool exact hetzelfde
+          // aantal punten heeft, op exact dezelfde momenten. In de praktijk
+          // heeft Yahoo's minuutdata regelmatig gaten (geen trade in een
+          // bepaalde minuut) — vooral bij minder liquide Europese aandelen —
+          // waardoor het aantal punten per symbool verschilt. Index i was dan
+          // bv. 11u bij het ene aandeel maar 14u bij het andere, en de koers
+          // van het verkeerde moment werd meegeteld. Zodra één symbool
+          // "achterliep", werd zijn laatste (foute) koers voor de rest van de
+          // dag herhaald — dat gaf precies het soort vlakke/vervormde lijn die
+          // gerapporteerd werd.
+          const tijdVanLabel = (label) => {
+            const [u, m] = (label || '0:0').split(':').map(Number);
+            return (u || 0) * 60 + (m || 0);
+          };
+          const alleTijdstippen = new Map(); // minuten-sinds-middernacht -> label
+          Object.values(intradayData).forEach(reeks => {
+            reeks.forEach(p => alleTijdstippen.set(tijdVanLabel(p.label), p.label));
+          });
+          const gesorteerdeTijden = Array.from(alleTijdstippen.keys()).sort((a, b) => a - b);
 
-          const punten = Array.from({ length: aantalPunten }, (_, i) => {
+          // Per symbool: gebruik op elk tijdstip zijn eigen koers van dat
+          // moment als die bestaat, anders de laatst gekende koers van dat
+          // symbool (bv. nadat zijn beurs al gesloten is) — nooit de koers
+          // van een ander symbool of een ander tijdstip.
+          const laatsteKoersPerSymbool = {};
+          const punten = gesorteerdeTijden.map((tMin) => {
             let totaalWaarde = 0;
             beleggingVoorGrafiek.forEach(b => {
               const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
               const reeks = intradayData[b.symbol];
               if (reeks) {
-                // Binnen één dag delen alle punten dezelfde 'datum', dus op
-                // index combineren i.p.v. op datum matchen (zoals bij de
-                // andere periodes hieronder wél kan).
-                const punt = reeks[Math.min(i, reeks.length - 1)];
-                totaalWaarde += punt.prijs * b.aantal * factor;
+                const exact = reeks.find(p => tijdVanLabel(p.label) === tMin);
+                if (exact) laatsteKoersPerSymbool[b.symbol] = exact.prijs;
+                const koersNu = laatsteKoersPerSymbool[b.symbol];
+                if (koersNu != null) {
+                  totaalWaarde += koersNu * b.aantal * factor;
+                } else {
+                  const koers = koersenRef.current[b.symbol];
+                  totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
+                }
               } else {
                 const koers = koersenRef.current[b.symbol];
                 totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
               }
             });
-            const labelHuidig = intradayData[eersteSymbol][i].label;
-            const [uurHuidig, minHuidig] = (labelHuidig || '0:0').split(':').map(Number);
+            const labelHuidig = alleTijdstippen.get(tMin);
             const tijdHuidig = new Date();
-            tijdHuidig.setHours(uurHuidig || 0, minHuidig || 0, 0, 0);
+            tijdHuidig.setHours(Math.floor(tMin / 60), tMin % 60, 0, 0);
             return {
               label: labelHuidig,
               datum: new Date().toISOString().split('T')[0],
@@ -736,7 +769,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     };
 
     laadGrafiek();
-  }, [beleggingVoorGrafiek.length, tijdperk, filterType, filterSymbolen, filterBezit, (verkochteBeleggingen || []).length]);
+  }, [beleggingVoorGrafiek.length, tijdperk, filterType, filterSymbolen, filterBezit, (verkochteBeleggingen || []).length, grafiekTick]);
 
   useEffect(() => {
     refreshAlleKoersen();
