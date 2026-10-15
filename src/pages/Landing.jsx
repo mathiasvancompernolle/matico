@@ -83,7 +83,15 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
 
       {/* ── NAV ── */}
       <nav style={{ position:'sticky',top:0,zIndex:100,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(12px)',borderBottom:'1px solid #e2e8f0',padding:'0 24px',height:64,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-        <img src={kapitasLogo} alt="Kapitas" style={{ height: 40, width: 'auto', display: 'block' }} />
+        <div style={{ display:'flex',gap:14,alignItems:'center' }}>
+          <img src={kapitasLogo} alt="Kapitas" style={{ height: 40, width: 'auto', display: 'block' }} />
+          <button
+            className="l-show-mobile"
+            onClick={() => setMenuOpen(o => !o)}
+            style={{ background:'none',border:'none',cursor:'pointer',padding:6,fontSize:22,color:'#1e3a8a',alignItems:'center',justifyContent:'center' }}
+            aria-label="Menu"
+          >{menuOpen ? '✕' : '☰'}</button>
+        </div>
         <ul className="l-hide-mobile" style={{ display:'flex',gap:32,listStyle:'none',alignItems:'center' }}>
           {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
             <li key={i}><a href={h} style={{ textDecoration:'none',color:'#64748b',fontSize:14,fontWeight:500 }}>{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a></li>
@@ -91,12 +99,6 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
           <li><span onClick={onGids} style={{ cursor:'pointer',color:'#64748b',fontSize:14,fontWeight:500 }}>Leren beleggen</span></li>
         </ul>
         <div style={{ display:'flex',gap:10,alignItems:'center' }}>
-          <button
-            className="l-show-mobile"
-            onClick={() => setMenuOpen(o => !o)}
-            style={{ background:'none',border:'none',cursor:'pointer',padding:6,fontSize:22,color:'#1e3a8a',alignItems:'center',justifyContent:'center' }}
-            aria-label="Menu"
-          >{menuOpen ? '✕' : '☰'}</button>
           <button onClick={() => onNaarApp('login')} className="l-btn l-hide-mobile" style={{ background:'none',color:'#64748b',fontSize:14 }}>Inloggen</button>
           <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ fontSize:14,padding:'9px 18px' }}>{CTA_TEKST}</button>
         </div>
