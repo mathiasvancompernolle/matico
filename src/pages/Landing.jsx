@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import kapitasLogo from '../assets/kapitas-logo.png';
 
+const CTA_TEKST = 'Start 14 dagen gratis →';
+
 export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
   const [faqOpen, setFaqOpen] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
@@ -62,10 +65,19 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
         .l-faq-q { padding:18px 20px;font-size:15px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none; }
         .l-faq-a { padding:0 20px 16px;font-size:14px;color:#64748b;line-height:1.7; }
         .l-mockup-bar { flex:1;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#1e3a8a,#3b5998);opacity:0.8; }
+        .l-show-mobile{display:none;}
+        .l-mockup-screen{display:grid;grid-template-columns:220px 1fr;height:400px;background:#f8fafc;}
+        .l-mockup-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+        .l-mockup-bottom{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;}
         @media(max-width:768px){
           .l-hide-mobile{display:none!important;}
+          .l-show-mobile{display:flex!important;}
           .l-col-2{grid-template-columns:1fr!important;}
           .l-hero-actions{flex-direction:column;align-items:center;}
+          .l-mockup-screen{grid-template-columns:1fr;height:auto;}
+          .l-mockup-stats{grid-template-columns:repeat(2,1fr);}
+          .l-mockup-stats > div:nth-child(3){display:none;}
+          .l-mockup-bottom{grid-template-columns:1fr;}
         }
       `}</style>
 
@@ -78,11 +90,28 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
           ))}
           <li><span onClick={onGids} style={{ cursor:'pointer',color:'#64748b',fontSize:14,fontWeight:500 }}>Leren beleggen</span></li>
         </ul>
-        <div style={{ display:'flex',gap:10 }}>
-          <button onClick={() => onNaarApp('login')} className="l-btn" style={{ background:'none',color:'#64748b',fontSize:14 }}>Inloggen</button>
-          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ fontSize:14,padding:'9px 18px' }}>Probeer gratis →</button>
+        <div style={{ display:'flex',gap:10,alignItems:'center' }}>
+          <button
+            className="l-show-mobile"
+            onClick={() => setMenuOpen(o => !o)}
+            style={{ background:'none',border:'none',cursor:'pointer',padding:6,fontSize:22,color:'#1e3a8a',alignItems:'center',justifyContent:'center' }}
+            aria-label="Menu"
+          >{menuOpen ? '✕' : '☰'}</button>
+          <button onClick={() => onNaarApp('login')} className="l-btn l-hide-mobile" style={{ background:'none',color:'#64748b',fontSize:14 }}>Inloggen</button>
+          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ fontSize:14,padding:'9px 18px' }}>{CTA_TEKST}</button>
         </div>
       </nav>
+
+      {/* ── MOBIEL MENU ── */}
+      {menuOpen && (
+        <div style={{ position:'fixed',top:64,left:0,right:0,zIndex:99,background:'white',borderBottom:'1px solid #e2e8f0',padding:'8px 24px 16px',display:'flex',flexDirection:'column',boxShadow:'0 12px 32px rgba(0,0,0,0.1)' }}>
+          {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
+            <a key={i} href={h} onClick={() => setMenuOpen(false)} style={{ textDecoration:'none',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px',borderBottom:'1px solid #f1f5f9' }}>{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a>
+          ))}
+          <span onClick={() => { setMenuOpen(false); onGids(); }} style={{ cursor:'pointer',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px',borderBottom:'1px solid #f1f5f9' }}>Leren beleggen</span>
+          <span onClick={() => { setMenuOpen(false); onNaarApp('login'); }} style={{ cursor:'pointer',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px' }}>Inloggen</span>
+        </div>
+      )}
 
       {/* ── HERO ── */}
       <section style={{ minHeight:'90vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:'80px 24px 60px',background:'linear-gradient(180deg,#eef1f8 0%,#f8fafc 60%,white 100%)',position:'relative',overflow:'hidden' }}>
@@ -101,7 +130,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
           Kapitas bundelt je portfolio, ETFs en aandelen in één slim dashboard. Met automatische Belgische belastingberekeningen, live koersen en AI-analyses.
         </p>
         <div className="l-hero-actions" style={{ display:'flex',gap:12,flexWrap:'wrap',justifyContent:'center',marginBottom:14 }}>
-          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Start gratis — 14 dagen ✦</button>
+          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>{CTA_TEKST}</button>
           <a href="#features" className="l-btn l-btn-outline" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Bekijk features</a>
         </div>
         <p style={{ fontSize:13,color:'#94a3b8' }}>
@@ -120,9 +149,9 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
               <div style={{ flex:1,background:'white',borderRadius:6,padding:'4px 12px',fontSize:12,color:'#94a3b8',border:'1px solid #e2e8f0',margin:'0 12px',textAlign:'left' }}>kapitas.be/dashboard</div>
             </div>
             {/* Screen */}
-            <div style={{ display:'grid',gridTemplateColumns:'220px 1fr',height:400,background:'#f8fafc' }}>
+            <div className="l-mockup-screen">
               {/* Sidebar mockup */}
-              <div className="l-hide-mobile" style={{ background:'white',borderRight:'1px solid #e2e8f0',padding:'20px 12px',display:'flex',flexDirection:'column',gap:4 }}>
+              <div className="l-hide-mobile" style={{ background:'white',borderRight:'1px solid #e2e8f0',padding:'20px 12px',display:'flex',flexDirection:'column',gap:4,minWidth:0 }}>
                 <div style={{ fontSize:18,fontWeight:800,color:'#1e3a8a',padding:'0 8px 20px',letterSpacing:'-0.5px' }}>Kapitas</div>
                 {[['Dashboard',true],['Portfolio',false],['Markten',false],['ETFs',false],['Belastingen',false],['Dividend',false]].map(([naam,actief]) => (
                   <div key={naam} style={{ display:'flex',alignItems:'center',gap:10,padding:'9px 12px',borderRadius:8,fontSize:13,fontWeight:actief?600:500,color:actief?'#1e3a8a':'#64748b',background:actief?'#eef1f8':'none' }}>
@@ -132,7 +161,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
                 ))}
               </div>
               {/* Content mockup */}
-              <div style={{ padding:20,overflow:'hidden' }}>
+              <div style={{ padding:20,overflow:'hidden',minWidth:0 }}>
                 <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16 }}>
                   <div>
                     <div style={{ fontSize:15,fontWeight:700 }}>Welkom terug 👋</div>
@@ -140,17 +169,17 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
                   </div>
                   <div style={{ fontSize:11,color:'#94a3b8' }}>ma 14 jul 2026</div>
                 </div>
-                <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:14 }}>
+                <div className="l-mockup-stats">
                   {[['Totale waarde','€24.847','▲ +3,14% YTD','#22c55e'],['Vandaag','+€312','▲ +1,27%','#22c55e'],['Meerwaardebel.','€847','⚠ Verschuldigd','#f59e0b']].map(([l,v,c,col]) => (
-                    <div key={l} style={{ background:'white',borderRadius:10,padding:12,border:'1px solid #e2e8f0' }}>
+                    <div key={l} style={{ background:'white',borderRadius:10,padding:12,border:'1px solid #e2e8f0',minWidth:0 }}>
                       <div style={{ fontSize:10,color:'#94a3b8',marginBottom:4 }}>{l}</div>
                       <div style={{ fontSize:16,fontWeight:700 }}>{v}</div>
                       <div style={{ fontSize:10,fontWeight:600,color:col,marginTop:2 }}>{c}</div>
                     </div>
                   ))}
                 </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1.4fr 1fr',gap:10 }}>
-                  <div style={{ background:'white',borderRadius:10,padding:12,border:'1px solid #e2e8f0' }}>
+                <div className="l-mockup-bottom">
+                  <div style={{ background:'white',borderRadius:10,padding:12,border:'1px solid #e2e8f0',minWidth:0 }}>
                     <div style={{ fontSize:11,fontWeight:600,color:'#64748b',marginBottom:8 }}>Portefeuille evolutie (1J)</div>
                     <div style={{ display:'flex',alignItems:'flex-end',gap:3,height:60 }}>
                       {[35,45,40,55,50,65,58,72,68,80,75,100].map((h,i) => (
@@ -158,7 +187,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
                       ))}
                     </div>
                   </div>
-                  <div style={{ background:'white',borderRadius:10,border:'1px solid #e2e8f0',overflow:'hidden' }}>
+                  <div style={{ background:'white',borderRadius:10,border:'1px solid #e2e8f0',overflow:'hidden',minWidth:0 }}>
                     <div style={{ display:'grid',gridTemplateColumns:'1fr 70px 50px',padding:'7px 10px',background:'#f8fafc',fontSize:9,fontWeight:600,color:'#94a3b8',borderBottom:'1px solid #e2e8f0' }}>
                       <span>Positie</span><span>Koers</span><span>%</span>
                     </div>
@@ -374,8 +403,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
         <h2 style={{ fontSize:'clamp(28px,5vw,48px)',fontWeight:800,color:'white',letterSpacing:'-1px',marginBottom:16 }}>Klaar om je beleggingen<br />overzichtelijk te maken?</h2>
         <p style={{ fontSize:18,color:'rgba(255,255,255,0.8)',marginBottom:40 }}>Sluit je aan bij Belgische beleggers die Kapitas gebruiken om slimmer te beleggen.</p>
         <div style={{ display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap' }}>
-          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-white" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Start 14 dagen gratis →</button>
-          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-ghost-white" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Live demo bekijken</button>
+          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-white" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>{CTA_TEKST}</button>
         </div>
         <p style={{ fontSize:13,color:'rgba(255,255,255,0.5)',marginTop:16 }}>Geen betaalgegevens nodig · Annuleer wanneer je wil · €9,99/maand na proefperiode</p>
       </section>
@@ -388,7 +416,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
             <div style={{ fontSize:13,lineHeight:1.7,marginBottom:16 }}>Het slimste beleggingsdashboard voor Belgische beleggers. Portfolio, markten, ETFs en belastingen op één plek.</div>
             <div style={{ fontSize:11,color:'rgba(255,255,255,0.3)',lineHeight:1.6 }}>⚠️ Kapitas biedt geen beleggingsadvies. Alle informatie is louter informatief. Raadpleeg een erkend financieel adviseur voor persoonlijk advies.</div>
           </div>
-          {[['Product',['Features','Prijzen','Live demo','Hoe werkt het']],['Belgisch',['Belastingmodule','TOB calculator','Meerwaardebelasting','Reynders-taks']],['Info',['Gids voor beginners','Privacybeleid','Algemene voorwaarden','Disclaimer','Contact']]].map(([titel,links]) => (
+          {[['Product',['Features','Prijzen','Hoe werkt het']],['Belgisch',['Belastingmodule','TOB calculator','Meerwaardebelasting','Reynders-taks']],['Info',['Gids voor beginners','Privacybeleid','Algemene voorwaarden','Disclaimer','Contact']]].map(([titel,links]) => (
             <div key={titel}>
               <h4 style={{ fontSize:13,fontWeight:700,color:'white',marginBottom:14 }}>{titel}</h4>
               {links.map(l => <div key={l} style={{ fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer' }} onClick={l==='Contact'?()=>window.location.href='mailto:hello@kapitas.be':l==='Privacybeleid'?onPrivacybeleid:l==='Gids voor beginners'?onGids:() => onNaarApp('registreren')}>{l}</div>)}
