@@ -109,8 +109,19 @@ export function AppProvider({ children, supabaseGebruiker }) {
     catch { return []; }
   });
 
+  // Account-gebonden i.p.v. toestel-gebonden: zelfde patroon als beleggingen
+  // hieronder, maar favorieten horen bij de gebruiker (niet per portfolio) —
+  // het is een volglijst, geen bezit. supabaseGereed voorkomt dat we hier
+  // leeg/verouderde lokale data over de écht actuele Supabase-data heen
+  // schrijven vóór de initiële load hieronder is voltooid.
   useEffect(() => {
     localStorage.setItem('matico_favorieten', JSON.stringify(favorieten));
+    const userId = supabaseGebruiker?.id;
+    if (supabaseGereed && userId) {
+      supabase.from('favorieten').upsert({
+        user_id: userId, favorieten, updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' }).then(({ error }) => { if (error) console.error('Favorieten synchroniseren mislukt:', error); });
+    }
   }, [favorieten]);
 
   // meta = { symbol, naam, type, beurs } — voegt toe als nog niet aanwezig, verwijdert anders
@@ -200,6 +211,30 @@ export function AppProvider({ children, supabaseGebruiker }) {
     }
   };
 
+  // Favorieten zijn account-gebonden (geen portfolio_id) — één rij per
+  // gebruiker, net als bij de beleggingen hierboven: Supabase-data wint als
+  // die al bestaat, anders migreren we de huidige lokale lijst omhoog.
+  const laadOfMigreerFavorieten = async (userId, lokaleFavorieten) => {
+    const { data, error } = await supabase
+      .from('favorieten')
+      .select('favorieten')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) { console.error('Favorieten ophalen mislukt:', error); return; }
+
+    if (data) {
+      const nieuweFavorieten = data.favorieten || [];
+      setFavorieten(nieuweFavorieten);
+      localStorage.setItem('matico_favorieten', JSON.stringify(nieuweFavorieten));
+    } else {
+      const { error: upsertFout } = await supabase.from('favorieten').upsert({
+        user_id: userId, favorieten: lokaleFavorieten, updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+      if (upsertFout) console.error('Migratie van favorieten naar Supabase mislukt:', upsertFout);
+    }
+  };
+
   useEffect(() => {
     const userId = supabaseGebruiker?.id;
     if (!userId) return;
@@ -235,6 +270,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
       }
 
       if (actueleId) await laadOfMigreerHoldings(userId, actueleId, beleggingen, verkochteBeleggingen);
+      await laadOfMigreerFavorieten(userId, favorieten);
       setSupabaseGereed(true);
     };
 
