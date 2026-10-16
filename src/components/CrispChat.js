@@ -13,6 +13,10 @@ function laadCrispScript() {
   scriptGeladen = true;
   window.$crisp = [];
   window.CRISP_WEBSITE_ID = CRISP_WEBSITE_ID;
+  // Verberg de chatbubbel op mobiel: die botst anders met de vaste
+  // onderbalk (Portefeuille/Markten/Zoeken/Favorieten/Profiel) rechtsonder.
+  // Dit is Crisp's eigen, officiële config-optie — geen CSS-gevecht nodig.
+  window.$crisp.push(['config', 'hide:on:mobile', [true]]);
   const script = document.createElement('script');
   script.src = 'https://client.crisp.chat/l.js';
   script.async = 1;
