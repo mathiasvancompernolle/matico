@@ -22,6 +22,7 @@ import Landing from './pages/Landing';
 import AuthPage from './pages/AuthPage';
 import { supabase } from './supabaseClient';
 import kapitasLogo from './assets/kapitas-logo.png';
+import { LayoutDashboard, TrendingUp, Search, Star, User, X, ChevronRight, PiggyBank, Briefcase, Check } from 'lucide-react';
 
 function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSelectEffect }) {
   const {
@@ -92,93 +93,29 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
         <img src={kapitasLogo} alt="Kapitas" style={{ height: '80%', width: 'auto', display: 'block' }} />
       </div>
 
-      {/* Portfolio-wisselaar — enkel op mobiel, en enkel in de Portefeuille-
-          sectie: op mobiel wordt de zijbalk (waar dit normaal staat) de
-          bottom-navigatiebalk, en heeft geen plaats meer voor de
-          portfolio-lijst. Hier is dus de enige plek waar je op mobiel nog
-          kan wisselen tussen bv. "Portfolio" en "Pensioensparen". */}
-      {isMobiel && actieveSectie === 'portefeuille' && (
-        <div ref={portfolioRef} style={{ position: 'relative', flexShrink: 0 }}>
-          <button
-            onClick={() => setPortfolioOpen(v => !v)}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, background: portfolioOpen ? '#eef1f8' : 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', maxWidth: 70 }}
-          >
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {actiefPortfolio?.naam || 'Portfolio'}
-            </span>
-            <svg width="12" height="12" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, transform: portfolioOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          {portfolioOpen && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 180, zIndex: 300, overflow: 'hidden' }}>
-              {portfolios.map(p => (
-                <div key={p.id}
-                  onClick={() => { wisselPortfolio(p.id); setPortfolioOpen(false); }}
-                  style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', background: p.id === actiefPortfolioId ? 'var(--accent-bg)' : 'transparent' }}
-                >
-                  <span style={{ fontSize: 13, fontWeight: p.id === actiefPortfolioId ? 700 : 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.naam}</span>
-                  {p.id === actiefPortfolioId && <span style={{ color: '#1e3a8a', fontSize: 14 }}>✓</span>}
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Tabs — enkel op desktop: op mobiel zit deze wissel nu in de vaste
+          onderbalk (Portefeuille/Markten/...), die altijd bereikbaar is i.p.v.
+          verstopt achter een her-indeuken of te-smal-om-te-swipen tabbalkje. */}
+      {!isMobiel && (
+        <div style={{ flex: 1 }}>
+          <div className="top-nav-inner">
+            <button className={`top-nav-tab ${actieveSectie === 'portefeuille' ? 'actief' : ''}`} onClick={() => onSectieWissel('portefeuille')}>{t('nav_portefeuille')}</button>
+            <button className={`top-nav-tab ${actieveSectie === 'markten' ? 'actief' : ''}`} onClick={() => onSectieWissel('markten')}>{t('nav_markten')}</button>
+            {gebruiker?.email?.trim().toLowerCase() === 'mathiasvancompernolle@gmail.com' && (
+              <button className={`top-nav-tab ${actieveSectie === 'analyseren' ? 'actief' : ''}`} onClick={() => onSectieWissel('analyseren')}>Analyseren</button>
+            )}
+          </div>
         </div>
       )}
-
-      {/* Tabs */}
-      <div className="top-nav-inner" style={{ flex: 1, overflowX: 'auto', flexShrink: isMobiel ? 0 : 1, minWidth: isMobiel ? 130 : undefined }}>
-        <button className={`top-nav-tab ${actieveSectie === 'portefeuille' ? 'actief' : ''}`} onClick={() => onSectieWissel('portefeuille')}>{t('nav_portefeuille')}</button>
-        <button className={`top-nav-tab ${actieveSectie === 'markten' ? 'actief' : ''}`} onClick={() => onSectieWissel('markten')}>{t('nav_markten')}</button>
-        {gebruiker?.email?.trim().toLowerCase() === 'mathiasvancompernolle@gmail.com' && (
-          <button className={`top-nav-tab ${actieveSectie === 'analyseren' ? 'actief' : ''}`} onClick={() => onSectieWissel('analyseren')}>Analyseren</button>
-        )}
-      </div>
+      {isMobiel && <div style={{ flex: 1 }} />}
 
       {/* Rechter iconen */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
 
-        {/* Zoekbalk — op mobiel enkel een icoon, dat een volledige-breedte
-            overlay opent (in plaats van altijd een vast 220px-veld te tonen,
-            wat op een smal scherm niet past) */}
+        {/* Zoekbalk — enkel op desktop: op mobiel is "Zoeken" een eigen,
+            volwaardige pagina via de onderbalk i.p.v. een icoon-overlay hier. */}
+        {!isMobiel && (
         <div ref={zoekRef} style={{ position: 'relative' }}>
-          {isMobiel ? (
-            <>
-              <button onClick={() => setZoekOpen(v => !v)} style={{ width: 32, height: 32, border: 'none', borderRadius: 8, background: zoekOpen ? '#eef1f8' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="16" height="16" fill="none" stroke={zoekOpen ? '#1e3a8a' : 'var(--text-muted)'} strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              </button>
-              {zoekOpen && (
-                <div style={{ position: 'fixed', top: 72, left: 0, right: 0, background: 'var(--bg-white)', borderBottom: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 300, padding: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px' }}>
-                    <svg width="15" height="15" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                    <input autoFocus value={zoekQuery} onChange={e => setZoekQuery(e.target.value)} placeholder="Zoeken naam/ISIN..." style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--text-primary)', width: '100%', fontFamily: 'inherit' }} />
-                    <button onClick={() => { setZoekOpen(false); setZoekQuery(''); setZoekResultaten([]); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0, display: 'flex' }}>
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                  </div>
-                  {zoekQuery.length >= 2 && (
-                    <div style={{ marginTop: 8, maxHeight: '60vh', overflowY: 'auto' }}>
-                      {zoekLaden ? <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Zoeken...</div>
-                      : zoekResultaten.length === 0 ? <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Geen resultaten</div>
-                      : zoekResultaten.map((r, i) => (
-                        <div key={i} style={{ padding: '10px 4px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: i < zoekResultaten.length-1 ? '1px solid var(--border-light)' : 'none' }}
-                          onClick={() => {
-                            onSelectEffect && onSelectEffect(r);
-                            setZoekOpen(false); setZoekQuery(''); setZoekResultaten([]);
-                          }}
-                        >
-                          <div style={{ width: 32, height: 32, borderRadius: 8, background: r.type === 'etf' ? '#eef1f8' : '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: r.type === 'etf' ? '#1e3a8a' : '#d97706', flexShrink: 0 }}>{r.type === 'etf' ? 'ETF' : 'EQ'}</div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.naam}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.symbol}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-white)', border: `1px solid ${zoekOpen ? '#1e3a8a' : 'var(--border)'}`, borderRadius: 8, padding: '5px 10px', width: 220 }}>
                 <svg width="15" height="15" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
                   <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -206,11 +143,10 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
                   ))}
                 </div>
               )}
-            </>
-          )}
         </div>
+        )}
 
-        {/* Favorieten — op mobiel verborgen (ruimtegebrek); blijft bereikbaar via de ster op een effect-detailpagina */}
+        {/* Favorieten — enkel op desktop: op mobiel een eigen pagina via de onderbalk */}
         {!isMobiel && (
         <div ref={favorietenRef} style={{ position: 'relative' }}>
           <button onClick={() => setFavorietenOpen(v => !v)} style={{ width: 32, height: 32, border: 'none', borderRadius: 8, background: favorietenOpen ? '#eef1f8' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -304,7 +240,8 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
           )}
         </div>
 
-        {/* Profiel */}
+        {/* Profiel — enkel op desktop: op mobiel een eigen pagina via de onderbalk */}
+        {!isMobiel && (
         <div ref={profielRef} style={{ position: 'relative', marginLeft: 4 }}>
           <button onClick={() => setProfielOpen(v => !v)} style={{ width: 30, height: 30, borderRadius: '50%', background: '#1e3a8a', border: 'none', cursor: 'pointer', color: 'white', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>{initialen}</button>
           {profielOpen && (
@@ -344,8 +281,152 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
             </div>
           )}
         </div>
+        )}
       </div>
     </nav>
+  );
+}
+
+// ── Mobiel: "Zoeken" als volwaardige pagina (i.p.v. een icoon-overlay in de
+// TopNav, die op een smal scherm geen ruimte heeft) ─────────────────────────
+function MobielZoekenPagina({ onSelectEffect }) {
+  const [query, setQuery] = React.useState('');
+  const [resultaten, setResultaten] = React.useState([]);
+  const [laden, setLaden] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!query || query.length < 2) { setResultaten([]); return; }
+    const timer = setTimeout(async () => {
+      setLaden(true);
+      try {
+        const r = await fetch(`/api/data?endpoint=search&q=${encodeURIComponent(query)}`);
+        const d = await r.json();
+        setResultaten(d?.resultaten || []);
+      } catch { setResultaten([]); }
+      setLaden(false);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  return (
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
+        <Search size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+        <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Zoeken naam/ISIN..." style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--text-primary)', width: '100%', fontFamily: 'inherit' }} />
+      </div>
+      {query.length < 2 ? (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Typ minstens 2 tekens om te zoeken</div>
+      ) : laden ? (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Zoeken...</div>
+      ) : resultaten.length === 0 ? (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Geen resultaten</div>
+      ) : (
+        resultaten.map((r, i) => (
+          <div key={i} onClick={() => onSelectEffect && onSelectEffect(r)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', cursor: 'pointer', borderBottom: i < resultaten.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.naam}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{r.symbol}</div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+// ── Mobiel: "Favorieten" als volwaardige pagina ─────────────────────────────
+function MobielFavorietenPagina({ onSelectEffect }) {
+  const { favorieten, toggleFavoriet } = useApp();
+  return (
+    <div style={{ padding: 16 }}>
+      {favorieten.length === 0 ? (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Nog geen favorieten toegevoegd</div>
+      ) : (
+        favorieten.map(f => (
+          <div key={f.symbol} onClick={() => onSelectEffect && onSelectEffect(f)}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 4px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{f.naam}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{f.symbol}{f.beurs ? ` · ${f.beurs}` : ''}</div>
+            </div>
+            <button onClick={e => { e.stopPropagation(); toggleFavoriet(f); }} title="Verwijderen uit favorieten"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 6, color: 'var(--text-muted)', flexShrink: 0, display: 'flex' }}>
+              <X size={16} />
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+// ── Mobiel: "Profiel" als volwaardige pagina — bundelt wat op desktop
+// verspreid zit over de profiel-dropdown + portfolio-wisselaar + Belastingen
+// (dat normaal via de sidebar-navigatie loopt, die op mobiel niet rendert). ──
+function MobielProfielPagina({ gebruiker, onNavigeer, onAnalyseren }) {
+  const { t, portfolios, actiefPortfolioId, wisselPortfolio } = useApp();
+  const initialen = `${gebruiker?.voornaam?.[0] || ''}${gebruiker?.achternaam?.[0] || ''}`.toUpperCase() || 'M';
+  const isAdmin = gebruiker?.email?.trim().toLowerCase() === 'mathiasvancompernolle@gmail.com';
+
+  const menuItems = [
+    { label: t('profiel_mijn_profiel'), sub: t('profiel_mijn_profiel_sub'), route: 'mijn-profiel' },
+    { label: 'Belastingen', sub: null, route: 'belastingen' },
+    { label: t('profiel_billing'), sub: t('profiel_billing_sub'), route: 'instellingen' },
+    { label: 'Gids voor beginners', sub: 'Nog eens de basis doornemen', route: 'gids' },
+    { label: t('profiel_privacybeleid'), sub: t('profiel_privacybeleid_sub'), route: 'privacybeleid' },
+  ];
+
+  return (
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 4px 20px' }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#1e3a8a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>{initialen}</div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{gebruiker?.voornaam} {gebruiker?.achternaam}</div>
+          <div style={{ fontSize: 12, color: '#1e3a8a', fontWeight: 600 }}>Pro plan</div>
+        </div>
+      </div>
+
+      {portfolios.length > 1 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 4px 8px' }}>Portfolio</div>
+          <div style={{ background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+            {portfolios.map(p => (
+              <div key={p.id} onClick={() => wisselPortfolio(p.id)}
+                style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', background: p.id === actiefPortfolioId ? 'var(--accent-bg)' : 'transparent', borderBottom: '1px solid var(--border-light)' }}>
+                <span style={{ fontSize: 14, fontWeight: p.id === actiefPortfolioId ? 700 : 500 }}>{p.naam}</span>
+                {p.id === actiefPortfolioId && <Check size={16} color="#1e3a8a" />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 20 }}>
+        {menuItems.map(({ label, sub, route }, i) => (
+          <div key={label} onClick={() => onNavigeer(route)}
+            style={{ padding: '13px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderBottom: i < menuItems.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div>
+              {sub && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{sub}</div>}
+            </div>
+            <ChevronRight size={16} color="var(--text-muted)" />
+          </div>
+        ))}
+        {isAdmin && (
+          <div onClick={onAnalyseren} style={{ padding: '13px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderTop: '1px solid var(--border-light)' }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Analyseren</div>
+            <ChevronRight size={16} color="var(--text-muted)" />
+          </div>
+        )}
+      </div>
+
+      <div onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }}
+        style={{ padding: '13px 14px', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10 }}>
+        <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        {t('profiel_uitloggen')}
+      </div>
+    </div>
   );
 }
 
@@ -359,6 +440,19 @@ function AppInner() {
   const [effectDetail, setEffectDetail] = useState(null); // geselecteerd zoekresultaat, toont EffectDetail pagina
   const [cookieToestemming, setCookieToestemming] = useState(null);
 
+  // Mobiele onderbalk: welke van de 5 hoofd-items is actief, en of we op een
+  // van de 3 nieuwe volwaardige mobiele pagina's zitten (Zoeken/Favorieten/
+  // Profiel) i.p.v. de normale desktop-gelijkende weergave.
+  const [breedte, setBreedte] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const isMobiel = breedte < 768;
+  const [mobielWeergave, setMobielWeergave] = useState('normaal'); // 'normaal' | 'zoeken' | 'favorieten' | 'profiel'
+
+  React.useEffect(() => {
+    const onResize = () => setBreedte(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   if (!gebruiker.voornaam) {
     return <NaamInstellen />;
   }
@@ -371,11 +465,13 @@ function AppInner() {
     setToevoegenOpen(false);
     setImportOpen(false);
     setEffectDetail(null);
+    setMobielWeergave('normaal');
     setActiveNav(doel);
     scrollNaarBoven();
   };
 
   const naarHome = () => {
+    if (mobielWeergave !== 'normaal') { setMobielWeergave('normaal'); return; }
     if (actieveSectie === 'markten' || actieveSectie === 'analyseren') {
       setActieveSectie('portefeuille');
       return;
@@ -391,6 +487,7 @@ function AppInner() {
   const handleSectieWissel = (sectie) => {
     setActieveSectie(sectie);
     setEffectDetail(null);
+    setMobielWeergave('normaal');
     scrollNaarBoven();
     if (sectie === 'portefeuille') {
       setToevoegenOpen(false);
@@ -398,7 +495,31 @@ function AppInner() {
     }
   };
 
+  // Mobiele onderbalk-items wisselen onafhankelijk van de desktop-secties/activeNav.
+  const kiesMobielWeergave = (weergave) => {
+    setEffectDetail(null);
+    setToevoegenOpen(false);
+    setImportOpen(false);
+    if (weergave === 'portefeuille') {
+      setMobielWeergave('normaal');
+      setActieveSectie('portefeuille');
+    } else if (weergave === 'markten') {
+      setMobielWeergave('normaal');
+      setActieveSectie('markten');
+    } else {
+      setMobielWeergave(weergave); // 'zoeken' | 'favorieten' | 'profiel'
+    }
+    scrollNaarBoven();
+  };
+
+  const mobielActieveTab = mobielWeergave !== 'normaal'
+    ? mobielWeergave
+    : (actieveSectie === 'markten' ? 'markten' : 'portefeuille');
+
   const renderPage = () => {
+    if (isMobiel && mobielWeergave === 'zoeken') return <MobielZoekenPagina onSelectEffect={setEffectDetail} />;
+    if (isMobiel && mobielWeergave === 'favorieten') return <MobielFavorietenPagina onSelectEffect={setEffectDetail} />;
+    if (isMobiel && mobielWeergave === 'profiel') return <MobielProfielPagina gebruiker={gebruiker} onNavigeer={navigeerNaar} onAnalyseren={() => handleSectieWissel('analyseren')} />;
     if (effectDetail) return <EffectDetail effect={effectDetail} onTerug={() => setEffectDetail(null)} />;
     if (actieveSectie === 'markten') return <Markten onSelectEffect={setEffectDetail} />;
     if (actieveSectie === 'analyseren') return <Analyseren />;
@@ -420,7 +541,26 @@ function AppInner() {
     }
   };
 
-  const toonSidebar = actieveSectie === 'portefeuille' && !effectDetail;
+  const toonSidebar = actieveSectie === 'portefeuille' && !effectDetail && !isMobiel;
+
+  // De subtabs-rij (Overzicht/Beleggingen/Analyse/Dividend) vervangt op mobiel
+  // de sidebar binnen de Portefeuille-sectie, zodat die navigatie altijd
+  // bereikbaar blijft zonder de desktop-sidebar te hoeven aanpassen.
+  const toonMobielSubtabs = isMobiel && mobielWeergave === 'normaal' && actieveSectie === 'portefeuille' && !effectDetail && !toevoegenOpen && !importOpen;
+  const subtabItems = [
+    { key: 'overzicht', label: 'Overzicht' },
+    { key: 'beleggingen', label: 'Beleggingen' },
+    { key: 'analyse', label: 'Analyse' },
+    { key: 'dividend', label: 'Dividend' },
+  ];
+
+  const bottomBarItems = [
+    { key: 'portefeuille', label: 'Portefeuille', icon: Briefcase },
+    { key: 'markten', label: 'Markten', icon: TrendingUp },
+    { key: 'zoeken', label: 'Zoeken', icon: Search },
+    { key: 'favorieten', label: 'Favorieten', icon: Star },
+    { key: 'profiel', label: 'Profiel', icon: User },
+  ];
 
   return (
     <div className="app-wrapper">
@@ -435,9 +575,28 @@ function AppInner() {
           />
         )}
         <main className="app-main">
+          {toonMobielSubtabs && (
+            <div className="mobiel-subtabs">
+              {subtabItems.map(({ key, label }) => (
+                <button key={key} className={`mobiel-subtab ${activeNav === key ? 'actief' : ''}`} onClick={() => navigeerNaar(key)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           {renderPage()}
         </main>
       </div>
+      {isMobiel && (
+        <nav className="mobiel-bottom-bar">
+          {bottomBarItems.map(({ key, label, icon: Icon }) => (
+            <button key={key} className={`mobiel-bottom-bar-item ${mobielActieveTab === key ? 'actief' : ''}`} onClick={() => kiesMobielWeergave(key)}>
+              <Icon size={20} strokeWidth={2} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+      )}
       <CookieConsent onWijziging={setCookieToestemming} />
       <CrispChat toestemming={cookieToestemming} />
     </div>

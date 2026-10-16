@@ -90,6 +90,9 @@ body {
   background: var(--bg);
 }
 
+/* Enkel zichtbaar op mobiel (zie @media max-width:768px verderop) */
+.mobiel-bottom-bar, .mobiel-subtabs { display: none; }
+
 /* ===== SIDEBAR ===== */
 .sidebar {
   width: var(--sidebar-width);
@@ -772,6 +775,68 @@ body {
     padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); /* ruimte voor bottom nav + veilige zone */
     width: 100%;
   }
+
+  /* ── Nieuwe mobiele onderbalk: Portefeuille/Markten/Zoeken/Favorieten/
+      Profiel — altijd zichtbaar, ongeacht sectie (i.t.t. de oude sidebar-
+      als-bottombar hierboven, die enkel binnen "Portefeuille" verscheen en
+      Markten/Analyseren daardoor moeilijk bereikbaar maakte). ── */
+  .mobiel-bottom-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    display: flex;
+    background: var(--bg-white);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+    z-index: 100;
+  }
+  .mobiel-bottom-bar-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 2px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+  }
+  .mobiel-bottom-bar-item.actief { color: var(--accent); }
+  .mobiel-bottom-bar-item svg { width: 20px; height: 20px; }
+
+  /* ── Subtabs-rij binnen "Portefeuille" (Overzicht/Beleggingen/Analyse/
+      Dividend) — vervangt de oude sidebar-navigatie op mobiel. ── */
+  .mobiel-subtabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 14px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-white);
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .mobiel-subtabs::-webkit-scrollbar { display: none; }
+  .mobiel-subtab {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .mobiel-subtab.actief { color: var(--accent); font-weight: 600; background: var(--accent-bg); }
 
   /* ── Page header ── */
   .page-header {
