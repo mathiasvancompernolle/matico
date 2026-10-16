@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Info, Download, ChevronDown } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
@@ -35,6 +35,19 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
   const [simAantal, setSimAantal] = useState('');
   const [simBelegging, setSimBelegging] = useState(null);
   const printRef = useRef();
+
+  // Zelfde breakpoint/patroon als de rest van de app: op mobiel is er te
+  // weinig breedte voor de 5-koloms tabel (kolomkoppen liepen aan elkaar en
+  // het belastingbedrag stond los tussen de andere tekst) — daarom krijgt
+  // elke verkoop hieronder op mobiel een gestapelde kaart-layout i.p.v. de
+  // desktop-grid.
+  const [breedte, setBreedte] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const isMobielScherm = breedte < 768;
+  useEffect(() => {
+    const onResize = () => setBreedte(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
 
@@ -308,65 +321,120 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
             </div>
           ) : (
             <>
-              {/* Kolomhoofden */}
-              <div style={{
-                display: 'grid', gridTemplateColumns: '2.5fr 1.5fr 1.5fr 1fr 0.8fr',
-                padding: '8px 24px', borderBottom: '1px solid var(--border-light)',
-                fontSize: 12, fontWeight: 600, color: 'var(--text-muted)'
-              }}>
-                <span>Belegging</span>
-                <span style={{ textAlign: 'right' }}>Aankoop</span>
-                <span style={{ textAlign: 'right' }}>Verkoop</span>
-                <span style={{ textAlign: 'right' }}>Meerwaarde</span>
-                <span style={{ textAlign: 'right' }}>Belasting</span>
-              </div>
+              {/* Kolomhoofden — enkel op desktop: op mobiel liepen deze 5
+                  koppen in een te smalle grid gewoon tegen elkaar aan
+                  ("Belegging AankoopVerkoopMeerwaardeBelasting"). Op mobiel
+                  krijgt elke rij hieronder in plaats daarvan zijn eigen
+                  veldlabels. */}
+              {!isMobielScherm && (
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '2.5fr 1.5fr 1.5fr 1fr 0.8fr',
+                  padding: '8px 24px', borderBottom: '1px solid var(--border-light)',
+                  fontSize: 12, fontWeight: 600, color: 'var(--text-muted)'
+                }}>
+                  <span>Belegging</span>
+                  <span style={{ textAlign: 'right' }}>Aankoop</span>
+                  <span style={{ textAlign: 'right' }}>Verkoop</span>
+                  <span style={{ textAlign: 'right' }}>Meerwaarde</span>
+                  <span style={{ textAlign: 'right' }}>Belasting</span>
+                </div>
+              )}
 
               {/* Rijen */}
-              {verkopen.map((b, i) => (
-                <div key={i} style={{
-                  display: 'grid', gridTemplateColumns: '2.5fr 1.5fr 1.5fr 1fr 0.8fr',
-                  padding: '14px 24px', borderBottom: '1px solid var(--border-light)', alignItems: 'center'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {b.logo ? (
-                      <img src={b.logo} alt={b.symbol} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain', border: '1px solid var(--border)', background: 'white', padding: 2 }}
-                        onError={e => { e.target.onerror=null; e.target.parentNode.innerHTML=`<div style="width:32px;height:32px;border-radius:8px;background:var(--accent-bg);color:var(--accent);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">${b.symbol.split('.')[0].slice(0,2).toUpperCase()}</div>`; }} />
-                    ) : (
-                      <div style={{
-                        width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)',
-                        color: 'var(--accent)', fontWeight: 700, fontSize: 11,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                      }}>
-                        {b.symbol.split('.')[0].slice(0, 2).toUpperCase()}
+              {verkopen.map((b, i) => {
+                const avatar = b.logo ? (
+                  <img src={b.logo} alt={b.symbol} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain', border: '1px solid var(--border)', background: 'white', padding: 2, flexShrink: 0 }}
+                    onError={e => { e.target.onerror=null; e.target.parentNode.innerHTML=`<div style="width:32px;height:32px;border-radius:8px;background:var(--accent-bg);color:var(--accent);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">${b.symbol.split('.')[0].slice(0,2).toUpperCase()}</div>`; }} />
+                ) : (
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)',
+                    color: 'var(--accent)', fontWeight: 700, fontSize: 11,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  }}>
+                    {b.symbol.split('.')[0].slice(0, 2).toUpperCase()}
+                  </div>
+                );
+
+                // ── Mobiel: gestapelde kaart met per-veld labels i.p.v. de
+                // 5-koloms grid, zodat het belastingbedrag niet meer los
+                // tussen de verkoopdatum-tekst komt te staan. ──
+                if (isMobielScherm) {
+                  return (
+                    <div key={i} style={{ padding: '14px 16px', borderBottom: i < verkopen.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                        {avatar}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>{b.naam}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            {b.symbol} · {b.aantalVerkocht} stuk{b.aantalVerkocht !== 1 ? 's' : ''}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{b.naam}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        {b.symbol} · {b.aantalVerkocht} stuk{b.aantalVerkocht !== 1 ? 's' : ''}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 12px' }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Aankoop</div>
+                          <div style={{
+                            fontSize: 13,
+                            textDecoration: b.gebruiktRef ? 'underline dotted #f97316' : 'none',
+                            color: b.gebruiktRef ? '#c2410c' : 'var(--text-primary)'
+                          }}>{b.aankoopLabel}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Verkoop</div>
+                          <div style={{ fontSize: 13 }}>{b.verkoopLabel}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Meerwaarde</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: b.meerwaarde >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                            {b.meerwaarde >= 0 ? '+' : ''}€{fmt(b.meerwaarde)}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Belasting</div>
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>
+                            {b.meerwaarde > 0 ? `€${fmt(b.meerwaarde * TARIEF)}` : '—'}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: 13 }}>
-                    <span style={{
-                      textDecoration: b.gebruiktRef ? 'underline dotted #f97316' : 'none',
-                      color: b.gebruiktRef ? '#c2410c' : 'var(--text-primary)'
-                    }}>
-                      {b.aankoopLabel}
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: 13 }}>{b.verkoopLabel}</div>
-                  <div style={{
-                    textAlign: 'right', fontSize: 13, fontWeight: 700,
-                    color: b.meerwaarde >= 0 ? 'var(--green)' : 'var(--red)'
+                  );
+                }
+
+                return (
+                  <div key={i} style={{
+                    display: 'grid', gridTemplateColumns: '2.5fr 1.5fr 1.5fr 1fr 0.8fr',
+                    padding: '14px 24px', borderBottom: '1px solid var(--border-light)', alignItems: 'center'
                   }}>
-                    {b.meerwaarde >= 0 ? '+' : ''}€{fmt(b.meerwaarde)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {avatar}
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{b.naam}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {b.symbol} · {b.aantalVerkocht} stuk{b.aantalVerkocht !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: 13 }}>
+                      <span style={{
+                        textDecoration: b.gebruiktRef ? 'underline dotted #f97316' : 'none',
+                        color: b.gebruiktRef ? '#c2410c' : 'var(--text-primary)'
+                      }}>
+                        {b.aankoopLabel}
+                      </span>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: 13 }}>{b.verkoopLabel}</div>
+                    <div style={{
+                      textAlign: 'right', fontSize: 13, fontWeight: 700,
+                      color: b.meerwaarde >= 0 ? 'var(--green)' : 'var(--red)'
+                    }}>
+                      {b.meerwaarde >= 0 ? '+' : ''}€{fmt(b.meerwaarde)}
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600 }}>
+                      {b.meerwaarde > 0 ? `€${fmt(b.meerwaarde * TARIEF)}` : '—'}
+                    </div>
                   </div>
-                  <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600 }}>
-                    {b.meerwaarde > 0 ? `€${fmt(b.meerwaarde * TARIEF)}` : '—'}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Totaalrijen */}
               <div style={{ padding: '0 24px' }}>
