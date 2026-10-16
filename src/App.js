@@ -239,11 +239,15 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
         {/* Profiel — enkel op desktop: op mobiel een eigen pagina via de onderbalk */}
         {!isMobiel && (
         <div ref={profielRef} style={{ position: 'relative', marginLeft: 4 }}>
-          <button onClick={() => setProfielOpen(v => !v)} style={{ width: 30, height: 30, borderRadius: '50%', background: '#1e3a8a', border: 'none', cursor: 'pointer', color: 'white', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>{initialen}</button>
+          <button onClick={() => setProfielOpen(v => !v)} style={{ width: 30, height: 30, borderRadius: '50%', background: gebruiker?.avatarUrl ? 'transparent' : '#1e3a8a', border: 'none', padding: 0, cursor: 'pointer', color: 'white', fontWeight: 700, fontSize: 12, fontFamily: 'inherit', overflow: 'hidden' }}>
+            {gebruiker?.avatarUrl ? <img src={gebruiker.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /> : initialen}
+          </button>
           {profielOpen && (
             <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 230, zIndex: 300, overflow: 'hidden' }}>
               <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#1e3a8a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>{initialen}</div>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#1e3a8a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, overflow: 'hidden', flexShrink: 0 }}>
+                  {gebruiker?.avatarUrl ? <img src={gebruiker.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initialen}
+                </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>{gebruiker?.voornaam} {gebruiker?.achternaam}</div>
                   <div style={{ fontSize: 11, color: '#1e3a8a', fontWeight: 600 }}>Pro plan</div>
@@ -375,7 +379,9 @@ function MobielProfielPagina({ gebruiker, onNavigeer }) {
   return (
     <div style={{ padding: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 4px 20px' }}>
-        <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#1e3a8a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>{initialen}</div>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#1e3a8a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, flexShrink: 0, overflow: 'hidden' }}>
+          {gebruiker?.avatarUrl ? <img src={gebruiker.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initialen}
+        </div>
         <div>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{gebruiker?.voornaam} {gebruiker?.achternaam}</div>
           <div style={{ fontSize: 12, color: '#1e3a8a', fontWeight: 600 }}>Pro plan</div>

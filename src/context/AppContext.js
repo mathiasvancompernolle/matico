@@ -87,13 +87,17 @@ export function AppProvider({ children, supabaseGebruiker }) {
   // Het echte e-mailadres (en, als fallback, naam) komt van de Supabase-
   // sessie in App.js — die twee 'gebruiker'-objecten liepen voorheen
   // volledig los van elkaar, waardoor dit e-mailveld hier altijd leeg bleef.
+  // Idem voor de profielfoto: bij inloggen via Google zet Supabase die in
+  // user_metadata (meestal als 'avatar_url', soms 'picture' afhankelijk
+  // van de provider) — die tonen we dan i.p.v. de initialen-cirkel.
   useEffect(() => {
     if (!supabaseGebruiker) return;
+    const avatarUrl = supabaseGebruiker.user_metadata?.avatar_url || supabaseGebruiker.user_metadata?.picture || '';
     setGebruiker(g => {
-      if (g.email === supabaseGebruiker.email) return g; // niets veranderd
-      return { ...g, email: supabaseGebruiker.email || g.email };
+      if (g.email === supabaseGebruiker.email && g.avatarUrl === avatarUrl) return g; // niets veranderd
+      return { ...g, email: supabaseGebruiker.email || g.email, avatarUrl };
     });
-  }, [supabaseGebruiker?.email]);
+  }, [supabaseGebruiker?.email, supabaseGebruiker?.user_metadata?.avatar_url, supabaseGebruiker?.user_metadata?.picture]);
 
   // ── Dark mode ──
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('matico_darkmode') === 'true');
