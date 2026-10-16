@@ -506,10 +506,14 @@ function AppInner() {
     : (actieveSectie === 'markten' ? 'markten' : 'portefeuille');
 
   const renderPage = () => {
+    // effectDetail (een gekozen zoekresultaat/favoriet) moet vóór de mobiele
+    // weergave-checks komen: anders blijft bv. de zoekpagina zelf getoond
+    // worden nadat je op een resultaat tikt, omdat mobielWeergave nog
+    // steeds 'zoeken' is — het leek dan alsof je er niet op kon drukken.
+    if (effectDetail) return <EffectDetail effect={effectDetail} onTerug={() => setEffectDetail(null)} />;
     if (isMobiel && mobielWeergave === 'zoeken') return <MobielZoekenPagina onSelectEffect={setEffectDetail} />;
     if (isMobiel && mobielWeergave === 'favorieten') return <MobielFavorietenPagina onSelectEffect={setEffectDetail} />;
     if (isMobiel && mobielWeergave === 'profiel') return <MobielProfielPagina gebruiker={gebruiker} onNavigeer={navigeerNaar} />;
-    if (effectDetail) return <EffectDetail effect={effectDetail} onTerug={() => setEffectDetail(null)} />;
     if (actieveSectie === 'markten') return <Markten onSelectEffect={setEffectDetail} />;
     if (importOpen) return <ImportBeleggingen onClose={() => setImportOpen(false)} />;
     if (toevoegenOpen) return <BeleggingToevoegen onClose={() => setToevoegenOpen(false)} />;
