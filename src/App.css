@@ -821,7 +821,7 @@ body {
   .mobiel-subtabs {
     display: flex;
     gap: 4px;
-    padding: 8px 14px;
+    padding: 6px 14px;
     overflow-x: auto;
     border-bottom: 1px solid var(--border);
     background: var(--bg-white);
@@ -853,7 +853,7 @@ body {
 
   /* ── Page header ── */
   .page-header {
-    padding: 18px 18px 0;
+    padding: 12px 18px 0;
     flex-wrap: wrap;
     gap: 8px;
   }
@@ -979,8 +979,12 @@ body {
 
   /* ── Bovenbalk (TopNav) compacter op mobiel ── */
   .top-nav {
+    height: 56px !important;
     padding: 0 10px !important;
     gap: 4px !important;
+  }
+  .app-wrapper .app-layout {
+    height: calc(100vh - 56px) !important;
   }
   .top-nav-inner {
     gap: 0 !important;

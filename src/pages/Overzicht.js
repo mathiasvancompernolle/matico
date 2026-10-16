@@ -1190,7 +1190,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           }} />
         </div>
       )}
-      <div className="page-header" style={{ marginBottom: 24 }}>
+      <div className="page-header" style={{ marginBottom: isMobielScherm ? 14 : 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div className="mobiel-verbergen">
             <SidebarToggleKnop onToggleSidebar={onToggleSidebar} sidebarCollapsed={sidebarCollapsed} />
@@ -1228,7 +1228,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         </div>
       </div>
 
-      <div className="ov-sectie" style={{ marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+      <div className="ov-sectie" style={{ marginBottom: isMobielScherm ? 14 : 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
         <div className="time-tabs" style={{ display: 'inline-flex' }}>
           {TIJDPERKEN.map(t => (
             <button key={t} className={`time-tab ${tijdperk === t ? 'active' : ''}`} onClick={() => setTijdperk(t)}>{t}</button>
