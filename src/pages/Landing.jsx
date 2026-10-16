@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import kapitasLogo from '../assets/kapitas-logo.png';
 
 const CTA_TEKST = 'Start 14 dagen gratis →';
 
@@ -91,7 +90,11 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
           batterij-iconen wanneer de pagina als beginscherm-app draait. */}
       <nav style={{ position:'sticky',top:0,zIndex:100,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(12px)',borderBottom:'1px solid #e2e8f0',paddingLeft:24,paddingRight:24,paddingTop:'env(safe-area-inset-top, 0px)',height:'calc(64px + env(safe-area-inset-top, 0px))',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
         <div style={{ display:'flex',gap:14,alignItems:'center' }}>
-          <img src={kapitasLogo} alt="Kapitas" style={{ height: 40, width: 'auto', display: 'block' }} />
+          {/* Tekst i.p.v. het PNG-logo: dat bestand heeft een witte
+              achtergrond die opvalt zodra de balk niet volledig wit is
+              (bv. met de blur-achtergrond hierboven, of op donkere
+              secties). Transparante tekst lost dat op. */}
+          <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.5px', color: '#1e3a8a', fontFamily: "'DM Sans', sans-serif" }}>Kapitas</span>
           <button
             className="l-show-mobile"
             onClick={() => setMenuOpen(o => !o)}
