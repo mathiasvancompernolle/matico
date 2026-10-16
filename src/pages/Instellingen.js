@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { Info } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
+import { SECTOR_MAP_FALLBACK, BETA_MAP_FALLBACK } from '../data/marktclassificatie';
 
 const ACCENT = '#1e3a8a';
 const inputStyle = {
@@ -183,10 +184,23 @@ function DataKwaliteitTab({ beleggingen }) {
         if (liveBeta && !manueel?.beta) localStorage.setItem(`matico_beta_${sym}`, JSON.stringify({ beta: liveBeta, timestamp: Date.now() }));
       } catch {}
 
+      // Zelfde harde fallback-tabellen als de Analyse-pagina (gedeeld via
+      // ../data/marktclassificatie). Zonder dit zou Analyse voor een bekende
+      // ticker (bv. AAPL) al een concrete sector/bèta tonen, terwijl deze
+      // pagina diezelfde ticker als "Ontbreekt" markeerde — puur omdat de
+      // live-fetch hierboven (tijdelijk) niets teruggaf. Volgorde komt
+      // overeen met wat Analyse.js effectief gebruikt: voor sector wint de
+      // harde fallback van live data, voor bèta is het net andersom.
+      const fallbackSector = SECTOR_MAP_FALLBACK[sym] || null;
+      const fallbackBeta = BETA_MAP_FALLBACK[sym] || null;
+      const sector = manueel?.sector || fallbackSector || liveSector || null;
+      const beta = manueel?.beta || liveBeta || fallbackBeta || null;
+
       nieuw[sym] = {
-        sector: manueel?.sector || liveSector || null,
-        beta: manueel?.beta || liveBeta || null,
+        sector, beta,
         manueel: !!manueel,
+        sectorBron: manueel?.sector ? 'manueel' : fallbackSector ? 'standaard' : liveSector ? 'live' : null,
+        betaBron: manueel?.beta ? 'manueel' : liveBeta ? 'live' : fallbackBeta ? 'standaard' : null,
       };
     }
     setStatussen(nieuw);
@@ -203,7 +217,14 @@ function DataKwaliteitTab({ beleggingen }) {
     // Ook opslaan in de normale caches zodat Analyse ze oppikt
     if (data.sector) localStorage.setItem(`matico_sector_${sym}`, JSON.stringify({ sector: data.sector, timestamp: Date.now() }));
     if (data.beta) localStorage.setItem(`matico_beta_${sym}`, JSON.stringify({ beta: data.beta, timestamp: Date.now() }));
-    setStatussen(prev => ({ ...prev, [sym]: { ...data, manueel: true } }));
+    setStatussen(prev => ({
+      ...prev,
+      [sym]: {
+        ...data, manueel: true,
+        sectorBron: data.sector ? 'manueel' : null,
+        betaBron: data.beta ? 'manueel' : null,
+      }
+    }));
     setOpgeslagenSym(sym);
     setTimeout(() => setOpgeslagenSym(null), 2000);
     setBewerkItem(null);
@@ -213,7 +234,9 @@ function DataKwaliteitTab({ beleggingen }) {
     localStorage.removeItem(`matico_manueel_${sym}`);
     localStorage.removeItem(`matico_sector_${sym}`);
     localStorage.removeItem(`matico_beta_${sym}`);
-    setStatussen(prev => ({ ...prev, [sym]: { sector: null, beta: null, manueel: false } }));
+    // Herbereken i.p.v. alles leeg te maken: zonder manuele waarde valt dit
+    // terug op de harde fallback-tabel of live data, net als Analyse.js doet.
+    controleerAlles();
   };
 
   if (aandelen.length === 0) {
@@ -248,7 +271,7 @@ function DataKwaliteitTab({ beleggingen }) {
 
         {/* Legenda */}
         <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
-          {[['#16a34a', '✓ Beschikbaar'], ['#f59e0b', '✎ Manueel ingevuld'], ['#dc2626', '✗ Ontbreekt']].map(([kleur, label]) => (
+          {[['#16a34a', '✓ Live opgehaald'], ['#0891b2', '📋 Standaardwaarde'], ['#f59e0b', '✎ Manueel ingevuld'], ['#dc2626', '✗ Ontbreekt']].map(([kleur, label]) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: kleur }} />
               {label}
@@ -273,8 +296,9 @@ function DataKwaliteitTab({ beleggingen }) {
             const isManueel = status?.manueel;
             const isOpgeslagen = opgeslagenSym === sym;
 
-            const sectorKleur = heeftSector ? (isManueel ? '#f59e0b' : '#16a34a') : '#dc2626';
-            const betaKleur = heeftBeta ? (isManueel ? '#f59e0b' : '#16a34a') : '#dc2626';
+            const bronKleur = (bron) => bron === 'manueel' ? '#f59e0b' : bron === 'standaard' ? '#0891b2' : bron === 'live' ? '#16a34a' : '#dc2626';
+            const sectorKleur = heeftSector ? bronKleur(status?.sectorBron) : '#dc2626';
+            const betaKleur = heeftBeta ? bronKleur(status?.betaBron) : '#dc2626';
 
             return (
               <div key={sym} style={{
