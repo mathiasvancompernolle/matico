@@ -10,7 +10,6 @@ import Instellingen from './pages/Instellingen';
 import BeleggingToevoegen from './pages/BeleggingToevoegen';
 import ImportBeleggingen from './pages/ImportBeleggingen';
 import Markten from './pages/Markten';
-import Analyseren from './pages/Analyseren';
 import EffectDetail from './pages/EffectDetail';
 import CookieConsent from './components/CookieConsent';
 import CrispChat from './components/CrispChat';
@@ -101,9 +100,6 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
           <div className="top-nav-inner">
             <button className={`top-nav-tab ${actieveSectie === 'portefeuille' ? 'actief' : ''}`} onClick={() => onSectieWissel('portefeuille')}>{t('nav_portefeuille')}</button>
             <button className={`top-nav-tab ${actieveSectie === 'markten' ? 'actief' : ''}`} onClick={() => onSectieWissel('markten')}>{t('nav_markten')}</button>
-            {gebruiker?.email?.trim().toLowerCase() === 'mathiasvancompernolle@gmail.com' && (
-              <button className={`top-nav-tab ${actieveSectie === 'analyseren' ? 'actief' : ''}`} onClick={() => onSectieWissel('analyseren')}>Analyseren</button>
-            )}
           </div>
         </div>
       )}
@@ -364,10 +360,9 @@ function MobielFavorietenPagina({ onSelectEffect }) {
 // ── Mobiel: "Profiel" als volwaardige pagina — bundelt wat op desktop
 // verspreid zit over de profiel-dropdown + portfolio-wisselaar + Belastingen
 // (dat normaal via de sidebar-navigatie loopt, die op mobiel niet rendert). ──
-function MobielProfielPagina({ gebruiker, onNavigeer, onAnalyseren }) {
+function MobielProfielPagina({ gebruiker, onNavigeer }) {
   const { t, portfolios, actiefPortfolioId, wisselPortfolio } = useApp();
   const initialen = `${gebruiker?.voornaam?.[0] || ''}${gebruiker?.achternaam?.[0] || ''}`.toUpperCase() || 'M';
-  const isAdmin = gebruiker?.email?.trim().toLowerCase() === 'mathiasvancompernolle@gmail.com';
 
   const menuItems = [
     { label: t('profiel_mijn_profiel'), sub: t('profiel_mijn_profiel_sub'), route: 'mijn-profiel' },
@@ -413,12 +408,6 @@ function MobielProfielPagina({ gebruiker, onNavigeer, onAnalyseren }) {
             <ChevronRight size={16} color="var(--text-muted)" />
           </div>
         ))}
-        {isAdmin && (
-          <div onClick={onAnalyseren} style={{ padding: '13px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderTop: '1px solid var(--border-light)' }}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>Analyseren</div>
-            <ChevronRight size={16} color="var(--text-muted)" />
-          </div>
-        )}
       </div>
 
       <div onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }}
@@ -472,7 +461,7 @@ function AppInner() {
 
   const naarHome = () => {
     if (mobielWeergave !== 'normaal') { setMobielWeergave('normaal'); return; }
-    if (actieveSectie === 'markten' || actieveSectie === 'analyseren') {
+    if (actieveSectie === 'markten') {
       setActieveSectie('portefeuille');
       return;
     }
@@ -519,10 +508,9 @@ function AppInner() {
   const renderPage = () => {
     if (isMobiel && mobielWeergave === 'zoeken') return <MobielZoekenPagina onSelectEffect={setEffectDetail} />;
     if (isMobiel && mobielWeergave === 'favorieten') return <MobielFavorietenPagina onSelectEffect={setEffectDetail} />;
-    if (isMobiel && mobielWeergave === 'profiel') return <MobielProfielPagina gebruiker={gebruiker} onNavigeer={navigeerNaar} onAnalyseren={() => handleSectieWissel('analyseren')} />;
+    if (isMobiel && mobielWeergave === 'profiel') return <MobielProfielPagina gebruiker={gebruiker} onNavigeer={navigeerNaar} />;
     if (effectDetail) return <EffectDetail effect={effectDetail} onTerug={() => setEffectDetail(null)} />;
     if (actieveSectie === 'markten') return <Markten onSelectEffect={setEffectDetail} />;
-    if (actieveSectie === 'analyseren') return <Analyseren />;
     if (importOpen) return <ImportBeleggingen onClose={() => setImportOpen(false)} />;
     if (toevoegenOpen) return <BeleggingToevoegen onClose={() => setToevoegenOpen(false)} />;
     const openToevoegen = () => setToevoegenOpen(true);
