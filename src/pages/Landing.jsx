@@ -99,7 +99,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
           <li><span onClick={onGids} style={{ cursor:'pointer',color:'#64748b',fontSize:14,fontWeight:500 }}>Leren beleggen</span></li>
         </ul>
         <div style={{ display:'flex',gap:10,alignItems:'center' }}>
-          <button onClick={() => onNaarApp('login')} className="l-btn l-hide-mobile" style={{ background:'none',color:'#64748b',fontSize:14 }}>Inloggen</button>
+          <button onClick={() => onNaarApp('login')} className="l-btn" style={{ background:'none',color:'#64748b',fontSize:14,padding:'8px 6px' }}>Inloggen</button>
           <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ fontSize:14,padding:'9px 18px' }}>{CTA_TEKST}</button>
         </div>
       </nav>
@@ -110,8 +110,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
           {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
             <a key={i} href={h} onClick={() => setMenuOpen(false)} style={{ textDecoration:'none',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px',borderBottom:'1px solid #f1f5f9' }}>{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a>
           ))}
-          <span onClick={() => { setMenuOpen(false); onGids(); }} style={{ cursor:'pointer',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px',borderBottom:'1px solid #f1f5f9' }}>Leren beleggen</span>
-          <span onClick={() => { setMenuOpen(false); onNaarApp('login'); }} style={{ cursor:'pointer',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px' }}>Inloggen</span>
+          <span onClick={() => { setMenuOpen(false); onGids(); }} style={{ cursor:'pointer',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px' }}>Leren beleggen</span>
         </div>
       )}
 
