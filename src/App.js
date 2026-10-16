@@ -308,7 +308,7 @@ function MobielZoekenPagina({ onSelectEffect }) {
     <div style={{ padding: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
         <Search size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
-        <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Zoeken naam/ISIN..." style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--text-primary)', width: '100%', fontFamily: 'inherit' }} />
+        <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Zoeken naam/ISIN..." style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 16, color: 'var(--text-primary)', width: '100%', fontFamily: 'inherit' }} />
       </div>
       {query.length < 2 ? (
         <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Typ minstens 2 tekens om te zoeken</div>
@@ -318,8 +318,8 @@ function MobielZoekenPagina({ onSelectEffect }) {
         <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Geen resultaten</div>
       ) : (
         resultaten.map((r, i) => (
-          <div key={i} onClick={() => onSelectEffect && onSelectEffect(r)}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', cursor: 'pointer', borderBottom: i < resultaten.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+          <div key={i} onMouseDown={e => e.preventDefault()} onClick={() => onSelectEffect && onSelectEffect(r)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', borderBottom: i < resultaten.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.naam}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{r.symbol}</div>
