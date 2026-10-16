@@ -527,6 +527,11 @@ function AppInner() {
     if (weergave === 'portefeuille') {
       setMobielWeergave('normaal');
       setActieveSectie('portefeuille');
+      // Zelfde gedrag als de Kapitas-homeknop in de topbalk: altijd terug
+      // naar Overzicht, ongeacht welke subtab (Beleggingen/Analyse/Dividend)
+      // nog actief stond — anders "werkte" deze knop soms niet, omdat hij
+      // je gewoon op dezelfde subtab liet staan i.p.v. naar Overzicht te gaan.
+      setActiveNav('overzicht');
     } else if (weergave === 'markten') {
       setMobielWeergave('normaal');
       setActieveSectie('markten');
