@@ -86,7 +86,10 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
       `}</style>
 
       {/* ── NAV ── */}
-      <nav style={{ position:'sticky',top:0,zIndex:100,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(12px)',borderBottom:'1px solid #e2e8f0',padding:'0 24px',height:64,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+      {/* height/paddingTop houden rekening met de safe-area (statusbalk) op
+          mobiel: anders overlapt "Kapitas"/"Start gratis" met de klok en
+          batterij-iconen wanneer de pagina als beginscherm-app draait. */}
+      <nav style={{ position:'sticky',top:0,zIndex:100,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(12px)',borderBottom:'1px solid #e2e8f0',paddingLeft:24,paddingRight:24,paddingTop:'env(safe-area-inset-top, 0px)',height:'calc(64px + env(safe-area-inset-top, 0px))',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
         <div style={{ display:'flex',gap:14,alignItems:'center' }}>
           <img src={kapitasLogo} alt="Kapitas" style={{ height: 40, width: 'auto', display: 'block' }} />
           <button
@@ -113,10 +116,10 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
 
       {/* ── MOBIEL MENU ── */}
       {menuOpen && (
-        <div onClick={() => setMenuOpen(false)} style={{ position:'fixed',top:64,left:0,right:0,bottom:0,zIndex:98,background:'rgba(15,23,42,0.4)' }} />
+        <div onClick={() => setMenuOpen(false)} style={{ position:'fixed',top:'calc(64px + env(safe-area-inset-top, 0px))',left:0,right:0,bottom:0,zIndex:98,background:'rgba(15,23,42,0.4)' }} />
       )}
       {menuOpen && (
-        <div style={{ position:'fixed',top:64,left:0,right:0,zIndex:99,background:'white',borderBottom:'1px solid #e2e8f0',padding:'8px 24px 16px',display:'flex',flexDirection:'column',boxShadow:'0 12px 32px rgba(0,0,0,0.1)' }}>
+        <div style={{ position:'fixed',top:'calc(64px + env(safe-area-inset-top, 0px))',left:0,right:0,zIndex:99,background:'white',borderBottom:'1px solid #e2e8f0',padding:'8px 24px 16px',display:'flex',flexDirection:'column',boxShadow:'0 12px 32px rgba(0,0,0,0.1)' }}>
           {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
             <a key={i} href={h} onClick={() => setMenuOpen(false)} style={{ textDecoration:'none',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px',borderBottom:'1px solid #f1f5f9' }}>{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a>
           ))}
