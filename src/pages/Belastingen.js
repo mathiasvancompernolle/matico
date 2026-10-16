@@ -227,7 +227,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
               Resterende vrijstelling
             </div>
             <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-              €{restVrijstelling.toLocaleString('nl-BE', { minimumFractionDigits: 2 })}
+              €{fmt(restVrijstelling)}
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
               Totale vrijstelling {jaar}: €{VRIJSTELLING_JAAR.toLocaleString('nl-BE')}
