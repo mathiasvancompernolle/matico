@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 
 const OPSLAG_SLEUTEL = 'matico_cookie_toestemming'; // 'geaccepteerd' | 'geweigerd'
 const HEROPEN_EVENT = 'matico:heropen-cookiebanner';
+// Zelfde breakpoint als de rest van de app (TopNav/AppInner/Overzicht).
+const MOBIEL_BREEDTE = 768;
 
 export function haalCookieToestemming() {
   try { return localStorage.getItem(OPSLAG_SLEUTEL); } catch (e) { return null; }
@@ -19,17 +21,26 @@ export function heropenCookieBanner() {
 // chatwidget) worden pas geladen NA expliciete toestemming. "Weigeren" is
 // een even prominente keuze als "Accepteren" (vereist onder GDPR — geen
 // pre-aangevinkte of verborgen weigerknop).
+//
+// Deze banner bestaat uitsluitend om toestemming te vragen voor Crisp (de
+// enige niet-noodzakelijke cookie in de app). Crisp wordt op mobiel nooit
+// geladen (zie CrispChat.js — de knop zit daar toch onbereikbaar achter de
+// vaste onderbalk), dus op mobiel is er niets om toestemming voor te vragen
+// en tonen we de banner gewoon niet.
 export default function CookieConsent({ onWijziging }) {
   const [zichtbaar, setZichtbaar] = useState(false);
 
+  const isMobielScherm = () => typeof window !== 'undefined' && window.innerWidth < MOBIEL_BREEDTE;
+
   useEffect(() => {
+    if (isMobielScherm()) return; // geen Crisp op mobiel → geen banner nodig
     const huidige = haalCookieToestemming();
     if (!huidige) setZichtbaar(true);
     else onWijziging && onWijziging(huidige);
   }, [onWijziging]);
 
   useEffect(() => {
-    const handler = () => setZichtbaar(true);
+    const handler = () => { if (!isMobielScherm()) setZichtbaar(true); };
     window.addEventListener(HEROPEN_EVENT, handler);
     return () => window.removeEventListener(HEROPEN_EVENT, handler);
   }, []);
