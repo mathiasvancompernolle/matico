@@ -66,6 +66,10 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
         .l-faq-a { padding:0 20px 16px;font-size:14px;color:#64748b;line-height:1.7; }
         .l-mockup-bar { flex:1;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#1e3a8a,#3b5998);opacity:0.8; }
         .l-show-mobile{display:none;}
+        .l-nav-cta-btn{white-space:nowrap;}
+        @media(max-width:480px){
+          .l-nav-cta-btn{font-size:12px!important;padding:8px 12px!important;}
+        }
         .l-mockup-screen{display:grid;grid-template-columns:220px 1fr;height:400px;background:#f8fafc;}
         .l-mockup-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
         .l-mockup-bottom{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;}
@@ -100,11 +104,17 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
         </ul>
         <div style={{ display:'flex',gap:10,alignItems:'center' }}>
           <button onClick={() => onNaarApp('login')} className="l-btn" style={{ background:'none',color:'#64748b',fontSize:14,padding:'8px 6px' }}>Inloggen</button>
-          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ fontSize:14,padding:'9px 18px' }}>{CTA_TEKST}</button>
+          <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary l-nav-cta-btn" style={{ fontSize:14,padding:'9px 18px' }}>
+            <span className="l-hide-mobile">{CTA_TEKST}</span>
+            <span className="l-show-mobile">Start gratis →</span>
+          </button>
         </div>
       </nav>
 
       {/* ── MOBIEL MENU ── */}
+      {menuOpen && (
+        <div onClick={() => setMenuOpen(false)} style={{ position:'fixed',top:64,left:0,right:0,bottom:0,zIndex:98,background:'rgba(15,23,42,0.4)' }} />
+      )}
       {menuOpen && (
         <div style={{ position:'fixed',top:64,left:0,right:0,zIndex:99,background:'white',borderBottom:'1px solid #e2e8f0',padding:'8px 24px 16px',display:'flex',flexDirection:'column',boxShadow:'0 12px 32px rgba(0,0,0,0.1)' }}>
           {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
