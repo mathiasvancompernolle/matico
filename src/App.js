@@ -85,7 +85,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
     <nav className="top-nav" style={{ display: 'flex', alignItems: 'center', padding: '0 16px', gap: 8 }}>
       {/* Logo als grote home-knop */}
       <div onClick={() => { onSectieWissel('portefeuille'); navigeerNaar('overzicht'); }}
-        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 16, flexShrink: 0, height: '100%', borderRadius: 8, transition: 'background 0.15s' }}
+        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: isMobiel ? 8 : 16, flexShrink: 0, height: '100%', borderRadius: 8, transition: 'background 0.15s' }}
         onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
       >
@@ -101,7 +101,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
         <div ref={portfolioRef} style={{ position: 'relative', flexShrink: 0 }}>
           <button
             onClick={() => setPortfolioOpen(v => !v)}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, background: portfolioOpen ? '#eef1f8' : 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', maxWidth: 110 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, background: portfolioOpen ? '#eef1f8' : 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', maxWidth: 70 }}
           >
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {actiefPortfolio?.naam || 'Portfolio'}
@@ -125,7 +125,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
       )}
 
       {/* Tabs */}
-      <div className="top-nav-inner" style={{ flex: 1, overflowX: 'auto' }}>
+      <div className="top-nav-inner" style={{ flex: 1, overflowX: 'auto', flexShrink: isMobiel ? 0 : 1, minWidth: isMobiel ? 130 : undefined }}>
         <button className={`top-nav-tab ${actieveSectie === 'portefeuille' ? 'actief' : ''}`} onClick={() => onSectieWissel('portefeuille')}>{t('nav_portefeuille')}</button>
         <button className={`top-nav-tab ${actieveSectie === 'markten' ? 'actief' : ''}`} onClick={() => onSectieWissel('markten')}>{t('nav_markten')}</button>
         {gebruiker?.email?.trim().toLowerCase() === 'mathiasvancompernolle@gmail.com' && (
@@ -134,7 +134,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
       </div>
 
       {/* Rechter iconen */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
 
         {/* Zoekbalk — op mobiel enkel een icoon, dat een volledige-breedte
             overlay opent (in plaats van altijd een vast 220px-veld te tonen,
