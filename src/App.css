@@ -772,24 +772,30 @@ body {
   /* ── Main content ── */
   .app-main {
     margin-left: 0 !important;
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); /* ruimte voor bottom nav + veilige zone */
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); /* ruimte voor de zwevende onderbalk + veilige zone */
     width: 100%;
   }
 
   /* ── Nieuwe mobiele onderbalk: Portefeuille/Markten/Zoeken/Favorieten/
       Profiel — altijd zichtbaar, ongeacht sectie (i.t.t. de oude sidebar-
       als-bottombar hierboven, die enkel binnen "Portefeuille" verscheen en
-      Markten/Analyseren daardoor moeilijk bereikbaar maakte). ── */
+      Markten/Analyseren daardoor moeilijk bereikbaar maakte). Zweeft los
+      van de rand (zoals de onderbalk in de Facebook-app) en schuift weg
+      bij scrollen naar onder, terug tevoorschijn bij scrollen naar boven. ── */
   .mobiel-bottom-bar {
     position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: calc(60px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    left: 14px; right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    height: 60px;
+    border-radius: 999px;
     display: flex;
     background: var(--bg-white);
-    border-top: 1px solid var(--border);
-    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.14);
     z-index: 100;
+    transition: transform 0.25s ease;
+  }
+  .mobiel-bottom-bar.verborgen {
+    transform: translateY(calc(100% + 24px + env(safe-area-inset-bottom, 0px)));
   }
   .mobiel-bottom-bar-item {
     flex: 1;

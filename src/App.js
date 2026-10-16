@@ -442,12 +442,41 @@ function AppInner() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // ── Zwevende onderbalk (mobiel): verbergt bij scrollen naar onder, komt
+  // terug bij scrollen naar boven — zelfde gedrag als bv. de Facebook-app.
+  const appMainRef = React.useRef(null);
+  const laatsteScrollY = React.useRef(0);
+  const [bottomBarZichtbaar, setBottomBarZichtbaar] = useState(true);
+
+  React.useEffect(() => {
+    if (!isMobiel) return;
+    const main = appMainRef.current;
+    if (!main) return;
+    laatsteScrollY.current = main.scrollTop;
+    const DREMPEL = 6; // px, voorkomt flikkeren bij micro-scrolls
+    const onScroll = () => {
+      const huidige = main.scrollTop;
+      const verschil = huidige - laatsteScrollY.current;
+      if (huidige <= 10) {
+        setBottomBarZichtbaar(true);
+      } else if (verschil > DREMPEL) {
+        setBottomBarZichtbaar(false); // naar onder scrollen → verbergen
+      } else if (verschil < -DREMPEL) {
+        setBottomBarZichtbaar(true); // naar boven scrollen → tonen
+      }
+      laatsteScrollY.current = huidige;
+    };
+    main.addEventListener('scroll', onScroll, { passive: true });
+    return () => main.removeEventListener('scroll', onScroll);
+  }, [isMobiel]);
+
   if (!gebruiker.voornaam) {
     return <NaamInstellen />;
   }
 
   const scrollNaarBoven = () => {
-    document.querySelector('.app-main')?.scrollTo({ top: 0, behavior: 'auto' });
+    appMainRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    setBottomBarZichtbaar(true);
   };
 
   const navigeerNaar = (doel) => {
@@ -566,7 +595,7 @@ function AppInner() {
             onNavigate={navigeerNaar}
           />
         )}
-        <main className="app-main">
+        <main className="app-main" ref={appMainRef}>
           {toonMobielSubtabs && (
             <div className="mobiel-subtabs">
               {subtabItems.map(({ key, label }) => (
@@ -580,7 +609,7 @@ function AppInner() {
         </main>
       </div>
       {isMobiel && (
-        <nav className="mobiel-bottom-bar">
+        <nav className={`mobiel-bottom-bar ${bottomBarZichtbaar ? '' : 'verborgen'}`}>
           {bottomBarItems.map(({ key, label, icon: Icon }) => (
             <button key={key} className={`mobiel-bottom-bar-item ${mobielActieveTab === key ? 'actief' : ''}`} onClick={() => kiesMobielWeergave(key)}>
               <Icon size={20} strokeWidth={2} />
