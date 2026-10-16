@@ -541,6 +541,38 @@ function AppInner() {
     scrollNaarBoven();
   };
 
+  // ── Swipen tussen Overzicht/Beleggingen/Analyse/Dividend (mobiel) ──────
+  // Vervangt de vroegere tabbalk: die nam ruimte in als "tweede balk
+  // vanboven" en voegde weinig toe. Een horizontale swipe wisselt nu van
+  // subtab; de puntjes eronder tonen hoeveel subtabs er zijn en op welke
+  // je zit (zelfde idee als een paginaindicator).
+  const subtabSwipeStart = React.useRef(null);
+
+  const gaNaarSubtab = (index) => {
+    const clamped = Math.max(0, Math.min(subtabItems.length - 1, index));
+    if (subtabItems[clamped].key !== activeNav) navigeerNaar(subtabItems[clamped].key);
+  };
+
+  const onSubtabTouchStart = (e) => {
+    if (!toonMobielSubtabs) return;
+    const t = e.touches[0];
+    subtabSwipeStart.current = { x: t.clientX, y: t.clientY };
+  };
+
+  const onSubtabTouchEnd = (e) => {
+    if (!toonMobielSubtabs || !subtabSwipeStart.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - subtabSwipeStart.current.x;
+    const dy = t.clientY - subtabSwipeStart.current.y;
+    subtabSwipeStart.current = null;
+    const DREMPEL = 50; // px — moet duidelijk een horizontale swipe zijn
+    if (Math.abs(dx) > DREMPEL && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      const huidigeIndex = subtabItems.findIndex(s => s.key === activeNav);
+      if (dx < 0) gaNaarSubtab(huidigeIndex + 1); // naar links swipen → volgende
+      else gaNaarSubtab(huidigeIndex - 1); // naar rechts swipen → vorige
+    }
+  };
+
   const mobielActieveTab = mobielWeergave !== 'normaal'
     ? mobielWeergave
     : (actieveSectie === 'markten' ? 'markten' : 'portefeuille');
@@ -606,13 +638,11 @@ function AppInner() {
             onNavigate={navigeerNaar}
           />
         )}
-        <main className="app-main" ref={appMainRef}>
+        <main className="app-main" ref={appMainRef} onTouchStart={onSubtabTouchStart} onTouchEnd={onSubtabTouchEnd}>
           {toonMobielSubtabs && (
-            <div className="mobiel-subtabs">
+            <div className="mobiel-subtab-dots">
               {subtabItems.map(({ key, label }) => (
-                <button key={key} className={`mobiel-subtab ${activeNav === key ? 'actief' : ''}`} onClick={() => navigeerNaar(key)}>
-                  {label}
-                </button>
+                <button key={key} aria-label={label} className={`mobiel-subtab-dot ${activeNav === key ? 'actief' : ''}`} onClick={() => navigeerNaar(key)} />
               ))}
             </div>
           )}

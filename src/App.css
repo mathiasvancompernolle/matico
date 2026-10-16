@@ -816,33 +816,45 @@ body {
   .mobiel-bottom-bar-item.actief { color: var(--accent); }
   .mobiel-bottom-bar-item svg { width: 20px; height: 20px; }
 
-  /* ── Subtabs-rij binnen "Portefeuille" (Overzicht/Beleggingen/Analyse/
-      Dividend) — vervangt de oude sidebar-navigatie op mobiel. ── */
-  .mobiel-subtabs {
+  /* ── Paginaindicator binnen "Portefeuille" (Overzicht/Beleggingen/Analyse/
+      Dividend) op mobiel: je wisselt tussen deze 4 met een horizontale
+      swipe (zie App.js), de puntjes tonen enkel hoeveel er zijn en welke
+      actief is — vervangt de vroegere tabbalk, die als "tweede balk
+      vanboven" ruimte innam. Blijven ook tikbaar voor wie liever niet
+      swipet. ── */
+  .mobiel-subtab-dots {
     display: flex;
-    gap: 4px;
-    padding: 6px 14px;
-    overflow-x: auto;
-    border-bottom: 1px solid var(--border);
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 0 8px;
     background: var(--bg-white);
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    border-bottom: 1px solid var(--border);
   }
-  .mobiel-subtabs::-webkit-scrollbar { display: none; }
-  .mobiel-subtab {
-    flex-shrink: 0;
-    background: none;
+  .mobiel-subtab-dot {
+    width: 24px;
+    height: 24px;
+    padding: 0;
     border: none;
+    background: none;
     cursor: pointer;
-    padding: 7px 14px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    border-radius: var(--radius-sm);
-    white-space: nowrap;
-    font-family: 'DM Sans', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  .mobiel-subtab.actief { color: var(--accent); font-weight: 600; background: var(--accent-bg); }
+  .mobiel-subtab-dot::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    transition: width 0.2s ease, background 0.2s ease;
+  }
+  .mobiel-subtab-dot.actief::before {
+    width: 18px;
+    background: var(--accent);
+  }
 
   /* ── Crisp-chatwidget optillen boven de nieuwe onderbalk: anders overlapt
       de ronde chatknop rechtsonder het "Profiel"-icoon en kan je er niet
