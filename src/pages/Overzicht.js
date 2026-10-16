@@ -927,7 +927,14 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       // "HH:MM"-labels als op desktop — minder ticks vragen voorkomt dat ze
       // over elkaar heen komen te staan.
       const doelTicks = isMobielScherm ? 5 : 16;
-      const opties = [10, 30, 60];
+      // Tot 60 min was het grofste dat deze lijst kende — voor een volledige
+      // handelsdag (~12-13u) kom je daarmee nooit onder de mobiele doelTicks
+      // van 5 uit (780min/60u ≈ 13 ticks), dus viel het altijd terug op
+      // uurlijkse labels die op een smal scherm over elkaar heen vallen.
+      // 120/180/240 min toegevoegd zodat ook lange dagspannen genoeg kunnen
+      // uitdunnen op mobiel (desktop kiest hier niets van, want 60 min
+      // voldoet daar al aan doelTicks=16).
+      const opties = [10, 30, 60, 120, 180, 240];
       let stap = opties[opties.length - 1];
       for (const optie of opties) {
         if (spanMinuten / optie <= doelTicks) { stap = optie; break; }
