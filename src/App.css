@@ -978,13 +978,18 @@ body {
   }
 
   /* ── Bovenbalk (TopNav) compacter op mobiel ── */
+  /* De witte achtergrond van de topbalk moet ook doorlopen tot onder de
+      statusbalk (klok/batterij) — anders piept de grijze app-achtergrond
+      daar nog door. box-sizing: border-box zodat de safe-area bovenop de
+      56px komt i.p.v. de inhoud erdoor te verdrukken. */
   .top-nav {
-    height: 56px !important;
-    padding: 0 10px !important;
+    height: calc(56px + env(safe-area-inset-top, 0px)) !important;
+    padding: env(safe-area-inset-top, 0px) 10px 0 !important;
     gap: 4px !important;
+    box-sizing: border-box;
   }
   .app-wrapper .app-layout {
-    height: calc(100vh - 56px) !important;
+    height: calc(100vh - 56px - env(safe-area-inset-top, 0px)) !important;
   }
   .top-nav-inner {
     gap: 0 !important;
