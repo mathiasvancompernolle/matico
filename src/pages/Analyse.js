@@ -774,12 +774,12 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     if (aantalPosities === 1) {
       tips.push(`Je hebt slechts 1 positie. Voeg meer beleggingen toe voor betere spreiding.`);
     } else if (aantalPosities === 2 && aandelenPct > 50) {
-      tips.push(`Met slechts 2 posities is je portfolio weinig gespreid. Overweeg een breed ETF toe te voegen.`);
+      tips.push(`Met slechts 2 posities is je portfolio weinig gespreid. Overweeg een brede ETF toe te voegen.`);
     }
 
     // 6. Geen ETF in portfolio
     if (!beleggingen.some(b => b.type === 'etf') && aantalPosities < 5) {
-      tips.push(`Je portfolio bestaat enkel uit individuele aandelen. Een breed ETF zoals VWCE kan eenvoudig voor extra spreiding zorgen.`);
+      tips.push(`Je portfolio bestaat enkel uit individuele aandelen. Een brede ETF zoals VWCE kan eenvoudig voor extra spreiding zorgen.`);
     }
 
     // 7. Alles goed — positieve tip

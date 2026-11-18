@@ -1005,7 +1005,7 @@ const TABEL_UITLEG = {
   populariteit: 'Gerangschikt op gemiddeld handelsvolume van de afgelopen 3 maanden. Meest verhandelde Belgische aandelen bovenaan, ongeacht of ze stijgen of dalen.',
   stijgers1M:   'De 5 Belgische aandelen met de hoogste procentuele stijging over de afgelopen maand.',
   dalers1M:     'De 5 Belgische aandelen met de grootste procentuele daling over de afgelopen maand.',
-  consensus:    'Aandelen met het hoogste verwachte rendement op basis van het gemiddelde analistendoelprijzen (koersdoel vs. huidige koers).',
+  consensus:    'Aandelen met het hoogste verwachte rendement op basis van het gemiddelde koersdoel van analisten (koersdoel vs. huidige koers).',
   omzetgroei:   'Aandelen met de hoogste omzetgroei over het afgelopen jaar, gebaseerd op de meest recente financiële rapportage.',
 };
 

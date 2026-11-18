@@ -71,7 +71,7 @@ export default function Instellingen({ sidebarCollapsed, onToggleSidebar }) {
             <div className="card">
               <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Over Kapitas</h3>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                Kapitas is je persoonlijke portfolio tracker. Real-time koersen via Finnhub.io, AI-analyses via Claude (Anthropic). Alle data wordt lokaal in je browser opgeslagen.
+                Kapitas is je persoonlijke portfolio tracker. Koersen via Yahoo Finance en Finnhub, AI-analyses via Claude (Anthropic). Je portefeuille wordt veilig aan je account gekoppeld, zodat je ze op al je toestellen ziet.
               </p>
               <div style={{ marginTop: 16, padding: 12, background: 'var(--bg)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted)' }}>
                 Versie 1.0.0 · © 2026 Kapitas

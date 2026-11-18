@@ -55,10 +55,21 @@ function setCached(key, data, ttl) {
   _cache[key] = { data, ts: Date.now(), ttl };
 }
 
-// Cache key op basis van volledige query string
+// Cache key op basis van volledige query string — plus de body bij POST.
+// Bij 'ai-analyse' zit het symbool in de body, niet in de query string; zonder
+// de body in de sleutel kreeg iedereen 30 min lang de analyse van het eerst
+// opgevraagde aandeel te zien.
 function cacheKey(req) {
   const q = req.query;
-  return Object.keys(q).sort().map(k => `${k}=${q[k]}`).join('&');
+  let key = Object.keys(q).sort().map(k => `${k}=${q[k]}`).join('&');
+  if (req.method === 'POST') {
+    let body = req.body;
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
+    if (body && typeof body === 'object') {
+      key += '|' + Object.keys(body).sort().map(k => `${k}=${body[k]}`).join('&');
+    }
+  }
+  return key;
 }
 
 module.exports = async function handler(req, res) {

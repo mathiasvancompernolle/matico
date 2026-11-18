@@ -2,26 +2,71 @@ import React, { useState, useEffect, useRef } from 'react';
 
 const CTA_TEKST = 'Start 14 dagen gratis →';
 
+const minderBeweging = () =>
+  typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Telt op van 0 tot de eindwaarde zodra het getal in beeld komt.
+// Niet-numerieke waarden (bv. "Live") worden gewoon getoond.
+function TelOp({ waarde }) {
+  const match = /^(\d+)(.*)$/.exec(waarde);
+  const doel = match ? parseInt(match[1], 10) : null;
+  const achtervoegsel = match ? match[2] : '';
+  const [getal, setGetal] = useState(doel === null || minderBeweging() ? doel : 0);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (doel === null || minderBeweging() || !ref.current) return;
+    let frame;
+    const observer = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      observer.disconnect();
+      const start = performance.now();
+      const duur = 1200;
+      const stap = (nu) => {
+        const t = Math.min(1, (nu - start) / duur);
+        setGetal(Math.round(doel * (1 - Math.pow(1 - t, 3))));
+        if (t < 1) frame = requestAnimationFrame(stap);
+      };
+      frame = requestAnimationFrame(stap);
+    }, { threshold: 0.5 });
+    observer.observe(ref.current);
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [doel]);
+
+  return <span ref={ref}>{doel === null ? waarde : `${getal}${achtervoegsel}`}</span>;
+}
+
 export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
   const [faqOpen, setFaqOpen] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [gescrold, setGescrold] = useState(false);
 
+  // Elementen met .l-animate schuiven zachtjes in beeld. Via een CSS-klasse
+  // (niet via inline style), zodat hover-effecten op de kaarten blijven werken.
   useEffect(() => {
+    const elementen = document.querySelectorAll('.l-animate');
+    if (minderBeweging() || !('IntersectionObserver' in window)) {
+      elementen.forEach(el => el.classList.add('l-zichtbaar'));
+      return;
+    }
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(e => {
         if (e.isIntersecting) {
-          e.target.style.opacity = '1';
-          e.target.style.transform = 'translateY(0)';
+          e.target.classList.add('l-zichtbaar');
+          observer.unobserve(e.target);
         }
       });
-    }, { threshold: 0.1 });
-    document.querySelectorAll('.l-animate').forEach(el => {
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(24px)';
-      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-      observer.observe(el);
-    });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    elementen.forEach(el => observer.observe(el));
     return () => observer.disconnect();
+  }, []);
+
+  // Schaduw onder de navigatiebalk zodra je naar beneden scrolt
+  useEffect(() => {
+    const opScroll = () => setGescrold(window.scrollY > 8);
+    opScroll();
+    window.addEventListener('scroll', opScroll, { passive: true });
+    return () => window.removeEventListener('scroll', opScroll);
   }, []);
 
   const toggleFaq = (i) => setFaqOpen(faqOpen === i ? null : i);
@@ -32,13 +77,13 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
     ['Werkt Kapitas met mijn broker (Saxo, Bolero, Degiro)?',
      'Ja! Kapitas werkt met alle Belgische en Europese brokers. Je voert je posities manueel in met aankoopprijs en datum. Automatische koppeling via broker-API is in ontwikkeling.'],
     ['Zijn de belastingberekeningen correct en up-to-date?',
-     'De belastingregels zijn gebaseerd op de Belgische fiscale wetgeving voor aanslagjaar 2025-2026, inclusief de nieuwe meerwaardebelasting van 10%. Let op: Kapitas biedt geen fiscaal advies.'],
+     'De berekeningen volgen de Belgische fiscale regels voor 2026, inclusief de nieuwe meerwaardebelasting van 10%. Wijzigt de wetgeving, dan passen we Kapitas aan. Let op: de berekeningen zijn indicatief, Kapitas biedt geen fiscaal advies.'],
     ['Kan ik annuleren wanneer ik wil?',
      'Ja, je kan je abonnement op elk moment opzeggen. Je behoudt toegang tot het einde van de betaalde periode. Geen verborgen kosten of annuleringsvergoedingen.'],
     ['Hoe nauwkeurig zijn de live koersen?',
-     'Koersen worden live bijgewerkt tijdens beursuren. Europese beurzen worden elke minuut bijgewerkt. Buiten beursuren tonen we de laatste slotkoers.'],
+     'Tijdens beursuren worden de koersen elke minuut ververst. Afhankelijk van de beurs kunnen ze tot 15 minuten vertraagd zijn, zoals bij de meeste gratis koersbronnen. Buiten beursuren tonen we de laatste slotkoers.'],
     ['Is er een mobiele app?',
-     'Kapitas is volledig mobiel-responsive en werkt uitstekend in je mobiele browser. Een native iOS en Android app is gepland voor later dit jaar.'],
+     'Kapitas werkt volledig in de browser van je gsm. Je kan Kapitas ook als app op je beginscherm zetten: via "Deel" → "Zet op beginscherm" (iPhone) of het menu → "Toevoegen aan startscherm" (Android).'],
   ];
 
   return (
@@ -60,10 +105,51 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
         .l-pricing-popular { border:2px solid #1e3a8a;box-shadow:0 0 0 4px rgba(30,58,138,0.08); }
         .l-check { color:#22c55e;font-size:15px;flex-shrink:0; }
         .l-cross { color:#cbd5e1;font-size:15px;flex-shrink:0; }
-        .l-faq-item { background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:10px;overflow:hidden; }
-        .l-faq-q { padding:18px 20px;font-size:15px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none; }
+        .l-faq-item { background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:10px;overflow:hidden;transition:border-color 0.2s,box-shadow 0.2s; }
+        .l-faq-item:hover { border-color:#c7d2fe; }
+        .l-faq-item.l-faq-open { border-color:#1e3a8a;box-shadow:0 8px 24px rgba(30,58,138,0.08); }
+        .l-faq-q { width:100%;background:none;border:none;text-align:left;font-family:inherit;color:inherit;padding:18px 20px;font-size:15px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none; }
+        .l-faq-q:focus-visible { outline:2px solid #1e3a8a;outline-offset:-2px;border-radius:12px; }
+        .l-faq-icoon { font-size:20px;color:#1e3a8a;flex-shrink:0;margin-left:12px;transition:transform 0.3s ease;line-height:1; }
+        .l-faq-open .l-faq-icoon { transform:rotate(45deg); }
+        .l-faq-wrap { display:grid;grid-template-rows:0fr;transition:grid-template-rows 0.3s ease; }
+        .l-faq-open .l-faq-wrap { grid-template-rows:1fr; }
+        .l-faq-wrap > div { overflow:hidden; }
         .l-faq-a { padding:0 20px 16px;font-size:14px;color:#64748b;line-height:1.7; }
-        .l-mockup-bar { flex:1;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#1e3a8a,#3b5998);opacity:0.8; }
+        .l-mockup-bar { flex:1;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#1e3a8a,#3b5998);opacity:0.8;transform-origin:bottom;animation:l-groei 0.8s cubic-bezier(.2,.8,.2,1) both; }
+
+        /* ── Effecten ── */
+        html { scroll-behavior:smooth; }
+        section[id] { scroll-margin-top:80px; }
+        .l-nav { transition:box-shadow 0.25s ease, background 0.25s ease; }
+        .l-nav.l-nav-gescrold { box-shadow:0 6px 24px rgba(15,23,42,0.08);background:rgba(255,255,255,0.98)!important; }
+        .l-nav-link { position:relative;text-decoration:none;color:#64748b;font-size:14px;font-weight:500;transition:color 0.2s;background:none;border:none;padding:0;cursor:pointer;font-family:inherit; }
+        .l-nav-link::after { content:'';position:absolute;left:0;right:0;bottom:-4px;height:2px;background:#1e3a8a;border-radius:2px;transform:scaleX(0);transform-origin:left;transition:transform 0.25s ease; }
+        .l-nav-link:hover { color:#1e3a8a; }
+        .l-nav-link:hover::after { transform:scaleX(1); }
+        .l-animate { opacity:0;transform:translateY(24px);transition:opacity 0.6s ease, transform 0.6s cubic-bezier(.2,.8,.2,1);transition-delay:var(--vertraging,0s); }
+        .l-animate.l-zichtbaar { opacity:1;transform:none; }
+        .l-feature-card.l-zichtbaar { transition:opacity 0.6s ease, transform 0.25s ease, box-shadow 0.25s ease; }
+        .l-feature-card.l-zichtbaar:hover { transform:translateY(-6px);box-shadow:0 20px 60px rgba(30,58,138,0.12);border-color:#c7d2fe; }
+        .l-feature-icoon { transition:transform 0.3s cubic-bezier(.2,.8,.2,1); }
+        .l-feature-card:hover .l-feature-icoon { transform:scale(1.12) rotate(-6deg); }
+        .l-pricing-card.l-zichtbaar { transition:opacity 0.6s ease, transform 0.25s ease, box-shadow 0.25s ease; }
+        .l-pricing-card.l-zichtbaar:hover { transform:translateY(-4px);box-shadow:0 24px 60px rgba(15,23,42,0.1); }
+        .l-intro { animation:l-intro 0.7s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--vertraging,0s); }
+        .l-mockup-zweef { animation:l-intro 0.9s cubic-bezier(.2,.8,.2,1) 0.45s both, l-zweef 6s ease-in-out 1.4s infinite; }
+        .l-gradient-tekst { background:linear-gradient(90deg,#1e3a8a,#3b82f6,#1e3a8a);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:l-glans 6s linear infinite; }
+        .l-btn-primary .l-pijl { display:inline-block;transition:transform 0.2s; }
+        .l-btn-primary:hover .l-pijl { transform:translateX(4px); }
+        .l-stap-cirkel { transition:transform 0.3s cubic-bezier(.2,.8,.2,1), box-shadow 0.3s; }
+        .l-stap:hover .l-stap-cirkel { transform:scale(1.1);box-shadow:0 0 0 8px rgba(30,58,138,0.12); }
+        @keyframes l-intro { from { opacity:0;transform:translateY(20px); } to { opacity:1;transform:none; } }
+        @keyframes l-zweef { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
+        @keyframes l-groei { from { transform:scaleY(0); } to { transform:scaleY(1); } }
+        @keyframes l-glans { to { background-position:200% center; } }
+        @media (prefers-reduced-motion: reduce) {
+          html { scroll-behavior:auto; }
+          .l-animate, .l-intro, .l-mockup-zweef, .l-mockup-bar, .l-gradient-tekst { animation:none!important;opacity:1!important;transform:none!important;transition:none!important; }
+        }
         .l-show-mobile{display:none;}
         .l-nav-cta-btn{white-space:nowrap;}
         @media(max-width:480px){
@@ -88,7 +174,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
       {/* height/paddingTop houden rekening met de safe-area (statusbalk) op
           mobiel: anders overlapt "Kapitas"/"Start gratis" met de klok en
           batterij-iconen wanneer de pagina als beginscherm-app draait. */}
-      <nav style={{ position:'sticky',top:0,zIndex:100,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(12px)',borderBottom:'1px solid #e2e8f0',paddingLeft:24,paddingRight:24,paddingTop:'env(safe-area-inset-top, 0px)',height:'calc(64px + env(safe-area-inset-top, 0px))',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+      <nav className={`l-nav${gescrold ? ' l-nav-gescrold' : ''}`} style={{ position:'sticky',top:0,zIndex:100,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(12px)',borderBottom:'1px solid #e2e8f0',paddingLeft:24,paddingRight:24,paddingTop:'env(safe-area-inset-top, 0px)',height:'calc(64px + env(safe-area-inset-top, 0px))',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
         <div style={{ display:'flex',gap:14,alignItems:'center' }}>
           {/* Tekst i.p.v. het PNG-logo: dat bestand heeft een witte
               achtergrond die opvalt zodra de balk niet volledig wit is
@@ -104,9 +190,9 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
         </div>
         <ul className="l-hide-mobile" style={{ display:'flex',gap:32,listStyle:'none',alignItems:'center' }}>
           {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
-            <li key={i}><a href={h} style={{ textDecoration:'none',color:'#64748b',fontSize:14,fontWeight:500 }}>{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a></li>
+            <li key={i}><a href={h} className="l-nav-link">{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a></li>
           ))}
-          <li><span onClick={onGids} style={{ cursor:'pointer',color:'#64748b',fontSize:14,fontWeight:500 }}>Leren beleggen</span></li>
+          <li><button type="button" onClick={onGids} className="l-nav-link">Leren beleggen</button></li>
         </ul>
         <div style={{ display:'flex',gap:10,alignItems:'center' }}>
           <button onClick={() => onNaarApp('login')} className="l-btn" style={{ background:'none',color:'#64748b',fontSize:14,padding:'8px 6px' }}>Inloggen</button>
@@ -134,30 +220,30 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
       <section style={{ minHeight:'90vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:'80px 24px 60px',background:'linear-gradient(180deg,#eef1f8 0%,#f8fafc 60%,white 100%)',position:'relative',overflow:'hidden' }}>
         <div style={{ position:'absolute',top:-200,left:'50%',transform:'translateX(-50%)',width:800,height:800,borderRadius:'50%',background:'radial-gradient(circle,rgba(30,58,138,0.08) 0%,transparent 70%)',pointerEvents:'none' }} />
         
-        <div style={{ display:'inline-flex',alignItems:'center',gap:8,background:'white',border:'1px solid #e2e8f0',padding:'6px 16px',borderRadius:100,fontSize:13,fontWeight:500,color:'#64748b',marginBottom:28,boxShadow:'0 4px 12px rgba(0,0,0,0.06)' }}>
+        <div className="l-intro" style={{ display:'inline-flex',alignItems:'center',gap:8,background:'white',border:'1px solid #e2e8f0',padding:'6px 16px',borderRadius:100,fontSize:13,fontWeight:500,color:'#64748b',marginBottom:28,boxShadow:'0 4px 12px rgba(0,0,0,0.06)' }}>
           <span style={{ width:8,height:8,borderRadius:'50%',background:'#22c55e',display:'inline-block',animation:'pulse 2s infinite' }} />
           Speciaal gebouwd voor Belgische beleggers
         </div>
         <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
 
-        <h1 style={{ fontSize:'clamp(36px,6vw,66px)',fontWeight:800,letterSpacing:'-2px',lineHeight:1.1,marginBottom:24,maxWidth:780 }}>
-          Je beleggingen.<br />Eindelijk <span style={{ color:'#1e3a8a' }}>overzichtelijk</span>.
+        <h1 className="l-intro" style={{ '--vertraging':'0.08s',fontSize:'clamp(36px,6vw,66px)',fontWeight:800,letterSpacing:'-2px',lineHeight:1.1,marginBottom:24,maxWidth:780 }}>
+          Je beleggingen.<br />Eindelijk <span className="l-gradient-tekst" style={{ color:'#1e3a8a' }}>overzichtelijk</span>.
         </h1>
-        <p style={{ fontSize:'clamp(16px,2vw,19px)',color:'#64748b',maxWidth:540,marginBottom:40,lineHeight:1.7 }}>
+        <p className="l-intro" style={{ '--vertraging':'0.16s',fontSize:'clamp(16px,2vw,19px)',color:'#64748b',maxWidth:540,marginBottom:40,lineHeight:1.7 }}>
           Kapitas bundelt je portfolio, ETFs en aandelen in één slim dashboard. Met automatische Belgische belastingberekeningen, live koersen en AI-analyses.
         </p>
-        <div className="l-hero-actions" style={{ display:'flex',gap:12,flexWrap:'wrap',justifyContent:'center',marginBottom:14 }}>
+        <div className="l-hero-actions l-intro" style={{ '--vertraging':'0.24s',display:'flex',gap:12,flexWrap:'wrap',justifyContent:'center',marginBottom:14 }}>
           <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>{CTA_TEKST}</button>
           <a href="#features" className="l-btn l-btn-outline" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Bekijk features</a>
         </div>
-        <p style={{ fontSize:13,color:'#94a3b8' }}>
+        <p className="l-intro" style={{ '--vertraging':'0.32s',fontSize:13,color:'#94a3b8' }}>
           <span style={{ color:'#22c55e',fontWeight:600 }}>✓</span> Geen betaalgegevens nodig &nbsp;·&nbsp;
           <span style={{ color:'#22c55e',fontWeight:600 }}>✓</span> 14 dagen gratis &nbsp;·&nbsp;
           <span style={{ color:'#22c55e',fontWeight:600 }}>✓</span> Annuleer altijd
         </p>
 
         {/* Dashboard Mockup */}
-        <div style={{ marginTop:64,maxWidth:900,width:'100%',position:'relative' }}>
+        <div className="l-mockup-zweef" style={{ marginTop:64,maxWidth:900,width:'100%',position:'relative' }}>
           <div style={{ position:'absolute',top:20,left:'50%',transform:'translateX(-50%)',width:'80%',height:'80%',borderRadius:'50%',background:'radial-gradient(circle,rgba(30,58,138,0.12) 0%,transparent 70%)',filter:'blur(40px)',pointerEvents:'none' }} />
           <div style={{ background:'white',borderRadius:16,boxShadow:'0 32px 80px rgba(0,0,0,0.14),0 0 0 1px rgba(0,0,0,0.05)',overflow:'hidden',position:'relative' }}>
             {/* Browser bar */}
@@ -200,7 +286,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
                     <div style={{ fontSize:11,fontWeight:600,color:'#64748b',marginBottom:8 }}>Portefeuille evolutie (1J)</div>
                     <div style={{ display:'flex',alignItems:'flex-end',gap:3,height:60 }}>
                       {[35,45,40,55,50,65,58,72,68,80,75,100].map((h,i) => (
-                        <div key={i} className="l-mockup-bar" style={{ height:`${h}%` }} />
+                        <div key={i} className="l-mockup-bar" style={{ height:`${h}%`,animationDelay:`${0.9 + i * 0.06}s` }} />
                       ))}
                     </div>
                   </div>
@@ -230,7 +316,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
       <div style={{ background:'#1e3a8a',padding:'48px 24px',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:32,textAlign:'center' }}>
         {[['270+','Belgische & Europese ETFs'],['3','BEL indices (20, Mid, Small)'],['100%','Belgische belastingregels 2026'],['Live','Koersen tijdens beursuren']].map(([v,l]) => (
           <div key={l}>
-            <div style={{ fontSize:40,fontWeight:800,color:'white',lineHeight:1 }}>{v}</div>
+            <div style={{ fontSize:40,fontWeight:800,color:'white',lineHeight:1,fontVariantNumeric:'tabular-nums' }}><TelOp waarde={v} /></div>
             <div style={{ fontSize:13,color:'rgba(255,255,255,0.75)',marginTop:6 }}>{l}</div>
           </div>
         ))}
@@ -244,17 +330,17 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
         <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:24,marginTop:56 }}>
           {[
             ['📊','Portfolio tracker','Voeg al je posities toe en volg je totale portefeuillewaarde, rendement en spreiding in real-time. Ondersteunt aandelen, ETFs en obligaties.','Meerdere brokers','#eef1f8',null],
-            ['🇧🇪','Belgische belastingen','Automatische berekening van de meerwaardebelasting (10%), Reynders-taks, beurstaks (TOB) en roerende voorheffing. Volledig up-to-date voor 2025-2026.','Uniek Belgisch','#fef3c7','belgisch'],
+            ['🇧🇪','Belgische belastingen','Automatische berekening van de meerwaardebelasting (10%), Reynders-taks, beurstaks (TOB) en roerende voorheffing. Afgestemd op de Belgische regels van 2026.','Uniek Belgisch','#fef3c7','belgisch'],
             ['📈','Live marktdata','Volg de BEL20, BEL Mid- en Smallcap in real-time. Met grafieken, koershistoriek en marktoverzichten per regio.','Euronext Brussel','#f0fdf4',null],
             ['🔍','ETF vergelijker','Vergelijk 270+ Europese ETFs op TER, beurstaks, dividend en rendement. Gesynchroniseerd met de Saxo Investor catalogus.','270+ ETFs','#fdf4ff','nieuw'],
             ['💰','Dividend tracking','Volg ontvangen dividenden, bereken je netto ontvangst na roerende voorheffing en plan toekomstige uitkeringen.','Automatisch berekend','#fff7ed',null],
             ['🤖','AI-analyses','Krijg een AI-gestuurde analyse per aandeel of ETF op basis van actuele koersdata, nieuws en financiële metrics.','Powered by AI','#f0f9ff','nieuw'],
             ['🌍','Wereldwijde markten','Volg niet alleen België maar ook Euronext, Xetra, London SE, Nasdaq en NYSE. Inclusief forex koersen.','15+ beurzen','#fef2f2',null],
-            ['🌙','Dark mode','Volledig dark mode ondersteuning voor comfortabel gebruik s avonds.','Automatisch','#f0fdf4',null],
+            ['🌙','Dark mode','Volledige ondersteuning voor dark mode, voor comfortabel gebruik \'s avonds.','Automatisch','#f0fdf4',null],
             ['📱','Mobiel vriendelijk','Volledig responsive design zodat je je portfolio overal kan opvolgen.','iOS & Android','#eef1f8',null],
-          ].map(([icon,title,desc,tag,bg,tagType]) => (
-            <div key={title} className="l-feature-card l-animate">
-              <div style={{ width:48,height:48,borderRadius:12,background:bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,marginBottom:16 }}>{icon}</div>
+          ].map(([icon,title,desc,tag,bg,tagType],i) => (
+            <div key={title} className="l-feature-card l-animate" style={{ '--vertraging':`${(i % 3) * 0.08}s` }}>
+              <div className="l-feature-icoon" style={{ width:48,height:48,borderRadius:12,background:bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,marginBottom:16 }}>{icon}</div>
               <h3 style={{ fontSize:17,fontWeight:700,marginBottom:8 }}>{title}</h3>
               <p style={{ fontSize:14,color:'#64748b',lineHeight:1.7 }}>{desc}</p>
               <span style={{ display:'inline-block',marginTop:12,background:tagType==='nieuw'?'#dcfce7':tagType==='belgisch'?'#fef3c7':'#f1f5f9',color:tagType==='nieuw'?'#16a34a':tagType==='belgisch'?'#d97706':'#64748b',padding:'3px 10px',borderRadius:100,fontSize:11,fontWeight:600 }}>{tag}</span>
@@ -271,9 +357,9 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
           <p style={{ fontSize:17,color:'#64748b',maxWidth:500,margin:'0 auto' }}>Van registratie tot volledig inzicht in je beleggingen in minder dan 5 minuten.</p>
           <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:0,marginTop:56,position:'relative' }}>
             {[['Maak een account','Registreer gratis. Geen betaalgegevens nodig voor de gratis periode.'],['Voeg posities toe','Voeg je aandelen en ETFs toe met aankoopprijs en datum.'],['Bekijk je dashboard','Zie meteen je totale waarde, rendement en verschuldigde belastingen.'],['Volg de markten','Live BEL20, Europese ETFs en AI-analyses per aandeel.']].map(([t,d],i) => (
-              <div key={i} className="l-animate" style={{ textAlign:'center',padding:24,position:'relative' }}>
+              <div key={i} className="l-animate l-stap" style={{ '--vertraging':`${i * 0.1}s`,textAlign:'center',padding:24,position:'relative' }}>
                 {i < 3 && <span style={{ position:'absolute',right:-12,top:36,fontSize:20,color:'#cbd5e1' }} className="l-hide-mobile">→</span>}
-                <div style={{ width:56,height:56,borderRadius:'50%',background:'#1e3a8a',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:800,margin:'0 auto 16px' }}>{i+1}</div>
+                <div className="l-stap-cirkel" style={{ width:56,height:56,borderRadius:'50%',background:'#1e3a8a',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:800,margin:'0 auto 16px' }}>{i+1}</div>
                 <h3 style={{ fontSize:16,fontWeight:700,marginBottom:8 }}>{t}</h3>
                 <p style={{ fontSize:14,color:'#64748b' }}>{d}</p>
               </div>
@@ -314,7 +400,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
               </div>
             ))}
             <div style={{ marginTop:20,padding:14,background:'rgba(34,197,94,0.1)',borderRadius:10,fontSize:12,color:'rgba(255,255,255,0.6)' }}>
-              ✓ Volledig up-to-date voor aanslagjaar 2025-2026
+              ✓ Afgestemd op de Belgische regels van 2026
             </div>
           </div>
         </div>
@@ -403,12 +489,14 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
           <h2 style={{ fontSize:'clamp(28px,4vw,42px)',fontWeight:800,letterSpacing:'-1px',marginBottom:48 }}>Veelgestelde vragen</h2>
           <div style={{ textAlign:'left' }}>
             {faqs.map(([vraag,antwoord],i) => (
-              <div key={i} className="l-faq-item">
-                <div className="l-faq-q" onClick={() => toggleFaq(i)} style={{ justifyContent:'space-between' }}>
+              <div key={i} className={`l-faq-item${faqOpen===i ? ' l-faq-open' : ''}`}>
+                <button type="button" className="l-faq-q" onClick={() => toggleFaq(i)} aria-expanded={faqOpen===i} aria-controls={`faq-antwoord-${i}`}>
                   {vraag}
-                  <span style={{ fontSize:20,color:'#1e3a8a',fontWeight:400,flexShrink:0,marginLeft:12 }}>{faqOpen===i?'−':'+'}</span>
+                  <span className="l-faq-icoon" aria-hidden="true">+</span>
+                </button>
+                <div className="l-faq-wrap" id={`faq-antwoord-${i}`} role="region">
+                  <div><div className="l-faq-a">{antwoord}</div></div>
                 </div>
-                {faqOpen===i && <div className="l-faq-a">{antwoord}</div>}
               </div>
             ))}
           </div>

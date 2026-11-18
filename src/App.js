@@ -730,6 +730,26 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Publieke pagina's (privacybeleid, gids) krijgen een eigen adres, starten
+  // bovenaan, en de terugknop van de browser brengt je terug naar de website
+  // i.p.v. de site te verlaten.
+  React.useEffect(() => {
+    const opPopstate = () => {
+      const pad = window.location.pathname.toLowerCase().replace(/\/$/, '');
+      setToonPubliekPrivacybeleid(pad === '/privacybeleid');
+      setToonPubliekGids(pad === '/gids');
+    };
+    window.addEventListener('popstate', opPopstate);
+    return () => window.removeEventListener('popstate', opPopstate);
+  }, []);
+
+  const openPubliekePagina = (pad) => {
+    window.history.pushState(null, '', pad);
+    setToonPubliekPrivacybeleid(pad === '/privacybeleid');
+    setToonPubliekGids(pad === '/gids');
+    window.scrollTo(0, 0);
+  };
+
   if (authLaden) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans, sans-serif' }}>
@@ -745,7 +765,7 @@ export default function App() {
     if (toonPubliekGids) {
       return <Gids onTerug={() => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); }} onNaarApp={(modus) => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); setToonLanding(false); setAuthStartModus(modus || 'registreren'); }} />;
     }
-    return <Landing onNaarApp={(modus) => { setToonLanding(false); setAuthStartModus(modus || 'login'); }} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} onGids={() => setToonPubliekGids(true)} />;
+    return <Landing onNaarApp={(modus) => { setToonLanding(false); setAuthStartModus(modus || 'login'); window.scrollTo(0, 0); }} onPrivacybeleid={() => openPubliekePagina('/privacybeleid')} onGids={() => openPubliekePagina('/gids')} />;
   }
 
   if (!gebruiker) {
@@ -755,7 +775,7 @@ export default function App() {
     if (toonPubliekGids) {
       return <Gids onTerug={() => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); }} onNaarApp={(modus) => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); setAuthStartModus(modus || 'registreren'); }} />;
     }
-    return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => setToonPubliekPrivacybeleid(true)} startModus={authStartModus} onTerugNaarLanding={() => setToonLanding(true)} />;
+    return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => openPubliekePagina('/privacybeleid')} startModus={authStartModus} onTerugNaarLanding={() => setToonLanding(true)} />;
   }
 
   return (

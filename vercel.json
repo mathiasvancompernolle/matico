@@ -5,6 +5,12 @@
   "functions": {
     "api/data.js": {
       "maxDuration": 60
+    },
+    "api/cron-markten.js": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    { "path": "/api/cron-markten", "schedule": "0 6 * * 1-5" }
+  ]
 }

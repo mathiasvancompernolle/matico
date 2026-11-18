@@ -3,15 +3,16 @@ import React from 'react';
 import { heropenCookieBanner } from '../components/CookieConsent';
 
 // Privacybeleid-pagina. Inhoud is opgesteld op basis van hoe Kapitas
-// technisch in elkaar zit (Supabase-login, localStorage voor portefeuille-
-// data, gratis marktdata-API's zonder persoonsgegevens, Crisp voor chat).
+// technisch in elkaar zit (Supabase-login + Supabase-opslag van portefeuille-
+// data met localStorage als lokale kopie, marktdata-API's zonder
+// persoonsgegevens, Crisp voor chat).
 // Dit is een goede, eerlijke basis — geen juridisch advies. Laat dit
 // controleren door een jurist/gegevensbeschermingsspecialist voor je
 // dit als officieel, publiek privacybeleid gebruikt, zeker bij commerciële
 // lancering.
 export default function Privacybeleid({ onTerug }) {
   return (
-    <div style={{ padding: '32px 40px', maxWidth: 820 }}>
+    <div style={{ padding: '32px clamp(16px, 5vw, 40px)', maxWidth: 820 }}>
       {onTerug && (
         <div onClick={onTerug} style={{ cursor: 'pointer', color: 'var(--accent, #1e3a8a)', fontSize: 14, fontWeight: 600, marginBottom: 20 }}>
           ← Terug naar website
@@ -19,7 +20,7 @@ export default function Privacybeleid({ onTerug }) {
       )}
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Privacybeleid</h1>
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 32 }}>
-        Laatst bijgewerkt: [DATUM INVULLEN]
+        Laatst bijgewerkt: 18 november 2026
       </p>
 
       <Sectie titel="1. Wie zijn wij">
@@ -43,11 +44,12 @@ export default function Privacybeleid({ onTerug }) {
         </p>
         <SubTitel>Portefeuillegegevens</SubTitel>
         <p>
-          De beleggingen die je toevoegt (naam, aantal, aankoopprijs, aankoopdatum, ...)
-          worden lokaal opgeslagen in de browser van jouw toestel (localStorage), niet
-          in een centrale database. Dit betekent dat wij als beheerders van Kapitas deze
-          gegevens niet kunnen inzien, en dat ze verloren gaan als je je browsergegevens
-          wist of van toestel wisselt.
+          De portefeuilles, beleggingen (naam, aantal, aankoopprijs, aankoopdatum, ...),
+          verkochte beleggingen en favorieten die je toevoegt, worden gekoppeld aan je
+          account en opgeslagen in onze database bij Supabase. Zo zie je dezelfde
+          gegevens op al je toestellen. De database is zo ingesteld dat enkel jij,
+          ingelogd met je eigen account, jouw gegevens kan opvragen. Daarnaast bewaart
+          je browser een kopie (localStorage) zodat Kapitas snel laadt.
         </p>
         <SubTitel>Gebruiksgegevens</SubTitel>
         <p>
@@ -60,7 +62,7 @@ export default function Privacybeleid({ onTerug }) {
         <p>Kapitas maakt gebruik van volgende externe dienstverleners (verwerkers):</p>
         <Tabel
           rijen={[
-            ['Supabase', 'Authenticatie (Google-login)', 'EU/VS'],
+            ['Supabase', 'Authenticatie (inloggen) en opslag van je portefeuillegegevens', 'EU/VS'],
             ['Google', 'Inloggen via je Google-account', 'VS'],
             ['Crisp', 'Klantenondersteuning via chat', 'EU (Frankrijk/Nederland)'],
             ['Vercel', 'Hosting van de website', 'EU/VS'],
@@ -95,9 +97,9 @@ export default function Privacybeleid({ onTerug }) {
 
       <Sectie titel="5. Bewaartermijn">
         <p>
-          Accountgegevens bewaren we zolang je een account bij ons hebt. Portefeuillegegevens
-          staan enkel lokaal op jouw toestel en worden door ons niet apart bewaard. Verwijder
-          je je account, dan verwijderen we ook de bijhorende accountgegevens uit ons systeem.
+          Account- en portefeuillegegevens bewaren we zolang je een account bij ons hebt.
+          Verwijder je je account, dan verwijderen we ook je accountgegevens en je
+          portefeuillegegevens uit ons systeem.
         </p>
       </Sectie>
 

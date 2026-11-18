@@ -608,7 +608,7 @@ export default function BeleggingToevoegen({ onClose }) {
               <div className="empty-state" style={{ padding: 30 }}><p>Geen resultaten gevonden voor "{zoekterm}"</p></div>
             )}
             {zoekResultaten.length === 0 && zoekterm.length < 2 && (
-              <div className="empty-state" style={{ padding: 30 }}><p>Typ minimaal 2 tekens om te zoeken</p></div>
+              <div className="empty-state" style={{ padding: 30 }}><p>Typ minstens 2 tekens om te zoeken</p></div>
             )}
             {zoekResultaten.map(r => {
               const aangevinkt = selectie.some(s => s.symbol === r.symbol);
