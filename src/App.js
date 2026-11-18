@@ -452,6 +452,11 @@ function AppInner() {
   // terug bij scrollen naar boven — zelfde gedrag als bv. de Facebook-app.
   const appMainRef = React.useRef(null);
   const laatsteScrollY = React.useRef(0);
+  // Moet vóór de vroege `return <NaamInstellen />` hieronder staan: React
+  // vereist elke render evenveel hooks. Stond deze ref erna, dan crashte de
+  // app (wit scherm, React-fout #310) zodra je na het welkomstscherm op
+  // "Aan de slag" klikte.
+  const subtabSwipeStart = React.useRef(null);
   const [bottomBarZichtbaar, setBottomBarZichtbaar] = useState(true);
 
   React.useEffect(() => {
@@ -545,8 +550,8 @@ function AppInner() {
   // Vervangt de vroegere tabbalk: die nam ruimte in als "tweede balk
   // vanboven" en voegde weinig toe. Een horizontale swipe wisselt nu van
   // subtab; de puntjes eronder tonen hoeveel subtabs er zijn en op welke
-  // je zit (zelfde idee als een paginaindicator).
-  const subtabSwipeStart = React.useRef(null);
+  // je zit (zelfde idee als een paginaindicator). De ref
+  // `subtabSwipeStart` staat bovenaan bij de andere hooks.
 
   const gaNaarSubtab = (index) => {
     const clamped = Math.max(0, Math.min(subtabItems.length - 1, index));
