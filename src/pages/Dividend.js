@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Info, X } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
+import { getal } from '../utils/getal';
 const ACCENT = '#1e3a8a';
 const fmt2 = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -129,7 +130,9 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < cacheDuur) {
+          // Een leeg antwoord kan een tijdelijke fout zijn: maximaal 6 uur bewaren
+          const duur = Array.isArray(data) && data.length === 0 ? Math.min(cacheDuur, 6 * 60 * 60 * 1000) : cacheDuur;
+          if (Date.now() - timestamp < duur) {
             setLiveDividend(prev => ({ ...prev, [sleutel]: data }));
             return;
           }
@@ -386,7 +389,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
       zonderData: [...new Set(zonderDataLijst)],
       geenDividend: [...new Set(geenDividendLijst)],
     };
-  }, [beleggingen, koersen, jaar, modus, verkochteBeleggingen]);
+  }, [beleggingen, koersen, jaar, modus, verkochteBeleggingen, liveDividend, getMuntFactor]);
 
   const beschikbareJaren = useMemo(() => {
     const huidig = new Date().getFullYear();
@@ -475,11 +478,11 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
             </div>
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Dividendrendement</div>
-              <div style={{ fontSize: 24, fontWeight: 700 }}>{dividendRendement.toFixed(2).replace('.', ',')}%</div>
+              <div style={{ fontSize: 24, fontWeight: 700 }}>{getal(dividendRendement, 2)}%</div>
             </div>
             <div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Rendement op aankoopwaarde</div>
-              <div style={{ fontSize: 16, fontWeight: 600 }}>{rendementOpAankoop.toFixed(2).replace('.', ',')}%</div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>{getal(rendementOpAankoop, 2)}%</div>
             </div>
           </div>
 
@@ -493,7 +496,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
                     <button key={m} onClick={() => setModus(m.toLowerCase())} style={{
                       padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)',
                       background: modus === m.toLowerCase() ? 'var(--text-primary)' : 'transparent',
-                      color: modus === m.toLowerCase() ? 'white' : 'var(--text-secondary)',
+                      color: modus === m.toLowerCase() ? 'var(--bg-white)' : 'var(--text-secondary)',
                       fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit'
                     }}>{m}</button>
                   ))}
@@ -524,7 +527,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
-                  tickFormatter={v => v === 0 ? '0' : `€${v.toFixed(1)}`} />
+                  tickFormatter={v => v === 0 ? '0' : `€${getal(v, 1)}`} />
                 <Tooltip
                   content={({ active, payload, label }) => {
                     if (!active || !payload?.length || !payload[0].value) return null;
@@ -604,10 +607,10 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
                 </div>
               </div>
               <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 500 }}>
-                {b.rendement > 0 ? `${b.rendement.toFixed(2).replace('.', ',')}%` : '—'}
+                {b.rendement > 0 ? `${getal(b.rendement, 2)}%` : '—'}
               </div>
               <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 500 }}>
-                {b.rendementAankoop > 0 ? `${b.rendementAankoop.toFixed(2).replace('.', ',')}%` : '—'}
+                {b.rendementAankoop > 0 ? `${getal(b.rendementAankoop, 2)}%` : '—'}
               </div>
               <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600 }}>
                 €{fmt2(b.verwachtJaarlijks)}

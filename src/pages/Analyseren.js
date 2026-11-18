@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Loader, TrendingUp, TrendingDown, Minus, ArrowRight, ArrowLeft } from 'lucide-react';
 
+import { getal } from '../utils/getal';
 // ── Scoringslogica — apart voor aandelen/ETF's en crypto ────────────────────
 // Elke stap geeft een score op 10, met een korte, mensleesbare toelichting.
 // Dit is een gestructureerde, heuristische kijk op de cijfers — geen
@@ -68,8 +69,8 @@ function evalGateA(c) {
   const groei = ((c.omzetHuidig - c.omzetVorig) / c.omzetVorig) * 100;
   const geslaagd = groei >= 10;
   return { geslaagd, waarde: groei, tekst: geslaagd
-    ? `Omzet groeide ${groei.toFixed(1)}% t.o.v. vorig jaar — voldoet aan de drempel van minstens 10% per jaar.`
-    : `Omzet groeide slechts ${groei.toFixed(1)}% t.o.v. vorig jaar — dat is minder dan de vereiste 10% per jaar. Dit is op dit moment geen goed effect om in te beleggen.` };
+    ? `Omzet groeide ${getal(groei, 1)}% t.o.v. vorig jaar — voldoet aan de drempel van minstens 10% per jaar.`
+    : `Omzet groeide slechts ${getal(groei, 1)}% t.o.v. vorig jaar — dat is minder dan de vereiste 10% per jaar. Dit is op dit moment geen goed effect om in te beleggen.` };
 }
 
 function evalGateB(c, huidigeKoers) {
@@ -78,8 +79,8 @@ function evalGateB(c, huidigeKoers) {
   if (pe == null) return { geslaagd: false, waarde: null, tekst: 'Kon de K/W-ratio niet berekenen (negatieve of ontbrekende winst per aandeel). Dit is op dit moment geen goed effect om in te beleggen.' };
   const geslaagd = pe < 25;
   return { geslaagd, waarde: pe, tekst: geslaagd
-    ? `K/W-ratio van ${pe.toFixed(1)} — onder de drempel van 25.`
-    : `K/W-ratio van ${pe.toFixed(1)} — dat is 25 of hoger. Dit aandeel is mogelijks overgewaardeerd en het is op dit moment niet slim om hierin te beleggen.` };
+    ? `K/W-ratio van ${getal(pe, 1)} — onder de drempel van 25.`
+    : `K/W-ratio van ${getal(pe, 1)} — dat is 25 of hoger. Dit aandeel is mogelijks overgewaardeerd en het is op dit moment niet slim om hierin te beleggen.` };
 }
 
 function evalGateC(c, peWaarde) {
@@ -90,8 +91,8 @@ function evalGateC(c, peWaarde) {
   if (peg == null) return { geslaagd: false, waarde: null, tekst: 'Kon de PEG-ratio niet berekenen (de winst per aandeel groeide niet t.o.v. vorig jaar). Dit is op dit moment geen goed effect om in te beleggen.' };
   const geslaagd = peg < 2;
   return { geslaagd, waarde: peg, tekst: geslaagd
-    ? `PEG-ratio van ${peg.toFixed(2)} — onder de drempel van 2, de waardering houdt gelijke tred met de winstgroei.`
-    : `PEG-ratio van ${peg.toFixed(2)} — dat is 2 of hoger. Je betaalt een stevige premie voor de groei, dus dit is op dit moment niet interessant om in te beleggen.` };
+    ? `PEG-ratio van ${getal(peg, 2)} — onder de drempel van 2, de waardering houdt gelijke tred met de winstgroei.`
+    : `PEG-ratio van ${getal(peg, 2)} — dat is 2 of hoger. Je betaalt een stevige premie voor de groei, dus dit is op dit moment niet interessant om in te beleggen.` };
 }
 
 function evalGateD(c) {
@@ -107,8 +108,8 @@ function evalGateD(c) {
   const gemiddeld = roes.reduce((s, v) => s + v, 0) / roes.length;
   const geslaagd = gemiddeld >= 5;
   return { geslaagd, waarde: gemiddeld, tekst: geslaagd
-    ? `Gemiddeld rendement op eigen vermogen van ${gemiddeld.toFixed(1)}% over de laatste ${roes.length} boekjaren — goede winstmarges.`
-    : `Gemiddeld rendement op eigen vermogen van slechts ${gemiddeld.toFixed(1)}% over de laatste ${roes.length} boekjaren — dat is onder de drempel van 5%. De winstmarges zijn niet zo goed, en het is op dit moment niet slim om hierin te beleggen.` };
+    ? `Gemiddeld rendement op eigen vermogen van ${getal(gemiddeld, 1)}% over de laatste ${roes.length} boekjaren — goede winstmarges.`
+    : `Gemiddeld rendement op eigen vermogen van slechts ${getal(gemiddeld, 1)}% over de laatste ${roes.length} boekjaren — dat is onder de drempel van 5%. De winstmarges zijn niet zo goed, en het is op dit moment niet slim om hierin te beleggen.` };
 }
 
 function evalGateE(c) {
@@ -116,8 +117,8 @@ function evalGateE(c) {
   if (quick == null) return { geslaagd: false, waarde: null, tekst: 'Kon de quick ratio niet berekenen.' };
   const geslaagd = quick > 1.5;
   return { geslaagd, waarde: quick, tekst: geslaagd
-    ? `Quick ratio van ${quick.toFixed(2)} — boven 1,5, het bedrijf kan zijn kortlopende rekeningen goed betalen.`
-    : `Quick ratio van ${quick.toFixed(2)} — 1,5 of lager. Het bedrijf kan zijn kortlopende rekeningen mogelijks niet goed betalen, dus het is op dit moment niet slim om hierin te beleggen.` };
+    ? `Quick ratio van ${getal(quick, 2)} — boven 1,5, het bedrijf kan zijn kortlopende rekeningen goed betalen.`
+    : `Quick ratio van ${getal(quick, 2)} — 1,5 of lager. Het bedrijf kan zijn kortlopende rekeningen mogelijks niet goed betalen, dus het is op dit moment niet slim om hierin te beleggen.` };
 }
 
 // Evalueert een gate op basis van de tot dusver ingegeven cijfers + context
@@ -171,9 +172,9 @@ function scoreAandeelLangeTermijn(f) {
   let peScore = 5, peTekst = `Geen K/W-ratio beschikbaar voor dit effect.`;
   if (pe != null && pe > 0) {
     const [laagDrempel, hoogDrempel] = drempels.pe;
-    if (pe < laagDrempel) { peScore = 9; peTekst = `K/W van ${pe.toFixed(1)} is laag voor de sector "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — relatief goedkoop.`; }
-    else if (pe < hoogDrempel) { peScore = 6; peTekst = `K/W van ${pe.toFixed(1)} zit in het normale bereik voor "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}).`; }
-    else { peScore = 3; peTekst = `K/W van ${pe.toFixed(1)} is hoog voor de sector "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — duur, of de markt verwacht veel groei.`; }
+    if (pe < laagDrempel) { peScore = 9; peTekst = `K/W van ${getal(pe, 1)} is laag voor de sector "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — relatief goedkoop.`; }
+    else if (pe < hoogDrempel) { peScore = 6; peTekst = `K/W van ${getal(pe, 1)} zit in het normale bereik voor "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}).`; }
+    else { peScore = 3; peTekst = `K/W van ${getal(pe, 1)} is hoog voor de sector "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — duur, of de markt verwacht veel groei.`; }
   }
   stappen.push({ titel: 'Waardering', sub: `Koers/Winst-verhouding (sector: ${drempels.naam})`, score: peScore, toelichting: peTekst });
 
@@ -182,10 +183,10 @@ function scoreAandeelLangeTermijn(f) {
   let groeiScore = 5, groeiTekst = 'Geen recente omzetgroei-cijfers beschikbaar.';
   if (groei != null) {
     const pct = groei * 100;
-    if (pct > 15) { groeiScore = 9; groeiTekst = `Omzet groeide ${pct.toFixed(1)}% t.o.v. vorig jaar — sterke groei.`; }
-    else if (pct > 5) { groeiScore = 6; groeiTekst = `Omzet groeide ${pct.toFixed(1)}% — degelijke, gematigde groei.`; }
-    else if (pct >= 0) { groeiScore = 4; groeiTekst = `Omzet groeide slechts ${pct.toFixed(1)}% — trage groei.`; }
-    else { groeiScore = 2; groeiTekst = `Omzet daalde met ${Math.abs(pct).toFixed(1)}% — krimpend bedrijf.`; }
+    if (pct > 15) { groeiScore = 9; groeiTekst = `Omzet groeide ${getal(pct, 1)}% t.o.v. vorig jaar — sterke groei.`; }
+    else if (pct > 5) { groeiScore = 6; groeiTekst = `Omzet groeide ${getal(pct, 1)}% — degelijke, gematigde groei.`; }
+    else if (pct >= 0) { groeiScore = 4; groeiTekst = `Omzet groeide slechts ${getal(pct, 1)}% — trage groei.`; }
+    else { groeiScore = 2; groeiTekst = `Omzet daalde met ${getal(Math.abs(pct), 1)}% — krimpend bedrijf.`; }
   }
   stappen.push({ titel: 'Groei', sub: 'Omzetgroei (jaar-op-jaar)', score: groeiScore, toelichting: groeiTekst });
 
@@ -195,7 +196,7 @@ function scoreAandeelLangeTermijn(f) {
   if (marge != null || roe != null) {
     const margePct = marge != null ? marge * 100 : null;
     const roePct = roe != null ? roe * 100 : null;
-    const delen = [margePct != null ? `winstmarge ${margePct.toFixed(1)}%` : null, roePct != null ? `rendement op eigen vermogen ${roePct.toFixed(1)}%` : null].filter(Boolean);
+    const delen = [margePct != null ? `winstmarge ${getal(margePct, 1)}%` : null, roePct != null ? `rendement op eigen vermogen ${getal(roePct, 1)}%` : null].filter(Boolean);
     const gemiddeld = [margePct, roePct].filter(v => v != null).reduce((s, v) => s + v, 0) / [margePct, roePct].filter(v => v != null).length;
     if (gemiddeld > 15) { winstScore = 9; winstTekst = `Sterk winstgevend (${delen.join(', ')}).`; }
     else if (gemiddeld > 5) { winstScore = 6; winstTekst = `Gemiddeld winstgevend (${delen.join(', ')}).`; }
@@ -213,9 +214,9 @@ function scoreAandeelLangeTermijn(f) {
     const [laagDrempel, hoogDrempel] = drempels.schuld;
     let schuldScore = 5, schuldTekst = 'Geen schuldgraad-cijfers beschikbaar.';
     if (dte != null) {
-      if (dte < laagDrempel) { schuldScore = 9; schuldTekst = `Schuldgraad van ${dte.toFixed(2)} is laag voor "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — financieel gezond.`; }
-      else if (dte < hoogDrempel) { schuldScore = 6; schuldTekst = `Schuldgraad van ${dte.toFixed(2)} is normaal voor deze sector (typisch ${laagDrempel}-${hoogDrempel}).`; }
-      else { schuldScore = 3; schuldTekst = `Schuldgraad van ${dte.toFixed(2)} is hoog, zelfs voor "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — meer financieel risico.`; }
+      if (dte < laagDrempel) { schuldScore = 9; schuldTekst = `Schuldgraad van ${getal(dte, 2)} is laag voor "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — financieel gezond.`; }
+      else if (dte < hoogDrempel) { schuldScore = 6; schuldTekst = `Schuldgraad van ${getal(dte, 2)} is normaal voor deze sector (typisch ${laagDrempel}-${hoogDrempel}).`; }
+      else { schuldScore = 3; schuldTekst = `Schuldgraad van ${getal(dte, 2)} is hoog, zelfs voor "${drempels.naam}" (typisch ${laagDrempel}-${hoogDrempel}) — meer financieel risico.`; }
     }
     stappen.push({ titel: 'Financiële gezondheid', sub: `Schuldgraad (sector: ${drempels.naam})`, score: schuldScore, toelichting: schuldTekst });
   } else {
@@ -236,9 +237,9 @@ function scoreAandeelLangeTermijn(f) {
     const divPct = div * 100;
     const payoutPct = payout != null ? payout * 100 : null;
     const payoutDrempel = (categorie === 'nutsbedrijf' || categorie === 'vastgoed') ? 85 : 70; // REIT's/nutsbedrijven keren wettelijk/gebruikelijk meer uit
-    if (divPct >= divLaag && (payoutPct == null || payoutPct < payoutDrempel)) { divScore = 9; divTekst = `Dividendrendement van ${divPct.toFixed(2)}% past bij (of overtreft) wat gebruikelijk is voor "${drempels.naam}" (typisch ${divLaag}-${divHoog}%), met een houdbare uitkeringsratio.`; }
-    else if (payoutPct != null && payoutPct > 95) { divScore = 3; divTekst = `Dividendrendement van ${divPct.toFixed(2)}%, maar een erg hoge uitkeringsratio (${payoutPct.toFixed(0)}%) — risico op verlaging.`; }
-    else { divScore = 6; divTekst = `Dividendrendement van ${divPct.toFixed(2)}% (sectortypisch: ${divLaag}-${divHoog}%).`; }
+    if (divPct >= divLaag && (payoutPct == null || payoutPct < payoutDrempel)) { divScore = 9; divTekst = `Dividendrendement van ${getal(divPct, 2)}% past bij (of overtreft) wat gebruikelijk is voor "${drempels.naam}" (typisch ${divLaag}-${divHoog}%), met een houdbare uitkeringsratio.`; }
+    else if (payoutPct != null && payoutPct > 95) { divScore = 3; divTekst = `Dividendrendement van ${getal(divPct, 2)}%, maar een erg hoge uitkeringsratio (${getal(payoutPct, 0)}%) — risico op verlaging.`; }
+    else { divScore = 6; divTekst = `Dividendrendement van ${getal(divPct, 2)}% (sectortypisch: ${divLaag}-${divHoog}%).`; }
   }
   stappen.push({ titel: 'Dividend', sub: `Dividendrendement & uitkeringsratio (sector: ${drempels.naam})`, score: divScore, toelichting: divTekst });
 
@@ -254,9 +255,9 @@ function scoreAandeelKorteTermijn(f, koers) {
   let momScore = 5, momTekst = 'Geen 52-weken-bereik beschikbaar.';
   if (hoog != null && laag != null && huidig != null && hoog > laag) {
     const positie = ((huidig - laag) / (hoog - laag)) * 100;
-    if (positie > 80) { momScore = 7; momTekst = `Koers staat op ${positie.toFixed(0)}% van het 52-weken-bereik — dicht bij de jaarpiek, sterk momentum maar mogelijk duurder.`; }
-    else if (positie > 40) { momScore = 6; momTekst = `Koers staat op ${positie.toFixed(0)}% van het 52-weken-bereik — neutrale positie.`; }
-    else { momScore = 5; momTekst = `Koers staat op ${positie.toFixed(0)}% van het 52-weken-bereik — dicht bij het jaardal. Kan een koopkans zijn, of wijzen op een neerwaartse trend.`; }
+    if (positie > 80) { momScore = 7; momTekst = `Koers staat op ${getal(positie, 0)}% van het 52-weken-bereik — dicht bij de jaarpiek, sterk momentum maar mogelijk duurder.`; }
+    else if (positie > 40) { momScore = 6; momTekst = `Koers staat op ${getal(positie, 0)}% van het 52-weken-bereik — neutrale positie.`; }
+    else { momScore = 5; momTekst = `Koers staat op ${getal(positie, 0)}% van het 52-weken-bereik — dicht bij het jaardal. Kan een koopkans zijn, of wijzen op een neerwaartse trend.`; }
   }
   stappen.push({ titel: 'Jaarbereik', sub: 'Koers t.o.v. 52-weken hoog/laag', score: momScore, toelichting: momTekst });
 
@@ -294,10 +295,10 @@ function scoreCrypto(c) {
   let athScore = 5, athTekst = 'Geen gegevens over de vorige piekkoers (ATH) beschikbaar.';
   if (ath != null) {
     const afstand = Math.abs(ath);
-    if (afstand < 20) { athScore = 6; athTekst = `Slechts ${afstand.toFixed(0)}% onder de vorige piekkoers — dicht bij een all-time high, sterk momentum maar mogelijk duur.`; }
-    else if (afstand < 50) { athScore = 7; athTekst = `${afstand.toFixed(0)}% onder de vorige piekkoers — gezonde correctie.`; }
-    else if (afstand < 80) { athScore = 6; athTekst = `${afstand.toFixed(0)}% onder de vorige piekkoers — stevige daling.`; }
-    else { athScore = 4; athTekst = `${afstand.toFixed(0)}% onder de vorige piekkoers — kan wijzen op blijvend verlies van vertrouwen, of net een kans.`; }
+    if (afstand < 20) { athScore = 6; athTekst = `Slechts ${getal(afstand, 0)}% onder de vorige piekkoers — dicht bij een all-time high, sterk momentum maar mogelijk duur.`; }
+    else if (afstand < 50) { athScore = 7; athTekst = `${getal(afstand, 0)}% onder de vorige piekkoers — gezonde correctie.`; }
+    else if (afstand < 80) { athScore = 6; athTekst = `${getal(afstand, 0)}% onder de vorige piekkoers — stevige daling.`; }
+    else { athScore = 4; athTekst = `${getal(afstand, 0)}% onder de vorige piekkoers — kan wijzen op blijvend verlies van vertrouwen, of net een kans.`; }
   }
   stappen.push({ titel: 'Prijsmomentum', sub: 'Afstand t.o.v. vorige piekkoers (ATH)', score: athScore, toelichting: athTekst });
 
@@ -305,10 +306,10 @@ function scoreCrypto(c) {
   const volRatio = (c.totalVolume != null && c.marketCap) ? (c.totalVolume / c.marketCap) * 100 : null;
   let volScore = 5, volTekst = 'Geen volume-/liquiditeitsgegevens beschikbaar.';
   if (volRatio != null) {
-    if (volRatio > 10) { volScore = 9; volTekst = `Dagvolume is ${volRatio.toFixed(1)}% van de marktkapitalisatie — zeer liquide.`; }
-    else if (volRatio > 3) { volScore = 7; volTekst = `Dagvolume is ${volRatio.toFixed(1)}% van de marktkapitalisatie — degelijk verhandelbaar.`; }
-    else if (volRatio > 1) { volScore = 5; volTekst = `Dagvolume is ${volRatio.toFixed(1)}% van de marktkapitalisatie — matige liquiditeit.`; }
-    else { volScore = 3; volTekst = `Dagvolume is slechts ${volRatio.toFixed(1)}% van de marktkapitalisatie — weinig verhandeld, kan lastig zijn om snel te (ver)kopen.`; }
+    if (volRatio > 10) { volScore = 9; volTekst = `Dagvolume is ${getal(volRatio, 1)}% van de marktkapitalisatie — zeer liquide.`; }
+    else if (volRatio > 3) { volScore = 7; volTekst = `Dagvolume is ${getal(volRatio, 1)}% van de marktkapitalisatie — degelijk verhandelbaar.`; }
+    else if (volRatio > 1) { volScore = 5; volTekst = `Dagvolume is ${getal(volRatio, 1)}% van de marktkapitalisatie — matige liquiditeit.`; }
+    else { volScore = 3; volTekst = `Dagvolume is slechts ${getal(volRatio, 1)}% van de marktkapitalisatie — weinig verhandeld, kan lastig zijn om snel te (ver)kopen.`; }
   }
   stappen.push({ titel: 'Liquiditeit', sub: 'Dagvolume t.o.v. marktkapitalisatie', score: volScore, toelichting: volTekst });
 
@@ -317,7 +318,7 @@ function scoreCrypto(c) {
   let trendScore = 5, trendTekst = 'Geen recente prijstrend beschikbaar.';
   if (trend7d != null || trend30d != null) {
     const gemiddeld = [trend7d, trend30d].filter(v => v != null).reduce((s, v) => s + v, 0) / [trend7d, trend30d].filter(v => v != null).length;
-    const delen = [trend7d != null ? `7d: ${trend7d >= 0 ? '+' : ''}${trend7d.toFixed(1)}%` : null, trend30d != null ? `30d: ${trend30d >= 0 ? '+' : ''}${trend30d.toFixed(1)}%` : null].filter(Boolean);
+    const delen = [trend7d != null ? `7d: ${trend7d >= 0 ? '+' : ''}${getal(trend7d, 1)}%` : null, trend30d != null ? `30d: ${trend30d >= 0 ? '+' : ''}${getal(trend30d, 1)}%` : null].filter(Boolean);
     if (gemiddeld > 10) { trendScore = 8; trendTekst = `Positieve recente trend (${delen.join(', ')}).`; }
     else if (gemiddeld > 0) { trendScore = 6; trendTekst = `Licht positieve trend (${delen.join(', ')}).`; }
     else if (gemiddeld > -10) { trendScore = 4; trendTekst = `Licht negatieve trend (${delen.join(', ')}).`; }
@@ -330,9 +331,9 @@ function scoreCrypto(c) {
   let supplyScore = 5, supplyTekst = 'Geen maximale voorraad ingesteld (geen limiet) — neutraal, wel iets om in het oog te houden.';
   if (max != null && circ != null && max > 0) {
     const ratio = (circ / max) * 100;
-    if (ratio > 90) { supplyScore = 8; supplyTekst = `${ratio.toFixed(0)}% van de maximale voorraad is al in omloop — weinig toekomstige verwatering.`; }
-    else if (ratio > 50) { supplyScore = 6; supplyTekst = `${ratio.toFixed(0)}% van de maximale voorraad is in omloop.`; }
-    else { supplyScore = 4; supplyTekst = `Slechts ${ratio.toFixed(0)}% van de maximale voorraad is in omloop — nog veel toekomstige munten kunnen bijkomen.`; }
+    if (ratio > 90) { supplyScore = 8; supplyTekst = `${getal(ratio, 0)}% van de maximale voorraad is al in omloop — weinig toekomstige verwatering.`; }
+    else if (ratio > 50) { supplyScore = 6; supplyTekst = `${getal(ratio, 0)}% van de maximale voorraad is in omloop.`; }
+    else { supplyScore = 4; supplyTekst = `Slechts ${getal(ratio, 0)}% van de maximale voorraad is in omloop — nog veel toekomstige munten kunnen bijkomen.`; }
   }
   stappen.push({ titel: 'Supply-dynamiek', sub: 'Huidige voorraad t.o.v. maximale voorraad', score: supplyScore, toelichting: supplyTekst });
 
@@ -341,9 +342,9 @@ function scoreCrypto(c) {
   let volaScore = 5, volaTekst = 'Geen recente volatiliteit beschikbaar.';
   if (dag != null) {
     const afw = Math.abs(dag);
-    if (afw < 3) { volaScore = 7; volaTekst = `Koers bewoog vandaag ${afw.toFixed(1)}% — relatief rustig.`; }
-    else if (afw < 8) { volaScore = 5; volaTekst = `Koers bewoog vandaag ${afw.toFixed(1)}% — gemiddelde volatiliteit.`; }
-    else { volaScore = 3; volaTekst = `Koers bewoog vandaag ${afw.toFixed(1)}% — hoge volatiliteit, meer risico op korte termijn.`; }
+    if (afw < 3) { volaScore = 7; volaTekst = `Koers bewoog vandaag ${getal(afw, 1)}% — relatief rustig.`; }
+    else if (afw < 8) { volaScore = 5; volaTekst = `Koers bewoog vandaag ${getal(afw, 1)}% — gemiddelde volatiliteit.`; }
+    else { volaScore = 3; volaTekst = `Koers bewoog vandaag ${getal(afw, 1)}% — hoge volatiliteit, meer risico op korte termijn.`; }
   }
   stappen.push({ titel: 'Volatiliteit', sub: 'Prijsschommeling over de laatste 24 uur', score: volaScore, toelichting: volaTekst });
 

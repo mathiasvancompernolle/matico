@@ -56,7 +56,7 @@ export default function Sidebar({ collapsed, onToggle, onHome, onNavigate }) {
       naam = 'Pensioensparen';
     } else {
       naam = voornaam
-        ? (aantalStandaard === 0 ? `${voornaam}'s portfolio` : `${voornaam}'s portfolio ${aantalStandaard + 1}`)
+        ? (aantalStandaard === 0 ? `Portfolio van ${voornaam}` : `Portfolio van ${voornaam} ${aantalStandaard + 1}`)
         : `Portfolio ${portfolios.length + 1}`;
     }
     voegPortfolioToe(naam, type);

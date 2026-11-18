@@ -7,6 +7,7 @@
 
 :root {
   --accent: #1e3a8a;
+  --logo-kleur: #1e3a8a;
   --accent-light: #3b5998;
   --accent-dark: #14275e;
   --accent-bg: #eef1f8;
@@ -35,6 +36,7 @@
 /* ── Dark mode ── */
 body.dark {
   --accent: #5b7fd4;
+  --logo-kleur: #f1f5f9;
   --accent-light: #8aa4e8;
   --accent-dark: #1e3a8a;
   --accent-bg: #16213e;
@@ -2232,3 +2234,7 @@ body.dark .top-nav {
 .etf-tabel td:nth-child(9) {
   white-space: nowrap;
 }
+
+/* Knoppen nemen de tekstkleur van hun omgeving over (anders standaard zwart,
+   onleesbaar in dark mode). Knoppen met een eigen kleur behouden die. */
+button { color: inherit; }

@@ -395,7 +395,7 @@ function Staaf({ label, waarde, pct, kleur }) {
         </div>
         <div style={{ textAlign: 'right' }}>
           <span style={{ fontSize: 14, fontWeight: 600, marginRight: 8 }}>€{fmt(waarde)}</span>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{pct.toFixed(2)}%</span>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{getal(pct, 2)}%</span>
         </div>
       </div>
       <div style={{ height: 6, background: 'var(--border-light)', borderRadius: 4, overflow: 'hidden' }}>
@@ -408,8 +408,11 @@ function Staaf({ label, waarde, pct, kleur }) {
 // ── Hoofd Analyse component ───────────────────────────────────────
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
+import { getal } from '../utils/getal';
 export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
   const { beleggingen: beleggingenRaw, koersen, getMuntFactor, verkochteBeleggingen, t } = useApp();
+  // "1 transactie" / "12 transacties"
+  const aantalTransacties = (n) => `${n} ${n === 1 ? t('bel_transactie_suffix') : t('bel_transacties_suffix')}`;
   // Belegging-type normaliseren: bekende ETF-tickers (VWCE, IWDA, ...) tellen altijd
   // als ETF voor Spreiding/Sectoren/Regio/Valuta/ETF X-ray, ook als het type-veld
   // bij het toevoegen niet correct op 'etf' werd gezet.
@@ -449,7 +452,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     const w = hw - kp;
     const wp = kp > 0 ? (w / kp) * 100 : 0;
     return { kostprijs: kp, huidigeWaarde: hw, winst: w, winstPct: wp, maxBar: Math.max(kp, hw) };
-  }, [beleggingen, koersen, winstFilter, verkochteBeleggingen]);
+  }, [beleggingen, koersen, winstFilter, verkochteBeleggingen, getMuntFactor]);
 
   // ── Risicoprofiel (bèta benadering) ──
   // Live bèta state — wordt gevuld via Finnhub metrics API
@@ -470,11 +473,14 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       return s + (BETA_MAP[sym] || 1.0) * w;
     }, 0);
     // Grenzen conform info-modal: Defensief <1.0, Neutraal 1.0-1.5, Offensief 1.5-2.5, Speculatief >2.5
-    const label = gewogenBeta < 1.0 ? 'Defensief' : gewogenBeta < 1.5 ? 'Neutraal' : gewogenBeta < 2.5 ? 'Offensief' : 'Speculatief';
-    const kleur = gewogenBeta < 1.0 ? 'var(--green)' : gewogenBeta < 1.5 ? '#1e3a8a' : gewogenBeta < 2.5 ? '#f97316' : 'var(--red)';
-    const bolletjes = gewogenBeta < 1.0 ? 1 : gewogenBeta < 1.5 ? 2 : gewogenBeta < 2.5 ? 3 : 4;
-    return { beta: gewogenBeta, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: bolletjes, onbekendeBetas: [...new Set(onbekend)] };
-  }, [beleggingen, koersen]);
+    // Afronden op 2 decimalen, net zoals op het scherm: anders kreeg een bèta
+    // van 0,997 (getoond als "1,00") het label "Defensief".
+    const afgerond = Math.round(gewogenBeta * 100) / 100;
+    const label = afgerond < 1.0 ? 'Defensief' : afgerond < 1.5 ? 'Neutraal' : afgerond < 2.5 ? 'Offensief' : 'Speculatief';
+    const kleur = afgerond < 1.0 ? 'var(--green)' : afgerond < 1.5 ? 'var(--accent)' : afgerond < 2.5 ? '#f97316' : 'var(--red)';
+    const bolletjes = afgerond < 1.0 ? 1 : afgerond < 1.5 ? 2 : afgerond < 2.5 ? 3 : 4;
+    return { beta: afgerond, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: bolletjes, onbekendeBetas: [...new Set(onbekend)] };
+  }, [beleggingen, koersen, getMuntFactor, liveBetas]);
 
 
 
@@ -545,7 +551,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       .sort((a, b) => b.waarde - a.waarde);
 
     return { spreidingData: data, pieData: data };
-  }, [beleggingen, koersen, spreidingTab, spreidingSubFilter, liveSectoren, liveEtfData]);
+  }, [beleggingen, koersen, spreidingTab, spreidingSubFilter, liveSectoren, liveEtfData, getMuntFactor]);
 
   // ── Concentratierisico ──
   // ── Live bèta ophalen via Finnhub metrics API ──
@@ -745,29 +751,36 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     const tips = [];
 
     // 1. Eén positie domineert
-    if (posities[0]?.pct > 50) {
-      tips.push(`${posities[0].sym} maakt ${posities[0].pct.toFixed(0)}% van je portfolio uit. Dat is een erg hoge concentratie — bij een koersdaling van 10% daalt je portfolio al met ${(posities[0].pct * 0.1).toFixed(1)}%.`);
-    } else if (posities[0]?.pct > 30) {
-      tips.push(`${posities[0].sym} is je grootste positie met ${posities[0].pct.toFixed(0)}%. Overweeg of dit gewicht past bij je risicoprofiel.`);
+    // Een (brede) ETF is zelf al gespreid over veel bedrijven: een groot gewicht
+    // daarin is iets anders dan een groot gewicht in één aandeel.
+    const grootsteIsEtf = posities[0]?.type === 'etf';
+    if (posities[0]?.pct > 50 && grootsteIsEtf) {
+      tips.push(`${posities[0].sym} maakt ${getal(posities[0].pct, 0)}% van je portfolio uit. Omdat het een ETF is, is dat bedrag zelf al over veel bedrijven gespreid. Kijk vooral welke regio's en sectoren deze ETF volgt.`);
+    } else if (posities[0]?.pct > 50) {
+      tips.push(`${posities[0].sym} maakt ${getal(posities[0].pct, 0)}% van je portfolio uit. Dat is een erg hoge concentratie — bij een koersdaling van 10% daalt je portfolio al met ${getal((posities[0].pct * 0.1), 1)}%.`);
+    } else if (posities[0]?.pct > 30 && !grootsteIsEtf) {
+      tips.push(`${posities[0].sym} is je grootste positie met ${getal(posities[0].pct, 0)}%. Overweeg of dit gewicht past bij je risicoprofiel.`);
     }
 
     // 2. Top 2 posities nemen te veel in
-    if (aantalPosities >= 3 && top2Pct > 70) {
-      tips.push(`Je twee grootste posities (${posities[0]?.sym} en ${posities[1]?.sym}) maken samen ${top2Pct.toFixed(0)}% uit. Grotere spreiding verlaagt je risico.`);
+    if (aantalPosities >= 3 && top2Pct > 70 && !(posities[0]?.type === 'etf' && posities[1]?.type === 'etf')) {
+      tips.push(`Je twee grootste posities (${posities[0]?.sym} en ${posities[1]?.sym}) maken samen ${getal(top2Pct, 0)}% uit. Grotere spreiding verlaagt je risico.`);
     }
 
     // 3. Sector concentratie
-    if (topS[1] > 60) {
-      tips.push(`${topS[1].toFixed(0)}% van je portfolio zit in ${topS[0]}. Een sectorcrisis zou een grote impact hebben.`);
-    } else if (topS[1] > 40 && top2S.length > 1) {
-      tips.push(`${topS[1].toFixed(0)}% zit indirect in ${topS[0]}, na doorrekening van je ETF-posities. ${top2S[1] ? top2S[1][1].toFixed(0) + '% in ' + top2S[1][0] + '.' : ''}`);
+    // 'Overige'/'Onbekend' is geen echte sector (data ontbreekt) — daar geen sectorrisico over melden
+    const echteTopSector = !['Overige', 'Onbekend', '—'].includes(topS[0]);
+    if (topS[1] > 60 && echteTopSector) {
+      tips.push(`${getal(topS[1], 0)}% van je portfolio zit in ${topS[0]}. Een sectorcrisis zou een grote impact hebben.`);
+    } else if (topS[1] > 40 && top2S.length > 1 && echteTopSector) {
+      tips.push(`${getal(topS[1], 0)}% zit indirect in ${topS[0]}, na doorrekening van je ETF-posities. ${top2S[1] ? getal(top2S[1][1], 0) + '% in ' + top2S[1][0] + '.' : ''}`);
     }
 
     // 4. Regio concentratie
     if (topR[1] > 80) {
-      tips.push(`${topR[1].toFixed(0)}% is indirect blootgesteld aan ${topR[0]}. Geografische spreiding naar andere regio's kan het risico verlagen.`);
+      tips.push(`${getal(topR[1], 0)}% is indirect blootgesteld aan ${topR[0]}. Geografische spreiding naar andere regio's kan het risico verlagen.`);
     } else if (topR[1] > 60) {
-      tips.push(`${topR[1].toFixed(0)}% is indirect blootgesteld aan ${topR[0]}.`);
+      tips.push(`${getal(topR[1], 0)}% is indirect blootgesteld aan ${topR[0]}.`);
     }
 
     // 5. Te weinig posities
@@ -793,21 +806,21 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     // dat is de richting die de spreiding het meest zou verbeteren.
     const etfPct = posities.filter(p => p.type === 'etf').reduce((s, p) => s + p.pct, 0);
     const typeSuggestie = (aandelenPct > 60 && etfPct < 20)
-      ? `Vooral individuele aandelen (${aandelenPct.toFixed(0)}%) — een brede ETF zou hier het meest aan bijdragen.`
+      ? `Vooral individuele aandelen (${getal(aandelenPct, 0)}%) — een brede ETF zou hier het meest aan bijdragen.`
       : null;
 
     const sectorZwakste = ALLE_SECTOREN
       .map(s => [s, sectorMap[s] || 0])
       .sort((a, b) => a[1] - b[1])[0];
-    const sectorSuggestie = (topS[1] > 30 && sectorZwakste && sectorZwakste[0] !== topS[0])
-      ? `${sectorZwakste[0]} (${sectorZwakste[1].toFixed(0)}%) is nu het minst vertegenwoordigd — kijk daar voor je volgende belegging.`
+    const sectorSuggestie = (topS[1] > 30 && echteTopSector && sectorZwakste && sectorZwakste[0] !== topS[0])
+      ? `${sectorZwakste[0]} (${getal(sectorZwakste[1], 0)}%) is nu het minst vertegenwoordigd in je portfolio.`
       : null;
 
     const regioZwakste = ALLE_REGIOS
       .map(r => [r, regioMap[r] || 0])
       .sort((a, b) => a[1] - b[1])[0];
     const regioSuggestie = (topR[1] > 50 && regioZwakste && regioZwakste[0] !== topR[0])
-      ? `${regioZwakste[0]} (${regioZwakste[1].toFixed(0)}%) is nu het minst vertegenwoordigd — kijk daar voor je volgende belegging.`
+      ? `${regioZwakste[0]} (${getal(regioZwakste[1], 0)}%) is nu het minst vertegenwoordigd in je portfolio.`
       : null;
 
     return {
@@ -817,7 +830,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       typeSuggestie, sectorSuggestie, regioSuggestie,
       concentratieTips: tips,
     };
-  }, [beleggingen, koersen, liveSectoren, liveEtfData]);
+  }, [beleggingen, koersen, liveSectoren, liveEtfData, getMuntFactor]);
 
   // ── ETF X-ray database ──
   const etfs = beleggingen.filter(b => b.type === 'etf');
@@ -1045,8 +1058,10 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       return {
         kostenratio: live.expenseRatio || ETF_DB_XRAY[basis]?.kostenratio || 0,
         holdings: live.holdings.slice(0, 10).map(h => ({
-          sym: h.asset || h.symbol || h.ticker || '?',
-          naam: h.name || h.companyName || h.asset || '?',
+          // Obligaties e.d. hebben vaak geen ticker: dan lege sym (niet '?'),
+          // anders werden ze allemaal samengeteld onder één '?'-rij.
+          sym: h.asset || h.symbol || h.ticker || '',
+          naam: h.name || h.companyName || h.asset || 'Onbekend',
           pct: parseFloat(h.weightPercentage || h.weight || h.pct || 0)
         })).filter(h => h.pct > 0)
       };
@@ -1078,12 +1093,13 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
 
       data.holdings.forEach(h => {
         const gewichtInPortfolio = etfGewicht * (h.pct / 100);
-        if (!holdingMap[h.sym]) {
-          holdingMap[h.sym] = { sym: h.sym, naam: h.naam, gewicht: 0, viaEtfs: [] };
+        const sleutel = h.sym || h.naam;
+        if (!holdingMap[sleutel]) {
+          holdingMap[sleutel] = { sym: h.sym, naam: h.naam, gewicht: 0, viaEtfs: [] };
         }
-        holdingMap[h.sym].gewicht += gewichtInPortfolio;
-        if (!holdingMap[h.sym].viaEtfs.find(v => v.sym === etf.symbol)) {
-          holdingMap[h.sym].viaEtfs.push({ sym: etf.symbol, pct: h.pct });
+        holdingMap[sleutel].gewicht += gewichtInPortfolio;
+        if (!holdingMap[sleutel].viaEtfs.find(v => v.sym === etf.symbol)) {
+          holdingMap[sleutel].viaEtfs.push({ sym: etf.symbol, pct: h.pct });
         }
       });
     });
@@ -1205,14 +1221,14 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
               <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{t('an_winst_verlies_totaal')}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 16, fontWeight: 700, color: winst >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                  {winst >= 0 ? '+' : ''}€{fmt(Math.abs(winst))}
+                  {winst >= 0 ? '+' : '-'}€{fmt(Math.abs(winst))}
                 </span>
                 <span style={{
                   padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
                   background: winst >= 0 ? 'var(--green-bg)' : 'var(--red-bg)',
                   color: winst >= 0 ? 'var(--green)' : 'var(--red)'
                 }}>
-                  {winst >= 0 ? '+' : ''}{winstPct.toFixed(2)}%
+                  {winst >= 0 ? '+' : ''}{getal(winstPct, 2)}%
                 </span>
               </div>
             </div>
@@ -1240,13 +1256,13 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
               color: 'var(--accent)', display: 'flex', alignItems: 'flex-start', gap: 8
             }}>
               <span>💡</span>
-              <span>{t('an_marktdaling_deel1')} {(beta * 10).toFixed(1)}%.</span>
+              <span>{t('an_marktdaling_deel1')} {getal((beta * 10), 1)}%.</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               <div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('an_marktinvloed_beta')}</div>
-                <div style={{ fontSize: 28, fontWeight: 700 }}>{beta.toFixed(2)}</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }}>{getal(beta, 2)}</div>
               </div>
               <div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('an_risiconiveau')}</div>
@@ -1336,7 +1352,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                 <button key={tb} onClick={() => { setSpreidingTab(tb); setSpreidingSubFilter('Alles'); setSpreidingDropdownOpen(false); }} style={{
                   padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)',
                   background: spreidingTab === tb ? 'var(--text-primary)' : 'transparent',
-                  color: spreidingTab === tb ? 'white' : 'var(--text-secondary)',
+                  color: spreidingTab === tb ? 'var(--bg-white)' : 'var(--text-secondary)',
                   fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit'
                 }}>{tb === 'Type' ? t('an_tab_type') : tb === 'Sectoren' ? t('an_tab_sectoren') : t('an_tab_regio')}</button>
               ))}
@@ -1401,7 +1417,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                         boxShadow: '0 2px 8px rgba(0,0,0,0.10)'
                       }}>
                         <span style={{ color: kleur, fontWeight: 700 }}>{name}</span>
-                        <span style={{ color: kleur, marginLeft: 8 }}>{value.toFixed(2)}%</span>
+                        <span style={{ color: kleur, marginLeft: 8 }}>{getal(value, 2)}%</span>
                       </div>
                     );
                   }} />
@@ -1440,7 +1456,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
             ].map(({ label, waarde, pct, suggestie }) => (
               <div key={label} style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
-                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>{waarde} <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{pct.toFixed(0)}%</span></div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>{waarde} <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{getal(pct, 0)}%</span></div>
                 <div style={{ height: 6, background: 'var(--border-light)', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: ACCENT, borderRadius: 4, transition: 'width 0.4s ease' }} />
                 </div>
@@ -1463,7 +1479,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                   <button key={tb} onClick={() => setValutaTab(tb)} style={{
                     padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)',
                     background: valutaTab === tb ? 'var(--text-primary)' : 'transparent',
-                    color: valutaTab === tb ? 'white' : 'var(--text-secondary)',
+                    color: valutaTab === tb ? 'var(--bg-white)' : 'var(--text-secondary)',
                     fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit'
                   }}>{tb === 'verdeling' ? t('an_valutaverdeling') : t('an_wisselkoerseffect')}</button>
                 ))}
@@ -1553,7 +1569,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                           return (
                             <div style={{ background: 'white', border: `1.5px solid ${kleur}`, borderRadius: 8, padding: '7px 12px', fontSize: 13, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}>
                               <span style={{ color: kleur, fontWeight: 700 }}>{name}</span>
-                              <span style={{ color: kleur, marginLeft: 8 }}>{value.toFixed(2)}%</span>
+                              <span style={{ color: kleur, marginLeft: 8 }}>{getal(value, 2)}%</span>
                             </div>
                           );
                         }} />
@@ -1570,7 +1586,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                           </div>
                           <div className="analyse-currency-amount">
                             <span className="analyse-currency-value" style={{ fontSize: 13, fontWeight: 600, marginRight: 6 }}>€{fmt(v.waarde)}</span>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{v.pct.toFixed(2)}%</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{getal(v.pct, 2)}%</span>
                           </div>
                         </div>
                         <div style={{ height: 4, background: 'var(--border-light)', borderRadius: 2, overflow: 'hidden' }}>
@@ -1631,7 +1647,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                   </div>
                   <div style={{ padding: '10px 14px', background: 'var(--accent-bg)', border: '1px solid var(--accent-light)', borderRadius: 10, marginBottom: 16, fontSize: 13, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span>💡</span>
-                    <span>{t('an_wisselkoersen_deel1')} {wisselkoersPeriode === 'YTD' ? t('an_periode_dit_jaar') : wisselkoersPeriode === '1M' ? t('an_periode_deze_maand') : t('an_periode_dit_jaar')} {t('an_wisselkoersen_deel2')} <strong style={{ color: isPos ? 'var(--green)' : 'var(--red)' }}>{isPos ? '+' : ''}{totaalEffect.toFixed(1)}%</strong>.</span>
+                    <span>{t('an_wisselkoersen_deel1')} {wisselkoersPeriode === 'YTD' ? t('an_periode_dit_jaar') : wisselkoersPeriode === '1M' ? t('an_periode_deze_maand') : t('an_periode_dit_jaar')} {t('an_wisselkoersen_deel2')} <strong style={{ color: isPos ? 'var(--green)' : 'var(--red)' }}>{isPos ? '+' : ''}{getal(totaalEffect, 1)}%</strong>.</span>
                   </div>
                   <div style={{ height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -1639,7 +1655,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
                         <XAxis dataKey="maand" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
-                          tickFormatter={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`} />
+                          tickFormatter={v => `${v > 0 ? '+' : ''}${getal(v, 1)}%`} />
                         <ReferenceLine y={0} stroke="var(--border)" />
                         <Bar dataKey="effect" radius={[3, 3, 0, 0]}>
                           {periodeData.map((d, i) => (
@@ -1695,7 +1711,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
               </div>
               <div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{t('an_gemiddelde_kostenratio')}</div>
-                <div style={{ fontSize: 28, fontWeight: 700 }}>{gemiddeldeKostenratio.toFixed(2).replace('.', ',')}%</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }}>{getal(gemiddeldeKostenratio, 2)}%</div>
               </div>
             </div>
 
@@ -1711,7 +1727,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                 <span className="analyse-etf-via" style={{ textAlign: 'right' }}>{t('an_col_via')}</span>
               </div>
               {alleHoldings.slice(0, 10).map((h, i) => (
-                <div key={h.sym} className="analyse-etf-row" style={{
+                <div key={h.sym || h.naam} className="analyse-etf-row" style={{
                   display: 'grid', gridTemplateColumns: '1fr 160px 1fr',
                   padding: '11px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'center'
                 }}
@@ -1726,7 +1742,9 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       background: 'white'
                     }}>
-                      <img
+                      {!h.sym ? (
+                        <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 11 }}>{h.naam.slice(0, 2).toUpperCase()}</span>
+                      ) : <img
                         src={`https://assets.parqet.com/logos/symbol/${h.sym.split('.')[0]}?format=png`}
                         alt={h.sym}
                         style={{ width: 26, height: 26, objectFit: 'contain' }}
@@ -1735,21 +1753,21 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                           e.target.parentNode.style.background = 'var(--accent-bg)';
                           e.target.parentNode.innerHTML = `<span style="color:var(--accent);font-weight:700;font-size:11px">${h.sym.split('.')[0].slice(0,2).toUpperCase()}</span>`;
                         }}
-                      />
+                      />}
                     </div>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{h.naam}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{h.sym}</div>
+                      {h.sym && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{h.sym}</div>}
                     </div>
                   </div>
                   {/* Gewicht */}
                   <div style={{ textAlign: 'right', fontWeight: 600, fontSize: 14 }}>
-                    {h.gewicht.toFixed(2)}%
+                    {getal(h.gewicht, 2)}%
                   </div>
                   {/* Via ETFs */}
                   <div className="analyse-etf-via" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
                     {h.viaEtfs.map(v => (
-                      <div key={v.sym}>{v.sym} <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{v.pct.toFixed(2)}%</span></div>
+                      <div key={v.sym}>{v.sym} <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{getal(v.pct, 2)}%</span></div>
                     ))}
                   </div>
                 </div>
@@ -1779,20 +1797,20 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                   <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{t('an_overzicht_kosten')}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 24, fontWeight: 800 }}>€{totaalKosten.toFixed(2)}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{kostenPct.toFixed(3)}% {t('an_van_geinvesteerd_kapitaal')}</div>
+                  <div style={{ fontSize: 24, fontWeight: 800 }}>€{getal(totaalKosten, 2)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{getal(kostenPct, 3)}% {t('an_van_geinvesteerd_kapitaal')}</div>
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
                 {[
-                  { label: t('an_actieve_posities'), waarde: kostenActief, sub: `${beleggingen.filter(b => b.transactiekosten > 0).length} ${t('bel_transacties_suffix')}` },
-                  { label: t('an_verkochte_posities'), waarde: kostenVerkocht, sub: `${(verkochteBeleggingen || []).filter(b => b.transactiekosten > 0).length} ${t('bel_transacties_suffix')}` },
-                  { label: t('an_totaal_betaald'), waarde: totaalKosten, sub: `${kostenPct.toFixed(3)}% ${t('an_van_kapitaal')}`, accent: true },
+                  { label: t('an_actieve_posities'), waarde: kostenActief, sub: aantalTransacties(beleggingen.filter(b => b.transactiekosten > 0).length) },
+                  { label: t('an_verkochte_posities'), waarde: kostenVerkocht, sub: aantalTransacties((verkochteBeleggingen || []).filter(b => b.transactiekosten > 0).length) },
+                  { label: t('an_totaal_betaald'), waarde: totaalKosten, sub: `${getal(kostenPct, 3)}% ${t('an_van_kapitaal')}`, accent: true },
                 ].map(({ label, waarde, sub, accent }) => (
                   <div key={label} style={{ padding: '14px 16px', background: accent ? 'var(--accent-bg)' : 'var(--bg-subtle)', borderRadius: 10, border: `1px solid ${accent ? 'var(--accent)' : 'var(--border-light)'}` }}>
                     <div style={{ fontSize: 12, color: accent ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>{label}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: accent ? 'var(--accent)' : 'var(--text-primary)' }}>€{waarde.toFixed(2)}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: accent ? 'var(--accent)' : 'var(--text-primary)' }}>€{getal(waarde, 2)}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>
                   </div>
                 ))}
@@ -1828,9 +1846,9 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                               </div>
                             </div>
                           </div>
-                          <div style={{ textAlign: 'right', fontSize: 13, fontFamily: 'monospace' }}>€{b.investering.toFixed(2)}</div>
-                          <div style={{ textAlign: 'right', fontSize: 13, fontFamily: 'monospace', fontWeight: 600, color: 'var(--red)' }}>€{b.kosten.toFixed(2)}</div>
-                          <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>{pct.toFixed(3)}%</div>
+                          <div style={{ textAlign: 'right', fontSize: 13, fontFamily: 'monospace' }}>€{getal(b.investering, 2)}</div>
+                          <div style={{ textAlign: 'right', fontSize: 13, fontFamily: 'monospace', fontWeight: 600, color: 'var(--red)' }}>€{getal(b.kosten, 2)}</div>
+                          <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>{getal(pct, 3)}%</div>
                           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6 }}>
                             {brokerDomein ? (
                               <img

@@ -1784,7 +1784,27 @@ module.exports = async function handler(req, res) {
         } catch (e) {}
       }
 
-      return res.json([]);
+      // Fallback: Yahoo Finance (gratis, geen strenge daglimiet). Geeft enkel
+      // de ex-datum; die gebruiken we ook als betaaldatum.
+      try {
+        const yfSym = toYahooSymbol(symbol);
+        const p1 = Math.floor(new Date(van).getTime() / 1000);
+        const p2 = Math.floor(new Date(tot).getTime() / 1000) + 86400;
+        const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?period1=${p1}&period2=${p2}&interval=1d&events=div`, { headers: YF_HEADERS });
+        const d = await r.json();
+        const divs = Object.values(d?.chart?.result?.[0]?.events?.dividends || {});
+        const munt = d?.chart?.result?.[0]?.meta?.currency || 'EUR';
+        if (divs.length > 0) {
+          return res.json(divs.sort((a, b) => a.date - b.date).map(item => {
+            const datum = new Date(item.date * 1000).toISOString().slice(0, 10);
+            return { exDate: datum, paymentDate: datum, amount: parseFloat(item.amount || 0), currency: munt, symbol };
+          }));
+        }
+      } catch (e) {}
+
+      // Leeg resultaat niet cachen: kan ook een tijdelijke fout of daglimiet
+      // van een bron zijn — anders bleef "keert geen dividend uit" 6 uur hangen.
+      return _origJson([]);
     }
 
     if (endpoint === 'etf-holdings') {

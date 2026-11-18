@@ -5,6 +5,7 @@ import {
 import { Star } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
+import { getal } from '../utils/getal';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Adaptieve afronding: hoe kleiner het getal, hoe meer decimalen, zodat kleine
 // prijzen (penny stocks, sommige crypto) niet afgerond worden tot 0,00.
@@ -228,7 +229,7 @@ export default function EffectDetail({ effect, onTerug }) {
                   {fmtPrijs(huidigeKoers)}
                 </span>
                 <span style={{ fontSize: 15, fontWeight: 600, color: positief ? 'var(--green)' : 'var(--red)' }}>
-                  {positief ? '+' : ''}{verschil.toFixed(2)} / {fmtPct(pctVerschil)}
+                  {positief ? '+' : ''}{getal(verschil, 2)} / {fmtPct(pctVerschil)}
                 </span>
               </>
             )}
@@ -400,7 +401,7 @@ export default function EffectDetail({ effect, onTerug }) {
                 <PrijsRij label="Laag" waarde={fmtPrijs(quote?.l)} />
                 <PrijsRij label="12M Hoog" waarde={fmtPrijs(quote?.hoog52)} />
                 <PrijsRij label="12M Laag" waarde={fmtPrijs(quote?.laag52)} />
-                <PrijsRij label="+/-" waarde={`${positief ? '+' : ''}${verschil.toFixed(2)} (${fmtPct(pctVerschil)})`} kleur={positief ? 'var(--green)' : 'var(--red)'} />
+                <PrijsRij label="+/-" waarde={`${positief ? '+' : ''}${getal(verschil, 2)} (${fmtPct(pctVerschil)})`} kleur={positief ? 'var(--green)' : 'var(--red)'} />
                 <PrijsRij label="Volume" waarde={fmtVolume(quote?.v)} />
                 {quote?.marktKap ? <PrijsRij label="Marktkap." waarde={fmtVolume(quote.marktKap)} /> : null}
               </div>

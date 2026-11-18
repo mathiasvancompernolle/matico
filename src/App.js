@@ -20,6 +20,7 @@ import './App.css';
 import Landing from './pages/Landing';
 import AuthPage from './pages/AuthPage';
 import { Voorwaarden, Disclaimer } from './pages/Juridisch';
+import { bewaakEigenaar, wisPersoonlijkeGegevens } from './utils/lokaleGegevens';
 import { supabase } from './supabaseClient';
 import kapitasLogo from './assets/kapitas-logo.png';
 import { LayoutDashboard, TrendingUp, Search, Star, User, X, ChevronRight, PiggyBank, Briefcase, Check } from 'lucide-react';
@@ -90,7 +91,8 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
         onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
       >
-        <img src={kapitasLogo} alt="Kapitas" style={{ height: '80%', width: 'auto', display: 'block' }} />
+        {/* Tekstlogo i.p.v. PNG: de PNG heeft een witte achtergrond die in dark mode als wit vak opviel */}
+        <span style={{ fontSize: isMobiel ? 22 : 26, fontWeight: 800, letterSpacing: '-0.5px', color: 'var(--logo-kleur, #1e3a8a)', fontFamily: "'DM Sans', sans-serif", padding: '0 6px' }}>Kapitas</span>
       </div>
 
       {/* Tabs — enkel op desktop: op mobiel zit deze wissel nu in de vaste
@@ -270,7 +272,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
                 ))}
               </div>
               <div style={{ borderTop: '1px solid var(--border)', padding: '6px 0' }}>
-                <div onClick={async () => { setProfielOpen(false); await supabase.auth.signOut(); window.location.reload(); }}
+                <div onClick={async () => { setProfielOpen(false); await supabase.auth.signOut(); wisPersoonlijkeGegevens(); window.location.reload(); }}
                   style={{ padding: '9px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8 }}
                   onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -415,7 +417,7 @@ function MobielProfielPagina({ gebruiker, onNavigeer }) {
         ))}
       </div>
 
-      <div onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }}
+      <div onClick={async () => { await supabase.auth.signOut(); wisPersoonlijkeGegevens(); window.location.reload(); }}
         style={{ padding: '13px 14px', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10 }}>
         <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         {t('profiel_uitloggen')}
@@ -799,8 +801,11 @@ export default function App() {
     return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => openPubliekePagina('/privacybeleid')} onVoorwaarden={() => openPubliekePagina('/voorwaarden')} startModus={authStartModus} onTerugNaarLanding={() => setToonLanding(true)} />;
   }
 
+  // Lokale gegevens van een ánder account wissen vóór AppProvider ze inleest
+  bewaakEigenaar(gebruiker.id);
+
   return (
-    <AppProvider supabaseGebruiker={gebruiker}>
+    <AppProvider key={gebruiker.id} supabaseGebruiker={gebruiker}>
       <AppInner />
     </AppProvider>
   );

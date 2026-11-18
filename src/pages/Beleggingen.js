@@ -5,6 +5,7 @@ import { Plus, ChevronDown, Calendar, MoreVertical, Search, ArrowLeft, X, Trash2
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 import BeleggingDetail from '../components/BeleggingDetail';
 
+import { getal } from '../utils/getal';
 // ── kleine hulpfuncties ──────────────────────────────────────────
 // ETF uitgever mapping → afkorting + kleur
 const ETF_UITGEVERS = [
@@ -837,7 +838,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                           background: 'var(--bg-white)', color: 'var(--text-primary)',
                           minWidth: 80
                         }}>
-                          {b.kostprijs.toFixed(2)}
+                          {getal(b.kostprijs, 2)}
                         </span>
                         <span style={{
                           padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 7,
@@ -970,7 +971,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                       </div>
                       <div style={{ fontSize: 13, fontFamily: 'DM Mono, monospace' }}>{b.verkoopdatum}</div>
                       <div style={{ fontSize: 13, fontFamily: 'DM Mono, monospace' }}>
-                        {muntSymbool(b.munt || 'EUR')}{b.kostprijs.toFixed(2)}
+                        {muntSymbool(b.munt || 'EUR')}{getal(b.kostprijs, 2)}
                       </div>
                       <div style={{ fontSize: 13, fontFamily: 'DM Mono, monospace' }}>
                         {ms}{b.verkoopkoers?.toFixed(2) || '—'}
@@ -979,7 +980,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                         fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 600,
                         color: isPos ? 'var(--green)' : 'var(--red)'
                       }}>
-                        {isPos ? '+' : ''}{ms}{wv.toFixed(2)}
+                        {isPos ? '+' : ''}{ms}{getal(wv, 2)}
                       </div>
                       <button
                         onClick={() => {
@@ -1066,9 +1067,9 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{formatDatum(tx.datum)}</div>
                     <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{tx.aantal}</div>
-                    <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{ms}{(tx.koers || 0).toFixed(2)}</div>
+                    <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{ms}{getal((tx.koers || 0), 2)}</div>
                     <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right', fontWeight: 600, color: isAankoop ? 'var(--text-primary)' : 'var(--green)' }}>
-                      {isAankoop ? '-' : '+'}€{Math.abs(totaal).toFixed(2)}
+                      {isAankoop ? '-' : '+'}€{getal(Math.abs(totaal), 2)}
                     </div>
                   </div>
                 );

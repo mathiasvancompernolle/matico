@@ -15,7 +15,7 @@ const laadPortfolios = () => {
   const bestaandeVerkochte = (() => { try { return JSON.parse(localStorage.getItem('matico_verkochte_beleggingen') || '[]'); } catch { return []; } })();
   // Gebruik voornaam van gebruiker als die beschikbaar is
   const voornaam = (() => { try { const g = JSON.parse(localStorage.getItem('matico_gebruiker') || '{}'); return g.voornaam || ''; } catch { return ''; } })();
-  const portfolioNaam = voornaam ? `${voornaam}'s portfolio` : 'Mijn portfolio';
+  const portfolioNaam = voornaam ? `Portfolio van ${voornaam}` : 'Mijn portfolio';
   const defaultPortfolio = { id: 'portfolio_1', naam: portfolioNaam, type: 'standaard', aangemaakt: new Date().toISOString() };
   localStorage.setItem(`matico_beleggingen_portfolio_1`, JSON.stringify(bestaandeBeleggingen));
   localStorage.setItem(`matico_verkochte_portfolio_1`, JSON.stringify(bestaandeVerkochte));
@@ -73,6 +73,15 @@ export function AppProvider({ children, supabaseGebruiker }) {
   const [gebruiker, setGebruiker] = useState(() => {
     const saved = localStorage.getItem('matico_gebruiker');
     const parsed = saved ? JSON.parse(saved) : { voornaam: '', achternaam: '' };
+    // Voornaam staat ook in het account (user_metadata), zodat je ze niet op
+    // elk toestel opnieuw moet invullen. Bij Google-login: voornaam uit de
+    // Google-naam.
+    if (!parsed.voornaam && supabaseGebruiker) {
+      const meta = supabaseGebruiker.user_metadata || {};
+      const volledig = (meta.full_name || meta.name || '').trim();
+      parsed.voornaam = meta.voornaam || volledig.split(' ')[0] || '';
+      parsed.achternaam = parsed.achternaam || meta.achternaam || volledig.split(' ').slice(1).join(' ') || '';
+    }
     // Enkel bij het allereerste bezoek (nog geen opgeslagen taalvoorkeur)
     // gokken we op basis van de browser-/systeemtaal. Eenmaal opgeslagen
     // (handmatig of via deze gok) blijft die voorkeur vast staan, ook als
@@ -151,7 +160,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
     if (!gebruiker.voornaam) return;
     const eerstePortfolio = portfolios.find(p => p.id === 'portfolio_1');
     if (eerstePortfolio && (eerstePortfolio.naam === 'Mijn portfolio' || eerstePortfolio.naam === 'Portfolio 1' || eerstePortfolio.naam === `Portfolio 1`)) {
-      const nieuweNaam = `${gebruiker.voornaam}'s portfolio`;
+      const nieuweNaam = `Portfolio van ${gebruiker.voornaam}`;
       const bijgewerkt = portfolios.map(p => p.id === 'portfolio_1' ? { ...p, naam: nieuweNaam } : p);
       localStorage.setItem('matico_portfolios', JSON.stringify(bijgewerkt));
       setPortfolios(bijgewerkt);
@@ -173,7 +182,14 @@ export function AppProvider({ children, supabaseGebruiker }) {
     try { return JSON.parse(localStorage.getItem(`matico_verkochte_${id}`) || '[]'); } catch { return []; }
   });
 
-  const [koersen, setKoersen] = useState({});
+  // Laatst bekende koersen meteen tonen (uit de vorige sessie) i.p.v. een paar
+  // seconden de aankoopprijs als "huidige koers" — die gaf foute winst/verlies.
+  const [koersen, setKoersen] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('kapitas_laatste_koersen') || '{}'); } catch { return {}; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('kapitas_laatste_koersen', JSON.stringify(koersen)); } catch (e) {}
+  }, [koersen]);
   const [activeNav, setActiveNav] = useState('overzicht');
   const [wisselkoers, setWisselkoers] = useState({ usdEur: 0.865 });
 
@@ -286,7 +302,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
     if (id === actiefPortfolioId) return;
     localStorage.setItem('matico_actief_portfolio', id);
     setActiefPortfolioId(id);
-    setKoersen({});
+    // Koersen NIET wissen: ze horen bij een symbool, niet bij een portfolio.
     // Eerst de lokale cache tonen (snel, geen laadspinner nodig)...
     try { setBeleggingen((JSON.parse(localStorage.getItem(`matico_beleggingen_${id}`) || '[]')).map(b => herstelBelegging(b))); } catch { setBeleggingen([]); }
     try { setVerkochteBeleggingen(JSON.parse(localStorage.getItem(`matico_verkochte_${id}`) || '[]')); } catch { setVerkochteBeleggingen([]); }
@@ -367,6 +383,15 @@ export function AppProvider({ children, supabaseGebruiker }) {
   useEffect(() => {
     localStorage.setItem('matico_gebruiker', JSON.stringify(gebruiker));
   }, [gebruiker]);
+
+  // Voornaam/achternaam ook in het account bewaren (zie useState hierboven)
+  useEffect(() => {
+    if (!supabaseGebruiker || !gebruiker.voornaam) return;
+    const meta = supabaseGebruiker.user_metadata || {};
+    if (meta.voornaam === gebruiker.voornaam && (meta.achternaam || '') === (gebruiker.achternaam || '')) return;
+    supabase.auth.updateUser({ data: { voornaam: gebruiker.voornaam, achternaam: gebruiker.achternaam || '' } })
+      .then(({ error }) => { if (error) console.error('Naam opslaan in account mislukt:', error); });
+  }, [gebruiker.voornaam, gebruiker.achternaam, supabaseGebruiker?.id]);
 
   useEffect(() => {
     localStorage.setItem(`matico_beleggingen_${actiefPortfolioId}`, JSON.stringify(beleggingen));

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { getal } from '../utils/getal';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
@@ -284,7 +285,7 @@ function IndexDetailPagina({ index, onTerug }) {
               {fmtPrijs(index.prijs)}
             </span>
             <span style={{ fontSize: 15, fontWeight: 600, color: positief ? 'var(--green)' : 'var(--red)' }}>
-              {positief ? '+' : ''}{(index.verschil || 0).toFixed(2)} / {fmtPct(index.change)}
+              {positief ? '+' : ''}{getal((index.verschil || 0), 2)} / {fmtPct(index.change)}
             </span>
 
           </div>
@@ -601,7 +602,7 @@ function IndexDetailPagina({ index, onTerug }) {
                     </div>
                     {/* % */}
                     <div style={{ textAlign: 'right', fontWeight: 600, color: a.change === 0 || Math.abs(a.change || 0) < 0.005 ? 'var(--text-primary)' : pos ? 'var(--green)' : 'var(--red)' }}>
-                      {a.change != null ? (a.change === 0 || Math.abs(a.change) < 0.005 ? '0,00%' : (pos ? '+' : '') + a.change.toFixed(2) + '%') : '—'}
+                      {a.change != null ? (a.change === 0 || Math.abs(a.change) < 0.005 ? '0,00%' : (pos ? '+' : '') + getal(a.change, 2) + '%') : '—'}
                     </div>
                     {/* Open */}
                     <div style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>{a.open?.toFixed(2) || '—'}</div>
@@ -1069,7 +1070,7 @@ function MiniTabel({ titel, rijen, laden, kolom1Label, kolom1Key, uitlegType, on
               </td>
               <td style={{ fontSize: 12 }}>{fmtPrijs(r.prijs)}</td>
               <td className={r[kolom1Key] >= 0 ? 'cel-groen' : 'cel-rood'} style={{ fontSize: 12, fontWeight: 600 }}>
-                {r[kolom1Key] !== undefined ? (r[kolom1Key] >= 0 ? '+' : '') + r[kolom1Key].toFixed(2) + '%' : '—'}
+                {r[kolom1Key] !== undefined ? (r[kolom1Key] >= 0 ? '+' : '') + getal(r[kolom1Key], 2) + '%' : '—'}
               </td>
             </tr>
           ))}
@@ -1258,7 +1259,7 @@ function fmtPctEtf(v) {
   if (v === null || v === undefined) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
   if (v === 0 || Math.abs(v) < 0.005) return <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>0,00%</span>;
   const kleur = v > 0 ? 'var(--green)' : 'var(--red)';
-  return <span style={{ color: kleur, fontWeight: 600 }}>{(v > 0 ? '+' : '') + v.toFixed(2) + '%'}</span>;
+  return <span style={{ color: kleur, fontWeight: 600 }}>{(v > 0 ? '+' : '') + getal(v, 2) + '%'}</span>;
 }
 
 // Openingstijden per beurs (lokale tijd van de beurs, UTC offset)
@@ -1542,10 +1543,10 @@ function EtfPagina({ onTerug, onSelectEffect }) {
                 <td className="rechts">{fmtPctEtf(e.pct1J)}</td>
                 <td className="rechts">{fmtPctEtf(e.pct5J)}</td>
                 <td className="rechts" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {e.ter != null ? e.ter.toFixed(2) + '%' : '—'}
+                  {e.ter != null ? getal(e.ter, 2) + '%' : '—'}
                 </td>
                 <td className="rechts" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {e.tob != null ? e.tob.toFixed(2) + '%' : '0,12%'}
+                  {e.tob != null ? getal(e.tob, 2) + '%' : '0,12%'}
                 </td>
                 <td style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
                   <BeursBolletje marktOpen={e.marktOpen} beurs={e.beurs} marktState={e.marktState} />

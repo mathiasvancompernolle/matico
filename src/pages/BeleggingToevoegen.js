@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { TrendingUp, Building2, Bitcoin, PiggyBank, ArrowLeft, Search, Loader, X } from 'lucide-react';
 
+import { getal } from '../utils/getal';
 const TYPES = [
   { id: 'aandeel', label: 'Aandeel', beschrijving: 'Zoek en voeg beursgenoteerde aandelen toe', icon: TrendingUp },
   { id: 'etf', label: 'ETF', beschrijving: 'Zoek en voeg een ETF/Tracker toe', icon: Building2 },
@@ -896,7 +897,7 @@ export default function BeleggingToevoegen({ onClose }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                       Totale kostprijs
-                      {transactiekosten > 0 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> (incl. {muntSymbool(form.munt)}{transactiekosten.toFixed(2)} kosten)</span>}
+                      {transactiekosten > 0 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> (incl. {muntSymbool(form.munt)}{getal(transactiekosten, 2)} kosten)</span>}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {muntSymbool(form.munt)}{totaalKostprijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -907,7 +908,7 @@ export default function BeleggingToevoegen({ onClose }) {
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                         {wisselkoersLoading
                           ? 'Wisselkoers ophalen...'
-                          : `≈ wisselkoers op ${form.datum}: 1 ${form.munt} = €${wisselkoersOpDatum.toFixed(4)}`}
+                          : `≈ wisselkoers op ${form.datum}: 1 ${form.munt} = €${getal(wisselkoersOpDatum, 4)}`}
                       </div>
                       <div style={{ fontWeight: 700, fontSize: 15 }}>
                         ≈ €{totaalKostprijsEUR.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

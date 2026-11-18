@@ -5,6 +5,7 @@ import { SlidersHorizontal, GitCompare, Plus, ChevronDown, X, Check, Upload, Edi
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 import BeleggingDetail from '../components/BeleggingDetail';
 
+import { getal } from '../utils/getal';
 const TIJDPERKEN = ['1D', '1W', '1M', '1J', 'YTD', 'Laatste', 'Totaal'];
 const VERGELIJK_OPTIES = [
   { id: 'geen', label: 'Geen vergelijking' },
@@ -806,7 +807,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       if (va > vb) return sortDir === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [beleggingen, filterType, filterSymbolen, sortCol, sortDir, koersen]);
+  }, [beleggingen, filterType, filterSymbolen, sortCol, sortDir, koersen, getMuntFactor]);
 
   // Winst/verlies = huidige waarde - aankoopwaarde van alle posities actief op die datum
   const winstData = grafiekData.map((d) => {
@@ -1242,7 +1243,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
             <div>
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{t('ov_portfolio')}</div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{periodeTekst}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
                 <div className="portfolio-waarde">
                   €{gefilterdeTotaalWaarde.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
@@ -1251,8 +1252,8 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     — {t('ov_beurs_gesloten')}
                   </span>
                 ) : (
-                  <span className={`badge ${periodeWinstPct >= 0 ? 'badge-green' : 'badge-red'}`}>
-                    {periodeWinstPct >= 0 ? '▲' : '▼'} {Math.abs(periodeWinstPct).toFixed(2)}% ({periodeWinst >= 0 ? '+' : ''}€{Math.abs(periodeWinst).toFixed(2)})
+                  <span className={`badge ${periodeWinstPct >= 0 ? 'badge-green' : 'badge-red'}`} style={{ whiteSpace: 'nowrap' }}>
+                    {periodeWinstPct >= 0 ? '▲' : '▼'} {getal(Math.abs(periodeWinstPct), 2)}% ({periodeWinst >= 0 ? '+' : '-'}€{getal(Math.abs(periodeWinst), 2)})
                   </span>
                 )}
               </div>
@@ -1272,7 +1273,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               <button key={w} onClick={() => setWeergave(w)} style={{
                 padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border)',
                 background: weergave === w ? 'var(--text-primary)' : 'transparent',
-                color: weergave === w ? 'white' : 'var(--text-secondary)',
+                color: weergave === w ? 'var(--bg-white)' : 'var(--text-secondary)',
                 fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize'
               }}>
                 {w === 'waarde' ? t('ov_waarde') : t('ov_winst_verlies')}
@@ -1392,7 +1393,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                         </div>
                         {aankopenOpDatum.map((b, i) => (
                           <div key={b.id + i} style={{ fontSize: 12, color: 'var(--green)', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
-                            🟢 {t('ov_tooltip_aankoop')} {b.naam} — {b.aantal} {t('ov_tooltip_st_a')} {b.munt === 'USD' ? '$' : '€'}{b.kostprijs.toFixed(2)}
+                            🟢 {t('ov_tooltip_aankoop')} {b.naam} — {b.aantal} {t('ov_tooltip_st_a')} {b.munt === 'USD' ? '$' : '€'}{getal(b.kostprijs, 2)}
                           </div>
                         ))}
                         {verkopenOpDatum.map((b, i) => {
@@ -1403,7 +1404,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                               🔴 {t('ov_tooltip_verkoop')} {b.naam} — {b.aantalVerkocht} {t('ov_tooltip_st_a')} {ms}{b.verkoopkoers?.toFixed(2)}
                               {' '}
                               <span style={{ color: wv >= 0 ? 'var(--green)' : '#ef4444', fontWeight: 600 }}>
-                                ({wv >= 0 ? '+' : ''}{ms}{Math.abs(wv).toFixed(2)})
+                                ({wv >= 0 ? '+' : '-'}{ms}{getal(Math.abs(wv), 2)})
                               </span>
                             </div>
                           );
@@ -1475,7 +1476,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                   const verschilPct = eerstePunt.waarde !== 0 ? (verschil / eerstePunt.waarde) * 100 : 0;
                   const positief = verschil >= 0;
                   const kleur = positief ? 'var(--green)' : 'var(--red)';
-                  const tekst = `${positief ? '+' : '-'}€${Math.abs(verschil).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${positief ? '+' : ''}${verschilPct.toFixed(2)}%)`;
+                  const tekst = `${positief ? '+' : '-'}€${Math.abs(verschil).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${positief ? '+' : ''}${getal(verschilPct, 2)}%)`;
                   return (
                     <ReferenceArea
                       x1={eerstePunt.tijd}
@@ -1635,15 +1636,15 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       <div className="belegging-symbol">{b.symbol} · {b.aantal} st.</div>
                     </div>
                   </div>
-                  <div className="koers-display"><span className="mobile-stat-label">{t('ov_col_koers')}</span>{muntSym}{huidigePrijs.toFixed(2)}</div>
-                  <div className="koers-display"><span className="mobile-stat-label">{t('ov_waarde')}</span>€{huidigeWaarde.toFixed(2)}</div>
+                  <div className="koers-display"><span className="mobile-stat-label">{t('ov_col_koers')}</span>{muntSym}{getal(huidigePrijs, 2)}</div>
+                  <div className="koers-display"><span className="mobile-stat-label">{t('ov_waarde')}</span>€{getal(huidigeWaarde, 2)}</div>
                   <div>
                     <span className="mobile-stat-label">{t('ov_vandaag')}</span>
                     {beursOpen ? (
                       <>
-                        <span className={`mobile-hide-amount ${dagVPctRaw >= 0 ? 'pct-pos' : 'pct-neg'}`}>{dagVRaw >= 0 ? '+' : ''}€{Math.abs(dagVRaw).toFixed(2)}</span>
+                        <span className={`mobile-hide-amount ${dagVPctRaw >= 0 ? 'pct-pos' : 'pct-neg'}`}>{dagVRaw >= 0 ? '+' : '-'}€{getal(Math.abs(dagVRaw), 2)}</span>
                         {' '}<span className={`badge ${dagVPctRaw >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 11, padding: '2px 6px' }}>
-                          {dagVPctRaw >= 0 ? '+' : ''}{dagVPctRaw.toFixed(2)}%
+                          {dagVPctRaw >= 0 ? '+' : ''}{getal(dagVPctRaw, 2)}%
                         </span>
                       </>
                     ) : (
@@ -1652,12 +1653,12 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                   </div>
                   <div>
                     <span className="mobile-stat-label">{t('ov_totaal')}</span>
-                    <span className={`mobile-hide-amount ${winstTotaal >= 0 ? 'pct-pos' : 'pct-neg'}`}>{winstTotaal >= 0 ? '+' : ''}€{Math.abs(winstTotaal).toFixed(2)}</span>
+                    <span className={`mobile-hide-amount ${winstTotaal >= 0 ? 'pct-pos' : 'pct-neg'}`}>{winstTotaal >= 0 ? '+' : '-'}€{getal(Math.abs(winstTotaal), 2)}</span>
                     {' '}<span className={`badge ${winstTotaalPct >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 11, padding: '2px 6px' }}>
-                      {winstTotaalPct >= 0 ? '+' : ''}{winstTotaalPct.toFixed(2)}%
+                      {winstTotaalPct >= 0 ? '+' : ''}{getal(winstTotaalPct, 2)}%
                     </span>
                   </div>
-                  <div style={{ fontWeight: 600 }}>{gewicht.toFixed(1)}%</div>
+                  <div style={{ fontWeight: 600 }}>{getal(gewicht, 1)}%</div>
                   </div>
                 </div>
               );

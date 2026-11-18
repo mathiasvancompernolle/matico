@@ -3,28 +3,40 @@ import { useApp } from '../context/AppContext';
 import { Info, Download, ChevronDown } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
+import { getal } from '../utils/getal';
 const fmt = (v) => Math.abs(v).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const ACCENT = '#1e3a8a';
 const VRIJSTELLING_JAAR = 10000; // €10.000 per persoon per jaar
 const TARIEF = 0.10; // 10%
 const REFERENTIEDATUM = '31 dec 2025';
 
-// Referentiekoersen op 31/12/2025 (slotkoers)
-// In productie zou dit via API opgehaald worden
-const REF_KOERSEN_2025 = {
-  NVDA: 134.25,   // $134.25 op 31/12/2025 (USD)
-  MSFT: 420.80,   // $420.80 op 31/12/2025 (USD)
-  NKE:  73.76,    // $73.76 op 31/12/2025 (USD) — maar aangekocht in 2026, niet relevant
-  AAPL: 254.49,
-  AMZN: 224.19,
-  META: 589.34,
-  GOOGL: 196.61,
-  TSLA: 403.84,
-  JPM: 249.70,
-  SOFI: 13.45,
-  // ETFs
-  'VWCE': 137.82,
-};
+// Referentiekoers = slotkoers op 31/12/2025. Meerwaarden opgebouwd vóór 2026
+// zijn vrijgesteld, dus voor beleggingen gekocht vóór 2026 telt (de hoogste
+// van) die slotkoers of de echte aankoopprijs als basis.
+// Vroeger stond hier een vaste lijst van 11 tickers — met de koersen van
+// eind 2024 i.p.v. eind 2025 (bv. TSLA 403,84 i.p.v. 449,72), waardoor
+// Kapitas te veel belasting toonde. Nu halen we de echte slotkoers per
+// belegging op via het bestaande candle-endpoint, en bewaren die lokaal
+// (een slotkoers uit het verleden verandert niet meer).
+const REF_CACHE_PREFIX = 'kapitas_ref_20251231_';
+async function haalReferentieKoers(symbol) {
+  try {
+    const bewaard = localStorage.getItem(REF_CACHE_PREFIX + symbol);
+    if (bewaard) return parseFloat(bewaard);
+  } catch (e) {}
+  const van = Math.floor(Date.UTC(2025, 11, 22) / 1000);
+  const tot = Math.floor(Date.UTC(2025, 11, 31, 23, 0) / 1000);
+  try {
+    const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(symbol)}&van=${van}&tot=${tot}&resolutie=D`);
+    const data = await res.json();
+    const slot = data?.s === 'ok' && data?.c?.length ? data.c.filter(v => v != null).pop() : null;
+    if (slot > 0) {
+      try { localStorage.setItem(REF_CACHE_PREFIX + symbol, String(slot)); } catch (e) {}
+      return slot;
+    }
+  } catch (e) {}
+  return null;
+}
 
 export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
   const { beleggingen, koersen, verkochteBeleggingen, getMuntFactor } = useApp();
@@ -51,6 +63,22 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
 
+  // Slotkoersen op 31/12/2025 voor alles wat vóór 2026 gekocht werd
+  const [refKoersen, setRefKoersen] = useState({});
+  useEffect(() => {
+    const voor2026 = [...(beleggingen || []), ...(verkochteBeleggingen || [])]
+      .filter(b => b.datum && new Date(b.datum).getFullYear() < 2026)
+      .map(b => b.symbol);
+    const teHalen = [...new Set(voor2026)].filter(s => refKoersen[s] === undefined);
+    if (teHalen.length === 0) return;
+    let actief = true;
+    Promise.all(teHalen.map(async s => [s, await haalReferentieKoers(s)])).then(paren => {
+      if (!actief) return;
+      setRefKoersen(prev => ({ ...prev, ...Object.fromEntries(paren) }));
+    });
+    return () => { actief = false; };
+  }, [beleggingen, verkochteBeleggingen]);
+
   const openSimulatie = () => setSimulatieOpen(true);
   const sluitSimulatie = () => { setSimulatieOpen(false); setSimBelegging(null); setSimAantal(''); };
 
@@ -75,7 +103,6 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
 
       // Referentiedatum check: aangekocht vóór 2026?
       const aangekochtvoor2026 = aankoopDatum && aankoopDatum.getFullYear() < 2026;
-      const basis = b.symbol.toUpperCase().split('.')[0];
 
       let aankoopBedrag;
       let aankoopLabel;
@@ -83,7 +110,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
 
       if (aangekochtvoor2026 && jaar >= 2026) {
         // Gebruik referentiekoers 31/12/2025 als basis
-        const refKoers = REF_KOERSEN_2025[basis];
+        const refKoers = refKoersen[b.symbol];
         if (refKoers) {
           const refBedrag = refKoers * b.aantalVerkocht * f;
           const origBedrag = b.kostprijs * b.aantalVerkocht * f;
@@ -135,7 +162,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
       gebruikteVrijstelling: vrijstelling,
       restVrijstelling: VRIJSTELLING_JAAR - vrijstelling,
     };
-  }, [verkochteBeleggingen, jaar, koersen]);
+  }, [verkochteBeleggingen, jaar, koersen, getMuntFactor, refKoersen]);
 
   // ── Simulatie: wat als je nu verkoopt? ──
   const { simResultaat } = useMemo(() => {
@@ -147,13 +174,12 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
     const huidigePrijs = k ? k.c : b.kostprijs;
     const verkoopBedrag = huidigePrijs * aantal * f;
 
-    const basis = b.symbol.toUpperCase().split('.')[0];
     const aankoopDatum = b.datum ? new Date(b.datum) : null;
     const aangekochtvoor2026 = aankoopDatum && aankoopDatum.getFullYear() < 2026;
     let aankoopBedrag;
 
     if (aangekochtvoor2026) {
-      const refKoers = REF_KOERSEN_2025[basis];
+      const refKoers = refKoersen[b.symbol];
       const refBedrag = refKoers ? refKoers * aantal * f : b.kostprijs * aantal * f;
       const origBedrag = b.kostprijs * aantal * f;
       aankoopBedrag = Math.max(refBedrag, origBedrag);
@@ -176,7 +202,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
         huidigePrijs, extraBelasting, extraBelastbaar, restVrij, extraVrij
       }
     };
-  }, [simBelegging, simAantal, koersen, netto]);
+  }, [simBelegging, simAantal, koersen, netto, getMuntFactor, refKoersen]);
 
   const beschikbareJaren = useMemo(() => {
     const huidig = new Date().getFullYear();
@@ -386,7 +412,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
                         <div>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Meerwaarde</div>
                           <div style={{ fontSize: 13, fontWeight: 700, color: b.meerwaarde >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                            {b.meerwaarde >= 0 ? '+' : ''}€{fmt(b.meerwaarde)}
+                            {b.meerwaarde >= 0 ? '+' : '-'}€{fmt(b.meerwaarde)}
                           </div>
                         </div>
                         <div>
@@ -427,7 +453,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
                       textAlign: 'right', fontSize: 13, fontWeight: 700,
                       color: b.meerwaarde >= 0 ? 'var(--green)' : 'var(--red)'
                     }}>
-                      {b.meerwaarde >= 0 ? '+' : ''}€{fmt(b.meerwaarde)}
+                      {b.meerwaarde >= 0 ? '+' : '-'}€{fmt(b.meerwaarde)}
                     </div>
                     <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600 }}>
                       {b.meerwaarde > 0 ? `€${fmt(b.meerwaarde * TARIEF)}` : '—'}
@@ -506,7 +532,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
                     >
                       <span style={{ fontWeight: 600, fontSize: 13 }}>{b.naam}</span>
                       <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                        {b.munt === 'USD' ? '$' : '€'}{prijs.toFixed(2)} · {b.aantal} st.
+                        {b.munt === 'USD' ? '$' : '€'}{getal(prijs, 2)} · {b.aantal} st.
                       </span>
                     </div>
                   );
@@ -541,7 +567,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
                 {[
                   { label: 'Verkoopbedrag', waarde: `€${fmt(simResultaat.verkoopBedrag)}` },
                   { label: 'Aankoopbasis', waarde: `€${fmt(simResultaat.aankoopBedrag)}` },
-                  { label: 'Meerwaarde', waarde: `${simResultaat.meerwaarde >= 0 ? '+' : ''}€${fmt(simResultaat.meerwaarde)}`, kleur: simResultaat.meerwaarde >= 0 ? 'var(--green)' : 'var(--red)' },
+                  { label: simResultaat.meerwaarde >= 0 ? 'Meerwaarde' : 'Minwaarde', waarde: `${simResultaat.meerwaarde >= 0 ? '+' : '-'}€${fmt(simResultaat.meerwaarde)}`, kleur: simResultaat.meerwaarde >= 0 ? 'var(--green)' : 'var(--red)' },
                   { label: 'Toe te passen vrijstelling', waarde: `€${fmt(simResultaat.extraVrij)}` },
                   { label: 'Belastbaar', waarde: `€${fmt(simResultaat.extraBelastbaar)}` },
                   { label: 'Te betalen belasting (10%)', waarde: `€${fmt(simResultaat.extraBelasting)}`, bold: true },
@@ -563,7 +589,11 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
                     €{fmt(Math.max(simResultaat.restVrij - Math.max(simResultaat.meerwaarde, 0), 0))}
                   </span>
                 </div>
-                {simResultaat.restVrij > 0 && simResultaat.extraBelasting === 0 && (
+                {simResultaat.meerwaarde < 0 ? (
+                  <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Je zou met verlies verkopen — daarop betaal je geen meerwaardebelasting. Een minwaarde mag je verrekenen met meerwaarden van hetzelfde jaar.
+                  </div>
+                ) : simResultaat.restVrij > 0 && simResultaat.extraBelasting === 0 && (
                   <div style={{ marginTop: 8, fontSize: 12, color: 'var(--green)', fontWeight: 600 }}>
                     ✓ Volledig binnen vrijstelling — geen belasting verschuldigd
                   </div>

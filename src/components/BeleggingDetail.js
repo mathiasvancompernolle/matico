@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { X, Loader, ExternalLink, Copy, Check } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
+import { getal } from '../utils/getal';
 const TIJDPERKEN = ['1D', '1W', '1M', '1J', 'YTD', '3J', '5J', 'Max'];
 
 export default function BeleggingDetail({ belegging, onClose }) {
@@ -263,7 +264,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
           </div>
           {dagToonbaar ? (
             <div style={{ fontSize: 14, color: dagVPctRaw >= 0 ? 'var(--green)' : 'var(--red)', marginTop: 4, fontWeight: 500 }}>
-              {dagVPctRaw >= 0 ? '+' : ''}{dagVPctRaw.toFixed(2)}% ({dagVRaw >= 0 ? '+' : ''}{muntSym}{Math.abs(dagVRaw).toFixed(2)})
+              {dagVPctRaw >= 0 ? '+' : ''}{getal(dagVPctRaw, 2)}% ({dagVRaw >= 0 ? '+' : '-'}{muntSym}{getal(Math.abs(dagVRaw), 2)})
             </div>
           ) : (
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, fontWeight: 500 }}>
@@ -339,9 +340,9 @@ export default function BeleggingDetail({ belegging, onClose }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16 }}>
               {[
                 { l: 'Open', v: muntSym + (koers.o || 0).toFixed(2) },
-                { l: 'Laagste', v: muntSym + (koers.l || 0).toFixed(2) },
-                { l: 'Hoogste', v: muntSym + (koers.h || 0).toFixed(2) },
-                { l: 'Volume', v: (koers.v || 0) > 1000000 ? ((koers.v || 0) / 1000000).toFixed(1) + ' mln.' : (koers.v || 0).toLocaleString() },
+                { l: 'Laagste', v: muntSym + getal((koers.l || 0), 2) },
+                { l: 'Hoogste', v: muntSym + getal((koers.h || 0), 2) },
+                { l: 'Volume', v: (koers.v || 0) > 1000000 ? getal(((koers.v || 0) / 1000000), 1) + ' mln.' : (koers.v || 0).toLocaleString() },
                 metrics?.['peNormalizedAnnual'] ? { l: 'Koers-winstverhouding', v: metrics['peNormalizedAnnual'].toFixed(1) } : null,
                 profiel?.marketCapitalization ? { l: 'Beurswaarde', v: '$' + (profiel.marketCapitalization).toFixed(1) + ' mld.' } : null,
               ].filter(Boolean).map(({ l, v }) => (
@@ -364,16 +365,16 @@ export default function BeleggingDetail({ belegging, onClose }) {
             </div>
             <div>
               <div className="detail-item-label">Gem. prijs</div>
-              <div className="detail-item-value">€{(belegging.kostprijs * factor).toFixed(2)}</div>
+              <div className="detail-item-value">€{getal((belegging.kostprijs * factor), 2)}</div>
             </div>
             <div>
               <div className="detail-item-label">Totale waarde</div>
-              <div className="detail-item-value">€{huidigeWaarde.toFixed(2)}</div>
+              <div className="detail-item-value">€{getal(huidigeWaarde, 2)}</div>
             </div>
             <div>
               <div className="detail-item-label">Gewicht</div>
               <div className="detail-item-value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {gewicht.toFixed(1)}%
+                {getal(gewicht, 1)}%
                 <svg width="18" height="18" viewBox="0 0 18 18">
                   <circle cx="9" cy="9" r="8" fill="none" stroke="var(--border)" strokeWidth="2"/>
                   <circle cx="9" cy="9" r="8" fill="none" stroke="var(--accent)" strokeWidth="2"
@@ -385,13 +386,13 @@ export default function BeleggingDetail({ belegging, onClose }) {
             <div>
               <div className="detail-item-label">Winst vandaag</div>
               <div className="detail-item-value" style={{ color: dagToonbaar ? (dagVEur >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--text-muted)' }}>
-                {dagToonbaar ? `${dagVEur >= 0 ? '+' : ''}€${Math.abs(dagVEur).toFixed(2)}` : '—'}
+                {dagToonbaar ? `${dagVEur >= 0 ? '+' : '-'}€${getal(Math.abs(dagVEur), 2)}` : '—'}
               </div>
             </div>
             <div>
               <div className="detail-item-label">Totale winst</div>
               <div className="detail-item-value" style={{ color: winstTotaal >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                {winstTotaal >= 0 ? '+' : ''}€{Math.abs(winstTotaal).toFixed(2)}
+                {winstTotaal >= 0 ? '+' : '-'}€{getal(Math.abs(winstTotaal), 2)}
               </div>
             </div>
           </div>
@@ -482,7 +483,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
                   style={{
                     padding: '6px 14px', borderRadius: 20, border: '1px solid var(--border)',
                     background: aktieveTab === t.toLowerCase() ? 'var(--text-primary)' : 'transparent',
-                    color: aktieveTab === t.toLowerCase() ? 'white' : 'var(--text-secondary)',
+                    color: aktieveTab === t.toLowerCase() ? 'var(--bg-white)' : 'var(--text-secondary)',
                     fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500
                   }}>
                   {t}
@@ -521,7 +522,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
                   <div key={s.naam} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
                     <div style={{ width: 28, height: 4, borderRadius: 2, background: s.kleur, flexShrink: 0 }} />
                     <span style={{ fontSize: 12, flex: 1 }}>{s.naam}</span>
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>{s.pct.toFixed(2)}%</span>
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>{getal(s.pct, 2)}%</span>
                   </div>
                 ))}
               </div>
@@ -550,7 +551,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{name || asset}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{asset}</div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{(weightPercentage || 0).toFixed(2)}%</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{getal((weightPercentage || 0), 2)}%</div>
               </div>
             ))}
           </div>
