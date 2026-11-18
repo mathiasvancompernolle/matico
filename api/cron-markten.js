@@ -40,9 +40,11 @@ module.exports = async function handler(req, res) {
   // GET: lees gecachte data terug
   if (req.method === 'GET' && req.query.lees === '1') {
     try {
-      const blob = await get(BLOB_KEY);
-      if (!blob) return res.json({ consensusprognose: [], omzetgroei: [] });
-      const text = await blob.text();
+      // De Blob-store staat op 'private': get() vraagt die access-optie en
+      // geeft een stream terug (geen .text()).
+      const resultaat = await get(BLOB_KEY, { access: 'private' });
+      if (!resultaat || !resultaat.stream) return res.json({ consensusprognose: [], omzetgroei: [] });
+      const text = await new Response(resultaat.stream).text();
       return res.json(JSON.parse(text));
     } catch (e) {
       return res.json({ consensusprognose: [], omzetgroei: [] });
@@ -125,7 +127,7 @@ module.exports = async function handler(req, res) {
       bijgewerkt: new Date().toISOString(),
     };
 
-    await put(BLOB_KEY, JSON.stringify(payload), { access: 'public', addRandomSuffix: false });
+    await put(BLOB_KEY, JSON.stringify(payload), { access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json' });
 
     return res.json({ ok: true, consensusprognose: consensusprognose.length, omzetgroei: omzetgroei.length });
   } catch (e) {
