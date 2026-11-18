@@ -30,7 +30,7 @@ export default function Privacybeleid({ onTerug }) {
           gebruikt, waarom, en welke rechten je hebt.
         </p>
         <p>
-          Verantwoordelijke voor de verwerking: [JOUW NAAM / BEDRIJFSNAAM INVULLEN]<br />
+          Verantwoordelijke voor de verwerking: Mathias Van Compernolle<br />
           Contact: mathiasvancompernolle1@gmail.com
         </p>
       </Sectie>

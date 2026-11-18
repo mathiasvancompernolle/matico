@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import kapitasLogo from '../assets/kapitas-logo.png';
 
-export default function AuthPage({ onIngelogd, onPrivacybeleid, startModus, onTerugNaarLanding }) {
+export default function AuthPage({ onIngelogd, onPrivacybeleid, onVoorwaarden, startModus, onTerugNaarLanding }) {
   const [laden, setLaden] = useState(false);
   const [fout, setFout] = useState(null);
   const [emailMode, setEmailMode] = useState(false);
@@ -167,7 +167,8 @@ export default function AuthPage({ onIngelogd, onPrivacybeleid, startModus, onTe
 
         {/* Footer */}
         <p style={s.disclaimer}>
-          Door in te loggen ga je akkoord met ons{' '}
+          Door in te loggen ga je akkoord met onze{' '}
+          <span onClick={onVoorwaarden} style={{ color: '#1e3a8a', cursor: 'pointer', fontWeight: 600 }}>algemene voorwaarden</span>{' '}en ons{' '}
           <span onClick={onPrivacybeleid} style={{ color: '#1e3a8a', cursor: 'pointer', fontWeight: 600 }}>privacybeleid</span>.
         </p>
       </div>

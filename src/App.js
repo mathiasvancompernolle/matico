@@ -19,6 +19,7 @@ import MijnProfiel from './pages/MijnProfiel';
 import './App.css';
 import Landing from './pages/Landing';
 import AuthPage from './pages/AuthPage';
+import { Voorwaarden, Disclaimer } from './pages/Juridisch';
 import { supabase } from './supabaseClient';
 import kapitasLogo from './assets/kapitas-logo.png';
 import { LayoutDashboard, TrendingUp, Search, Star, User, X, ChevronRight, PiggyBank, Briefcase, Check } from 'lucide-react';
@@ -256,7 +257,6 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
               <div style={{ padding: '6px 0' }}>
                 {[
                   { label: t('profiel_mijn_profiel'), sub: t('profiel_mijn_profiel_sub'), route: 'mijn-profiel' },
-                  { label: t('profiel_billing'), sub: t('profiel_billing_sub'), route: 'instellingen' },
                   { label: 'Gids voor beginners', sub: 'Nog eens de basis doornemen', route: 'gids' },
                   { label: t('profiel_privacybeleid'), sub: t('profiel_privacybeleid_sub'), route: 'privacybeleid' },
                 ].map(({ label, sub, route }) => (
@@ -371,7 +371,6 @@ function MobielProfielPagina({ gebruiker, onNavigeer }) {
   const menuItems = [
     { label: t('profiel_mijn_profiel'), sub: t('profiel_mijn_profiel_sub'), route: 'mijn-profiel' },
     { label: 'Belastingen', sub: null, route: 'belastingen' },
-    { label: t('profiel_billing'), sub: t('profiel_billing_sub'), route: 'instellingen' },
     { label: 'Gids voor beginners', sub: 'Nog eens de basis doornemen', route: 'gids' },
     { label: t('profiel_privacybeleid'), sub: t('profiel_privacybeleid_sub'), route: 'privacybeleid' },
   ];
@@ -709,6 +708,11 @@ export default function App() {
     const pad = window.location.pathname.toLowerCase().replace(/\/$/, '');
     return pad === '/gids';
   });
+  // '/voorwaarden' | '/disclaimer' | null
+  const [juridischePagina, setJuridischePagina] = React.useState(() => {
+    const pad = window.location.pathname.toLowerCase().replace(/\/$/, '');
+    return ['/voorwaarden', '/disclaimer'].includes(pad) ? pad : null;
+  });
   const [authStartModus, setAuthStartModus] = React.useState('login');
   const [gebruiker, setGebruiker] = React.useState(null);
   const [authLaden, setAuthLaden] = React.useState(true);
@@ -743,6 +747,7 @@ export default function App() {
       const pad = window.location.pathname.toLowerCase().replace(/\/$/, '');
       setToonPubliekPrivacybeleid(pad === '/privacybeleid');
       setToonPubliekGids(pad === '/gids');
+      setJuridischePagina(['/voorwaarden', '/disclaimer'].includes(pad) ? pad : null);
     };
     window.addEventListener('popstate', opPopstate);
     return () => window.removeEventListener('popstate', opPopstate);
@@ -752,8 +757,16 @@ export default function App() {
     window.history.pushState(null, '', pad);
     setToonPubliekPrivacybeleid(pad === '/privacybeleid');
     setToonPubliekGids(pad === '/gids');
+    setJuridischePagina(['/voorwaarden', '/disclaimer'].includes(pad) ? pad : null);
     window.scrollTo(0, 0);
   };
+
+  const sluitJuridischePagina = () => { window.history.pushState(null, '', '/'); setJuridischePagina(null); window.scrollTo(0, 0); };
+  const juridischeWeergave = juridischePagina === '/voorwaarden'
+    ? <Voorwaarden onTerug={sluitJuridischePagina} />
+    : juridischePagina === '/disclaimer'
+      ? <Disclaimer onTerug={sluitJuridischePagina} />
+      : null;
 
   if (authLaden) {
     return (
@@ -763,6 +776,9 @@ export default function App() {
     );
   }
 
+  // Voorwaarden en disclaimer zijn altijd bereikbaar via hun adres, ook ingelogd
+  if (juridischeWeergave) return juridischeWeergave;
+
   if (toonLanding && !gebruiker) {
     if (toonPubliekPrivacybeleid) {
       return <Privacybeleid onTerug={() => { window.history.pushState(null, '', '/'); setToonPubliekPrivacybeleid(false); }} />;
@@ -770,7 +786,7 @@ export default function App() {
     if (toonPubliekGids) {
       return <Gids onTerug={() => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); }} onNaarApp={(modus) => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); setToonLanding(false); setAuthStartModus(modus || 'registreren'); }} />;
     }
-    return <Landing onNaarApp={(modus) => { setToonLanding(false); setAuthStartModus(modus || 'login'); window.scrollTo(0, 0); }} onPrivacybeleid={() => openPubliekePagina('/privacybeleid')} onGids={() => openPubliekePagina('/gids')} />;
+    return <Landing onNaarApp={(modus) => { setToonLanding(false); setAuthStartModus(modus || 'login'); window.scrollTo(0, 0); }} onPrivacybeleid={() => openPubliekePagina('/privacybeleid')} onGids={() => openPubliekePagina('/gids')} onVoorwaarden={() => openPubliekePagina('/voorwaarden')} onDisclaimer={() => openPubliekePagina('/disclaimer')} />;
   }
 
   if (!gebruiker) {
@@ -780,7 +796,7 @@ export default function App() {
     if (toonPubliekGids) {
       return <Gids onTerug={() => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); }} onNaarApp={(modus) => { window.history.pushState(null, '', '/'); setToonPubliekGids(false); setAuthStartModus(modus || 'registreren'); }} />;
     }
-    return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => openPubliekePagina('/privacybeleid')} startModus={authStartModus} onTerugNaarLanding={() => setToonLanding(true)} />;
+    return <AuthPage onIngelogd={(user) => setGebruiker(user)} onPrivacybeleid={() => openPubliekePagina('/privacybeleid')} onVoorwaarden={() => openPubliekePagina('/voorwaarden')} startModus={authStartModus} onTerugNaarLanding={() => setToonLanding(true)} />;
   }
 
   return (

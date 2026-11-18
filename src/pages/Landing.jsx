@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const CTA_TEKST = 'Start 14 dagen gratis →';
+const CTA_TEKST = 'Start gratis →';
 
 const minderBeweging = () =>
   typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -36,7 +36,7 @@ function TelOp({ waarde }) {
   return <span ref={ref}>{doel === null ? waarde : `${getal}${achtervoegsel}`}</span>;
 }
 
-export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
+export default function Landing({ onNaarApp, onPrivacybeleid, onGids, onVoorwaarden, onDisclaimer }) {
   const [faqOpen, setFaqOpen] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [gescrold, setGescrold] = useState(false);
@@ -78,8 +78,8 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
      'Ja! Kapitas werkt met alle Belgische en Europese brokers. Je voert je posities manueel in met aankoopprijs en datum. Automatische koppeling via broker-API is in ontwikkeling.'],
     ['Zijn de belastingberekeningen correct en up-to-date?',
      'De berekeningen volgen de Belgische fiscale regels voor 2026, inclusief de nieuwe meerwaardebelasting van 10%. Wijzigt de wetgeving, dan passen we Kapitas aan. Let op: de berekeningen zijn indicatief, Kapitas biedt geen fiscaal advies.'],
-    ['Kan ik annuleren wanneer ik wil?',
-     'Ja, je kan je abonnement op elk moment opzeggen. Je behoudt toegang tot het einde van de betaalde periode. Geen verborgen kosten of annuleringsvergoedingen.'],
+    ['Is Kapitas echt gratis?',
+     'Ja. Kapitas is momenteel volledig gratis, met alle functies. Je hebt geen betaalgegevens nodig. Komt er ooit een betalend aanbod, dan laten we dat ruim op voorhand weten en beslis je zelf of je het wil.'],
     ['Hoe nauwkeurig zijn de live koersen?',
      'Tijdens beursuren worden de koersen elke minuut ververst. Afhankelijk van de beurs kunnen ze tot 15 minuten vertraagd zijn, zoals bij de meeste gratis koersbronnen. Buiten beursuren tonen we de laatste slotkoers.'],
     ['Is er een mobiele app?',
@@ -237,9 +237,9 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
           <a href="#features" className="l-btn l-btn-outline" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>Bekijk features</a>
         </div>
         <p className="l-intro" style={{ '--vertraging':'0.32s',fontSize:13,color:'#94a3b8' }}>
-          <span style={{ color:'#22c55e',fontWeight:600 }}>✓</span> Geen betaalgegevens nodig &nbsp;·&nbsp;
-          <span style={{ color:'#22c55e',fontWeight:600 }}>✓</span> 14 dagen gratis &nbsp;·&nbsp;
-          <span style={{ color:'#22c55e',fontWeight:600 }}>✓</span> Annuleer altijd
+          <span style={{ color:'#22c55e',fontWeight:600 }}>✓</span> Nu volledig gratis &nbsp;·&nbsp;
+          <span style={{ color:'#22c55e',fontWeight:600 }}>✓</span> Alle functies &nbsp;·&nbsp;
+          <span style={{ color:'#22c55e',fontWeight:600 }}>✓</span> Geen betaalgegevens nodig
         </p>
 
         {/* Dashboard Mockup */}
@@ -356,7 +356,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
           <h2 style={{ fontSize:'clamp(28px,4vw,42px)',fontWeight:800,letterSpacing:'-1px',marginBottom:16 }}>In 4 stappen klaar</h2>
           <p style={{ fontSize:17,color:'#64748b',maxWidth:500,margin:'0 auto' }}>Van registratie tot volledig inzicht in je beleggingen in minder dan 5 minuten.</p>
           <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:0,marginTop:56,position:'relative' }}>
-            {[['Maak een account','Registreer gratis. Geen betaalgegevens nodig voor de gratis periode.'],['Voeg posities toe','Voeg je aandelen en ETFs toe met aankoopprijs en datum.'],['Bekijk je dashboard','Zie meteen je totale waarde, rendement en verschuldigde belastingen.'],['Volg de markten','Live BEL20, Europese ETFs en AI-analyses per aandeel.']].map(([t,d],i) => (
+            {[['Maak een account','Registreer gratis. Geen betaalgegevens nodig.'],['Voeg posities toe','Voeg je aandelen en ETFs toe met aankoopprijs en datum.'],['Bekijk je dashboard','Zie meteen je totale waarde, rendement en verschuldigde belastingen.'],['Volg de markten','Live BEL20, Europese ETFs en AI-analyses per aandeel.']].map(([t,d],i) => (
               <div key={i} className="l-animate l-stap" style={{ '--vertraging':`${i * 0.1}s`,textAlign:'center',padding:24,position:'relative' }}>
                 {i < 3 && <span style={{ position:'absolute',right:-12,top:36,fontSize:20,color:'#cbd5e1' }} className="l-hide-mobile">→</span>}
                 <div className="l-stap-cirkel" style={{ width:56,height:56,borderRadius:'50%',background:'#1e3a8a',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:800,margin:'0 auto 16px' }}>{i+1}</div>
@@ -406,78 +406,31 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
         </div>
       </section>
 
-      {/* ── PRICING ── */}
+      {/* ── PRIJZEN ── */}
+      {/* Kapitas is momenteel volledig gratis; er is geen betaalsysteem. */}
       <section id="prijzen" style={{ padding:'96px 24px',background:'#f8fafc' }}>
-        <div style={{ maxWidth:860,margin:'0 auto',textAlign:'center' }}>
+        <div style={{ maxWidth:620,margin:'0 auto',textAlign:'center' }}>
           <div className="l-section-label">Prijzen</div>
-          <h2 style={{ fontSize:'clamp(28px,4vw,42px)',fontWeight:800,letterSpacing:'-1px',marginBottom:12 }}>Simpele, eerlijke prijzen</h2>
-          <p style={{ fontSize:17,color:'#64748b' }}>Geen verborgen kosten. Geen jaarcontract. Annuleer wanneer je wil.</p>
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:24,marginTop:56,alignItems:'start' }}>
-            {/* Gratis */}
-            <div className="l-pricing-card l-animate">
+          <h2 style={{ fontSize:'clamp(28px,4vw,42px)',fontWeight:800,letterSpacing:'-1px',marginBottom:12 }}>Nu nog volledig gratis</h2>
+          <p style={{ fontSize:17,color:'#64748b' }}>Kapitas is volop in ontwikkeling. Profiteer ervan: zolang dat zo is, gebruik je alle functies gratis.</p>
+          <div className="l-pricing-card l-pricing-popular l-animate" style={{ marginTop:56,textAlign:'left' }}>
+            <div style={{ position:'absolute',top:-14,left:'50%',transform:'translateX(-50%)',background:'#1e3a8a',color:'white',padding:'4px 16px',borderRadius:100,fontSize:12,fontWeight:700,whiteSpace:'nowrap' }}>🎉 Alles inbegrepen</div>
+            <div style={{ textAlign:'center' }}>
               <div style={{ fontSize:13,fontWeight:700,color:'#64748b',marginBottom:8 }}>GRATIS</div>
-              <div style={{ fontSize:42,fontWeight:800,letterSpacing:'-1px',lineHeight:1 }}>
-                <sup style={{ fontSize:20,verticalAlign:'top',marginTop:8,fontWeight:600 }}>€</sup>0
-                <span style={{ fontSize:16,fontWeight:500,color:'#94a3b8' }}>/maand</span>
+              <div style={{ fontSize:48,fontWeight:800,letterSpacing:'-1px',lineHeight:1,color:'#1e3a8a' }}>
+                <sup style={{ fontSize:22,verticalAlign:'top',marginTop:8,fontWeight:600 }}>€</sup>0
               </div>
-              <div style={{ fontSize:13,color:'#64748b',margin:'8px 0 20px' }}>Perfect om Kapitas te ontdekken.</div>
-              <hr style={{ border:'none',borderTop:'1px solid #e2e8f0',margin:'16px 0' }} />
-              <div style={{ display:'flex',flexDirection:'column',gap:10,marginBottom:28,textAlign:'left' }}>
-                {[['✓','Live marktdata BEL20',true],['✓','ETF overzicht (top 10)',true],['✓','Belastingcalculator',true],['✗','Portfolio tracker',false],['✗','Volledige ETF lijst (270+)',false],['✗','AI-analyses',false],['✗','Dividend tracking',false]].map(([ic,t,ok]) => (
-                  <div key={t} style={{ display:'flex',gap:10,alignItems:'flex-start',fontSize:13,color:ok?'#0f172a':'#94a3b8' }}>
-                    <span style={{ color:ok?'#22c55e':'#cbd5e1',fontSize:15,flexShrink:0 }}>{ic}</span>{t}
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-outline" style={{ width:'100%',justifyContent:'center' }}>Start gratis</button>
+              <div style={{ fontSize:13,color:'#64748b',margin:'8px 0 20px' }}>Geen betaalgegevens, geen verplichtingen.</div>
             </div>
-            {/* Pro */}
-            <div className="l-pricing-card l-pricing-popular l-animate">
-              <div style={{ position:'absolute',top:-14,left:'50%',transform:'translateX(-50%)',background:'#1e3a8a',color:'white',padding:'4px 16px',borderRadius:100,fontSize:12,fontWeight:700,whiteSpace:'nowrap' }}>⭐ Meest gekozen</div>
-              <div style={{ fontSize:13,fontWeight:700,color:'#64748b',marginBottom:8 }}>PRO</div>
-              <div style={{ fontSize:42,fontWeight:800,letterSpacing:'-1px',lineHeight:1,color:'#1e3a8a' }}>
-                <sup style={{ fontSize:20,verticalAlign:'top',marginTop:8,fontWeight:600 }}>€</sup>9
-                <span style={{ fontSize:16,fontWeight:500,color:'#94a3b8' }}>,99/maand</span>
-              </div>
-              <div style={{ fontSize:13,color:'#64748b',margin:'8px 0 20px' }}>Alles wat je nodig hebt als actieve belegger.</div>
-              <hr style={{ border:'none',borderTop:'1px solid #e2e8f0',margin:'16px 0' }} />
-              <div style={{ display:'flex',flexDirection:'column',gap:10,marginBottom:28,textAlign:'left' }}>
-                {['Alles van Gratis','Portfolio tracker (onbeperkt)','270+ ETFs volledig overzicht','AI-analyses per aandeel','Dividend tracking & kalender','Volledige belastingmodule','BEL Mid- & Smallcap','Wereldwijde markten','Dark mode','Prioriteitsondersteuning'].map(t => (
-                  <div key={t} style={{ display:'flex',gap:10,alignItems:'flex-start',fontSize:13 }}>
-                    <span style={{ color:'#22c55e',fontSize:15,flexShrink:0 }}>✓</span>{t}
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ width:'100%',justifyContent:'center' }}>Start 14 dagen gratis →</button>
-              <p style={{ fontSize:11,color:'#94a3b8',textAlign:'center',marginTop:10 }}>Geen betaalgegevens nodig voor proefperiode</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ── */}
-      <section style={{ padding:'96px 24px' }}>
-        <div style={{ maxWidth:1100,margin:'0 auto' }}>
-          <div style={{ textAlign:'center',marginBottom:48 }}>
-            <div className="l-section-label">Wat gebruikers zeggen</div>
-            <h2 style={{ fontSize:'clamp(28px,4vw,42px)',fontWeight:800,letterSpacing:'-1px' }}>Belgische beleggers<br />aan het woord</h2>
-          </div>
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:20 }}>
-            {[['Thomas V.','Actieve belegger, Gent','#1e3a8a','Eindelijk een tool die de TOB en meerwaardebelasting correct berekent. Ik hoef niet meer alles manueel bij te houden in Excel.'],
-              ['Sarah M.','Langetermijnbelegger, Brussel','#22c55e','De ETF vergelijker alleen al is de prijs waard. Ik vond ETFs die ik niet kende en vergeleek de exacte kosten op enkele klikken.'],
-              ['Jonas D.','Beginnende belegger, Antwerpen','#f59e0b','Super duidelijk overzicht van de BEL20 en Midcap aandelen. De AI-analyse geeft me een goed startpunt voor mijn research.']].map(([naam,rol,kleur,tekst]) => (
-              <div key={naam} className="l-animate" style={{ background:'white',border:'1px solid #e2e8f0',borderRadius:12,padding:24 }}>
-                <div style={{ color:'#f59e0b',fontSize:14,marginBottom:12 }}>★★★★★</div>
-                <p style={{ fontSize:14,color:'#64748b',lineHeight:1.7,marginBottom:16,fontStyle:'italic' }}>{`"${tekst}"`}</p>
-                <div style={{ display:'flex',alignItems:'center',gap:10 }}>
-                  <div style={{ width:36,height:36,borderRadius:'50%',background:kleur,color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:14 }}>{naam[0]}</div>
-                  <div>
-                    <div style={{ fontSize:13,fontWeight:700 }}>{naam}</div>
-                    <div style={{ fontSize:12,color:'#94a3b8' }}>{rol}</div>
-                  </div>
+            <hr style={{ border:'none',borderTop:'1px solid #e2e8f0',margin:'16px 0' }} />
+            <div className="l-col-2" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px 20px',marginBottom:28 }}>
+              {['Portfolio tracker (onbeperkt)','Live marktdata BEL20, Mid & Small','270+ ETFs volledig overzicht','AI-analyses per aandeel','Dividend tracking & kalender','Volledige belastingmodule','Wereldwijde markten','Dark mode'].map(t => (
+                <div key={t} style={{ display:'flex',gap:10,alignItems:'flex-start',fontSize:14 }}>
+                  <span style={{ color:'#22c55e',fontSize:15,flexShrink:0 }}>✓</span>{t}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-primary" style={{ width:'100%',justifyContent:'center' }}>Maak gratis een account →</button>
           </div>
         </div>
       </section>
@@ -510,7 +463,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
         <div style={{ display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap' }}>
           <button onClick={() => onNaarApp('registreren')} className="l-btn l-btn-white" style={{ fontSize:17,padding:'16px 36px',borderRadius:12 }}>{CTA_TEKST}</button>
         </div>
-        <p style={{ fontSize:13,color:'rgba(255,255,255,0.5)',marginTop:16 }}>Geen betaalgegevens nodig · Annuleer wanneer je wil · €9,99/maand na proefperiode</p>
+        <p style={{ fontSize:13,color:'rgba(255,255,255,0.5)',marginTop:16 }}>Nu volledig gratis · Alle functies · Geen betaalgegevens nodig</p>
       </section>
 
       {/* ── FOOTER ── */}
@@ -524,14 +477,14 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids }) {
           {[['Product',['Features','Prijzen','Hoe werkt het']],['Belgisch',['Belastingmodule','TOB calculator','Meerwaardebelasting','Reynders-taks']],['Info',['Gids voor beginners','Privacybeleid','Algemene voorwaarden','Disclaimer','Contact']]].map(([titel,links]) => (
             <div key={titel}>
               <h4 style={{ fontSize:13,fontWeight:700,color:'white',marginBottom:14 }}>{titel}</h4>
-              {links.map(l => <div key={l} style={{ fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer' }} onClick={l==='Contact'?()=>window.location.href='mailto:hello@kapitas.be':l==='Privacybeleid'?onPrivacybeleid:l==='Gids voor beginners'?onGids:() => onNaarApp('registreren')}>{l}</div>)}
+              {links.map(l => <div key={l} style={{ fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer' }} onClick={l==='Contact'?()=>window.location.href='mailto:hello@kapitas.be':l==='Privacybeleid'?onPrivacybeleid:l==='Algemene voorwaarden'?onVoorwaarden:l==='Disclaimer'?onDisclaimer:l==='Gids voor beginners'?onGids:() => onNaarApp('registreren')}>{l}</div>)}
             </div>
           ))}
         </div>
         <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)',paddingTop:24,display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:12,flexWrap:'wrap',gap:12 }}>
           <span>© 2026 Kapitas. Alle rechten voorbehouden.</span>
           <div style={{ display:'flex',gap:20 }}>
-            {['Privacybeleid','Voorwaarden','Disclaimer'].map(l => <span key={l} style={{ color:'rgba(255,255,255,0.35)',cursor:'pointer' }} onClick={l==='Privacybeleid'?onPrivacybeleid:undefined}>{l}</span>)}
+            {['Privacybeleid','Voorwaarden','Disclaimer'].map(l => <span key={l} style={{ color:'rgba(255,255,255,0.35)',cursor:'pointer' }} onClick={l==='Privacybeleid'?onPrivacybeleid:l==='Voorwaarden'?onVoorwaarden:onDisclaimer}>{l}</span>)}
           </div>
         </div>
       </footer>
