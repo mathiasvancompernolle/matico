@@ -235,6 +235,7 @@ const standaardTob = (b, info) => {
 function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
   const { t, getMuntFactor, fxOp, profielInfo } = useApp();
   const [kostenMunt, setKostenMunt] = useState('EUR'); // munt waarin de broker de kosten aanrekent
+  const [ontvangen, setOntvangen] = useState(''); // werkelijk ontvangen volgens de afrekening (€), optioneel
   const [kosten, setKosten] = useState('');          // transactiekosten broker
   const [tobId, setTobId] = useState('0.35');
   const [tobHandmatig, setTobHandmatig] = useState(null); // zelf aangepast bedrag
@@ -261,6 +262,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
       });
       setKosten('');
       setKostenMunt('EUR');
+      setOntvangen('');
       setTobId(standaardTob(gekozen, profielInfo?.[gekozen.symbol]));
       setTobHandmatig(null);
       setStap('invullen');
@@ -323,7 +325,12 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
   const kostenIngevuld = parseFloat(kosten) || 0;
   const kostenEur = kostenMunt === 'EUR' ? kostenIngevuld : kostenIngevuld * naarEur;
   const nettoEur = brutoEur - kostenEur - tobEur;
-  const extraKosten = { verkoopkosten: kostenEur / naarEur, tob: tobEur / naarEur };
+  // Werkelijk ontvangen (volgens de afrekening van de broker): als ingevuld,
+  // gebruikt de app exact dat bedrag. De broker rekent om aan zijn eigen koers
+  // (en verrekent wisselkoerskosten soms al in die koers), terwijl de app de
+  // ECB-dagkoers gebruikt — daardoor kan de berekening enkele centen afwijken.
+  const ontvangenEur = parseFloat(ontvangen) > 0 ? parseFloat(ontvangen) : null;
+  const extraKosten = { verkoopkosten: kostenEur / naarEur, tob: tobEur / naarEur, ...(ontvangenEur ? { ontvangenEur } : {}) };
 
   const bevestig = async () => {
     if (beperkteInfoVerkoop && aantalOnbekend) {
@@ -605,13 +612,25 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                     <div style={rij}><span>Transactiekosten</span><span style={num}>− €{f2(kostenEur)}</span></div>
                     <div style={rij}><span>Beurstaks (TOB)</span><span style={num}>− €{f2(tobEur)}</span></div>
                     <div style={{ ...rij, borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 8, fontWeight: 600, color: 'var(--text-primary)' }}>
-                      <span>Netto ontvangen</span><span style={num}>€{f2(nettoEur)}</span>
+                      <span>{ontvangenEur ? 'Berekend netto' : 'Netto ontvangen'}</span><span style={num}>€{f2(nettoEur)}</span>
                     </div>
                     {munt !== 'EUR' && (
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                        Omgerekend aan 1 {munt} = €{naarEur.toLocaleString('nl-BE', { maximumFractionDigits: 4 })} op {new Date(form.datum).toLocaleDateString('nl-BE')}.
+                        Omgerekend aan 1 {munt} = €{naarEur.toLocaleString('nl-BE', { maximumFractionDigits: 4 })} op {new Date(form.datum).toLocaleDateString('nl-BE')} (ECB-dagkoers).
                       </div>
                     )}
+                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 10, paddingTop: 10 }}>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+                        Werkelijk ontvangen volgens je afrekening (€) <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>optioneel</span>
+                      </label>
+                      <input type="number" min="0" step="any" value={ontvangen} placeholder={f2(nettoEur)}
+                        onChange={e => setOntvangen(e.target.value)} style={{ ...inputStyle, background: 'var(--bg-white)' }} />
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.45 }}>
+                        {ontvangenEur
+                          ? <>Kapitas gebruikt dit bedrag. Verschil met de berekening: <strong style={{ color: 'var(--text-secondary)' }}>{ontvangenEur - nettoEur >= 0 ? '+' : '−'}€{f2(Math.abs(ontvangenEur - nettoEur))}</strong>{munt !== 'EUR' ? ' — meestal de wisselkoers van je broker (of wisselkoerskosten die al in die koers zaten).' : '.'}</>
+                          : 'Vul het bedrag in dat je broker op je rekening zette: dan klopt je winst tot op de cent.'}
+                      </div>
+                    </div>
                   </div>
                 );
               })()}
@@ -642,7 +661,7 @@ const inputStyle = {
 
 // ── Hoofd component ──────────────────────────────────────────────
 export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSidebar }) {
-  const { gebruiker, beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen, getMuntFactor, t } = useApp();
+  const { gebruiker, beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen, getMuntFactor, fxOp, t } = useApp();
 
   // Haal logo's en type op voor beleggingen zonder logo OF zonder type
   React.useEffect(() => {
@@ -725,8 +744,14 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
       // Kosten bij verkoop (in de munt van de verkoop): broker + beurstaks
       verkoopkosten: verkoopdata.verkoopkosten || 0,
       tob: verkoopdata.tob || 0,
-      winstverlies: (verkoopdata.koers - belegging.kostprijs) * verkoopdata.aantal - kostenVerkochtDeel
-        - (verkoopdata.verkoopkosten || 0) - (verkoopdata.tob || 0)
+      // Exact ontvangen bedrag in euro (indien ingevuld): heeft voorrang
+      ...(verkoopdata.ontvangenEur ? { ontvangenEur: verkoopdata.ontvangenEur } : {}),
+      // (in de munt van het effect; met het exact ontvangen bedrag als dat gekend is)
+      winstverlies: verkoopdata.ontvangenEur
+        ? verkoopdata.ontvangenEur / ((fxOp ? fxOp(verkoopdata.munt || belegging.munt || 'EUR', verkoopdata.datum) : 1) || 1)
+          - belegging.kostprijs * verkoopdata.aantal - kostenVerkochtDeel
+        : (verkoopdata.koers - belegging.kostprijs) * verkoopdata.aantal - kostenVerkochtDeel
+          - (verkoopdata.verkoopkosten || 0) - (verkoopdata.tob || 0)
     };
     setVerkochteBeleggingen(prev => [...(prev || []), verkochte]);
     // Verwijder (deels) uit actieve beleggingen

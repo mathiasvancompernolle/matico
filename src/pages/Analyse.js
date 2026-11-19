@@ -1990,6 +1990,8 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
           const fx = (munt, datum) => (fxOp ? fxOp(munt || 'EUR', datum) : getMuntFactor(munt || 'EUR'));
           const aankoopKostenEur = (b) => (b.transactiekosten || 0) * fx(b.munt, b.datum);
           const verkoopKostenEur = (b) => ((b.verkoopkosten || 0) + (b.tob || 0)) * fx(b.verkoopMunt || b.munt, b.verkoopdatum);
+          // (bij een ingevuld ontvangen bedrag blijven dit de opgegeven kosten; het
+          // wisselkoersverschil van de broker is geen transactiekost)
           const investeringEur = (b, aantal) => b.kostprijs * aantal * fx(b.munt, b.datum);
           const kostenActief = beleggingen.reduce((sum, b) => sum + aankoopKostenEur(b), 0);
           const kostenVerkocht = (verkochteBeleggingen || []).reduce((sum, b) => sum + aankoopKostenEur(b) + verkoopKostenEur(b), 0);

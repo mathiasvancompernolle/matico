@@ -112,7 +112,8 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
     const verkoopLijst = verkopenDitJaar.map(b => {
       const f = factor(b);
       const verkoopKosten = (b.verkoopkosten || 0) + (b.tob || 0);
-      const verkoopBedrag = ((b.verkoopkoers || 0) * b.aantalVerkocht - verkoopKosten) * fxVerkoop(b);
+      const verkoopBedrag = b.ontvangenEur > 0 ? b.ontvangenEur // exact bedrag van de afrekening
+        : ((b.verkoopkoers || 0) * b.aantalVerkocht - verkoopKosten) * fxVerkoop(b);
       const metKosten = (b.transactiekosten || 0) > 0;
       const verkoopDatum = parseNLDatum(b.verkoopdatum);
       const aankoopDatum = b.datum ? new Date(b.datum) : null;

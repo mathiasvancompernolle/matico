@@ -671,7 +671,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
     ((b.kostprijs || 0) * (aantal || 0) + (b.transactiekosten || 0)) * fxOp(b.munt || 'EUR', b.datum);
   // Netto verkoopopbrengst in euro (na transactiekosten en beurstaks bij
   // verkoop), aan de wisselkoers van de verkoopdag
-  const verkoopEur = (b) =>
+  const verkoopEur = (b) => (b.ontvangenEur > 0) ? b.ontvangenEur : // exact bedrag van de afrekening
     ((b.verkoopkoers || b.kostprijs || 0) * (b.aantalVerkocht || b.aantal || 1) - (b.verkoopkosten || 0) - (b.tob || 0))
     * fxOp(b.verkoopMunt || b.munt || 'EUR', b.verkoopdatum);
 
