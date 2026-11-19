@@ -5,6 +5,7 @@ import { Info, X } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
 import { getal } from '../utils/getal';
+import { naarIsoDatum } from '../utils/handelsdag';
 const ACCENT = '#1e3a8a';
 const fmt2 = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -82,7 +83,7 @@ const BELASTING = 0.30;
 const MAANDEN = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
 
 export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
-  const { beleggingen, koersen, getMuntFactor, verkochteBeleggingen } = useApp();
+  const { beleggingen, koersen, getMuntFactor, fxOp, verkochteBeleggingen } = useApp();
   const [jaar, setJaar] = useState(new Date().getFullYear());
   const [modus, setModus] = useState('bruto'); // 'bruto' | 'netto'
   const [jaarDropdown, setJaarDropdown] = useState(false);
@@ -157,7 +158,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
 
   // ── Bereken dividenddata per belegging ──
   // Gebruikt live Finnhub data als beschikbaar, anders hardcoded database
-  const { perBelegging, ontvangen, verwacht, dividendRendement, rendementOpAankoop, maandData, zonderData, geenDividend } = useMemo(() => {
+  const { perBelegging, ontvangen, geschat, verwacht, dividendRendement, rendementOpAankoop, maandData, zonderData, geenDividend } = useMemo(() => {
     const huidigMaand = new Date().getMonth() + 1;
     const huidigJaar = new Date().getFullYear();
     const isHuidigJaar = jaar === huidigJaar;
@@ -165,6 +166,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
     const perBel = [];
     let totaalOntvangen = 0;
     let totaalVerwacht = 0;
+    let totaalGeschat = 0; // 'ontvangen' op basis van de vaste schattingslijst (geen brondata)
     const maandTotalen = Array(12).fill(0);
     const zonderDataLijst = [];
     const geenDividendLijst = []; // bedrijven die bewust geen dividend uitkeren
@@ -196,23 +198,19 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
       const k = koersen[b.symbol];
       const huidigePrijs = k ? k.c : b.kostprijs;
 
-      // Aankoop- en verkoopdatum voor deze belegging
-      const aankoopDatum = b.datum ? new Date(b.datum) : null;
-      const parseNLDatum = (str) => {
-        if (!str) return null;
-        const d = str.split('/');
-        return d.length === 3 ? new Date(`${d[2]}-${d[1]}-${d[0]}`) : new Date(str);
-      };
-      const verkoopDatum = b.verkoopdatum ? parseNLDatum(b.verkoopdatum) : null;
 
       // Controleer of je recht hebt op dividend op een gegeven ex-datum
+      // (zelfde regels als de grafiek in Overzicht, zie AppContext.dividendUitkeringen)
+      const aankoopIso = naarIsoDatum(b.datum);
+      const verkoopIso = naarIsoDatum(b.verkoopdatum);
       const heeftRecht = (exDatumStr) => {
-        if (!exDatumStr) return false;
-        const exDatum = new Date(exDatumStr);
-        // Je moet het aandeel bezitten VOOR de ex-dividenddatum
-        if (aankoopDatum && exDatum < aankoopDatum) return false;
-        // Als verkocht: ex-datum moet voor de verkoopdatum liggen
-        if (verkoopDatum && exDatum >= verkoopDatum) return false;
+        const ex = naarIsoDatum(exDatumStr);
+        if (!ex) return false;
+        // Je moet het aandeel bezitten VÓÓR de ex-dividenddatum: wie op de
+        // ex-datum zelf koopt, heeft geen recht meer.
+        if (aankoopIso && ex <= aankoopIso) return false;
+        // Verkocht vóór de ex-datum: geen recht (op de ex-datum zelf wel)
+        if (verkoopIso && ex > verkoopIso) return false;
         return true;
       };
 
@@ -253,15 +251,15 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
           const verwachtNetto = verwachtBruto * (1 - BELASTING);
 
           // Ontvangen = uitkeringen waarvoor je recht had én al betaald
-          const ontvangenUSD = uitkeringenDitJaar
+          // Omgerekend aan de wisselkoers van de betaaldag (zoals de grafiek)
+          const fxBetaal = (d) => fxOp ? fxOp(d.currency || b.munt || 'EUR', d.paymentDate || d.payment_date || d.exDate || d.date) : f;
+          const ontvangenBruto = uitkeringenDitJaar
             .filter(d => {
               const betaalDatumStr = d.paymentDate || d.payment_date || d.date || '';
               const betaalDatum = new Date(betaalDatumStr);
               return !isHuidigJaar || (!isNaN(betaalDatum.getTime()) && betaalDatum <= new Date());
             })
-            .reduce((s, d) => s + parseFloat(d.amount || d.adjDividend || 0), 0);
-
-          const ontvangenBruto = ontvangenUSD * b.aantal * f;
+            .reduce((s, d) => s + parseFloat(d.amount || d.adjDividend || 0) * b.aantal * fxBetaal(d), 0);
           const ontvangenNetto = ontvangenBruto * (1 - BELASTING);
 
           // Maanddata — enkel uitkeringen waarvoor je recht had
@@ -269,7 +267,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
             const betaalDatum = new Date(d.paymentDate || d.date || '');
             const maandIdx = betaalDatum.getMonth();
             if (!isHuidigJaar || betaalDatum <= new Date()) {
-              const bedrag = parseFloat(d.amount || d.adjDividend || 0) * b.aantal * f;
+              const bedrag = parseFloat(d.amount || d.adjDividend || 0) * b.aantal * fxBetaal(d);
               maandTotalen[maandIdx] += modus === 'netto' ? bedrag * (1 - BELASTING) : bedrag;
             }
           });
@@ -360,10 +358,11 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
 
       totaalOntvangen += modus === 'netto' ? ontvangenNetto : ontvangenBruto;
       totaalVerwacht += modus === 'netto' ? verwachtNetto : verwachtBruto;
+      totaalGeschat += modus === 'netto' ? ontvangenNetto : ontvangenBruto;
 
       perBel.push({
         id: b.id || b.symbol, naam: b.naam, symbol: b.symbol, logo: b.logo,
-        aantal: b.aantal, liveData: false,
+        aantal: b.aantal, liveData: false, geschat: true,
         verkocht: !beleggingen.find(bb => bb.symbol === b.symbol),
         rendement, rendementAankoop,
         verwachtJaarlijks: modus === 'netto' ? verwachtNetto : verwachtBruto,
@@ -382,6 +381,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
     return {
       perBelegging: perBel.sort((a, b) => b.ontvangen - a.ontvangen),
       ontvangen: totaalOntvangen,
+      geschat: totaalGeschat,
       verwacht: totaalVerwacht,
       dividendRendement: (jaarlijksBrutoTotaal / totaalWaarde) * 100,
       rendementOpAankoop: (jaarlijksBrutoTotaal / totaalKostprijs) * 100,
@@ -389,7 +389,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
       zonderData: [...new Set(zonderDataLijst)],
       geenDividend: [...new Set(geenDividendLijst)],
     };
-  }, [beleggingen, koersen, jaar, modus, verkochteBeleggingen, liveDividend, getMuntFactor]);
+  }, [beleggingen, koersen, jaar, modus, verkochteBeleggingen, liveDividend, getMuntFactor, fxOp]);
 
   const beschikbareJaren = useMemo(() => {
     const huidig = new Date().getFullYear();
@@ -509,6 +509,11 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Ontvangen ({jaar})</div>
               <div style={{ fontSize: 24, fontWeight: 700 }}>€{fmt2(ontvangen)}</div>
+              {geschat > 0.005 && (
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                  waarvan €{fmt2(geschat)} geschat (geen gegevens van de bron; telt niet mee in de grafieken)
+                </div>
+              )}
             </div>
             <div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Totaal verwacht dit jaar</div>
@@ -598,6 +603,9 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
                     <span style={{ fontWeight: 600, fontSize: 14 }}>{b.naam}</span>
                     {b.verkocht && (
                       <span style={{ fontSize: 10, padding: '1px 6px', background: 'var(--border-light)', borderRadius: 4, color: 'var(--text-muted)', fontWeight: 600 }}>Verkocht</span>
+                    )}
+                    {b.geschat && (
+                      <span title="Geen gegevens van de bron: schatting op basis van het gebruikelijke dividend" style={{ fontSize: 9, padding: '1px 5px', background: 'var(--border-light)', borderRadius: 4, color: 'var(--text-muted)', fontWeight: 700 }}>GESCHAT</span>
                     )}
                     {b.liveData && (
                       <span title="Live data via Finnhub" style={{ fontSize: 9, padding: '1px 5px', background: '#dcfce7', borderRadius: 4, color: '#16a34a', fontWeight: 700 }}>LIVE</span>
