@@ -320,40 +320,135 @@ const zoekETF = (symbol) => {
   return null;
 };
 
-// Live sector-/regiogewichten: voor ETF's die niet in de handmatige ETF_DB
-// hierboven staan, gebruiken we de data die al via de etf-holdings endpoint
-// wordt opgehaald (liveEtfData, ook gebruikt voor de holdings-tabel
-// verderop) — zo krijgt élke ETF een echte spreiding i.p.v. "Overige"/
-// "Wereldwijd". De backend (EODHD) levert regio's al in dezelfde
-// Nederlandse bucketnamen als ETF_DB hierboven, dus geen extra vertaling
-// nodig voor "landen" → regio.
+// ── Regio's: altijd dezelfde buckets ─────────────────────────────
+// Sommige bronnen (en oudere ETF_DB-regels) geven landen ("China",
+// "Frankrijk") of Engelse landnamen; andere geven regio's. Alles wordt hier
+// naar één set regio's omgezet, zodat de grafiek geen mengeling van landen,
+// regio's en verschillende soorten "Overige" meer toont.
+const LAND_NAAR_REGIO = {
+  // Nederlands
+  'Verenigde Staten': 'Noord-Amerika', 'Canada': 'Noord-Amerika',
+  'Frankrijk': 'Europa - Ontwikkeld', 'Duitsland': 'Europa - Ontwikkeld', 'Nederland': 'Europa - Ontwikkeld',
+  'Spanje': 'Europa - Ontwikkeld', 'Finland': 'Europa - Ontwikkeld', 'Italië': 'Europa - Ontwikkeld',
+  'Ierland': 'Europa - Ontwikkeld', 'België': 'Europa - Ontwikkeld', 'Zwitserland': 'Europa - Ontwikkeld',
+  'Zweden': 'Europa - Ontwikkeld', 'Denemarken': 'Europa - Ontwikkeld', 'Noorwegen': 'Europa - Ontwikkeld',
+  'Oostenrijk': 'Europa - Ontwikkeld', 'Portugal': 'Europa - Ontwikkeld', 'Luxemburg': 'Europa - Ontwikkeld',
+  'Polen': 'Europa - Opkomend', 'Griekenland': 'Europa - Opkomend', 'Turkije': 'Europa - Opkomend', 'Hongarije': 'Europa - Opkomend', 'Tsjechië': 'Europa - Opkomend',
+  'China': 'Azië - Opkomend', 'India': 'Azië - Opkomend', 'Taiwan': 'Azië - Opkomend', 'Zuid-Korea': 'Azië - Opkomend',
+  'Indonesië': 'Azië - Opkomend', 'Thailand': 'Azië - Opkomend', 'Maleisië': 'Azië - Opkomend', 'Filipijnen': 'Azië - Opkomend',
+  'Hongkong': 'Azië - Ontwikkeld', 'Singapore': 'Azië - Ontwikkeld', 'Japan': 'Japan',
+  'Australië': 'Australazië', 'Nieuw-Zeeland': 'Australazië',
+  'Brazilië': 'Latijns-Amerika', 'Mexico': 'Latijns-Amerika', 'Chili': 'Latijns-Amerika', 'Peru': 'Latijns-Amerika', 'Colombia': 'Latijns-Amerika',
+  'Saudi-Arabië': 'Afrika/Midden-Oosten', 'Zuid-Afrika': 'Afrika/Midden-Oosten', 'Verenigde Arabische Emiraten': 'Afrika/Midden-Oosten',
+  'Qatar': 'Afrika/Midden-Oosten', 'Koeweit': 'Afrika/Midden-Oosten', 'Israël': 'Afrika/Midden-Oosten',
+  'Overige Europa': 'Europa - Ontwikkeld',
+  // Engels (zoals profielbronnen het land geven)
+  'United States': 'Noord-Amerika', 'USA': 'Noord-Amerika', 'US': 'Noord-Amerika',
+  'France': 'Europa - Ontwikkeld', 'Germany': 'Europa - Ontwikkeld', 'Netherlands': 'Europa - Ontwikkeld',
+  'Spain': 'Europa - Ontwikkeld', 'Italy': 'Europa - Ontwikkeld', 'Ireland': 'Europa - Ontwikkeld', 'Belgium': 'Europa - Ontwikkeld',
+  'Switzerland': 'Europa - Ontwikkeld', 'Sweden': 'Europa - Ontwikkeld', 'Denmark': 'Europa - Ontwikkeld', 'Norway': 'Europa - Ontwikkeld',
+  'Austria': 'Europa - Ontwikkeld', 'Luxembourg': 'Europa - Ontwikkeld',
+  'United Kingdom': 'Verenigd Koninkrijk', 'UK': 'Verenigd Koninkrijk', 'GB': 'Verenigd Koninkrijk',
+  'South Korea': 'Azië - Opkomend', 'Korea': 'Azië - Opkomend', 'Hong Kong': 'Azië - Ontwikkeld',
+  'Australia': 'Australazië', 'New Zealand': 'Australazië', 'Brazil': 'Latijns-Amerika',
+  'Saudi Arabia': 'Afrika/Midden-Oosten', 'South Africa': 'Afrika/Midden-Oosten', 'Israel': 'Afrika/Midden-Oosten',
+  'Cayman Islands': 'Azië - Opkomend', // vooral Chinese bedrijven (Alibaba, ...)
+  // Landcodes
+  NL: 'Europa - Ontwikkeld', BE: 'Europa - Ontwikkeld', DE: 'Europa - Ontwikkeld', FR: 'Europa - Ontwikkeld', IE: 'Europa - Ontwikkeld', CH: 'Europa - Ontwikkeld', CA: 'Noord-Amerika', JP: 'Japan', CN: 'Azië - Opkomend',
+};
+const REGIO_BUCKETS = new Set([...ALLE_REGIOS]);
+const naarRegio = (label) => (REGIO_BUCKETS.has(label) ? label : (LAND_NAAR_REGIO[label] || null));
+
+// Zet { label: % } om naar regio-buckets. "Overige"/onbekende stukjes
+// vallen weg en de rest wordt herschaald naar 100%.
+const normaliseerRegios = (gewichten) => {
+  if (!gewichten) return null;
+  const uit = {};
+  Object.entries(gewichten).forEach(([label, pct]) => {
+    const r = naarRegio(label);
+    if (r && pct > 0) uit[r] = (uit[r] || 0) + pct;
+  });
+  const som = Object.values(uit).reduce((s, v) => s + v, 0);
+  if (som <= 0) return null;
+  Object.keys(uit).forEach(k => { uit[k] = (uit[k] / som) * 100; });
+  return uit;
+};
+// Sectoren: "Overige" laten we weg en we herschalen naar 100%
+const normaliseerSectoren = (gewichten) => {
+  if (!gewichten) return null;
+  const uit = {};
+  Object.entries(gewichten).forEach(([label, pct]) => {
+    const s = ALLE_SECTOREN.includes(label) ? label : (FMP_SECTOR_MAP[label] || null);
+    if (s && pct > 0) uit[s] = (uit[s] || 0) + pct;
+  });
+  const som = Object.values(uit).reduce((s, v) => s + v, 0);
+  if (som <= 0) return null;
+  Object.keys(uit).forEach(k => { uit[k] = (uit[k] / som) * 100; });
+  return uit;
+};
+
+// Live gegevens (etf-holdings endpoint), per basissymbool bewaard
 const liveEtfSectorGewichten = (symbol, liveEtfData) => {
   const basis = symbol.toUpperCase().split('.')[0];
   const sectoren = liveEtfData[basis]?.sectoren;
   if (!sectoren || sectoren.length === 0) return null;
   const gewichten = {};
-  sectoren.forEach(s => {
-    const label = FMP_SECTOR_MAP[s.label] || 'Overige';
-    gewichten[label] = (gewichten[label] || 0) + s.pct;
-  });
-  return gewichten;
+  sectoren.forEach(s => { gewichten[s.label] = (gewichten[s.label] || 0) + s.pct; });
+  return normaliseerSectoren(gewichten);
 };
 const liveEtfRegioGewichten = (symbol, liveEtfData) => {
   const basis = symbol.toUpperCase().split('.')[0];
   const landen = liveEtfData[basis]?.landen;
   if (!landen || landen.length === 0) return null;
   const gewichten = {};
-  landen.forEach(l => {
-    const label = l.label || 'Overige';
-    gewichten[label] = (gewichten[label] || 0) + l.pct;
-  });
-  return gewichten;
+  landen.forEach(l => { gewichten[l.label] = (gewichten[l.label] || 0) + l.pct; });
+  return normaliseerRegios(gewichten);
 };
 
-const getEtfGewichten = (sym, type, liveEtfData) => {
+// Als laatste vangnet: herken het soort index uit de naam van de ETF
+// (bv. "State Street SPDR MSCI All Country World UCITS ETF" → wereldwijd
+// inclusief opkomende markten). Zo valt bijna geen enkele ETF nog terug op
+// "Wereldwijd" of "Overige".
+const ETF_FAMILIES = [
+  { test: /all[- ]?world|acwi|all country|all-country|ftse global all cap/, voorbeeld: 'VWCE' },
+  { test: /emerging|opkomende|\bem\b|\bemim\b/, voorbeeld: 'VFEM' },
+  { test: /nasdaq/, voorbeeld: 'EQQQ' },
+  { test: /s&p ?500|s&p500/, voorbeeld: 'CSPX' },
+  { test: /\bworld\b|msci world|developed/, voorbeeld: 'IWDA' },
+  { test: /euro ?stoxx|eurozone|\bemu\b/, voorbeeld: 'CSX5' },
+  { test: /europe|stoxx 600|europa/, voorbeeld: 'SMEA' },
+  { test: /\busa\b|\bus\b|united states|total (stock )?market/, voorbeeld: 'VTI' },
+  { test: /japan|nikkei|topix/, regio: { 'Japan': 100 } },
+];
+const herkenEtfFamilie = (b) => {
+  const tekst = `${(b.naam || '').toLowerCase()} ${(b.symbol || '').toLowerCase()}`;
+  return ETF_FAMILIES.find(f => f.test.test(tekst)) || null;
+};
+// Obligatie-ETF's: regio volgt de munt/het gebied van de obligaties
+const obligatieRegio = (b) => {
+  const naam = (b.naam || '').toLowerCase();
+  if (/\beur\b|euro|eurozone|bund|oat\b/.test(naam)) return { 'Europa - Ontwikkeld': 100 };
+  if (/\busd\b|us treasury|u\.s\.|treasury/.test(naam)) return { 'Noord-Amerika': 100 };
+  if (/gilt|\bgbp\b/.test(naam)) return { 'Verenigd Koninkrijk': 100 };
+  return null;
+};
+
+// Volgorde: sector → live (actueel) → vaste lijst → herkende index.
+//           regio  → vaste lijst → live landen → herkende index.
+const getEtfGewichten = (sym, type, liveEtfData, b = { symbol: sym }) => {
   const etf = zoekETF(sym);
-  if (etf) return type === 'regio' ? etf.regio : etf.sector;
-  return type === 'regio' ? liveEtfRegioGewichten(sym, liveEtfData) : liveEtfSectorGewichten(sym, liveEtfData);
+  const familie = herkenEtfFamilie(b);
+  const famEtf = familie?.voorbeeld ? ETF_DB[familie.voorbeeld] : null;
+  if (type === 'sector') {
+    if (isObligatieEtf(b)) return { 'Overheid': 100 };
+    return liveEtfSectorGewichten(sym, liveEtfData)
+      || normaliseerSectoren(etf?.sector)
+      || normaliseerSectoren(famEtf?.sector);
+  }
+  if (isObligatieEtf(b)) return obligatieRegio(b) || normaliseerRegios(etf?.regio) || null;
+  return normaliseerRegios(etf?.regio)
+    || liveEtfRegioGewichten(sym, liveEtfData)
+    || normaliseerRegios(famEtf?.regio || familie?.regio);
 };
 
 
@@ -366,7 +461,10 @@ function getSector(b, liveSectoren = {}) {
   return 'Overige';
 }
 
-function getRegio(b) {
+function getRegio(b, liveLanden = {}) {
+  // Crypto heeft geen land of regio (vroeger telde het als Noord-Amerika,
+  // omdat het symbool geen beurscode heeft)
+  if (b.type === 'crypto') return 'Crypto (geen regio)';
   const sym = b.symbol.toUpperCase();
   const delen = sym.split('.');
   const basis = delen[0];
@@ -375,10 +473,13 @@ function getRegio(b) {
   // 1. Exacte symboolmatch (bijv. NVDA, ASML)
   if (SYMBOOL_REGIO[basis]) return SYMBOOL_REGIO[basis];
 
-  // 2. Beursextensie (bijv. .AS → Amsterdam, .DE → Duitsland)
+  // 2. Land van het bedrijf (uit het bedrijfsprofiel) — juister dan de beurs
+  if (liveLanden[basis] && naarRegio(liveLanden[basis])) return naarRegio(liveLanden[basis]);
+
+  // 3. Beursextensie (bijv. .AS → Amsterdam, .DE → Duitsland)
   if (extensie && EXTENSIE_REGIO[extensie]) return EXTENSIE_REGIO[extensie];
 
-  // 3. Geen extensie en niet bekend → vermoedelijk VS (NYSE/NASDAQ)
+  // 4. Geen extensie en niet bekend → vermoedelijk VS (NYSE/NASDAQ)
   if (delen.length === 1) return 'Noord-Amerika';
 
   return 'Overige';
@@ -410,7 +511,7 @@ import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
 import { getal } from '../utils/getal';
 export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
-  const { beleggingen: beleggingenRaw, koersen, getMuntFactor, kostEur, verkoopEur, verkochteBeleggingen, t } = useApp();
+  const { beleggingen: beleggingenRaw, koersen, getMuntFactor, fxOp, kostEur, verkoopEur, verkochteBeleggingen, t } = useApp();
   // "1 transactie" / "12 transacties"
   const aantalTransacties = (n) => `${n} ${n === 1 ? t('bel_transactie_suffix') : t('bel_transacties_suffix')}`;
   // Belegging-type normaliseren: bekende ETF-tickers (VWCE, IWDA, ...) tellen altijd
@@ -432,6 +533,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
   const [liveEtfData, setLiveEtfData] = useState({});
   const [liveBetas, setLiveBetas] = useState({});
   const [liveSectoren, setLiveSectoren] = useState({}); // { PRX: 'Cyclische consumptiegoederen', ... }
+  const [liveLanden, setLiveLanden] = useState({}); // { PRX: 'Netherlands', ... } (land van het bedrijf)
   const [etfDataLoading, setEtfDataLoading] = useState(false);
 
   const factor = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
@@ -466,12 +568,27 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
     }, 0) || 1;
     const onbekend = [];
+    // Bèta per belegging. Vroeger kreeg alles zonder gekende bèta 1,0 —
+    // ook een staatsobligatie-ETF (in werkelijkheid ~0) en crypto (veel
+    // beweeglijker dan de aandelenmarkt).
+    const betaVan = (b) => {
+      const sym = b.symbol.split('.')[0].toUpperCase();
+      if (BETA_MAP[sym]) return BETA_MAP[sym];
+      if (b.type === 'crypto') return 2.0;            // schatting
+      if (b.type === 'etf') {
+        if (isObligatieEtf(b)) return 0.05;           // staatsobligaties
+        const fam = herkenEtfFamilie(b)?.voorbeeld;
+        const FAMILIE_BETA = { VWCE: 1.0, IWDA: 1.0, CSPX: 1.0, VTI: 1.0, SMEA: 1.0, CSX5: 1.05, EQQQ: 1.15, VFEM: 0.85 };
+        if (fam && FAMILIE_BETA[fam]) return FAMILIE_BETA[fam];
+      }
+      return null;
+    };
     const gewogenBeta = beleggingen.reduce((s, b) => {
       const k = koersen[b.symbol];
       const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b) / totaal;
-      const sym = b.symbol.split('.')[0];
-      if (!BETA_MAP[sym]) onbekend.push(b.symbol);
-      return s + (BETA_MAP[sym] || 1.0) * w;
+      const bt = betaVan(b);
+      if (bt == null) onbekend.push(b.symbol);
+      return s + (bt == null ? 1.0 : bt) * w;
     }, 0);
     // Grenzen conform info-modal: Defensief <1.0, Neutraal 1.0-1.5, Offensief 1.5-2.5, Speculatief >2.5
     // Afronden op 2 decimalen, net zoals op het scherm: anders kreeg een bèta
@@ -526,7 +643,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
 
       if (b.type === 'etf') {
-        const gewichten = getEtfGewichten(b.symbol, isRegio ? 'regio' : 'sector', liveEtfData);
+        const gewichten = getEtfGewichten(b.symbol, isRegio ? 'regio' : 'sector', liveEtfData, b);
         if (gewichten) {
           // Verdeel ETF waarde proportioneel over regio's/sectoren
           Object.entries(gewichten).forEach(([cat, pctInEtf]) => {
@@ -541,7 +658,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
         }
       } else {
         // Directe aandelen: gebruik sector/regio mapping
-        const label = isRegio ? getRegio(b) : getSector(b, liveSectoren);
+        const label = isRegio ? getRegio(b, liveLanden) : getSector(b, liveSectoren);
         map[label] = (map[label] || 0) + w;
       }
     });
@@ -552,7 +669,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       .sort((a, b) => b.waarde - a.waarde);
 
     return { spreidingData: data, pieData: data };
-  }, [beleggingen, koersen, spreidingTab, spreidingSubFilter, liveSectoren, liveEtfData, getMuntFactor]);
+  }, [beleggingen, koersen, spreidingTab, spreidingSubFilter, liveSectoren, liveLanden, liveEtfData, getMuntFactor]);
 
   // ── Concentratierisico ──
   // ── Live bèta ophalen via Finnhub metrics API ──
@@ -611,7 +728,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     const onbekend = beleggingen.filter(b => {
       if (isEtfBelegging(b) || b.type === 'crypto') return false;
       const sym = b.symbol.toUpperCase().split('.')[0];
-      return !SECTOR_MAP[sym] && !liveSectoren[sym];
+      return (!SECTOR_MAP[sym] && !liveSectoren[sym]) || !liveLanden[sym];
     });
     if (onbekend.length === 0) return;
 
@@ -619,13 +736,14 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
 
     const laadSector = async (b) => {
       const sym = b.symbol.toUpperCase().split('.')[0];
-      const cacheKey = `matico_sector_${sym}`;
+      // v2: bewaart ook het land van het bedrijf (voor de regio)
+      const cacheKey = `matico_sector_v2_${sym}`;
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          const { sector, timestamp } = JSON.parse(cached);
+          const { sector, land, timestamp } = JSON.parse(cached);
           if (Date.now() - timestamp < CACHE_DUUR_SECTOR) {
-            return { sym, sector };
+            return { sym, sector, land };
           }
         }
       } catch (e) {}
@@ -636,24 +754,30 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
         // FMP geeft 'sector' in het Engels; Finnhub geeft 'finnhubIndustry'. Map naar onze NL-labels.
         const ruweSector = data?.sector || data?.finnhubIndustry;
         const sector = FMP_SECTOR_MAP[ruweSector] || null;
-        if (sector) {
-          localStorage.setItem(cacheKey, JSON.stringify({ sector, timestamp: Date.now() }));
-          return { sym, sector };
+        const land = data?.country || null;
+        if (sector || land) {
+          localStorage.setItem(cacheKey, JSON.stringify({ sector, land, timestamp: Date.now() }));
+          return { sym, sector, land };
         }
       } catch (e) {}
       return null;
     };
 
     Promise.all(onbekend.map(laadSector)).then(results => {
-      const nieuw = {};
-      results.forEach(r => { if (r) nieuw[r.sym] = r.sector; });
+      const nieuw = {}; const landen = {};
+      results.forEach(r => { if (r?.sector) nieuw[r.sym] = r.sector; if (r?.land) landen[r.sym] = r.land; });
       if (Object.keys(nieuw).length > 0) setLiveSectoren(prev => ({ ...prev, ...nieuw }));
+      if (Object.keys(landen).length > 0) setLiveLanden(prev => ({ ...prev, ...landen }));
     });
   }, [beleggingen.map(b => b.symbol).join(',')]);
 
   // ── Live ETF data laden via FMP + localStorage cache (1 maand) ──
   useEffect(() => {
-    const etfSymbolen = [...new Set(beleggingen.filter(b => b.type === 'etf').map(b => b.symbol.toUpperCase().split('.')[0]))];
+    // Volledig symbool (bv. SPYY.DE): zonder beurscode vond de bron de ETF
+    // niet en viel alles terug op "Wereldwijd"/"Overige".
+    const volledig = {};
+    beleggingen.filter(b => b.type === 'etf').forEach(b => { volledig[b.symbol.toUpperCase().split('.')[0]] = b.symbol; });
+    const etfSymbolen = Object.keys(volledig);
     if (etfSymbolen.length === 0) return;
 
     const CACHE_DUUR_MS = 30 * 24 * 60 * 60 * 1000; // 30 dagen
@@ -664,7 +788,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       // v2: sleutel gewijzigd zodat oude, foutieve cache-entries (van vóór de
       // ETF-sectordata-fix) automatisch genegeerd worden i.p.v. tot 30 dagen
       // stale te blijven staan.
-      const cacheKey = `matico_etf_v2_${basis}`;
+      const cacheKey = `matico_etf_v3_${basis}`;
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
@@ -677,7 +801,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
 
       // Haal live data op via FMP
       try {
-        const res = await fetch(`/api/data?endpoint=etf-holdings&symbol=${basis}`);
+        const res = await fetch(`/api/data?endpoint=etf-holdings&symbol=${encodeURIComponent(volledig[basis] || basis)}`);
         const data = await res.json();
         // Enkel als bruikbaar beschouwen (en dus cachen) als er echte sectordata is,
         // of holdings met een effectief gewicht (niet enkel namen zonder percentages) —
@@ -717,7 +841,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
         // Zelfde doorrekening als de spreidingstaart: verdeel de ETF-waarde
         // proportioneel over de sectoren/regio's die het fonds echt bevat,
         // i.p.v. de hele positie als één blok "ETF" te labelen.
-        const sectorGewichten = getEtfGewichten(b.symbol, 'sector', liveEtfData);
+        const sectorGewichten = getEtfGewichten(b.symbol, 'sector', liveEtfData, b);
         if (sectorGewichten) {
           Object.entries(sectorGewichten).forEach(([cat, pctInEtf]) => {
             sectorMap[cat] = (sectorMap[cat] || 0) + w * (pctInEtf / 100);
@@ -726,7 +850,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
           const sectorFallback = isObligatieEtf(b) ? 'Overheid' : 'Overige';
           sectorMap[sectorFallback] = (sectorMap[sectorFallback] || 0) + w;
         }
-        const regioGewichten = getEtfGewichten(b.symbol, 'regio', liveEtfData);
+        const regioGewichten = getEtfGewichten(b.symbol, 'regio', liveEtfData, b);
         if (regioGewichten) {
           Object.entries(regioGewichten).forEach(([cat, pctInEtf]) => {
             regioMap[cat] = (regioMap[cat] || 0) + w * (pctInEtf / 100);
@@ -735,7 +859,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
           regioMap['Wereldwijd'] = (regioMap['Wereldwijd'] || 0) + w;
         }
       } else {
-        const s = getSector(b, liveSectoren); const r = getRegio(b);
+        const s = getSector(b, liveSectoren); const r = getRegio(b, liveLanden);
         sectorMap[s] = (sectorMap[s] || 0) + w;
         regioMap[r] = (regioMap[r] || 0) + w;
       }
@@ -798,7 +922,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
 
     // 7. Alles goed — positieve tip
     if (tips.length === 0) {
-      tips.push(`Je portfolio is goed gespreid over ${aantalPosities} posities, ${Object.keys(sectorMap).length} sectoren en ${Object.keys(regioMap).length} regio's.`);
+      tips.push(`Je portfolio is goed gespreid over ${aantalPosities} posities, ${Object.keys(sectorMap).length} sectoren en ${Object.keys(regioMap).filter(k => k !== 'Crypto (geen regio)').length} regio's.`);
     }
 
     // ── Suggesties voor de volgende belegging ──────────────────────────
@@ -831,7 +955,117 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       typeSuggestie, sectorSuggestie, regioSuggestie,
       concentratieTips: tips,
     };
-  }, [beleggingen, koersen, liveSectoren, liveEtfData, getMuntFactor]);
+  }, [beleggingen, koersen, liveSectoren, liveLanden, liveEtfData, getMuntFactor]);
+
+  // ── Valutaverdeling (ook gebruikt voor het wisselkoerseffect) ──
+  const valutaVerdeling = useMemo(() => {
+    // Valutaverdeling: ETFs uitgesplitst per valuta via regio gewichten
+    // Valuta per ETF — uitgesplitst op basis van werkelijke blootstelling
+    // Dezelfde prefix-matching als de spreiding-database (VWCE.DE → VWCE, IWDA.AS → IWDA)
+    const ETF_VALUTA = {
+      // Vanguard FTSE All-World (VWCE / VWRL) — wereldwijd gespreide valutamix
+      VWCE: { USD: 64.8, EUR: 12.1, JPY: 5.8, GBP: 3.2, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.3, CAD: 2.8, HKD: 1.2, Overige: 3.5 },
+      VWRL: { USD: 64.8, EUR: 12.1, JPY: 5.8, GBP: 3.2, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.3, CAD: 2.8, HKD: 1.2, Overige: 3.5 },
+      // iShares Core MSCI World (IWDA / SWRD) — ontwikkelde markten, geen EM
+      IWDA: { USD: 72.1, EUR: 13.8, JPY: 6.2, GBP: 2.9, CHF: 1.8, AUD: 0.9, CAD: 1.2, HKD: 0.6, Overige: 0.5 },
+      SWRD: { USD: 72.1, EUR: 13.8, JPY: 6.2, GBP: 2.9, CHF: 1.8, AUD: 0.9, CAD: 1.2, HKD: 0.6, Overige: 0.5 },
+      // iShares Emerging Markets (EMIM / IEMA / EEM) — opkomende markten
+      EMIM: { TWD: 16.8, INR: 13.2, CNY: 12.4, KRW: 11.3, BRL: 5.4, ZAR: 3.8, SAR: 4.1, MXN: 2.8, HKD: 4.2, USD: 8.6, Overige: 17.4 },
+      IEMA: { TWD: 16.8, INR: 13.2, CNY: 12.4, KRW: 11.3, BRL: 5.4, ZAR: 3.8, SAR: 4.1, MXN: 2.8, HKD: 4.2, USD: 8.6, Overige: 17.4 },
+      EEM:  { TWD: 16.8, INR: 13.2, CNY: 12.4, KRW: 11.3, BRL: 5.4, ZAR: 3.8, SAR: 4.1, MXN: 2.8, HKD: 4.2, USD: 8.6, Overige: 17.4 },
+      // Invesco NASDAQ-100 (EQQQ / CNDX / QQQ) — bijna volledig USD
+      EQQQ: { USD: 95.2, EUR: 2.1, TWD: 1.2, Overige: 1.5 },
+      CNDX: { USD: 95.2, EUR: 2.1, TWD: 1.2, Overige: 1.5 },
+      QQQ:  { USD: 95.2, EUR: 2.1, TWD: 1.2, Overige: 1.5 },
+      // iShares S&P 500 (CSPX / SXR8 / IUSA / IVV / SPY) — 100% USD
+      CSPX: { USD: 99.5, Overige: 0.5 },
+      SXR8: { USD: 99.5, Overige: 0.5 },
+      IUSA: { USD: 99.5, Overige: 0.5 },
+      IVV:  { USD: 99.5, Overige: 0.5 },
+      SPY:  { USD: 99.5, Overige: 0.5 },
+      // Xtrackers MSCI World (XDWD / XWLD)
+      XDWD: { USD: 71.8, EUR: 14.2, JPY: 6.4, GBP: 2.8, CHF: 1.9, AUD: 0.9, CAD: 1.2, HKD: 0.5, Overige: 0.3 },
+      XWLD: { USD: 71.8, EUR: 14.2, JPY: 6.4, GBP: 2.8, CHF: 1.9, AUD: 0.9, CAD: 1.2, HKD: 0.5, Overige: 0.3 },
+      // Amundi MSCI World / Prime All Country (LCWD / WEBG / PRAW)
+      LCWD: { USD: 71.5, EUR: 14.0, JPY: 6.3, GBP: 3.1, CHF: 1.8, AUD: 0.9, CAD: 1.2, HKD: 0.6, Overige: 0.6 },
+      WEBG: { USD: 64.2, EUR: 12.8, JPY: 5.9, GBP: 3.1, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.1, CAD: 2.6, HKD: 1.2, Overige: 3.8 },
+      PRAW: { USD: 64.2, EUR: 12.8, JPY: 5.9, GBP: 3.1, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.1, CAD: 2.6, HKD: 1.2, Overige: 3.8 },
+      // iShares Core EURO STOXX 50 (CSX5) — volledig EUR
+      CSX5: { EUR: 100.0 },
+      // iShares Core MSCI Europe (SMEA / IMEU) — mix Europese valuta
+      SMEA: { GBP: 22.4, EUR: 58.6, CHF: 14.8, SEK: 2.1, DKK: 1.2, NOK: 0.9 },
+      IMEU: { GBP: 22.4, EUR: 58.6, CHF: 14.8, SEK: 2.1, DKK: 1.2, NOK: 0.9 },
+      // SPDR (GWL)
+      GWL:  { USD: 99.5, Overige: 0.5 },
+    };
+    // Opzoeken op ticker; anders via het soort index (uit de naam) of,
+    // bij obligaties, de munt van de obligaties. Vroeger telde een ETF
+    // die niet in de lijst stond (bv. SPYY, VFEM) voor 100% als de munt
+    // waarin hij noteert (euro), terwijl hij vooral in dollar belegt.
+    const FAMILIE_VALUTA = { VWCE: 'VWCE', IWDA: 'IWDA', CSPX: 'CSPX', VTI: 'CSPX', EQQQ: 'EQQQ', VFEM: 'EMIM', SMEA: 'SMEA', CSX5: 'CSX5' };
+    const zoekETFValuta = (b) => {
+      const basis = b.symbol.toUpperCase().split('.')[0];
+      if (ETF_VALUTA[basis]) return ETF_VALUTA[basis];
+      if (isObligatieEtf(b)) {
+        const naam = (b.naam || '').toLowerCase();
+        if (/\beur\b|euro/.test(naam)) return { EUR: 100 };
+        if (/\busd\b|treasury/.test(naam)) return { USD: 100 };
+        return null;
+      }
+      const fam = herkenEtfFamilie(b);
+      if (fam?.regio?.Japan) return { JPY: 100 };
+      return fam?.voorbeeld && FAMILIE_VALUTA[fam.voorbeeld] ? ETF_VALUTA[FAMILIE_VALUTA[fam.voorbeeld]] : null;
+    };
+
+    const totaal = beleggingen.reduce((s, b) => {
+      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+    }, 0) || 1;
+    const valutaMap = {};
+    beleggingen.forEach(b => {
+      const k = koersen[b.symbol];
+      const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
+      const etfValuta = b.type === 'etf' ? zoekETFValuta(b) : null;
+      if (etfValuta) {
+        Object.entries(etfValuta).forEach(([munt, pctInEtf]) => {
+          valutaMap[munt] = (valutaMap[munt] || 0) + w * (pctInEtf / 100);
+        });
+      } else {
+        const munt = b.munt || 'EUR';
+        valutaMap[munt] = (valutaMap[munt] || 0) + w;
+      }
+    });
+    const valutaData = Object.entries(valutaMap)
+      .map(([munt, w]) => ({ munt, waarde: w, pct: (w / totaal) * 100 }))
+      .filter(v => v.pct >= 0.1)
+      .sort((a, b) => b.waarde - a.waarde);
+    return valutaData;
+  }, [beleggingen, koersen, getMuntFactor]);
+
+  // ── Echte wisselkoersen (ECB) voor het wisselkoerseffect ──
+  // Vroeger toonde dit tabblad vaste, verzonnen cijfers.
+  const [fxReeksen, setFxReeksen] = useState({});
+  const vreemdeMunten = valutaVerdeling
+    .filter(v => v.munt !== 'EUR' && v.munt !== 'Overige' && v.pct >= 0.3)
+    .map(v => v.munt).sort().join(',');
+  useEffect(() => {
+    if (!vreemdeMunten) return;
+    const start = new Date(); start.setFullYear(start.getFullYear() - 1); start.setDate(start.getDate() - 40);
+    const startIso = start.toISOString().slice(0, 10);
+    vreemdeMunten.split(',').forEach(async (munt) => {
+      const key = `kapitas_fxreeks_${munt}`;
+      try {
+        const c = JSON.parse(localStorage.getItem(key) || 'null');
+        if (c && c.start <= startIso && Date.now() - c.ts < 12 * 3600_000) { setFxReeksen(prev => ({ ...prev, [munt]: c.rates })); return; }
+      } catch (e) {}
+      try {
+        const d = await (await fetch(`/api/data?endpoint=forex-history&reeks=1&van=${munt}&datum=${startIso}`)).json();
+        if (d?.rates && Object.keys(d.rates).length > 0) {
+          try { localStorage.setItem(key, JSON.stringify({ rates: d.rates, start: startIso, ts: Date.now() })); } catch (e) {}
+          setFxReeksen(prev => ({ ...prev, [munt]: d.rates }));
+        }
+      } catch (e) {}
+    });
+  }, [vreemdeMunten]);
 
   // ── ETF X-ray database ──
   const etfs = beleggingen.filter(b => b.type === 'etf');
@@ -1057,7 +1291,9 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     if (live?.holdings?.length > 0) {
       // Converteer FMP formaat naar intern formaat
       return {
-        kostenratio: live.expenseRatio || ETF_DB_XRAY[basis]?.kostenratio || 0,
+        // Onbekende kostenratio = null (niet 0%: dat trok het gemiddelde omlaag)
+        kostenratio: live.expenseRatio || ETF_DB_XRAY[basis]?.kostenratio || null,
+        totaalHoldings: ETF_DB_XRAY[basis]?.totaalHoldings,
         holdings: live.holdings.slice(0, 10).map(h => ({
           // Obligaties e.d. hebben vaak geen ticker: dan lege sym (niet '?'),
           // anders werden ze allemaal samengeteld onder één '?'-rij.
@@ -1067,7 +1303,20 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
         })).filter(h => h.pct > 0)
       };
     }
-    return ETF_DB_XRAY[basis] || null;
+    if (ETF_DB_XRAY[basis]) return { ...ETF_DB_XRAY[basis], kostenratio: live?.expenseRatio || ETF_DB_XRAY[basis].kostenratio };
+    if (live?.expenseRatio) return { kostenratio: live.expenseRatio, holdings: [] };
+    return null;
+  };
+
+  // Ongeveer aantal posities per soort index (als de ETF niet in de lijst staat)
+  const aantalPosities = (etf) => {
+    const basis = etf.symbol.toUpperCase().split('.')[0];
+    if (ETF_DB_XRAY[basis]?.totaalHoldings) return ETF_DB_XRAY[basis].totaalHoldings;
+    const naam = (etf.naam || '').toLowerCase();
+    if (/acwi|all country/.test(naam)) return 2500;     // MSCI ACWI
+    const fam = herkenEtfFamilie(etf)?.voorbeeld;
+    const PER_FAMILIE = { VWCE: 3700, IWDA: 1350, CSPX: 503, VTI: 3600, EQQQ: 101, VFEM: 2100, SMEA: 420, CSX5: 50 };
+    return (fam && PER_FAMILIE[fam]) || null;
   };
 
   // Bereken gecombineerde holdings over alle ETFs
@@ -1086,11 +1335,13 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       const etfWaarde = (k ? k.c : etf.kostprijs) * etf.aantal * (getMuntFactor ? getMuntFactor(etf.munt || 'EUR') : 1);
       const etfGewicht = (etfWaarde / totaalPortfolio) * 100;
 
-      // Tel het totaal aantal bedrijven in de ETF (uit database of live data)
-      const basis = etf.symbol.toUpperCase().split('.')[0];
-      const dbData = ETF_DB_XRAY[basis];
-      const etfTotaalBedrijven = dbData?.totaalHoldings || (data.holdings.length * 10); // schatting als niet known
-      totaalBedrijvenPerEtf += etfTotaalBedrijven;
+      // Aantal bedrijven: brede index-ETF's bevatten grotendeels dezelfde
+      // bedrijven (een wereld-ETF bevat ook de bedrijven van een S&P 500- of
+      // opkomende-markten-ETF). Optellen telde ze dubbel; de grootste ETF is
+      // een goede benadering van het aantal unieke bedrijven. Obligatie-ETF's
+      // bevatten geen bedrijven en tellen niet mee.
+      const etfTotaalBedrijven = isObligatieEtf(etf) ? 0 : (aantalPosities(etf) || 0);
+      totaalBedrijvenPerEtf = Math.max(totaalBedrijvenPerEtf, etfTotaalBedrijven);
 
       data.holdings.forEach(h => {
         const gewichtInPortfolio = etfGewicht * (h.pct / 100);
@@ -1111,18 +1362,14 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     };
   })();
 
-  // Gemiddelde kostenratio gewogen op ETF-waarde
-  const gemiddeldeKostenratio = (() => {
-    const totaalEtfWaarde = etfs.reduce((s, b) => {
-      const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * (getMuntFactor ? getMuntFactor(b.munt || 'EUR') : 1);
-    }, 0) || 1;
-    const gewogen = etfs.reduce((s, b) => {
-      const k = koersen[b.symbol];
-      const w = (k ? k.c : b.kostprijs) * b.aantal * (getMuntFactor ? getMuntFactor(b.munt || 'EUR') : 1);
-      const data = zoekXray(b.symbol);
-      return s + (data?.kostenratio || 0) * (w / totaalEtfWaarde);
-    }, 0);
-    return gewogen;
+  // Gemiddelde kostenratio gewogen op ETF-waarde — enkel over ETF's waarvan
+  // de kostenratio gekend is (een onbekende telde vroeger als 0%).
+  const { gemiddeldeKostenratio, etfsZonderKosten } = (() => {
+    const waarde = (b) => { const k = koersen[b.symbol]; return (k ? k.c : b.kostprijs) * b.aantal * (getMuntFactor ? getMuntFactor(b.munt || 'EUR') : 1); };
+    const gekend = etfs.filter(b => zoekXray(b.symbol)?.kostenratio > 0);
+    const totaal = gekend.reduce((s, b) => s + waarde(b), 0);
+    const gewogen = totaal > 0 ? gekend.reduce((s, b) => s + zoekXray(b.symbol).kostenratio * (waarde(b) / totaal), 0) : 0;
+    return { gemiddeldeKostenratio: gewogen, etfsZonderKosten: etfs.filter(b => !gekend.includes(b)).map(b => b.symbol) };
   })();
 
   if (beleggingen.length === 0) {
@@ -1489,71 +1736,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>{t('an_van_portfolio_incl_etf')}</div>
 
             {valutaTab === 'verdeling' ? (() => {
-              // Valutaverdeling: ETFs uitgesplitst per valuta via regio gewichten
-              // Valuta per ETF — uitgesplitst op basis van werkelijke blootstelling
-              // Dezelfde prefix-matching als de spreiding-database (VWCE.DE → VWCE, IWDA.AS → IWDA)
-              const ETF_VALUTA = {
-                // Vanguard FTSE All-World (VWCE / VWRL) — wereldwijd gespreide valutamix
-                VWCE: { USD: 64.8, EUR: 12.1, JPY: 5.8, GBP: 3.2, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.3, CAD: 2.8, HKD: 1.2, Overige: 3.5 },
-                VWRL: { USD: 64.8, EUR: 12.1, JPY: 5.8, GBP: 3.2, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.3, CAD: 2.8, HKD: 1.2, Overige: 3.5 },
-                // iShares Core MSCI World (IWDA / SWRD) — ontwikkelde markten, geen EM
-                IWDA: { USD: 72.1, EUR: 13.8, JPY: 6.2, GBP: 2.9, CHF: 1.8, AUD: 0.9, CAD: 1.2, HKD: 0.6, Overige: 0.5 },
-                SWRD: { USD: 72.1, EUR: 13.8, JPY: 6.2, GBP: 2.9, CHF: 1.8, AUD: 0.9, CAD: 1.2, HKD: 0.6, Overige: 0.5 },
-                // iShares Emerging Markets (EMIM / IEMA / EEM) — opkomende markten
-                EMIM: { TWD: 16.8, INR: 13.2, CNY: 12.4, KRW: 11.3, BRL: 5.4, ZAR: 3.8, SAR: 4.1, MXN: 2.8, HKD: 4.2, USD: 8.6, Overige: 17.4 },
-                IEMA: { TWD: 16.8, INR: 13.2, CNY: 12.4, KRW: 11.3, BRL: 5.4, ZAR: 3.8, SAR: 4.1, MXN: 2.8, HKD: 4.2, USD: 8.6, Overige: 17.4 },
-                EEM:  { TWD: 16.8, INR: 13.2, CNY: 12.4, KRW: 11.3, BRL: 5.4, ZAR: 3.8, SAR: 4.1, MXN: 2.8, HKD: 4.2, USD: 8.6, Overige: 17.4 },
-                // Invesco NASDAQ-100 (EQQQ / CNDX / QQQ) — bijna volledig USD
-                EQQQ: { USD: 95.2, EUR: 2.1, TWD: 1.2, Overige: 1.5 },
-                CNDX: { USD: 95.2, EUR: 2.1, TWD: 1.2, Overige: 1.5 },
-                QQQ:  { USD: 95.2, EUR: 2.1, TWD: 1.2, Overige: 1.5 },
-                // iShares S&P 500 (CSPX / SXR8 / IUSA / IVV / SPY) — 100% USD
-                CSPX: { USD: 99.5, Overige: 0.5 },
-                SXR8: { USD: 99.5, Overige: 0.5 },
-                IUSA: { USD: 99.5, Overige: 0.5 },
-                IVV:  { USD: 99.5, Overige: 0.5 },
-                SPY:  { USD: 99.5, Overige: 0.5 },
-                // Xtrackers MSCI World (XDWD / XWLD)
-                XDWD: { USD: 71.8, EUR: 14.2, JPY: 6.4, GBP: 2.8, CHF: 1.9, AUD: 0.9, CAD: 1.2, HKD: 0.5, Overige: 0.3 },
-                XWLD: { USD: 71.8, EUR: 14.2, JPY: 6.4, GBP: 2.8, CHF: 1.9, AUD: 0.9, CAD: 1.2, HKD: 0.5, Overige: 0.3 },
-                // Amundi MSCI World / Prime All Country (LCWD / WEBG / PRAW)
-                LCWD: { USD: 71.5, EUR: 14.0, JPY: 6.3, GBP: 3.1, CHF: 1.8, AUD: 0.9, CAD: 1.2, HKD: 0.6, Overige: 0.6 },
-                WEBG: { USD: 64.2, EUR: 12.8, JPY: 5.9, GBP: 3.1, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.1, CAD: 2.6, HKD: 1.2, Overige: 3.8 },
-                PRAW: { USD: 64.2, EUR: 12.8, JPY: 5.9, GBP: 3.1, TWD: 2.1, KRW: 1.8, CHF: 1.4, AUD: 1.1, CAD: 2.6, HKD: 1.2, Overige: 3.8 },
-                // iShares Core EURO STOXX 50 (CSX5) — volledig EUR
-                CSX5: { EUR: 100.0 },
-                // iShares Core MSCI Europe (SMEA / IMEU) — mix Europese valuta
-                SMEA: { GBP: 22.4, EUR: 58.6, CHF: 14.8, SEK: 2.1, DKK: 1.2, NOK: 0.9 },
-                IMEU: { GBP: 22.4, EUR: 58.6, CHF: 14.8, SEK: 2.1, DKK: 1.2, NOK: 0.9 },
-                // SPDR (GWL)
-                GWL:  { USD: 99.5, Overige: 0.5 },
-              };
-              const zoekETFValuta = (sym) => {
-                const basis = sym.toUpperCase().split('.')[0];
-                return ETF_VALUTA[basis] || null;
-              };
-
-              const totaal = beleggingen.reduce((s, b) => {
-                const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
-              }, 0) || 1;
-              const valutaMap = {};
-              beleggingen.forEach(b => {
-                const k = koersen[b.symbol];
-                const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b);
-                const etfValuta = b.type === 'etf' ? zoekETFValuta(b.symbol) : null;
-                if (etfValuta) {
-                  Object.entries(etfValuta).forEach(([munt, pctInEtf]) => {
-                    valutaMap[munt] = (valutaMap[munt] || 0) + w * (pctInEtf / 100);
-                  });
-                } else {
-                  const munt = b.munt || 'EUR';
-                  valutaMap[munt] = (valutaMap[munt] || 0) + w;
-                }
-              });
-              const valutaData = Object.entries(valutaMap)
-                .map(([munt, w]) => ({ munt, waarde: w, pct: (w / totaal) * 100 }))
-                .filter(v => v.pct >= 0.1)
-                .sort((a, b) => b.waarde - a.waarde);
+              const valutaData = valutaVerdeling;
 
               return (
                 <div className="analyse-currency-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'center' }}>
@@ -1599,27 +1782,43 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                 </div>
               );
             })() : (() => {
-              // Wisselkoerseffect tab
-              const WISSELKOERS_DATA = {
-                '1M': [
-                  { maand: 'mei 26', effect: 0.4 },
-                ],
-                'YTD': [
-                  { maand: 'jan 26', effect: -0.6 }, { maand: 'feb 26', effect: -0.4 },
-                  { maand: 'maa 26', effect: 1.2 }, { maand: 'apr 26', effect: 0.3 },
-                  { maand: 'mei 26', effect: 0.7 }, { maand: 'jun 26', effect: 1.8 },
-                ],
-                '1J': [
-                  { maand: 'jun 25', effect: 0.3 }, { maand: 'jul 25', effect: -0.2 },
-                  { maand: 'aug 25', effect: 0.8 }, { maand: 'sep 25', effect: -0.5 },
-                  { maand: 'okt 25', effect: 1.1 }, { maand: 'nov 25', effect: 0.6 },
-                  { maand: 'dec 25', effect: -0.3 }, { maand: 'jan 26', effect: -0.6 },
-                  { maand: 'feb 26', effect: -0.4 }, { maand: 'maa 26', effect: 1.2 },
-                  { maand: 'apr 26', effect: 0.3 }, { maand: 'jun 26', effect: 1.8 },
-                ],
+              // Wisselkoerseffect: per periode de verandering van elke vreemde munt
+              // tegenover de euro (ECB), gewogen met je huidige valutaverdeling.
+              const koersOp = (rates, iso) => {
+                let r = null;
+                for (const d of Object.keys(rates).sort()) { if (d <= iso) r = rates[d]; else break; }
+                return r;
               };
-              const periodeData = WISSELKOERS_DATA[wisselkoersPeriode] || WISSELKOERS_DATA['YTD'];
-              const totaalEffect = periodeData.reduce((s, d) => s + d.effect, 0);
+              const valutaNu = valutaVerdeling;
+              const metReeks = valutaNu.filter(v => fxReeksen[v.munt]);
+              const nu = new Date();
+              const iso = (d) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+              const MK = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+              const grenzen = [];
+              if (wisselkoersPeriode === '1M') {
+                for (let i = 4; i >= 1; i--) {
+                  const tot = new Date(nu); tot.setDate(nu.getDate() - 7 * (i - 1));
+                  const van = new Date(tot); van.setDate(tot.getDate() - 7);
+                  grenzen.push({ label: `${tot.getDate()} ${MK[tot.getMonth()]}`, van: iso(van), tot: iso(tot) });
+                }
+              } else {
+                const start = wisselkoersPeriode === 'YTD'
+                  ? new Date(nu.getFullYear(), 0, 1)
+                  : new Date(nu.getFullYear() - 1, nu.getMonth() + 1, 1);
+                for (let m = new Date(start); m <= nu; m = new Date(m.getFullYear(), m.getMonth() + 1, 1)) {
+                  const van = new Date(m.getFullYear(), m.getMonth(), 0);          // laatste dag vorige maand
+                  const eind = new Date(m.getFullYear(), m.getMonth() + 1, 0);     // laatste dag deze maand
+                  grenzen.push({ label: `${MK[m.getMonth()]} ${String(m.getFullYear()).slice(2)}`, van: iso(van), tot: iso(eind > nu ? nu : eind) });
+                }
+              }
+              const periodeData = grenzen.map(g => ({
+                maand: g.label,
+                effect: Math.round(metReeks.reduce((som, v) => {
+                  const a = koersOp(fxReeksen[v.munt], g.van), b = koersOp(fxReeksen[v.munt], g.tot);
+                  return a && b ? som + (v.pct / 100) * (b / a - 1) * 100 : som;
+                }, 0) * 100) / 100,
+              }));
+              const totaalEffect = (periodeData.reduce((f, d) => f * (1 + d.effect / 100), 1) - 1) * 100;
               const isPos = totaalEffect >= 0;
 
               return (
@@ -1648,7 +1847,11 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                   </div>
                   <div style={{ padding: '10px 14px', background: 'var(--accent-bg)', border: '1px solid var(--accent-light)', borderRadius: 10, marginBottom: 16, fontSize: 13, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span>💡</span>
-                    <span>{t('an_wisselkoersen_deel1')} {wisselkoersPeriode === 'YTD' ? t('an_periode_dit_jaar') : wisselkoersPeriode === '1M' ? t('an_periode_deze_maand') : t('an_periode_dit_jaar')} {t('an_wisselkoersen_deel2')} <strong style={{ color: isPos ? 'var(--green)' : 'var(--red)' }}>{isPos ? '+' : ''}{getal(totaalEffect, 1)}%</strong>.</span>
+                    <span>{!vreemdeMunten
+                      ? t('an_geen_vreemde_valuta')
+                      : metReeks.length === 0
+                        ? t('an_data_laden')
+                        : <>{t('an_wisselkoersen_deel1')} {wisselkoersPeriode === 'YTD' ? t('an_periode_dit_jaar') : wisselkoersPeriode === '1M' ? t('an_periode_deze_maand') : t('an_periode_afgelopen_jaar')} {t('an_wisselkoersen_deel2')} <strong style={{ color: isPos ? 'var(--green)' : 'var(--red)' }}>{isPos ? '+' : '-'}{getal(Math.abs(totaalEffect), 2)}%</strong>{t('an_wisselkoersen_deel3')}</>}</span>
                   </div>
                   <div style={{ height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -1682,7 +1885,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                   ⟳ {t('an_data_laden')}
                 </span>
               ) : (() => {
-                const cacheKey = `matico_etf_v2_${etfs[0]?.symbol?.toUpperCase().split('.')[0]}`;
+                const cacheKey = `matico_etf_v3_${etfs[0]?.symbol?.toUpperCase().split('.')[0]}`;
                 try {
                   const cached = localStorage.getItem(cacheKey);
                   if (cached) {
@@ -1708,11 +1911,14 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
               </div>
               <div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{t('an_aantal_bedrijven')}</div>
-                <div style={{ fontSize: 28, fontWeight: 700 }}>{totaalUniekeBedrijven.toLocaleString('nl-BE')}</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }} title="Ongeveer: brede ETF's bevatten grotendeels dezelfde bedrijven">{totaalUniekeBedrijven > 0 ? `± ${totaalUniekeBedrijven.toLocaleString('nl-BE')}` : '—'}</div>
               </div>
               <div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{t('an_gemiddelde_kostenratio')}</div>
-                <div style={{ fontSize: 28, fontWeight: 700 }}>{getal(gemiddeldeKostenratio, 2)}%</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }}>{gemiddeldeKostenratio > 0 ? `${getal(gemiddeldeKostenratio, 2)}%` : '—'}</div>
+                {etfsZonderKosten.length > 0 && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>zonder {etfsZonderKosten.join(', ')} (kostenratio onbekend)</div>
+                )}
               </div>
             </div>
 
@@ -1779,15 +1985,23 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
 
         {/* ── Transactiekosten ── */}
         {(() => {
-          const kostenActief = beleggingen.reduce((sum, b) => sum + (b.transactiekosten || 0) * factor(b), 0);
-          const kostenVerkocht = (verkochteBeleggingen || []).reduce((sum, b) => sum + (b.transactiekosten || 0) * factor(b), 0);
+          // Kosten in euro aan de wisselkoers van de transactiedag. Bij verkochte
+          // posities tellen ook de kosten en beurstaks (TOB) van de verkoop mee.
+          const fx = (munt, datum) => (fxOp ? fxOp(munt || 'EUR', datum) : getMuntFactor(munt || 'EUR'));
+          const aankoopKostenEur = (b) => (b.transactiekosten || 0) * fx(b.munt, b.datum);
+          const verkoopKostenEur = (b) => ((b.verkoopkosten || 0) + (b.tob || 0)) * fx(b.verkoopMunt || b.munt, b.verkoopdatum);
+          const investeringEur = (b, aantal) => b.kostprijs * aantal * fx(b.munt, b.datum);
+          const kostenActief = beleggingen.reduce((sum, b) => sum + aankoopKostenEur(b), 0);
+          const kostenVerkocht = (verkochteBeleggingen || []).reduce((sum, b) => sum + aankoopKostenEur(b) + verkoopKostenEur(b), 0);
           const totaalKosten = kostenActief + kostenVerkocht;
-          const totaalGeïnvesteerd = beleggingen.reduce((sum, b) => sum + b.kostprijs * b.aantal * factor(b), 0);
+          // Noemer = alles waarop die kosten betaald werden (ook verkochte posities)
+          const totaalGeïnvesteerd = beleggingen.reduce((sum, b) => sum + investeringEur(b, b.aantal), 0)
+            + (verkochteBeleggingen || []).reduce((sum, b) => sum + investeringEur(b, b.aantalVerkocht || b.aantal), 0);
           const kostenPct = totaalGeïnvesteerd > 0 ? (totaalKosten / totaalGeïnvesteerd) * 100 : 0;
 
           const kostenLijst = [
-            ...beleggingen.map(b => ({ naam: b.naam || b.symbol, symbol: b.symbol, broker: b.broker || null, kosten: (b.transactiekosten || 0) * factor(b), investering: b.kostprijs * b.aantal * factor(b), status: 'actief' })),
-            ...(verkochteBeleggingen || []).map(b => ({ naam: b.naam || b.symbol, symbol: b.symbol, broker: b.broker || null, kosten: (b.transactiekosten || 0) * factor(b), investering: b.kostprijs * (b.aantalVerkocht || b.aantal) * factor(b), status: 'verkocht' })),
+            ...beleggingen.map(b => ({ naam: b.naam || b.symbol, symbol: b.symbol, broker: b.broker || null, kosten: aankoopKostenEur(b), investering: investeringEur(b, b.aantal), status: 'actief' })),
+            ...(verkochteBeleggingen || []).map(b => ({ naam: b.naam || b.symbol, symbol: b.symbol, broker: b.broker || null, kosten: aankoopKostenEur(b) + verkoopKostenEur(b), investering: investeringEur(b, b.aantalVerkocht || b.aantal), status: 'verkocht' })),
           ].sort((a, b) => b.kosten - a.kosten);
 
           return (
@@ -1806,7 +2020,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
                 {[
                   { label: t('an_actieve_posities'), waarde: kostenActief, sub: aantalTransacties(beleggingen.filter(b => b.transactiekosten > 0).length) },
-                  { label: t('an_verkochte_posities'), waarde: kostenVerkocht, sub: aantalTransacties((verkochteBeleggingen || []).filter(b => b.transactiekosten > 0).length) },
+                  { label: t('an_verkochte_posities'), waarde: kostenVerkocht, sub: aantalTransacties((verkochteBeleggingen || []).filter(b => b.transactiekosten > 0 || b.verkoopkosten > 0 || b.tob > 0).length) },
                   { label: t('an_totaal_betaald'), waarde: totaalKosten, sub: `${getal(kostenPct, 3)}% ${t('an_van_kapitaal')}`, accent: true },
                 ].map(({ label, waarde, sub, accent }) => (
                   <div key={label} style={{ padding: '14px 16px', background: accent ? 'var(--accent-bg)' : 'var(--bg-subtle)', borderRadius: 10, border: `1px solid ${accent ? 'var(--accent)' : 'var(--border-light)'}` }}>

@@ -1531,6 +1531,26 @@ module.exports = async function handler(req, res) {
           resultaat.country = resultaat.country || f.country;
         }
       } catch (e) {}
+      // Yahoo (assetProfile) als vangnet voor sector/industrie/land — kent
+      // ook veel Europese aandelen die de andere bronnen missen (bv. Nedap,
+      // Prosus), anders belandden die bij "Overige" in Analyse.
+      if (!resultaat.sector || !resultaat.country) {
+        try {
+          const sessie = await haalYahooCookieEnCrumb();
+          const yfSym = toYahooSymbol(symbol);
+          const basisUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=assetProfile&formatted=false`;
+          const url = sessie ? `${basisUrl}&crumb=${encodeURIComponent(sessie.crumb)}` : basisUrl;
+          const yr = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', ...(sessie ? { 'Cookie': sessie.cookie } : {}) } });
+          const yd = await yr.json();
+          const ap = yd?.quoteSummary?.result?.[0]?.assetProfile;
+          if (ap) {
+            resultaat.sector = resultaat.sector || ap.sector;
+            resultaat.industry = resultaat.industry || ap.industry;
+            resultaat.country = resultaat.country || ap.country;
+            resultaat.description = resultaat.description || ap.longBusinessSummary;
+          }
+        } catch (e) {}
+      }
       // Bepaal type + logo via Yahoo Finance quoteType
       try {
         const yfSym = toYahooSymbol(symbol);
@@ -2047,10 +2067,25 @@ module.exports = async function handler(req, res) {
           pct: parseFloat(l.weightPercentage) || 0
         })).filter(l => l.pct > 0) : [];
 
+        // Kostenratio (TER, in %) via Yahoo fundProfile — anders telde een ETF
+        // die niet in de vaste lijst van de app staat als 0% kosten.
+        let expenseRatio = null;
+        try {
+          const sessie = await haalYahooCookieEnCrumb();
+          const basisUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfSym)}?modules=fundProfile&formatted=false`;
+          const url = sessie ? `${basisUrl}&crumb=${encodeURIComponent(sessie.crumb)}` : basisUrl;
+          const fr = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', ...(sessie ? { 'Cookie': sessie.cookie } : {}) } });
+          const fd = await fr.json();
+          const ruw = fd?.quoteSummary?.result?.[0]?.fundProfile?.feesExpensesInvestment?.annualReportExpenseRatio;
+          const ter = typeof ruw === 'object' && ruw ? ruw.raw : ruw;
+          if (typeof ter === 'number' && ter > 0 && ter < 0.05) expenseRatio = Math.round(ter * 10000) / 100;
+        } catch (e) {}
+
         const antwoord = {
           sectoren: sectorData,
           landen: landData,
-          holdings: Array.isArray(holdings) ? holdings.slice(0, 20) : []
+          holdings: Array.isArray(holdings) ? holdings.slice(0, 20) : [],
+          ...(expenseRatio ? { expenseRatio } : {}),
         };
         if (debug === '1') antwoord._debug = _debug;
         return res.json(antwoord);

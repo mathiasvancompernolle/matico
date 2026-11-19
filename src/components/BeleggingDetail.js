@@ -73,8 +73,8 @@ export default function BeleggingDetail({ belegging, onClose }) {
     let genegeerd = false;
     setEtfDataLaden(true);
     setEtfData(null);
-    const basis = belegging.symbol.toUpperCase().split('.')[0];
-    fetch(`/api/data?endpoint=etf-holdings&symbol=${encodeURIComponent(basis)}`)
+    // Volledig symbool (bv. SPYY.DE): zonder beurscode vond de bron de ETF niet
+    fetch(`/api/data?endpoint=etf-holdings&symbol=${encodeURIComponent(belegging.symbol)}`)
       .then(r => r.json())
       .then(d => { if (!genegeerd) { setEtfData(d); setEtfDataLaden(false); } })
       .catch(() => { if (!genegeerd) setEtfDataLaden(false); });
