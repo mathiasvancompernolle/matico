@@ -805,8 +805,66 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       if (puntDatum && verkoopDatum && puntDatum > verkoopDatum) return;
       aankoopwaarde += (b.kostprijs * b.aantalVerkocht + (b.transactiekosten || 0)) * factor;
     });
-    return { ...d, waarde: Math.round((d.waarde - aankoopwaarde) * 100) / 100 };
+    return { ...d, waarde: Math.round((d.waarde - aankoopwaarde) * 100) / 100, inleg: Math.round(aankoopwaarde * 100) / 100 };
   });
+
+  // Waarde-weergave: extra stippellijn "Ingelegd" (wat je erin stak op dat
+  // moment). Zo zie je dat een sprong door een aankoop eigen geld is, en is
+  // de ruimte tussen beide lijnen je winst of verlies.
+  const waardeData = grafiekData.map((d, i) => (
+    tijdperk === '1D' ? d : { ...d, inleg: winstData[i]?.inleg }
+  ));
+
+  // Rendement-weergave (tijdgewogen): per stap de koersbeweging, zonder het
+  // effect van bijkopen of verkopen. Een aankoop van €5.000 geeft dus geen
+  // sprong; enkel hoe je beleggingen zelf evolueerden telt.
+  const rendementData = (() => {
+    if (grafiekData.length === 0) return [];
+    const dagStr = (dt) => dt.toISOString().slice(0, 10);
+    const verkochtGefilterd = filterBezit === 'inbezit' ? [] : (verkochteBeleggingen || []).filter(b => {
+      if (filterType !== 'alle' && b.type !== filterType) return false;
+      if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
+      return true;
+    });
+    const fac = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+
+    // Geld dat tussen punt i-1 en punt i in- of uitstroomde. Een aankoop telt
+    // mee vanaf het eerste punt op of na de aankoopdatum, een verkochte
+    // positie verdwijnt pas op het punt ná de verkoopdatum (zelfde regels
+    // als de waardeberekening van de grafiek).
+    const kasstroom = (vorige, huidige) => {
+      if (!vorige || !huidige) return 0;
+      let cf = 0;
+      [...beleggingVoorGrafiek, ...verkochtGefilterd].forEach(b => {
+        if (!b.datum) return;
+        const a = dagStr(new Date(b.datum));
+        const aantal = b.aantalVerkocht || b.aantal;
+        if (a > vorige && a <= huidige) cf += (b.kostprijs * aantal + (b.transactiekosten || 0)) * fac(b);
+      });
+      verkochtGefilterd.forEach(b => {
+        const v = leesDatum(b.verkoopdatum);
+        if (!v) return;
+        const vs = dagStr(v);
+        if (vs >= vorige && vs < huidige) cf -= (b.verkoopkoers || b.kostprijs) * (b.aantalVerkocht || b.aantal || 1) * fac(b);
+      });
+      return cf;
+    };
+
+    let groei = 1;
+    return grafiekData.map((d, i) => {
+      if (tijdperk === '1D') {
+        const basis = portfolioVorigeSlot || grafiekData[0].waarde;
+        return { ...d, waarde: basis > 0 ? Math.round((d.waarde / basis - 1) * 10000) / 100 : 0 };
+      }
+      if (i > 0) {
+        const vorige = grafiekData[i - 1];
+        const cf = kasstroom(vorige.datum, d.datum);
+        const noemer = vorige.waarde + Math.max(cf, 0);
+        if (noemer > 0) groei *= 1 + (d.waarde - vorige.waarde - cf) / noemer;
+      }
+      return { ...d, waarde: Math.round((groei - 1) * 10000) / 100 };
+    });
+  })();
 
   // Huidige waarde van enkel de gefilterde beleggingen
   const gefilterdeTotaalWaarde = beleggingVoorGrafiek.reduce((s, b) => {
@@ -816,7 +874,11 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     return s + prijs * b.aantal * f;
   }, 0);
 
-  const displayData = weergave === 'waarde' ? grafiekData : winstData;
+  const displayData = weergave === 'waarde' ? waardeData : weergave === 'rendement' ? rendementData : winstData;
+  const isPct = weergave === 'rendement';
+  const formatWaarde = (v) => isPct
+    ? `${v >= 0 ? '+' : '-'}${getal(Math.abs(v || 0), 2)}%`
+    : `€${(v || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   // De 1D-grafiek toont altijd het venster 9u-22u (Belgische tijd) — de
   // Europese en Amerikaanse beursuren samen. Is de (gefilterde) selectie
@@ -1122,12 +1184,17 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   const { yDomain, yTicks } = (() => {
     if (displayDataGefilterd.length < 2) return { yDomain: ['auto', 'auto'], yTicks: undefined };
     const waarden = displayDataGefilterd.map(d => d.waarde);
-    if (tijdperk === '1D' && portfolioVorigeSlot != null && !alleenCrypto) waarden.push(portfolioVorigeSlot);
+    if (weergave === 'waarde') displayDataGefilterd.forEach(d => { if (d.inleg != null) waarden.push(d.inleg); });
+    if (weergave === 'waarde' && tijdperk === '1D' && portfolioVorigeSlot != null && !alleenCrypto) waarden.push(portfolioVorigeSlot);
+    if (isPct) waarden.push(0); // de 0%-lijn altijd in beeld
     const min = Math.min(...waarden);
     const max = Math.max(...waarden);
-    const bodem = tijdperk === 'Totaal' ? 0 : min;
+    // Enkel de waarde-grafiek van Totaal begint bij €0; winst en rendement
+    // kunnen negatief zijn en mogen niet afgesneden worden.
+    const vanafNul = tijdperk === 'Totaal' && weergave === 'waarde' && min >= 0;
+    const bodem = vanafNul ? 0 : min;
     const bereik = max - bodem;
-    if (bereik === 0) return { yDomain: [0, max * 1.2], yTicks: undefined };
+    if (bereik === 0) return { yDomain: isPct ? [-1, 1] : [0, max * 1.2 || 1], yTicks: undefined };
     // Kies een nette stapgrootte: 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, ...
     const doelTicks = 5;
     const ruwStap = bereik / doelTicks;
@@ -1138,12 +1205,12 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       : genormaliseerd < 7.5 ? 5 * magnitude
       : 10 * magnitude;
     // Snap min/max naar veelvouden van de stapgrootte
-    const axisMin = tijdperk === 'Totaal' ? 0 : Math.floor(bodem / niceStap) * niceStap;
+    const axisMin = vanafNul ? 0 : Math.floor(bodem / niceStap) * niceStap;
     const axisMax = Math.ceil(max / niceStap) * niceStap;
-    // Genereer tick-waarden
+    // Genereer tick-waarden (bij percentages ook stappen kleiner dan 1)
     const ticks = [];
     for (let t = axisMin; t <= axisMax + niceStap * 0.01; t += niceStap) {
-      ticks.push(Math.round(t));
+      ticks.push(niceStap >= 1 ? Math.round(t) : Math.round(t * 100) / 100);
     }
     return { yDomain: [axisMin, axisMax], yTicks: ticks };
   })();
@@ -1246,15 +1313,26 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, marginBottom: 12 }}>
-            {['waarde', 'winst/verlies'].map(w => (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
+            {weergave === 'waarde' && tijdperk !== '1D' && beleggingen.length > 0 && (
+              <span style={{ marginRight: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                <svg width="22" height="4" aria-hidden="true"><line x1="0" y1="2" x2="22" y2="2" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 4" /></svg>
+                {t('ov_ingelegd')}
+              </span>
+            )}
+            {weergave === 'rendement' && beleggingen.length > 0 && (
+              <span style={{ marginRight: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
+                {t('ov_rendement_uitleg')}
+              </span>
+            )}
+            {['waarde', 'winst/verlies', 'rendement'].map(w => (
               <button key={w} onClick={() => setWeergave(w)} style={{
                 padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border)',
                 background: weergave === w ? 'var(--text-primary)' : 'transparent',
                 color: weergave === w ? 'var(--bg-white)' : 'var(--text-secondary)',
                 fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize'
               }}>
-                {w === 'waarde' ? t('ov_waarde') : t('ov_winst_verlies')}
+                {w === 'waarde' ? t('ov_waarde') : w === 'rendement' ? t('ov_rendement') : t('ov_winst_verlies')}
               </button>
             ))}
           </div>
@@ -1303,8 +1381,10 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 <XAxis dataKey="tijd" type="number" domain={['dataMin', 'dataMax']} scale="time" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} ticks={xTicks} tickFormatter={xTickFormatter} interval={0} allowDuplicatedCategory={false} />
                 <YAxis
                   tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
-                  tickFormatter={v => '€' + Math.round(v).toLocaleString('nl-BE')}
-                  domain={yDomain} ticks={yTicks} width={45}
+                  tickFormatter={v => isPct
+                    ? `${Number(v).toLocaleString('nl-BE', { maximumFractionDigits: 2 })}%`
+                    : (v < 0 ? '-€' : '€') + Math.abs(Math.round(v)).toLocaleString('nl-BE')}
+                  domain={yDomain} ticks={yTicks} width={isPct ? 50 : 45}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
@@ -1312,7 +1392,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     if (!active || !payload?.length) return null;
                     const datum = payload[0]?.payload?.datum;
                     const puntLabel = payload[0]?.payload?.label ?? label;
-                    const waarde = payload[0]?.value;
+                    const waarde = (payload.find(p => p.dataKey === 'waarde') || payload[0])?.value;
                     const puntD = datum ? new Date(datum) : null;
                     const dagNaam = (tijdperk !== '1D' && puntD && !isNaN(puntD))
                       ? puntD.toLocaleDateString('nl-BE', { weekday: 'long', timeZone: 'UTC' }).replace(/^./, c => c.toUpperCase())
@@ -1327,7 +1407,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                         <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
                           <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{puntLabel}{dagNaam ? ` (${dagNaam})` : ''}</div>
                           <div style={{ fontWeight: 600, color: 'var(--accent)' }}>
-                            {t('ov_tooltip_portfolio')} : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {t('ov_tooltip_portfolio')} : {formatWaarde(waarde)}
                           </div>
                         </div>
                       );
@@ -1363,12 +1443,22 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     });
 
                     const heeftEvents = aankopenOpDatum.length > 0 || verkopenOpDatum.length > 0;
+                    const inlegPunt = weergave === 'waarde' ? payload[0]?.payload?.inleg : null;
                     return (
                       <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
                         <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 12 }}>{puntLabel}{dagNaam ? ` (${dagNaam})` : ''}</div>
-                        <div style={{ fontWeight: 600, color: 'var(--accent)', marginBottom: heeftEvents ? 8 : 0 }}>
-                          {t('ov_tooltip_portfolio')} : €{(waarde || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <div style={{ fontWeight: 600, color: 'var(--accent)', marginBottom: (heeftEvents || inlegPunt != null) ? 4 : 0 }}>
+                          {t('ov_tooltip_portfolio')} : {formatWaarde(waarde)}
                         </div>
+                        {inlegPunt != null && (
+                          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: heeftEvents ? 8 : 0 }}>
+                            {t('ov_ingelegd')} : {formatWaarde(inlegPunt)}
+                            {' · '}
+                            <span style={{ color: waarde - inlegPunt >= 0 ? 'var(--green)' : '#ef4444', fontWeight: 600 }}>
+                              {waarde - inlegPunt >= 0 ? '+' : '-'}€{getal(Math.abs(waarde - inlegPunt), 2)}
+                            </span>
+                          </div>
+                        )}
                         {aankopenOpDatum.map((b, i) => (
                           <div key={b.id + i} style={{ fontSize: 12, color: 'var(--green)', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
                             🟢 {t('ov_tooltip_aankoop')} {b.naam} — {b.aantal} {t('ov_tooltip_st_a')} {b.munt === 'USD' ? '$' : '€'}{getal(b.kostprijs, 2)}
@@ -1438,23 +1528,34 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       return verkoopD.toISOString().slice(0, 10) === payload.datum;
                     });
 
+                    // Kleine, rustige markeringen; details (naam, aantal,
+                    // koers) staan in de tooltip.
                     if (isVerkoop) {
-                      return <circle key={`dot-${index}`} cx={cx} cy={cy} r={6} fill="white" stroke="#ef4444" strokeWidth={2.5} />;
+                      return <circle key={`dot-${index}`} cx={cx} cy={cy} r={3.5} fill="var(--bg-white)" stroke="#ef4444" strokeWidth={1.75} />;
                     }
                     if (isAankoop) {
-                      return <circle key={`dot-${index}`} cx={cx} cy={cy} r={6} fill="white" stroke={grafiekKleur} strokeWidth={2.5} />;
+                      return <circle key={`dot-${index}`} cx={cx} cy={cy} r={3.5} fill="var(--bg-white)" stroke={grafiekKleur} strokeWidth={1.75} />;
                     }
                     return <g key={index}></g>;
                   }}
                   activeDot={{ r: 5, fill: grafiekKleur }} />
+                {weergave === 'waarde' && tijdperk !== '1D' && (
+                  <Area type="stepAfter" dataKey="inleg" stroke="var(--text-muted)" strokeWidth={1.5} fill="none"
+                    strokeDasharray="5 4" dot={false} activeDot={false} isAnimationActive={false} />
+                )}
+                {isPct && <ReferenceLine y={0} stroke="var(--text-muted)" strokeWidth={1} />}
                 {aanHetSlepen && sleepStart && sleepEind && sleepStart.tijd !== sleepEind.tijd && (() => {
                   const eerstePunt = sleepStart.tijd <= sleepEind.tijd ? sleepStart : sleepEind;
                   const laatstePunt = sleepStart.tijd <= sleepEind.tijd ? sleepEind : sleepStart;
                   const verschil = laatstePunt.waarde - eerstePunt.waarde;
                   const verschilPct = eerstePunt.waarde !== 0 ? (verschil / eerstePunt.waarde) * 100 : 0;
-                  const positief = verschil >= 0;
+                  // Rendement: het rendement tússen de twee punten
+                  const rendTussen = isPct ? ((1 + laatstePunt.waarde / 100) / (1 + eerstePunt.waarde / 100) - 1) * 100 : 0;
+                  const positief = isPct ? rendTussen >= 0 : verschil >= 0;
                   const kleur = positief ? 'var(--green)' : 'var(--red)';
-                  const tekst = `${positief ? '+' : '-'}€${Math.abs(verschil).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${positief ? '+' : ''}${getal(verschilPct, 2)}%)`;
+                  const tekst = isPct
+                    ? `${positief ? '+' : '-'}${getal(Math.abs(rendTussen), 2)}%`
+                    : `${positief ? '+' : '-'}€${Math.abs(verschil).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${positief ? '+' : '-'}${getal(Math.abs(verschilPct), 2)}%)`;
                   return (
                     <ReferenceArea
                       x1={eerstePunt.tijd}
