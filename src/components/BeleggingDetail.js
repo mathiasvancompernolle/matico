@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { koers as koersFmt, koersDecimalen } from '../utils/getal';
 import { muntSymbool } from '../utils/munt';
 import { useApp } from '../context/AppContext';
 import { handeldeVandaag } from '../utils/handelsdag';
@@ -252,7 +253,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
         {/* Koers + dagverandering */}
         <div className="detail-section">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <div className="detail-koers">{muntSym}{huidigePrijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="detail-koers">{muntSym}{koersFmt(huidigePrijs)}</div>
             {!dagToonbaar && (
               <span style={{ fontSize: 11, color: '#b45309', background: '#fef3c7', padding: '3px 10px', borderRadius: 6, fontWeight: 600 }}>
                 Beurs gesloten
@@ -261,7 +262,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
           </div>
           {dagToonbaar ? (
             <div style={{ fontSize: 14, color: dagVPctRaw >= 0 ? 'var(--green)' : 'var(--red)', marginTop: 4, fontWeight: 500 }}>
-              {dagVPctRaw >= 0 ? '+' : ''}{getal(dagVPctRaw, 2)}% ({dagVRaw >= 0 ? '+' : '-'}{muntSym}{getal(Math.abs(dagVRaw), 2)})
+              {dagVPctRaw >= 0 ? '+' : ''}{getal(dagVPctRaw, 2)}% ({dagVRaw >= 0 ? '+' : '-'}{muntSym}{getal(Math.abs(dagVRaw), koersDecimalen(huidigePrijs))})
             </div>
           ) : (
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, fontWeight: 500 }}>
@@ -311,9 +312,9 @@ export default function BeleggingDetail({ belegging, onClose }) {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} ticks={detailXTicks} tickFormatter={detailXFormatter} interval={0} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => muntSym + v.toFixed(0)} domain={['auto', 'auto']} width={55} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => muntSym + getal(v, Math.abs(v) >= 100 ? 0 : koersDecimalen(v))} domain={['auto', 'auto']} width={huidigePrijs < 1 ? 70 : 55} />
                 <Tooltip
-                  formatter={v => [muntSym + v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 'Koers']}
+                  formatter={v => [muntSym + koersFmt(v), 'Koers']}
                   contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }}
                 />
                 {tijdperk === '1D' && koers?.pc != null && belegging.type !== 'crypto' && (
@@ -323,7 +324,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
                     stroke="var(--text-muted)"
                     strokeDasharray="4 4"
                     strokeWidth={1.5}
-                    label={{ value: `Slot vorige dag: ${muntSym}${koers.pc.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, position: 'insideTopLeft', fontSize: 10, fill: 'var(--text-muted)' }}
+                    label={{ value: `Slot vorige dag: ${muntSym}${koersFmt(koers.pc)}`, position: 'insideTopLeft', fontSize: 10, fill: 'var(--text-muted)' }}
                   />
                 )}
                 <Area type="monotone" dataKey="prijs" stroke={grafiekKleur} strokeWidth={2} fill="url(#detailGrad)" dot={false} />
@@ -336,9 +337,9 @@ export default function BeleggingDetail({ belegging, onClose }) {
           {koers && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16 }}>
               {[
-                { l: 'Open', v: muntSym + (koers.o || 0).toFixed(2) },
-                { l: 'Laagste', v: muntSym + getal((koers.l || 0), 2) },
-                { l: 'Hoogste', v: muntSym + getal((koers.h || 0), 2) },
+                { l: 'Open', v: muntSym + koersFmt(koers.o || 0) },
+                { l: 'Laagste', v: muntSym + koersFmt(koers.l || 0) },
+                { l: 'Hoogste', v: muntSym + koersFmt(koers.h || 0) },
                 { l: 'Volume', v: (koers.v || 0) > 1000000 ? getal(((koers.v || 0) / 1000000), 1) + ' mln.' : (koers.v || 0).toLocaleString() },
                 metrics?.['peNormalizedAnnual'] ? { l: 'Koers-winstverhouding', v: metrics['peNormalizedAnnual'].toFixed(1) } : null,
                 profiel?.marketCapitalization ? { l: 'Beurswaarde', v: '$' + (profiel.marketCapitalization).toFixed(1) + ' mld.' } : null,
@@ -362,7 +363,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
             </div>
             <div>
               <div className="detail-item-label">Gem. prijs</div>
-              <div className="detail-item-value">€{getal((belegging.kostprijs * factor), 2)}</div>
+              <div className="detail-item-value">€{koersFmt(belegging.kostprijs * factor)}</div>
             </div>
             <div>
               <div className="detail-item-label">Totale waarde</div>

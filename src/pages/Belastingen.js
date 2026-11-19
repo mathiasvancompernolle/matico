@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { koers as koersFmt } from '../utils/getal';
 import { muntSymbool } from '../utils/munt';
 import { useApp } from '../context/AppContext';
 import { Info, Download, ChevronDown } from 'lucide-react';
@@ -554,7 +555,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
                     >
                       <span style={{ fontWeight: 600, fontSize: 13 }}>{b.naam}</span>
                       <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                        {muntSymbool(b.munt)}{getal(prijs, 2)} · {b.aantal} st.
+                        {muntSymbool(b.munt)}{koersFmt(prijs)} · {b.aantal} st.
                       </span>
                     </div>
                   );

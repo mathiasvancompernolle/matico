@@ -1286,6 +1286,15 @@ module.exports = async function handler(req, res) {
     return { munt: c || null, f: 1 };
   }
 
+  // Koers afronden met genoeg decimalen: 2 vanaf 1000, anders meer — een
+  // crypto van $0,1023 werd vroeger $0,10 (trapgrafiek).
+  function rondKoers(v) {
+    if (v == null || !Number.isFinite(v)) return v;
+    const a = Math.abs(v);
+    const d = a >= 1000 ? 2 : a >= 1 ? 4 : a >= 0.01 ? 6 : 8;
+    return Math.round(v * 10 ** d) / 10 ** d;
+  }
+
   function isCryptoSymbool(symbol) {
     return /^[A-Z0-9]+-(EUR|USD|GBP)$/i.test(symbol || '');
   }
@@ -1398,7 +1407,7 @@ module.exports = async function handler(req, res) {
               // laatste koers.
               const geldige = closes.filter(v => v != null);
               const laatste = (result.meta?.regularMarketPrice ? result.meta.regularMarketPrice * subF : null) || geldige[geldige.length - 1] || null;
-              return res.json({ punten: [], vorigeSlot: laatste ? Math.round(laatste * 100) / 100 : null, geenSessieVandaag: true });
+              return res.json({ punten: [], vorigeSlot: laatste ? rondKoers(laatste) : null, geenSessieVandaag: true });
             }
             const allePunten = timestamps.map((t, i) => {
               if (closes[i] == null || !vanVandaag(t)) return null;
@@ -1406,7 +1415,7 @@ module.exports = async function handler(req, res) {
               return {
                 label: datum.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' }),
                 datum: datum.toISOString().split('T')[0],
-                prijs: Math.round(closes[i] * 100) / 100,
+                prijs: rondKoers(closes[i]),
                 _minuut: datum.getMinutes(),
               };
             }).filter(p => p !== null);
@@ -1420,7 +1429,7 @@ module.exports = async function handler(req, res) {
 
             const vorigeSlotRuw = result.meta?.chartPreviousClose || result.meta?.previousClose || null;
             const vorigeSlot = vorigeSlotRuw ? vorigeSlotRuw * subF : null;
-            return res.json({ punten, vorigeSlot: vorigeSlot ? Math.round(vorigeSlot * 100) / 100 : null });
+            return res.json({ punten, vorigeSlot: vorigeSlot ? rondKoers(vorigeSlot) : null });
           }
 
           // Andere tijdperken: volledige reeks
@@ -1434,7 +1443,7 @@ module.exports = async function handler(req, res) {
                 timeZone: 'Europe/Brussels'
               }),
               datum: datum.toISOString().split('T')[0],
-              prijs: Math.round(closes[i] * 100) / 100
+              prijs: rondKoers(closes[i])
             };
           }).filter(p => p !== null);
 

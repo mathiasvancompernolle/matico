@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { koers as koersFmt, koersInvoer } from '../utils/getal';
 import { muntSymbool, MUNTEN } from '../utils/munt';
 import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
@@ -248,7 +249,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
   useEffect(() => {
     if (gekozen) {
       const k = koersen[gekozen.symbol];
-      const koers = k ? k.c.toFixed(2) : gekozen.kostprijs.toFixed(2);
+      const koers = koersInvoer(k ? k.c : gekozen.kostprijs);
       const munt = gekozen.munt || 'EUR';
       setForm({
         datum: new Date().toISOString().slice(0, 10),
@@ -294,7 +295,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
     setHistorischeFout('');
     const prijs = await haalHistorischeKoers(gekozen.symbol, nieuweDatumStr);
     if (prijs) {
-      setForm(f => ({ ...f, koers: prijs.toFixed(2) }));
+      setForm(f => ({ ...f, koers: koersInvoer(prijs) }));
     } else {
       setHistorischeFout('Kon de koers van die dag niet automatisch ophalen — vul zelf in.');
     }
@@ -927,7 +928,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                           background: 'var(--bg-white)', color: 'var(--text-primary)',
                           minWidth: 80
                         }}>
-                          {getal(b.kostprijs, 2)}
+                          {koersFmt(b.kostprijs)}
                         </span>
                         <span style={{
                           padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 7,
@@ -1060,10 +1061,10 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                       </div>
                       <div style={{ fontSize: 13, fontFamily: 'DM Mono, monospace' }}>{b.verkoopdatum}</div>
                       <div style={{ fontSize: 13, fontFamily: 'DM Mono, monospace' }}>
-                        {muntSymbool(b.munt || 'EUR')}{getal(b.kostprijs, 2)}
+                        {muntSymbool(b.munt || 'EUR')}{koersFmt(b.kostprijs)}
                       </div>
                       <div style={{ fontSize: 13, fontFamily: 'DM Mono, monospace' }}>
-                        {ms}{b.verkoopkoers?.toFixed(2) || '—'}
+                        {b.verkoopkoers != null ? ms + koersFmt(b.verkoopkoers) : '—'}
                       </div>
                       <div style={{
                         fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 600,

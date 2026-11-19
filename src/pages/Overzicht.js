@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { koers as koersFmt } from '../utils/getal';
 import { muntSymbool } from '../utils/munt';
 import { useApp } from '../context/AppContext';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, ReferenceLine, ReferenceArea } from 'recharts';
@@ -1522,7 +1523,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                         )}
                         {aankopenOpDatum.map((b, i) => (
                           <div key={b.id + i} style={{ fontSize: 12, color: 'var(--green)', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
-                            🟢 {t('ov_tooltip_aankoop')} {b.naam} — {b.aantal} {t('ov_tooltip_st_a')} {muntSymbool(b.munt)}{getal(b.kostprijs, 2)}
+                            🟢 {t('ov_tooltip_aankoop')} {b.naam} — {b.aantal} {t('ov_tooltip_st_a')} {muntSymbool(b.munt)}{koersFmt(b.kostprijs)}
                           </div>
                         ))}
                         {verkopenOpDatum.map((b, i) => {
@@ -1530,7 +1531,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                           const wv = b.winstverlies || 0;
                           return (
                             <div key={b.id + i} style={{ fontSize: 12, color: '#ef4444', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
-                              🔴 {t('ov_tooltip_verkoop')} {b.naam} — {b.aantalVerkocht} {t('ov_tooltip_st_a')} {ms}{b.verkoopkoers?.toFixed(2)}
+                              🔴 {t('ov_tooltip_verkoop')} {b.naam} — {b.aantalVerkocht} {t('ov_tooltip_st_a')} {ms}{koersFmt(b.verkoopkoers)}
                               {' '}
                               <span style={{ color: wv >= 0 ? 'var(--green)' : '#ef4444', fontWeight: 600 }}>
                                 ({wv >= 0 ? '+' : '-'}{ms}{getal(Math.abs(wv), 2)})
@@ -1776,7 +1777,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       <div className="belegging-symbol">{b.symbol} · {b.aantal} st.</div>
                     </div>
                   </div>
-                  <div className="koers-display"><span className="mobile-stat-label">{t('ov_col_koers')}</span>{muntSym}{getal(huidigePrijs, 2)}</div>
+                  <div className="koers-display"><span className="mobile-stat-label">{t('ov_col_koers')}</span>{muntSym}{koersFmt(huidigePrijs)}</div>
                   <div className="koers-display"><span className="mobile-stat-label">{t('ov_waarde')}</span>€{getal(huidigeWaarde, 2)}</div>
                   <div>
                     <span className="mobile-stat-label">{t('ov_vandaag')}</span>

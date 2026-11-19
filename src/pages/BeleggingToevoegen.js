@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { koersInvoer } from '../utils/getal';
 import { muntSymbool, MUNTEN } from '../utils/munt';
 import { useApp } from '../context/AppContext';
 import { TrendingUp, Building2, Bitcoin, PiggyBank, ArrowLeft, Search, Loader, X } from 'lucide-react';
@@ -113,7 +114,7 @@ export default function BeleggingToevoegen({ onClose }) {
       if (us.some(e => (geselecteerd?.beurs || '').toUpperCase().includes(e))) return 'USD';
       return 'EUR';
     })();
-    setForm(f => ({ ...f, kostprijs: koers.c.toFixed(2), munt }));
+    setForm(f => ({ ...f, kostprijs: koersInvoer(koers.c), munt }));
     }
   };
 
@@ -130,7 +131,7 @@ export default function BeleggingToevoegen({ onClose }) {
         ...prev,
         [r.symbol]: {
           datum: new Date().toISOString().split('T')[0],
-          kostprijs: koers?.c ? koers.c.toFixed(2) : '',
+          kostprijs: koers?.c ? koersInvoer(koers.c) : '',
           aantal: '',
           munt: (() => {
             if (koers?.currency) return koers.currency;
@@ -528,7 +529,7 @@ export default function BeleggingToevoegen({ onClose }) {
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Aankoopprijs per stuk</label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input type="number" className="form-input" placeholder="0.00" value={handmatigForm.aankoopprijs}
-                      onChange={e => setHandmatigForm(f => ({ ...f, aankoopprijs: e.target.value }))} step="0.01" min="0" />
+                      onChange={e => setHandmatigForm(f => ({ ...f, aankoopprijs: e.target.value }))} step="any" min="0" />
                     <select className="form-input" style={{ width: 80 }} value={handmatigForm.munt}
                       onChange={e => setHandmatigForm(f => ({ ...f, munt: e.target.value }))}>
                       {MUNTEN.map(m => <option key={m} value={m}>{m}</option>)}
@@ -567,7 +568,7 @@ export default function BeleggingToevoegen({ onClose }) {
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Verkoopprijs per stuk</label>
                       <input type="number" className="form-input" placeholder="0.00 (of 0 bij faillissement)" value={handmatigForm.verkoopprijs}
-                        onChange={e => setHandmatigForm(f => ({ ...f, verkoopprijs: e.target.value }))} step="0.01" min="0" />
+                        onChange={e => setHandmatigForm(f => ({ ...f, verkoopprijs: e.target.value }))} step="any" min="0" />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Verkoopdatum</label>
@@ -756,7 +757,7 @@ export default function BeleggingToevoegen({ onClose }) {
                 </div>
                 {/* Aankoopprijs */}
                 <input type="number" value={f.kostprijs || ''} onChange={e => updateMultiForm(r.symbol, 'kostprijs', e.target.value)}
-                  placeholder="0,00" step="0.01"
+                  placeholder="0,00" step="any"
                   style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
                 {/* Transactiekosten */}
                 <input type="number" value={f.transactiekosten || ''} onChange={e => updateMultiForm(r.symbol, 'transactiekosten', e.target.value)}
@@ -863,7 +864,7 @@ export default function BeleggingToevoegen({ onClose }) {
                   onChange={e => setForm(f => ({ ...f, datum: e.target.value }))} />
                 <div style={{ display: 'flex', gap: 6 }}>
                   <input type="number" className="form-input" placeholder="0.00" value={form.kostprijs}
-                    onChange={e => setForm(f => ({ ...f, kostprijs: e.target.value }))} step="0.01" min="0" />
+                    onChange={e => setForm(f => ({ ...f, kostprijs: e.target.value }))} step="any" min="0" />
                   <select className="form-input" style={{ width: 80 }} value={form.munt}
                     onChange={e => setForm(f => ({ ...f, munt: e.target.value }))}>
                     {MUNTEN.map(m => <option key={m} value={m}>{m}</option>)}
