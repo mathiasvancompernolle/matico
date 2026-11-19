@@ -8,7 +8,7 @@ import { getal } from '../utils/getal';
 const TIJDPERKEN = ['1D', '1W', '1M', '1J', 'YTD', '3J', '5J', 'Max'];
 
 export default function BeleggingDetail({ belegging, onClose }) {
-  const { koersen, getMuntFactor, portfolioWaarde } = useApp();
+  const { koersen, getMuntFactor, kostEur, portfolioWaarde } = useApp();
   const [tijdperk, setTijdperk] = useState('1D');
   const [grafiekData, setGrafiekData] = useState([]);
   const [grafiekLoading, setGrafiekLoading] = useState(false);
@@ -27,7 +27,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
   const huidigePrijs = koers ? koers.c : belegging.kostprijs;
   const factor = getMuntFactor ? getMuntFactor(belegging.munt || 'EUR') : ((belegging.munt || 'EUR') === 'USD' ? 0.865 : 1);
   const huidigeWaarde = huidigePrijs * belegging.aantal * factor;
-  const kostprijsTotaal = (belegging.kostprijs * belegging.aantal + (belegging.transactiekosten || 0)) * factor;
+  const kostprijsTotaal = kostEur ? kostEur(belegging) : (belegging.kostprijs * belegging.aantal + (belegging.transactiekosten || 0)) * factor; // wisselkoers van de aankoopdag
   const winstTotaal = huidigeWaarde - kostprijsTotaal;
   const winstTotaalPct = kostprijsTotaal > 0 ? (winstTotaal / kostprijsTotaal) * 100 : 0;
   const dagVRaw = koers ? (koers.c - koers.pc) : 0;

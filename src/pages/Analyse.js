@@ -410,7 +410,7 @@ import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
 import { getal } from '../utils/getal';
 export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
-  const { beleggingen: beleggingenRaw, koersen, getMuntFactor, verkochteBeleggingen, t } = useApp();
+  const { beleggingen: beleggingenRaw, koersen, getMuntFactor, kostEur, verkoopEur, verkochteBeleggingen, t } = useApp();
   // "1 transactie" / "12 transacties"
   const aantalTransacties = (n) => `${n} ${n === 1 ? t('bel_transactie_suffix') : t('bel_transacties_suffix')}`;
   // Belegging-type normaliseren: bekende ETF-tickers (VWCE, IWDA, ...) tellen altijd
@@ -441,18 +441,19 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     const actief = beleggingen;
     const verkocht = winstFilter === 'inclusief' ? (verkochteBeleggingen || []) : [];
 
-    const kp = actief.reduce((s, b) => s + (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * factor(b), 0)
-      + verkocht.reduce((s, b) => s + (b.kostprijs * b.aantalVerkocht + (b.transactiekosten || 0)) * factor(b), 0);
+    // Aankoop en verkoop in euro aan de wisselkoers van die dag
+    const kp = actief.reduce((s, b) => s + kostEur(b), 0)
+      + verkocht.reduce((s, b) => s + kostEur(b, b.aantalVerkocht), 0);
 
     const hw = actief.reduce((s, b) => {
       const k = koersen[b.symbol];
       return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
-    }, 0) + verkocht.reduce((s, b) => s + b.verkoopkoers * b.aantalVerkocht * factor(b), 0);
+    }, 0) + verkocht.reduce((s, b) => s + verkoopEur(b), 0);
 
     const w = hw - kp;
     const wp = kp > 0 ? (w / kp) * 100 : 0;
     return { kostprijs: kp, huidigeWaarde: hw, winst: w, winstPct: wp, maxBar: Math.max(kp, hw) };
-  }, [beleggingen, koersen, winstFilter, verkochteBeleggingen, getMuntFactor]);
+  }, [beleggingen, koersen, winstFilter, verkochteBeleggingen, getMuntFactor, kostEur, verkoopEur]);
 
   // ── Risicoprofiel (bèta benadering) ──
   // Live bèta state — wordt gevuld via Finnhub metrics API

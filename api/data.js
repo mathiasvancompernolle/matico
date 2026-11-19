@@ -1221,6 +1221,18 @@ module.exports = async function handler(req, res) {
       if (!van || van === 'EUR') {
         return res.json({ rate: 1, datum: datum || null });
       }
+      // Reeks: ?reeks=1&datum=<start> → { rates: { 'YYYY-MM-DD': koers, ... } }
+      // tot vandaag. Voor grafieken en kostprijs in EUR op de aankoopdatum.
+      if (req.query.reeks) {
+        try {
+          const r = await fetch(`https://api.frankfurter.app/${datum}..?from=${encodeURIComponent(van)}&to=EUR`);
+          const d = await r.json();
+          const rates = {};
+          Object.entries(d?.rates || {}).forEach(([dag, v]) => { if (v?.EUR) rates[dag] = v.EUR; });
+          if (Object.keys(rates).length > 0) return res.json({ rates });
+        } catch (e) {}
+        return _origJson({ rates: {} });
+      }
       // Frankfurter (ECB) — gratis, geen key nodig, geeft bij weekend/feestdag de laatst gekende koers
       try {
         const r = await fetch(`https://api.frankfurter.app/${datum}?from=${van}&to=EUR`);

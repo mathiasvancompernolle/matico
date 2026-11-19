@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { vertaal, detecteerBrowserTaal } from '../translations';
 import { supabase } from '../supabaseClient';
-import { normaliseerKoers, normaliseerKoersen, leesDatum } from '../utils/handelsdag';
+import { normaliseerKoers, normaliseerKoersen, leesDatum, naarIsoDatum } from '../utils/handelsdag';
 
 const AppContext = createContext();
 
@@ -597,6 +597,69 @@ export function AppProvider({ children, supabaseGebruiker }) {
     return 1;
   };
 
+  // ── Historische wisselkoersen (ECB, via Frankfurter) ──────────────────
+  // Een Amerikaans aandeel dat je kocht toen 1 USD = €0,95 was, kostte je
+  // in euro meer dan wanneer je het vandaag aan €0,86 zou omrekenen. Vroeger
+  // rekende Kapitas álles om aan de koers van vandaag, waardoor wisselkoers-
+  // winst en -verlies nergens zichtbaar waren. fxOp(munt, datum) geeft de
+  // koers op die dag (of de laatst gekende ervoor); voor vandaag en later
+  // de live koers.
+  const [fxHistoriek, setFxHistoriek] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('kapitas_fx_historiek') || '{}'); } catch { return {}; }
+  });
+  const fxMunten = [...new Set([...beleggingen, ...(verkochteBeleggingen || [])].map(b => b.munt || 'EUR').filter(m => m !== 'EUR'))].sort().join(',');
+  const fxVroegste = [...beleggingen, ...(verkochteBeleggingen || [])]
+    .map(b => naarIsoDatum(b.datum)).filter(Boolean).sort()[0] || null;
+  useEffect(() => {
+    if (!fxMunten || !fxVroegste) return;
+    const start = new Date(fxVroegste); start.setDate(start.getDate() - 10);
+    const startIso = start.toISOString().slice(0, 10);
+    const gisteren = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    fxMunten.split(',').forEach(async (munt) => {
+      const bestaand = fxHistoriek[munt];
+      const dagen = bestaand ? Object.keys(bestaand.rates || {}).sort() : [];
+      const dekt = dagen.length > 0 && dagen[0] <= startIso.slice(0, 10) && (bestaand.opgehaald || '') >= gisteren;
+      if (dekt) return;
+      try {
+        const res = await fetch(`/api/data?endpoint=forex-history&reeks=1&van=${munt}&datum=${startIso}`);
+        const data = await res.json();
+        if (data?.rates && Object.keys(data.rates).length > 0) {
+          setFxHistoriek(prev => {
+            const nieuw = { ...prev, [munt]: { rates: data.rates, opgehaald: new Date().toISOString().slice(0, 10) } };
+            try { localStorage.setItem('kapitas_fx_historiek', JSON.stringify(nieuw)); } catch (e) {}
+            return nieuw;
+          });
+        }
+      } catch (e) {}
+    });
+
+  }, [fxMunten, fxVroegste]);
+
+  const fxDagen = React.useMemo(() => {
+    const uit = {};
+    Object.entries(fxHistoriek).forEach(([m, v]) => { uit[m] = Object.keys(v.rates || {}).sort(); });
+    return uit;
+  }, [fxHistoriek]);
+
+  const fxOp = (munt, datum) => {
+    if (!munt || munt === 'EUR') return 1;
+    const dagen = fxDagen[munt];
+    const d = naarIsoDatum(datum);
+    if (!dagen || dagen.length === 0 || !d) return getMuntFactor(munt);
+    if (d > dagen[dagen.length - 1]) return getMuntFactor(munt); // vandaag: live
+    if (d <= dagen[0]) return fxHistoriek[munt].rates[dagen[0]];
+    let lo = 0, hi = dagen.length - 1;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (dagen[mid] <= d) lo = mid; else hi = mid - 1; }
+    return fxHistoriek[munt].rates[dagen[lo]];
+  };
+
+  // Aankoopbedrag in euro, aan de wisselkoers van de aankoopdag
+  const kostEur = (b, aantal = b.aantal) =>
+    ((b.kostprijs || 0) * (aantal || 0) + (b.transactiekosten || 0)) * fxOp(b.munt || 'EUR', b.datum);
+  // Verkoopopbrengst in euro, aan de wisselkoers van de verkoopdag
+  const verkoopEur = (b) =>
+    (b.verkoopkoers || b.kostprijs || 0) * (b.aantalVerkocht || b.aantal || 1) * fxOp(b.verkoopMunt || b.munt || 'EUR', b.verkoopdatum);
+
   const portfolioWaarde = beleggingen.reduce((sum, b) => {
     const koers = koersen[b.symbol];
     const prijs = koers ? koers.c : b.kostprijs;
@@ -604,19 +667,14 @@ export function AppProvider({ children, supabaseGebruiker }) {
     return sum + (prijs * b.aantal * factor);
   }, 0);
 
-  const portfolioKostprijs = beleggingen.reduce((sum, b) => {
-    const factor = getMuntFactor(b.munt || 'EUR');
-    return sum + ((b.kostprijs * b.aantal + (b.transactiekosten || 0)) * factor);
-  }, 0);
+  const portfolioKostprijs = beleggingen.reduce((sum, b) => sum + kostEur(b), 0);
 
   const portfolioWinstVerlies = portfolioWaarde - portfolioKostprijs;
   const portfolioWinstPct = portfolioKostprijs > 0 ? (portfolioWinstVerlies / portfolioKostprijs) * 100 : 0;
 
   const portfolioWinstPctInclVerkocht = (() => {
-    const gerealiseerdeWinst = (verkochteBeleggingen || []).reduce((sum, b) => {
-      const factor = getMuntFactor(b.munt || 'EUR');
-      return sum + (((b.verkoopkoers - b.kostprijs) * (b.aantalVerkocht || b.aantal || 1) - (b.transactiekosten || 0)) * factor);
-    }, 0);
+    const gerealiseerdeWinst = (verkochteBeleggingen || []).reduce((sum, b) =>
+      sum + verkoopEur(b) - kostEur(b, b.aantalVerkocht || b.aantal || 1), 0);
     const totaalWinst = portfolioWinstVerlies + gerealiseerdeWinst;
     return portfolioKostprijs > 0 ? (totaalWinst / portfolioKostprijs) * 100 : 0;
   })();
@@ -712,22 +770,25 @@ export function AppProvider({ children, supabaseGebruiker }) {
     const eersteJan = new Date(`${nuJaar}-01-01`);
     let teller = 0, noemer = 0;
 
+    const startDag = `${nuJaar}-01-02`;
     beleggingen.forEach(b => {
       const k = koersen[b.symbol];
-      const prijsNu = k ? k.c : b.kostprijs;
-      const factor = getMuntFactor(b.munt || 'EUR');
+      const munt = b.munt || 'EUR';
+      const waardeNu = (k ? k.c : b.kostprijs) * b.aantal * getMuntFactor(munt);
       const aankoopDatum = b.datum ? new Date(b.datum) : null;
       if (aankoopDatum && aankoopDatum <= eersteJan) {
         const prijsStart = ytdKoersen[b.symbol];
         if (!prijsStart || prijsStart <= 0) return;
-        teller += (prijsNu - prijsStart) * b.aantal * factor;
-        noemer += prijsStart * b.aantal * factor;
+        const waardeStart = prijsStart * b.aantal * fxOp(munt, startDag);
+        teller += waardeNu - waardeStart;
+        noemer += waardeStart;
       } else {
         // Dit jaar gekocht: winst in de teller, inleg in de noemer (anders
         // gaf een nieuwe aankoop een te hoog percentage, of 0% als je pas
         // dit jaar begon).
-        teller += (prijsNu - b.kostprijs) * b.aantal * factor;
-        noemer += b.kostprijs * b.aantal * factor;
+        const inleg = kostEur(b);
+        teller += waardeNu - inleg;
+        noemer += inleg;
       }
     });
 
@@ -735,18 +796,19 @@ export function AppProvider({ children, supabaseGebruiker }) {
       (verkochteBeleggingen || []).forEach(b => {
         const vd = leesDatum(b.verkoopdatum);
         if (!vd || vd.getFullYear() !== nuJaar) return;
-        const factor = getMuntFactor(b.munt || 'EUR');
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
-        const prijsVerkoop = b.verkoopkoers || b.kostprijs;
         const aantal = b.aantalVerkocht || b.aantal || 1;
+        const opbrengst = verkoopEur(b);
         if (aankoopDatum && aankoopDatum <= eersteJan) {
           const prijsStart = ytdKoersen[b.symbol];
           if (!prijsStart || prijsStart <= 0) return;
-          teller += (prijsVerkoop - prijsStart) * aantal * factor;
-          noemer += prijsStart * aantal * factor;
+          const waardeStart = prijsStart * aantal * fxOp(b.munt || 'EUR', startDag);
+          teller += opbrengst - waardeStart;
+          noemer += waardeStart;
         } else {
-          teller += (prijsVerkoop - b.kostprijs) * aantal * factor;
-          noemer += b.kostprijs * aantal * factor;
+          const inleg = kostEur(b, aantal);
+          teller += opbrengst - inleg;
+          noemer += inleg;
         }
       });
     }
@@ -771,14 +833,13 @@ export function AppProvider({ children, supabaseGebruiker }) {
       verkochteBeleggingen, setVerkochteBeleggingen,
       koersen, fetchKoers, refreshAlleKoersen,
       activeNav, setActiveNav,
-      wisselkoers, getMuntFactor,
+      wisselkoers, getMuntFactor, fxOp, kostEur, verkoopEur,
+      fxVersie: Object.keys(fxHistoriek).sort().map(m => m + (fxHistoriek[m].opgehaald || '')).join(','),
       portfolioWaarde, portfolioKostprijs,
       portfolioWinstVerlies, portfolioWinstPct, portfolioWinstPctInclVerkocht,
       portfolioWinstVerliesInclVerkocht: (() => {
-        const verkoopWinst = (verkochteBeleggingen || []).reduce((sum, b) => {
-          const factor = getMuntFactor(b.munt || 'EUR');
-          return sum + (((b.verkoopkoers - b.kostprijs) * (b.aantalVerkocht || b.aantal || 1) - (b.transactiekosten || 0)) * factor);
-        }, 0);
+        const verkoopWinst = (verkochteBeleggingen || []).reduce((sum, b) =>
+          sum + verkoopEur(b) - kostEur(b, b.aantalVerkocht || b.aantal || 1), 0);
         return portfolioWinstVerlies + verkoopWinst;
       })(),
       dagWinst, dagWinstPct, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen

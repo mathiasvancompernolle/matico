@@ -45,6 +45,16 @@ export function leesDatum(str) {
   return isNaN(d) ? null : d;
 }
 
+// Elke datumvorm (Date, "2026-11-19", "2026-11-19T…", "19/11/2026") → "2026-11-19"
+export function naarIsoDatum(x) {
+  if (!x) return null;
+  if (x instanceof Date) return isNaN(x) ? null : x.toISOString().slice(0, 10);
+  const s = String(x);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const d = leesDatum(s);
+  return d ? d.toISOString().slice(0, 10) : null;
+}
+
 export function normaliseerKoersen(koersen) {
   const uit = {};
   Object.keys(koersen || {}).forEach(s => { uit[s] = normaliseerKoers(koersen[s]); });

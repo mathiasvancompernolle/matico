@@ -152,7 +152,7 @@ function BeleggingAvatar({ b }) {
 
 
 export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed, onToggleSidebar }) {
-  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen, t } = useApp();
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, fxOp, kostEur, verkoopEur, fxVersie, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen, t } = useApp();
 
   // ── Schermbreedte bijhouden ──────────────────────────────────────────────
   // Nodig om bv. het aantal tijd-labels onder de grafiek af te stemmen op
@@ -334,6 +334,9 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   // opnieuw opgehaald, wat nodeloos veel Edge Requests veroorzaakt.
   const koersenRef = useRef(koersen);
   useEffect(() => { koersenRef.current = koersen; }, [koersen]);
+  // Historische wisselkoers (zie AppContext.fxOp) — via ref, net als koersen
+  const fxOpRef = useRef(fxOp);
+  fxOpRef.current = fxOp;
 
   useEffect(() => {
     const laadGrafiek = async () => {
@@ -538,7 +541,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
           // ── Actieve beleggingen: tellen mee vanaf aankoopdatum ──
           beleggingVoorGrafiek.forEach(b => {
-            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+            const factor = fxOpRef.current(b.munt || 'EUR', puntDatum); // wisselkoers van die dag
             const aankoopDatum = b.datum ? new Date(b.datum) : null;
             if (puntDatum && aankoopDatum && puntDatum < aankoopDatum) return;
 
@@ -554,7 +557,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
           // ── Verkochte beleggingen: tellen mee tussen aankoop- en verkoopdatum ──
           verkochtVoorGrafiek.forEach(b => {
-            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+            const factor = fxOpRef.current(b.munt || 'EUR', puntDatum); // wisselkoers van die dag
             const aankoopDatum = b.datum ? new Date(b.datum) : null;
             const verkoopDatum = parseDatum(b.verkoopdatum);
 
@@ -597,7 +600,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       const berekenWaardeOpDatum = (doelDatum) => {
         let totaal = 0;
         beleggingVoorGrafiek.forEach(b => {
-          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+          const factor = fxOpRef.current(b.munt || 'EUR', doelDatum); // wisselkoers van die dag
           const aankoopDatum = b.datum ? new Date(b.datum) : null;
           if (aankoopDatum && doelDatum < aankoopDatum) return;
           const prijs = vindPrijsOpDatum(historischeData[b.symbol], doelDatum);
@@ -605,7 +608,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           else { const koers = koersenRef.current[b.symbol]; totaal += (koers ? koers.c : b.kostprijs) * b.aantal * factor; }
         });
         verkochtVoorGrafiek.forEach(b => {
-          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+          const factor = fxOpRef.current(b.munt || 'EUR', doelDatum); // wisselkoers van die dag
           const aankoopDatum = b.datum ? new Date(b.datum) : null;
           const verkoopDatum = parseDatum(b.verkoopdatum);
           if (aankoopDatum && doelDatum < aankoopDatum) return;
@@ -737,7 +740,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     };
 
     laadGrafiek();
-  }, [beleggingVoorGrafiek.length, tijdperk, filterType, filterSymbolen, filterBezit, (verkochteBeleggingen || []).length, grafiekTick]);
+  }, [beleggingVoorGrafiek.length, tijdperk, filterType, filterSymbolen, filterBezit, (verkochteBeleggingen || []).length, grafiekTick, fxVersie]);
 
   useEffect(() => {
     refreshAlleKoersen();
@@ -762,7 +765,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         case 'koers': va = ka ? ka.c : a.kostprijs; vb = kb ? kb.c : b.kostprijs; break;
         case 'waarde': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa; vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb; break;
         case 'vandaag': va = ka ? (ka.c - ka.pc) * a.aantal * fa : 0; vb = kb ? (kb.c - kb.pc) * b.aantal * fb : 0; break;
-        case 'totaal': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa - (a.kostprijs * a.aantal + (a.transactiekosten || 0)) * fa; vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb - (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * fb; break;
+        case 'totaal': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa - kostEur(a); vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb - kostEur(b); break;
         case 'gewicht': {
           const tot = lijst.reduce((s,bb) => { const k=koersen[bb.symbol]; const f=getMuntFactor?getMuntFactor(bb.munt||'EUR'):((bb.munt||'EUR')==='USD'?0.865:1); return s+(k?k.c:bb.kostprijs)*bb.aantal*f; }, 0);
           va = tot > 0 ? (ka?ka.c:a.kostprijs)*a.aantal*fa/tot : 0;
@@ -776,37 +779,49 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     });
   }, [beleggingen, filterType, filterSymbolen, sortCol, sortDir, koersen, getMuntFactor]);
 
-  // Winst/verlies = huidige waarde - aankoopwaarde van alle posities actief op die datum
-  const winstData = grafiekData.map((d) => {
+  // Winst/verlies op elk punt = (waarde − inleg) van wat je toen bezat
+  // + de winst die je vóór dat punt al realiseerde met verkopen. Vroeger
+  // ontbrak dat laatste: een verkoop met winst deed de lijn dan dalen.
+  // Bedragen in euro aan de wisselkoers van de aankoop-/verkoopdag.
+  const winstDataRuw = grafiekData.map((d) => {
     const puntDatum = d.datum ? new Date(d.datum) : null;
-    const parseDatum = (str) => {
-      if (!str) return null;
-      const delen = str.split('/');
-      if (delen.length === 3) return new Date(`${delen[2]}-${delen[1]}-${delen[0]}`);
-      return new Date(str);
-    };
     let aankoopwaarde = 0;
-    // Actieve beleggingen
+    let gerealiseerd = 0;
     beleggingVoorGrafiek.forEach(b => {
-      const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
       const aankoopDatum = b.datum ? new Date(b.datum) : null;
-      if (!puntDatum || !aankoopDatum || puntDatum >= aankoopDatum) {
-        aankoopwaarde += (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * factor;
-      }
+      if (!puntDatum || !aankoopDatum || puntDatum >= aankoopDatum) aankoopwaarde += kostEur(b);
     });
-    // Verkochte beleggingen: kostprijs telt alleen mee terwijl de positie open was (niet bij inbezit-filter)
     (filterBezit === 'inbezit' ? [] : (verkochteBeleggingen || [])).forEach(b => {
       if (filterType !== 'alle' && b.type !== filterType) return;
       if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return;
-      const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
       const aankoopDatum = b.datum ? new Date(b.datum) : null;
-      const verkoopDatum = parseDatum(b.verkoopdatum);
+      const verkoopDatum = leesDatum(b.verkoopdatum);
+      const aantal = b.aantalVerkocht || b.aantal || 1;
       if (puntDatum && aankoopDatum && puntDatum < aankoopDatum) return;
-      if (puntDatum && verkoopDatum && puntDatum > verkoopDatum) return;
-      aankoopwaarde += (b.kostprijs * b.aantalVerkocht + (b.transactiekosten || 0)) * factor;
+      if (puntDatum && verkoopDatum && puntDatum > verkoopDatum) {
+        gerealiseerd += verkoopEur(b) - kostEur(b, aantal); // al verkocht
+        return;
+      }
+      aankoopwaarde += kostEur(b, aantal); // toen nog in bezit
     });
-    return { ...d, waarde: Math.round((d.waarde - aankoopwaarde) * 100) / 100, inleg: Math.round(aankoopwaarde * 100) / 100 };
+    return { ...d, waarde: d.waarde - aankoopwaarde + gerealiseerd, inleg: Math.round(aankoopwaarde * 100) / 100 };
   });
+
+  // Bij Totaal toont de lijn je totale winst sinds de eerste aankoop. Bij
+  // een periode (1D, 1W, 1M, 1J, YTD, Laatste) start ze op €0 en toont ze
+  // wat je in díé periode won of verloor — net als het cijfer bovenaan.
+  const winstData = (() => {
+    if (winstDataRuw.length === 0) return winstDataRuw;
+    let basis = 0;
+    if (tijdperk === '1D') basis = null; // zie hieronder
+    else if (tijdperk !== 'Totaal') basis = winstDataRuw[0].waarde;
+    return winstDataRuw.map(d => {
+      const w = tijdperk === '1D'
+        ? d.waarde + d.inleg - (portfolioVorigeSlot || grafiekData[0].waarde) // waarde − slot gisteren
+        : d.waarde - basis;
+      return { ...d, waarde: Math.round(w * 100) / 100 };
+    });
+  })();
 
   // Waarde-weergave: extra stippellijn "Ingelegd" (wat je erin stak op dat
   // moment). Zo zie je dat een sprong door een aankoop eigen geld is, en is
@@ -826,7 +841,6 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
       return true;
     });
-    const fac = (b) => getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
 
     // Geld dat tussen punt i-1 en punt i in- of uitstroomde. Een aankoop telt
     // mee vanaf het eerste punt op of na de aankoopdatum, een verkochte
@@ -839,13 +853,13 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         if (!b.datum) return;
         const a = dagStr(new Date(b.datum));
         const aantal = b.aantalVerkocht || b.aantal;
-        if (a > vorige && a <= huidige) cf += (b.kostprijs * aantal + (b.transactiekosten || 0)) * fac(b);
+        if (a > vorige && a <= huidige) cf += kostEur(b, aantal);
       });
       verkochtGefilterd.forEach(b => {
         const v = leesDatum(b.verkoopdatum);
         if (!v) return;
         const vs = dagStr(v);
-        if (vs >= vorige && vs < huidige) cf -= (b.verkoopkoers || b.kostprijs) * (b.aantalVerkocht || b.aantal || 1) * fac(b);
+        if (vs >= vorige && vs < huidige) cf -= verkoopEur(b);
       });
       return cf;
     };
@@ -1050,28 +1064,30 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
     let startDatum;
     if (tijdperk === 'YTD') startDatum = new Date(`${nuJaar}-01-01`);
-    else if (tijdperk === 'Laatste') return grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : 0;
+    else if (tijdperk === 'Laatste') return winstData.length > 1 ? winstData[winstData.length - 1].waarde : 0;
     else if (tijdperk === 'Totaal') return filterBezit === 'inbezit' ? portfolioWinstVerlies : (portfolioWinstVerliesInclVerkocht || portfolioWinstVerlies);
     else startDatum = periodeStart(tijdperk);
 
     const pK = tijdperk === 'YTD' ? ytdKoersen : (periodeKoersen[tijdperk] || {});
+    // Startkoers × wisselkoers van de startdag; nu × live wisselkoers
+    const fxStartDag = tijdperk === 'YTD' ? `${nuJaar}-01-02` : startDatum;
 
     let winst = 0;
     beleggingen.forEach(b => {
       const k = koersen[b.symbol];
-      const prijsNu = k ? k.c : b.kostprijs;
-      const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+      const munt = b.munt || 'EUR';
+      const waardeNu = (k ? k.c : b.kostprijs) * b.aantal * getMuntFactor(munt);
       const aankoopDatum = b.datum ? new Date(b.datum) : null;
 
       if (aankoopDatum && aankoopDatum <= startDatum) {
         // In bezit voor start periode → gebruik startkoers
         const prijsStart = pK[b.symbol];
         if (prijsStart && prijsStart > 0) {
-          winst += (prijsNu - prijsStart) * b.aantal * factor;
+          winst += waardeNu - prijsStart * b.aantal * fxOp(munt, fxStartDag);
         }
       } else if (tijdperk === 'YTD' || ['1W','1M','1J'].includes(tijdperk)) {
-        // Nieuwe aankopen: winst tov aankoopprijs meenemen in teller (consistent met percentage)
-        winst += (prijsNu - b.kostprijs) * b.aantal * factor;
+        // Nieuwe aankopen: winst tov aankoopbedrag meenemen in teller (consistent met percentage)
+        winst += waardeNu - kostEur(b);
       }
     });
 
@@ -1080,19 +1096,17 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       (verkochteBeleggingen || []).forEach(b => {
         const vd = leesDatum(b.verkoopdatum);
         if (!vd || vd < startDatum) return; // verkoop was voor deze periode
-        const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
-        const prijsVerkoop = b.verkoopkoers || b.kostprijs;
         const aantal = b.aantalVerkocht || b.aantal || 1;
         if (aankoopDatum && aankoopDatum <= startDatum) {
           // Al in bezit voor start periode → gebruik startkoers
           const prijsStart = pK[b.symbol];
           if (prijsStart && prijsStart > 0) {
-            winst += (prijsVerkoop - prijsStart) * aantal * factor;
+            winst += verkoopEur(b) - prijsStart * aantal * fxOp(b.munt || 'EUR', fxStartDag);
           }
         } else {
-          // Gekocht én verkocht tijdens deze periode → gebruik aankoopprijs als startpunt
-          winst += (prijsVerkoop - b.kostprijs) * aantal * factor;
+          // Gekocht én verkocht tijdens deze periode → aankoopbedrag als startpunt
+          winst += verkoopEur(b) - kostEur(b, aantal);
         }
       });
     }
@@ -1106,16 +1120,16 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       const nuJaar = new Date().getFullYear();
       const eersteJan = new Date(`${nuJaar}-01-01`);
       let noemer = 0;
+      const fxJan = (b) => fxOp(b.munt || 'EUR', `${nuJaar}-01-02`);
       beleggingen.forEach(b => {
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
-        const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
         if (aankoopDatum && aankoopDatum <= eersteJan) {
           const prijsStart = ytdKoersen[b.symbol];
-          if (prijsStart && prijsStart > 0) noemer += prijsStart * b.aantal * factor;
+          if (prijsStart && prijsStart > 0) noemer += prijsStart * b.aantal * fxJan(b);
         } else {
           // Dit jaar gekocht: de winst erop zit in de teller, dus de inleg
           // hoort in de noemer.
-          noemer += b.kostprijs * b.aantal * factor;
+          noemer += kostEur(b);
         }
       });
       if (filterBezit !== 'inbezit') {
@@ -1123,12 +1137,12 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           const vd = leesDatum(b.verkoopdatum);
           if (!vd || vd.getFullYear() !== nuJaar) return;
           const aankoopDatum = b.datum ? new Date(b.datum) : null;
-          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
+          const aantal = b.aantalVerkocht || b.aantal || 1;
           if (aankoopDatum && aankoopDatum <= eersteJan) {
             const prijsStart = ytdKoersen[b.symbol];
-            if (prijsStart && prijsStart > 0) noemer += prijsStart * (b.aantalVerkocht || b.aantal || 1) * factor;
+            if (prijsStart && prijsStart > 0) noemer += prijsStart * aantal * fxJan(b);
           } else {
-            noemer += b.kostprijs * (b.aantalVerkocht || b.aantal || 1) * factor;
+            noemer += kostEur(b, aantal);
           }
         });
       }
@@ -1152,12 +1166,11 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       // veel te hoog percentage.
       beleggingen.forEach(b => {
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
-        const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
         if (aankoopDatum && aankoopDatum <= startDatum) {
           const prijsStart = pK[b.symbol];
-          if (prijsStart && prijsStart > 0) startWaarde += prijsStart * b.aantal * factor;
+          if (prijsStart && prijsStart > 0) startWaarde += prijsStart * b.aantal * fxOp(b.munt || 'EUR', startDatum);
         } else {
-          startWaarde += b.kostprijs * b.aantal * factor;
+          startWaarde += kostEur(b);
         }
       });
 
@@ -1175,9 +1188,16 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   const displayDataEff = beursGesloten1D && displayDataGefilterd.length > 0
     ? displayDataGefilterd.map(d => ({ ...d, waarde: displayDataGefilterd[0].waarde }))
     : displayDataGefilterd;
+  // Rendement-weergave: het cijfer bovenaan wordt het tijdgewogen rendement
+  // (= het eindpunt van de grafiek), zodat beide hetzelfde zeggen.
+  const toontTwr = weergave === 'rendement' && tijdperk !== '1D' && rendementData.length > 1;
+  const getoondPct = toontTwr ? rendementData[rendementData.length - 1].waarde : periodeWinstPct;
+
+  // Kleur volgt of je in de periode winst of verlies maakte — niet of de
+  // laatste waarde hoger is dan de eerste (dat is na een bijkoop altijd zo).
   const grafiekKleur = beursGesloten1D
     ? '#94a3b8'
-    : displayDataGefilterd.length > 1 && displayDataGefilterd[displayDataGefilterd.length-1]?.waarde >= displayDataGefilterd[0]?.waarde ? '#1e3a8a' : '#ef4444';
+    : (toontTwr ? getoondPct : periodeWinst) >= 0 ? '#1e3a8a' : '#ef4444';
 
   // Y-as domein: altijd strak rond de data, nooit vanaf 0
   // Y-as: nette gehele getallen, vaste stapgrootte, Totaal start bij 0
@@ -1297,8 +1317,9 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     — {t('ov_beurs_gesloten')}
                   </span>
                 ) : (
-                  <span className={`badge ${periodeWinstPct >= 0 ? 'badge-green' : 'badge-red'}`} style={{ whiteSpace: 'nowrap' }}>
-                    {periodeWinstPct >= 0 ? '▲' : '▼'} {getal(Math.abs(periodeWinstPct), 2)}% ({periodeWinst >= 0 ? '+' : '-'}€{getal(Math.abs(periodeWinst), 2)})
+                  <span className={`badge ${getoondPct >= 0 ? 'badge-green' : 'badge-red'}`} style={{ whiteSpace: 'nowrap' }}
+                    title={toontTwr ? t('ov_rendement_uitleg') : undefined}>
+                    {getoondPct >= 0 ? '▲' : '▼'} {getal(Math.abs(getoondPct), 2)}%{toontTwr ? ` ${t('ov_rendement').toLowerCase()}` : ''} ({periodeWinst >= 0 ? '+' : '-'}€{getal(Math.abs(periodeWinst), 2)})
                   </span>
                 )}
               </div>
@@ -1651,7 +1672,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                   case 'koers': va = ka ? ka.c : a.kostprijs; vb = kb ? kb.c : b.kostprijs; break;
                   case 'waarde': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa; vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb; break;
                   case 'vandaag': va = ka ? (ka.c - ka.pc) * a.aantal * fa : 0; vb = kb ? (kb.c - kb.pc) * b.aantal * fb : 0; break;
-                  case 'totaal': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa - (a.kostprijs * a.aantal + (a.transactiekosten || 0)) * fa; vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb - (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * fb; break;
+                  case 'totaal': va = (ka ? ka.c : a.kostprijs) * a.aantal * fa - kostEur(a); vb = (kb ? kb.c : b.kostprijs) * b.aantal * fb - kostEur(b); break;
                   case 'gewicht': va = totWaarde > 0 ? (ka?ka.c:a.kostprijs)*a.aantal*fa/totWaarde : 0; vb = totWaarde > 0 ? (kb?kb.c:b.kostprijs)*b.aantal*fb/totWaarde : 0; break;
                   default: va = a.datum ? new Date(a.datum).getTime() : 0; vb = b.datum ? new Date(b.datum).getTime() : 0; break;
                 }
@@ -1666,7 +1687,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               const huidigePrijs = koers ? koers.c : b.kostprijs;
               const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
               const huidigeWaarde = huidigePrijs * b.aantal * factor;
-              const kostprijs = (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * factor;
+              const kostprijs = kostEur(b); // aan de wisselkoers van de aankoopdag
               const winstTotaal = huidigeWaarde - kostprijs;
               const winstTotaalPct = kostprijs > 0 ? (winstTotaal / kostprijs) * 100 : 0;
               const beursOpen = isBeursOpen(b);
