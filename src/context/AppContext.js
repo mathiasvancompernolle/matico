@@ -660,6 +660,65 @@ export function AppProvider({ children, supabaseGebruiker }) {
   const verkoopEur = (b) =>
     (b.verkoopkoers || b.kostprijs || 0) * (b.aantalVerkocht || b.aantal || 1) * fxOp(b.verkoopMunt || b.munt || 'EUR', b.verkoopdatum);
 
+  // ── Dividendgeschiedenis per symbool (voor winst/rendement-grafieken) ──
+  // Per symbool alle uitkeringen vanaf de vroegste aankoop tot vandaag,
+  // 24 uur bewaard (een leeg antwoord 6 uur: kan een tijdelijke fout zijn).
+  const [dividendHistoriek, setDividendHistoriek] = useState({});
+  const divSleutel = [...beleggingen, ...(verkochteBeleggingen || [])]
+    .map(b => `${b.symbol}@${naarIsoDatum(b.datum) || ''}`).sort().join(',');
+  useEffect(() => {
+    const vroegstePerSymbool = {};
+    [...beleggingen, ...(verkochteBeleggingen || [])].forEach(b => {
+      const d = naarIsoDatum(b.datum);
+      if (!b.symbol || !d) return;
+      if (!vroegstePerSymbool[b.symbol] || d < vroegstePerSymbool[b.symbol]) vroegstePerSymbool[b.symbol] = d;
+    });
+    const vandaag = new Date().toISOString().slice(0, 10);
+    Object.entries(vroegstePerSymbool).forEach(async ([sym, van]) => {
+      const cacheKey = `kapitas_divhist_${sym}`;
+      try {
+        const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+        const duur = c && c.data && c.data.length === 0 ? 6 * 3600_000 : 24 * 3600_000;
+        if (c && c.van <= van && Date.now() - c.timestamp < duur) {
+          setDividendHistoriek(prev => prev[sym] === c.data ? prev : { ...prev, [sym]: c.data });
+          return;
+        }
+      } catch (e) {}
+      try {
+        const res = await fetch(`/api/data?endpoint=dividend&symbol=${encodeURIComponent(sym)}&van=${van}&tot=${vandaag}`);
+        const data = await res.json();
+        const lijst = Array.isArray(data) ? data
+          .map(d => ({ ex: naarIsoDatum(d.exDate || d.date), betaal: naarIsoDatum(d.paymentDate || d.exDate || d.date), bedrag: parseFloat(d.amount || d.adjDividend || 0), munt: d.currency || null }))
+          .filter(d => d.ex && d.bedrag > 0) : [];
+        try { localStorage.setItem(cacheKey, JSON.stringify({ data: lijst, van, timestamp: Date.now() })); } catch (e) {}
+        setDividendHistoriek(prev => ({ ...prev, [sym]: lijst }));
+      } catch (e) {}
+    });
+  }, [divSleutel]);
+
+  // Netto ontvangen dividenden (na 30% Belgische roerende voorheffing) als
+  // lijst { datum: betaaldag, eur } voor de opgegeven posities. Recht op een
+  // uitkering = in bezit vóór de ex-datum (en nog niet verkocht).
+  const dividendUitkeringen = (actief = [], verkocht = []) => {
+    const vandaag = new Date().toISOString().slice(0, 10);
+    const uit = [];
+    const verwerk = (b, aantal, verkoopIso) => {
+      const lijst = dividendHistoriek[b.symbol];
+      const aankoopIso = naarIsoDatum(b.datum);
+      if (!lijst || !aantal) return;
+      lijst.forEach(d => {
+        if (aankoopIso && d.ex <= aankoopIso) return;
+        if (verkoopIso && d.ex > verkoopIso) return;
+        if (!d.betaal || d.betaal > vandaag) return;
+        const munt = d.munt || b.munt || 'EUR';
+        uit.push({ datum: d.betaal, eur: d.bedrag * aantal * fxOp(munt, d.betaal) * 0.7 });
+      });
+    };
+    actief.forEach(b => verwerk(b, b.aantal, null));
+    verkocht.forEach(b => verwerk(b, b.aantalVerkocht || b.aantal, naarIsoDatum(b.verkoopdatum)));
+    return uit;
+  };
+
   const portfolioWaarde = beleggingen.reduce((sum, b) => {
     const koers = koersen[b.symbol];
     const prijs = koers ? koers.c : b.kostprijs;
@@ -833,7 +892,8 @@ export function AppProvider({ children, supabaseGebruiker }) {
       verkochteBeleggingen, setVerkochteBeleggingen,
       koersen, fetchKoers, refreshAlleKoersen,
       activeNav, setActiveNav,
-      wisselkoers, getMuntFactor, fxOp, kostEur, verkoopEur,
+      wisselkoers, getMuntFactor, fxOp, kostEur, verkoopEur, dividendUitkeringen,
+      dividendVersie: Object.keys(dividendHistoriek).map(s => s + ':' + dividendHistoriek[s].length).sort().join(','),
       fxVersie: Object.keys(fxHistoriek).sort().map(m => m + (fxHistoriek[m].opgehaald || '')).join(','),
       portfolioWaarde, portfolioKostprijs,
       portfolioWinstVerlies, portfolioWinstPct, portfolioWinstPctInclVerkocht,

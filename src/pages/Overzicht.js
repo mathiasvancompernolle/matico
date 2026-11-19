@@ -152,7 +152,7 @@ function BeleggingAvatar({ b }) {
 
 
 export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed, onToggleSidebar }) {
-  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, fxOp, kostEur, verkoopEur, fxVersie, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen, t } = useApp();
+  const { gebruiker, beleggingen, koersen, refreshAlleKoersen, portfolioWaarde, portfolioWinstPct, portfolioWinstPctInclVerkocht, portfolioWinstVerlies, portfolioWinstVerliesInclVerkocht, dagWinst, dagWinstPct, getMuntFactor, fxOp, kostEur, verkoopEur, fxVersie, dividendUitkeringen, portfolioKostprijs, verkochteBeleggingen, ytdPct, ytdPctInclVerkocht, periodeKoersen, ytdKoersen, t } = useApp();
 
   // ── Schermbreedte bijhouden ──────────────────────────────────────────────
   // Nodig om bv. het aantal tijd-labels onder de grafiek af te stemmen op
@@ -277,6 +277,11 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     return () => clearInterval(interval);
   }, []);
   const [weergave, setWeergave] = useState('waarde');
+  // Ontvangen dividenden meetellen in winst en rendement (standaard aan)
+  const [inclDividend, setInclDividend] = useState(() => {
+    try { return localStorage.getItem('kapitas_incl_dividend') !== 'nee'; } catch (e) { return true; }
+  });
+  useEffect(() => { try { localStorage.setItem('kapitas_incl_dividend', inclDividend ? 'ja' : 'nee'); } catch (e) {} }, [inclDividend]);
   const [grafiekData, setGrafiekData] = useState([]);
   const [portfolioVorigeSlot, setPortfolioVorigeSlot] = useState(null);
   const [grafiekLoading, setGrafiekLoading] = useState(false);
@@ -783,6 +788,15 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   // + de winst die je vóór dat punt al realiseerde met verkopen. Vroeger
   // ontbrak dat laatste: een verkoop met winst deed de lijn dan dalen.
   // Bedragen in euro aan de wisselkoers van de aankoop-/verkoopdag.
+  // Netto ontvangen dividenden van de posities in de grafiek (zie AppContext)
+  const verkochtInGrafiek = filterBezit === 'inbezit' ? [] : (verkochteBeleggingen || []).filter(b => {
+    if (filterType !== 'alle' && b.type !== filterType) return false;
+    if (filterSymbolen.length > 0 && !filterSymbolen.includes(b.symbol)) return false;
+    return true;
+  });
+  const divGrafiek = (inclDividend && tijdperk !== '1D' && dividendUitkeringen) ? dividendUitkeringen(beleggingVoorGrafiek, verkochtInGrafiek) : [];
+  const divTot = (iso) => divGrafiek.reduce((s, d) => (iso && d.datum <= iso ? s + d.eur : s), 0);
+
   const winstDataRuw = grafiekData.map((d) => {
     const puntDatum = d.datum ? new Date(d.datum) : null;
     let aankoopwaarde = 0;
@@ -804,7 +818,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       }
       aankoopwaarde += kostEur(b, aantal); // toen nog in bezit
     });
-    return { ...d, waarde: d.waarde - aankoopwaarde + gerealiseerd, inleg: Math.round(aankoopwaarde * 100) / 100 };
+    return { ...d, waarde: d.waarde - aankoopwaarde + gerealiseerd + divTot(d.datum), inleg: Math.round(aankoopwaarde * 100) / 100 };
   });
 
   // Bij Totaal toont de lijn je totale winst sinds de eerste aankoop. Bij
@@ -861,6 +875,8 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         const vs = dagStr(v);
         if (vs >= vorige && vs < huidige) cf -= verkoopEur(b);
       });
+      // Uitgekeerd dividend verlaat de portefeuille als geld: telt als opbrengst
+      divGrafiek.forEach(d => { if (d.datum > vorige && d.datum <= huidige) cf -= d.eur; });
       return cf;
     };
 
@@ -1057,7 +1073,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
   // periodeWinst = waardeverandering van posities die al in bezit waren aan begin periode
   // (exclusief het effect van nieuwe aankopen — dat is geen rendement)
-  const periodeWinst = (() => {
+  const periodeWinstZonderDiv = (() => {
     if (tijdperk === '1D') return beursOpenPortfolio ? dagWinst1D : 0;
 
     const nuJaar = new Date().getFullYear();
@@ -1113,6 +1129,18 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     return winst;
   })();
 
+  // Netto ontvangen dividenden in deze periode (enkel als het vinkje aan
+  // staat). 'Laatste' haalt zijn winst uit de grafiek, waar ze al in zitten.
+  const divPeriode = (() => {
+    if (!inclDividend || !dividendUitkeringen || tijdperk === '1D' || tijdperk === 'Laatste') return 0;
+    const lijst = dividendUitkeringen(beleggingen, filterBezit === 'inbezit' ? [] : (verkochteBeleggingen || []));
+    const start = tijdperk === 'Totaal' ? null
+      : tijdperk === 'YTD' ? `${new Date().getFullYear()}-01-01`
+      : periodeStart(tijdperk)?.toISOString().slice(0, 10);
+    return lijst.reduce((s, d) => (!start || d.datum >= start ? s + d.eur : s), 0);
+  })();
+  const periodeWinst = periodeWinstZonderDiv + divPeriode;
+
   const periodeWinstPct = (() => {
     if (tijdperk === '1D') return beursOpenPortfolio ? dagWinstPct1D : 0;
     if (tijdperk === 'YTD') {
@@ -1149,6 +1177,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       return noemer > 0 ? (periodeWinst / noemer) * 100 : 0;
     }
     if (tijdperk === 'Totaal') {
+      if (divPeriode !== 0 && portfolioKostprijs > 0) return (periodeWinst / portfolioKostprijs) * 100;
       return filterBezit === 'inbezit' ? portfolioWinstPct : portfolioWinstPctInclVerkocht;
     }
 
@@ -1345,6 +1374,16 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               <span style={{ marginRight: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
                 {t('ov_rendement_uitleg')}
               </span>
+            )}
+            {tijdperk !== '1D' && beleggingen.length > 0 && (
+              <label title={t('ov_incl_dividend_uitleg')} style={{
+                marginRight: weergave === 'winst/verlies' ? 'auto' : 8, display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none',
+              }}>
+                <input type="checkbox" checked={inclDividend} onChange={e => setInclDividend(e.target.checked)}
+                  style={{ accentColor: 'var(--accent)', margin: 0, cursor: 'pointer' }} />
+                {t('ov_incl_dividend')}
+              </label>
             )}
             {['waarde', 'winst/verlies', 'rendement'].map(w => (
               <button key={w} onClick={() => setWeergave(w)} style={{
