@@ -1122,17 +1122,19 @@ body {
   }
 
   /* ── Overzicht: portfolio-header (waarde + Vergelijk/Filter knoppen) ── */
+  /* Gsm: titel links, kleine ronde icoonknoppen (Vergelijk/Filter) rechtsboven */
   .overzicht-portfolio-header {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 16px !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  .overzicht-portfolio-header > div:first-child {
+    flex: 1;
+    min-width: 0;
   }
   .overzicht-portfolio-actions {
-    width: 100%;
-  }
-  .overzicht-portfolio-actions .btn {
-    flex: 1;
-    justify-content: center;
+    width: auto;
+    flex-shrink: 0;
   }
 
   /* ── Beleggingen: tabelrijen → gestapelde kaartjes op mobiel ── */

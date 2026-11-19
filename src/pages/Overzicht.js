@@ -1357,14 +1357,26 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 )}
               </div>
             </div>
-            <div className="overzicht-portfolio-actions" style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setVergelijkOpen(true)}>
-                <GitCompare size={15} /> {t('ov_vergelijk')}
-              </button>
-              <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setFilterOpen(true)}>
-                <SlidersHorizontal size={15} /> {t('ov_filter')}
-              </button>
-            </div>
+            {/* Gsm: ronde icoonknoppen rechtsboven (namen als tooltip/voorlezer);
+                een stipje toont dat er een filter actief is. */}
+            {(() => {
+              const filterActief = filterType !== 'alle' || filterSymbolen.length > 0 || filterBezit !== 'inbezit';
+              const icoonKnop = { position: 'relative', width: 40, height: 40, padding: 0, borderRadius: '50%', justifyContent: 'center', flexShrink: 0 };
+              const stip = <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', border: '2px solid var(--bg-white)' }} />;
+              return (
+                <div className="overzicht-portfolio-actions" style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-secondary" title={t('ov_vergelijk')} aria-label={t('ov_vergelijk')}
+                    style={isMobielScherm ? icoonKnop : { fontSize: 13 }} onClick={() => setVergelijkOpen(true)}>
+                    <GitCompare size={isMobielScherm ? 18 : 15} />{!isMobielScherm && <> {t('ov_vergelijk')}</>}
+                  </button>
+                  <button className="btn btn-secondary" title={t('ov_filter')} aria-label={t('ov_filter')}
+                    style={isMobielScherm ? icoonKnop : { fontSize: 13, position: 'relative' }} onClick={() => setFilterOpen(true)}>
+                    <SlidersHorizontal size={isMobielScherm ? 18 : 15} />{!isMobielScherm && <> {t('ov_filter')}</>}
+                    {filterActief && stip}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
