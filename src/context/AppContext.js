@@ -668,14 +668,18 @@ export function AppProvider({ children, supabaseGebruiker }) {
     .map(b => `${b.symbol}@${naarIsoDatum(b.datum) || ''}`).sort().join(',');
   useEffect(() => {
     const vroegstePerSymbool = {};
+    // Positie zonder aankoopdatum: vroeger werd die hier overgeslagen (en
+    // telden haar dividenden nergens mee, terwijl de dividendpagina ze wel
+    // toonde). Nu halen we dan 3 jaar geschiedenis op.
+    const standaardStart = new Date(Date.now() - 3 * 365 * 86400000).toISOString().slice(0, 10);
     [...beleggingen, ...(verkochteBeleggingen || [])].forEach(b => {
-      const d = naarIsoDatum(b.datum);
-      if (!b.symbol || !d) return;
+      if (!b.symbol) return;
+      const d = naarIsoDatum(b.datum) || standaardStart;
       if (!vroegstePerSymbool[b.symbol] || d < vroegstePerSymbool[b.symbol]) vroegstePerSymbool[b.symbol] = d;
     });
     const vandaag = new Date().toISOString().slice(0, 10);
     Object.entries(vroegstePerSymbool).forEach(async ([sym, van]) => {
-      const cacheKey = `kapitas_divhist_${sym}`;
+      const cacheKey = `kapitas_divhist2_${sym}`; // v2: oude (mogelijk foute) resultaten negeren
       const normaliseer = (data) => (Array.isArray(data) ? data : [])
         .map(d => ({ ex: naarIsoDatum(d.exDate || d.date || d.ex), betaal: naarIsoDatum(d.paymentDate || d.betaal || d.exDate || d.date || d.ex), bedrag: parseFloat(d.amount || d.adjDividend || d.bedrag || 0), munt: d.currency || d.munt || null }))
         .filter(d => d.ex && d.bedrag > 0);

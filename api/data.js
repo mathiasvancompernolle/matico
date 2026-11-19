@@ -1768,9 +1768,11 @@ module.exports = async function handler(req, res) {
         }
       } catch (e) {}
 
-      // Fallback: FMP dividend history
-      try {
-        const basis = symbol.split('.')[0];
+      // Fallback: FMP dividend history — enkel voor Amerikaanse symbolen
+      // (zonder beurssuffix). Voor bv. PRX.AS zou FMP op "PRX" zoeken, wat een
+      // ander (Amerikaans) bedrijf kan zijn met andere dividenden.
+      if (!symbol.includes('.')) try {
+        const basis = symbol;
         const r = await fetch(`https://financialmodelingprep.com/api/v3/historical/stock_dividend/${basis}?limit=20&apikey=${FMP_KEY}`);
         const d = await r.json();
         const hist = (d?.historical || []).filter(h => {
