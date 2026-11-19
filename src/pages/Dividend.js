@@ -515,26 +515,42 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
               </div>
             </div>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Ontvangen ({jaar})</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Ontvangen in {jaar} ({modus})</div>
               <div style={{ fontSize: 24, fontWeight: 700 }}>€{fmt2(ontvangen)}</div>
               {geschat > 0.005 && (
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                   waarvan €{fmt2(geschat)} geschat (geen gegevens van de bron; telt niet mee in de grafieken)
                 </div>
               )}
-              {uitsplitsing && uitsplitsing.bruto > 0.005 && (
-                <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 3, columnGap: 12, maxWidth: 340 }}>
-                  <span>Bruto</span><span style={{ textAlign: 'right' }}>€{fmt2(uitsplitsing.bruto)}</span>
-                  <span>Buitenlandse bronheffing</span><span style={{ textAlign: 'right', color: uitsplitsing.bron > 0.005 ? '#ef4444' : 'inherit' }}>{uitsplitsing.bron > 0.005 ? '-' : ''}€{fmt2(uitsplitsing.bron)}</span>
-                  <span>Belgische roerende voorheffing (30%)</span><span style={{ textAlign: 'right', color: '#ef4444' }}>-€{fmt2(uitsplitsing.rv)}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', borderTop: '1px solid var(--border-light)', paddingTop: 3 }}>Netto</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right', borderTop: '1px solid var(--border-light)', paddingTop: 3 }}>€{fmt2(uitsplitsing.netto)}</span>
-                </div>
-              )}
+              {uitsplitsing && uitsplitsing.bruto > 0.005 && (() => {
+                // Van bruto naar netto, als nette "rekensom" in een zacht kader
+                const rij = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, padding: '5px 0' };
+                const bedrag = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' };
+                return (
+                  <div style={{ marginTop: 14, padding: '8px 14px', background: 'var(--bg)', borderRadius: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
+                    <div style={rij}>
+                      <span>Bruto dividend</span>
+                      <span style={{ ...bedrag, color: 'var(--text-primary)' }}>€{fmt2(uitsplitsing.bruto)}</span>
+                    </div>
+                    <div style={rij}>
+                      <span>Buitenlandse bronheffing</span>
+                      <span style={bedrag}>{uitsplitsing.bron > 0.005 ? `− €${fmt2(uitsplitsing.bron)}` : '€0,00'}</span>
+                    </div>
+                    <div style={rij}>
+                      <span>Roerende voorheffing (30%)</span>
+                      <span style={bedrag}>− €{fmt2(uitsplitsing.rv)}</span>
+                    </div>
+                    <div style={{ ...rij, borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 9, fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <span>Netto ontvangen</span>
+                      <span style={bedrag}>€{fmt2(uitsplitsing.netto)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
-            <div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Totaal verwacht dit jaar</div>
-              <div style={{ fontSize: 16, fontWeight: 600 }}>€{fmt2(verwacht)}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, padding: '0 14px', fontSize: 13 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Totaal verwacht dit jaar ({modus})</span>
+              <span style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>€{fmt2(verwacht)}</span>
             </div>
           </div>
         </div>
