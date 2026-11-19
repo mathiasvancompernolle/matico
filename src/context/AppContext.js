@@ -657,9 +657,11 @@ export function AppProvider({ children, supabaseGebruiker }) {
   // Aankoopbedrag in euro, aan de wisselkoers van de aankoopdag
   const kostEur = (b, aantal = b.aantal) =>
     ((b.kostprijs || 0) * (aantal || 0) + (b.transactiekosten || 0)) * fxOp(b.munt || 'EUR', b.datum);
-  // Verkoopopbrengst in euro, aan de wisselkoers van de verkoopdag
+  // Netto verkoopopbrengst in euro (na transactiekosten en beurstaks bij
+  // verkoop), aan de wisselkoers van de verkoopdag
   const verkoopEur = (b) =>
-    (b.verkoopkoers || b.kostprijs || 0) * (b.aantalVerkocht || b.aantal || 1) * fxOp(b.verkoopMunt || b.munt || 'EUR', b.verkoopdatum);
+    ((b.verkoopkoers || b.kostprijs || 0) * (b.aantalVerkocht || b.aantal || 1) - (b.verkoopkosten || 0) - (b.tob || 0))
+    * fxOp(b.verkoopMunt || b.munt || 'EUR', b.verkoopdatum);
 
   // ── Dividendgeschiedenis per symbool (voor winst/rendement-grafieken) ──
   // Per symbool alle uitkeringen vanaf de vroegste aankoop tot vandaag,

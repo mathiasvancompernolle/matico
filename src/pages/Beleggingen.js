@@ -208,9 +208,22 @@ const menuItemStyle = {
   transition: 'background 0.1s'
 };
 
+// ── Beurstaks (TOB) bij verkoop, België ──────────────────────────
+// Tarief en maximum per transactie (in euro).
+const TOB_TARIEVEN = [
+  { id: '0.35', tarief: 0.0035, max: 1600, label: '0,35% · aandelen, ETF buiten de EER (max. €1.600)' },
+  { id: '0.12', tarief: 0.0012, max: 1300, label: '0,12% · ETF geregistreerd in de EER, obligaties (max. €1.300)' },
+  { id: '1.32', tarief: 0.0132, max: 4000, label: '1,32% · kapitaliserend fonds geregistreerd in België (max. €4.000)' },
+  { id: '0', tarief: 0, max: 0, label: '0% · geen beurstaks (bv. crypto)' },
+];
+const standaardTob = (type) => (type === 'crypto' ? '0' : type === 'etf' ? '0.12' : '0.35');
+
 // ── Verkoop Registreren Modal ────────────────────────────────────
 function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
-  const { t } = useApp();
+  const { t, getMuntFactor } = useApp();
+  const [kosten, setKosten] = useState('');          // transactiekosten broker
+  const [tobId, setTobId] = useState('0.35');
+  const [tobHandmatig, setTobHandmatig] = useState(null); // zelf aangepast bedrag
   const [stap, setStap] = useState('kiezen'); // 'kiezen' | 'invullen'
   const [zoek, setZoek] = useState('');
   const [gekozen, setGekozen] = useState(null);
@@ -232,6 +245,9 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
         koers,
         munt
       });
+      setKosten('');
+      setTobId(standaardTob(gekozen.type));
+      setTobHandmatig(null);
       setStap('invullen');
     }
   }, [gekozen]);
@@ -274,6 +290,18 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
     setHistorischLoading(false);
   };
 
+  // Bruto verkoopbedrag, beurstaks en netto ontvangen (in de munt van de verkoop)
+  const brutoBedrag = beperkteInfoVerkoop
+    ? (parseFloat(form.verkoopbedrag) || 0)
+    : (parseFloat(form.aantal) || 0) * (parseFloat(form.koers) || 0);
+  const tobInfo = TOB_TARIEVEN.find(x => x.id === tobId) || TOB_TARIEVEN[0];
+  const naarEur = getMuntFactor ? getMuntFactor(form.munt || 'EUR') : 1;
+  const tobAuto = Math.round(Math.min(brutoBedrag * tobInfo.tarief, tobInfo.max / (naarEur || 1)) * 100) / 100;
+  const tobBedrag = tobHandmatig != null && tobHandmatig !== '' ? (parseFloat(tobHandmatig) || 0) : tobAuto;
+  const kostenBedrag = parseFloat(kosten) || 0;
+  const nettoBedrag = brutoBedrag - kostenBedrag - tobBedrag;
+  const extraKosten = { verkoopkosten: kostenBedrag, tob: tobBedrag };
+
   const bevestig = async () => {
     if (beperkteInfoVerkoop && aantalOnbekend) {
       // Aantal is niet gekend — enkel verkoopbedrag + datum. Net als bij
@@ -299,6 +327,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
         aantal: geschatAantal,
         koers: verkoopbedrag / geschatAantal,
         munt: form.munt,
+        ...extraKosten,
       });
       onClose();
       return;
@@ -311,6 +340,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
         aantal: aantalGetal,
         koers: parseFloat(form.verkoopbedrag) / aantalGetal,
         munt: form.munt,
+        ...extraKosten,
       });
       onClose();
       return;
@@ -320,7 +350,8 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
       datum: form.datum,
       aantal: parseFloat(form.aantal),
       koers: parseFloat(form.koers),
-      munt: form.munt
+      munt: form.munt,
+      ...extraKosten,
     });
     onClose();
   };
@@ -332,7 +363,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
     }} onClick={onClose}>
       <div style={{
         background: 'var(--bg-white)', borderRadius: 16, padding: '32px',
-        width: 520, maxWidth: '90vw', boxShadow: 'var(--shadow-lg)', position: 'relative'
+        width: 520, maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)', position: 'relative'
       }} onClick={e => e.stopPropagation()}>
         {/* Sluitknop */}
         <button onClick={onClose} style={{
@@ -502,6 +533,50 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                   )}
                 </div>
               )}
+
+              {/* Transactiekosten + beurstaks */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Transactiekosten</label>
+                  <input type="number" min="0" step="0.01" value={kosten} placeholder="0,00"
+                    onChange={e => setKosten(e.target.value)} style={inputStyle} />
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>Wat je broker aanrekent, in {form.munt}.</p>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Beurstaks (TOB)</label>
+                  <input type="number" min="0" step="0.01"
+                    value={tobHandmatig != null ? tobHandmatig : tobAuto.toFixed(2)}
+                    onChange={e => setTobHandmatig(e.target.value)} style={inputStyle} />
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                    {tobHandmatig != null
+                      ? <>Zelf aangepast · <button type="button" onClick={() => setTobHandmatig(null)} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>automatisch berekenen</button></>
+                      : 'Automatisch berekend, pas aan indien nodig.'}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Tarief beurstaks</label>
+                <select value={tobId} onChange={e => { setTobId(e.target.value); setTobHandmatig(null); }} style={inputStyle}>
+                  {TOB_TARIEVEN.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
+                </select>
+              </div>
+
+              {/* Samenvatting */}
+              {brutoBedrag > 0 && (() => {
+                const ms = form.munt === 'USD' ? '$' : form.munt === 'GBP' ? '£' : '€';
+                const f2 = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const rij = { display: 'flex', justifyContent: 'space-between', gap: 16, padding: '4px 0' };
+                return (
+                  <div style={{ padding: '8px 14px', background: 'var(--bg)', borderRadius: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
+                    <div style={rij}><span>Verkoopbedrag</span><span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{ms}{f2(brutoBedrag)}</span></div>
+                    <div style={rij}><span>Transactiekosten</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>− {ms}{f2(kostenBedrag)}</span></div>
+                    <div style={rij}><span>Beurstaks (TOB)</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>− {ms}{f2(tobBedrag)}</span></div>
+                    <div style={{ ...rij, borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 8, fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <span>Netto ontvangen</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{ms}{f2(nettoBedrag)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24 }}>
               <button onClick={() => setStap('kiezen')} style={{
@@ -609,7 +684,11 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
       aantalVerkocht: verkoopdata.aantal,
       verkoopkoers: verkoopdata.koers,
       verkoopMunt: verkoopdata.munt,
+      // Kosten bij verkoop (in de munt van de verkoop): broker + beurstaks
+      verkoopkosten: verkoopdata.verkoopkosten || 0,
+      tob: verkoopdata.tob || 0,
       winstverlies: (verkoopdata.koers - belegging.kostprijs) * verkoopdata.aantal - kostenVerkochtDeel
+        - (verkoopdata.verkoopkosten || 0) - (verkoopdata.tob || 0)
     };
     setVerkochteBeleggingen(prev => [...(prev || []), verkochte]);
     // Verwijder (deels) uit actieve beleggingen
