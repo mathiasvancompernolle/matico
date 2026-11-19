@@ -6,6 +6,7 @@ import SidebarToggleKnop from '../components/SidebarToggleKnop';
 import BeleggingDetail from '../components/BeleggingDetail';
 
 import { getal } from '../utils/getal';
+import { handeldeVandaag, leesDatum } from '../utils/handelsdag';
 const TIJDPERKEN = ['1D', '1W', '1M', '1J', 'YTD', 'Laatste', 'Totaal'];
 const VERGELIJK_OPTIES = [
   { id: 'geen', label: 'Geen vergelijking' },
@@ -42,6 +43,16 @@ function getApiTijdperk(tijdperk, beleggingen) {
     return 'Max';
   }
   return tijdperk;
+}
+
+// Startdatum van 1W/1M/1J — dezelfde als in AppContext (periodeKoersen) en
+// in de grafiek, zodat cijfers en grafiek over dezelfde periode gaan.
+function periodeStart(tijdperk) {
+  const nu = new Date();
+  if (tijdperk === '1W') return new Date(nu - 7 * 86400000);
+  if (tijdperk === '1M') return new Date(nu.getFullYear(), nu.getMonth() - 1, nu.getDate());
+  if (tijdperk === '1J') return new Date(nu.getFullYear() - 1, nu.getMonth(), nu.getDate());
+  return null;
 }
 
 // Bereken begindatum voor "Laatste" filtering
@@ -253,33 +264,9 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
   // ── Check of dagpercentage getoond mag worden ──
   // Toon percentage als: beurs open OF beurs was vandaag open (tot middernacht)
-  // Toon NIET als: weekend of nieuwe dag begonnen zonder dat beurs al open was
-  const isBeursOpen = (munt, type) => {
-    // Crypto handelt 24/7, het hele jaar door — geen "beurs gesloten"-concept.
-    if (type === 'crypto') return true;
-
-    const nu = new Date();
-    // Gebruik UTC-dag (consistent met de UTC-tijdscheck hieronder), anders loopt
-    // dit rond middernacht lokale tijd (CEST = UTC+2) uit elkaar.
-    const dag = nu.getUTCDay(); // 0=zo, 6=za
-    if (dag === 0 || dag === 6) return false; // weekend: nooit tonen
-
-    // Doordeweeks: toon percentage van vandaag tot middernacht
-    // (beurs was vandaag open, resultaat mag zichtbaar blijven)
-    const uurUTC = nu.getUTCHours();
-    const minUTC = nu.getUTCMinutes();
-    const tijdUTC = uurUTC * 60 + minUTC;
-
-    if (munt === 'EUR') {
-      // Xetra: 08:00-17:30 CET = 07:00-16:30 UTC
-      // Toon van opening tot middernacht (00:00 UTC)
-      return tijdUTC >= 7 * 60; // vanaf opening tot einde dag
-    } else {
-      // NYSE/NASDAQ: 09:30-16:00 ET = 13:30-20:00 UTC
-      // Toon van opening tot middernacht (00:00 UTC)
-      return tijdUTC >= 13 * 60 + 30; // vanaf opening tot einde dag
-    }
-  };
+  // Toon NIET als: weekend, feestdag of nieuwe dag zonder handel. We kijken
+  // naar het tijdstip van de koers zelf, niet naar de klok (zie handelsdag.js).
+  const isBeursOpen = (b) => handeldeVandaag(koersen[b.symbol], b.type, b.munt);
   const [tijdperk, setTijdperk] = useState('1D');
   // Elke 5 minuten een nieuwe "tick" zodat de 1D-grafiek vers blijft terwijl
   // iemand het scherm open laat staan — zonder dit bleef de intraday-lijn
@@ -378,7 +365,14 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
         });
         setPortfolioVorigeSlot(portfolioSlotVolledig && beleggingVoorGrafiek.length > 0 ? Math.round(portfolioSlot * 100) / 100 : null);
 
-        const iemandOpen = beleggingVoorGrafiek.some(b => isBeursOpen(b.munt || 'EUR', b.type));
+        // De API geeft enkel nog punten van vandaag terug: heeft niemand
+        // punten, dan is er vandaag nog op geen enkele beurs gehandeld.
+        const iemandOpen = Object.keys(intradayData).length > 0;
+
+        // Koers van een positie vóór haar eerste punt van vandaag (bv. een
+        // Amerikaans aandeel om 11u): de slotkoers van de vorige handelsdag,
+        // niet de huidige koers.
+        const startKoers = (b) => vorigeSlotPerSymbool[b.symbol] ?? koersenRef.current[b.symbol]?.pc ?? koersenRef.current[b.symbol]?.c ?? b.kostprijs;
 
         if (Object.keys(intradayData).length > 0) {
           // Combineer de reeksen op WERKELIJK tijdstip, niet op index.
@@ -418,12 +412,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 const exact = reeks.find(p => tijdVanLabel(p.label) === tMin);
                 if (exact) laatsteKoersPerSymbool[b.symbol] = exact.prijs;
                 const koersNu = laatsteKoersPerSymbool[b.symbol];
-                if (koersNu != null) {
-                  totaalWaarde += koersNu * b.aantal * factor;
-                } else {
-                  const koers = koersenRef.current[b.symbol];
-                  totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
-                }
+                totaalWaarde += (koersNu != null ? koersNu : startKoers(b)) * b.aantal * factor;
               } else {
                 const koers = koersenRef.current[b.symbol];
                 totaalWaarde += (koers ? koers.c : b.kostprijs) * b.aantal * factor;
@@ -446,46 +435,21 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
           return;
         }
 
-        // Terugval: geen intraday-data beschikbaar (bv. buiten handelsuren
-        // zonder recente sessie) — vorige slotkoers + huidige koers.
-        const nu = new Date();
-        const dag = nu.getDay();
-        const maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-
-        const vorigeD = new Date(nu);
-        if (dag === 1) vorigeD.setDate(nu.getDate() - 3);
-        else if (dag === 0) vorigeD.setDate(nu.getDate() - 2);
-        else vorigeD.setDate(nu.getDate() - 1);
-        const vorigeLabel = `${vorigeD.getDate()} ${maanden[vorigeD.getMonth()]}`;
-
-        const slotTs = Math.floor(new Date(vorigeD.getFullYear(), vorigeD.getMonth(), vorigeD.getDate()).getTime() / 1000);
-        const slotTotTs = slotTs + 86400;
-        const slotKoersen = {};
-        await Promise.all(beleggingVoorGrafiek.map(async (b) => {
-          const cacheKey = `matico_slot_${b.symbol}_${vorigeD.toDateString()}`;
-          try {
-            const cached = localStorage.getItem(cacheKey);
-            if (cached) { slotKoersen[b.symbol] = parseFloat(cached); return; }
-            const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(b.symbol)}&van=${slotTs}&tot=${slotTotTs}&resolutie=D`);
-            const data = await res.json();
-            if (data?.s === 'ok' && data?.c?.length > 0) {
-              localStorage.setItem(cacheKey, String(data.c[data.c.length - 1]));
-              slotKoersen[b.symbol] = data.c[data.c.length - 1];
-            }
-          } catch (e) {}
-        }));
-
-        let gisterenWaarde = 0, nuWaarde = 0;
+        // Vandaag nog nergens gehandeld (vóór 9u, weekend, feestdag): een
+        // vlakke grijze lijn op de laatste waarde over het beursvenster —
+        // geen "gisteren → nu"-lijn meer, want dit is de grafiek van vandaag.
+        let laatsteWaarde = 0;
         beleggingVoorGrafiek.forEach(b => {
           const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
-          const koers = koersenRef.current[b.symbol];
-          gisterenWaarde += (slotKoersen[b.symbol] || koers?.pc || b.kostprijs) * b.aantal * factor;
-          nuWaarde += (koers?.c || b.kostprijs) * b.aantal * factor;
+          const k = vorigeSlotPerSymbool[b.symbol] ?? koersenRef.current[b.symbol]?.c ?? b.kostprijs;
+          laatsteWaarde += k * b.aantal * factor;
         });
-
+        const opUur = (u) => { const d = new Date(); d.setHours(u, 0, 0, 0); return d.getTime(); };
+        const vandaagIso = new Date().toISOString().split('T')[0];
+        const w = Math.round(laatsteWaarde * 100) / 100;
         setGrafiekData([
-          { label: vorigeLabel, tijd: vorigeD.getTime(), waarde: Math.round(gisterenWaarde * 100) / 100, gesloten: !iemandOpen },
-          { label: 'Nu', tijd: nu.getTime(), waarde: Math.round((iemandOpen ? nuWaarde : gisterenWaarde) * 100) / 100, gesloten: !iemandOpen }
+          { label: '09:00', datum: vandaagIso, tijd: opUur(9), waarde: w, gesloten: true },
+          { label: '21:50', datum: vandaagIso, tijd: opUur(21) + 50 * 60000, waarde: w, gesloten: true },
         ]);
         setGrafiekLoading(false);
         return;
@@ -737,7 +701,10 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       // voegen we het zelf toe met de actuele koersen.
       const vandaagStr = new Date().toISOString().split('T')[0];
       const laatstePunt = gecombineerd[gecombineerd.length - 1];
-      if (!laatstePunt || laatstePunt.datum !== vandaagStr) {
+      // Enkel als er vandaag ook echt gehandeld werd — anders (vóór 9u,
+      // feestdag) zou dit een "vandaag"-punt met de koersen van gisteren zijn.
+      const vandaagGehandeld = beleggingVoorGrafiek.some(b => handeldeVandaag(koersenRef.current[b.symbol], b.type, b.munt));
+      if (vandaagGehandeld && (!laatstePunt || laatstePunt.datum !== vandaagStr)) {
         let liveWaarde = 0;
         beleggingVoorGrafiek.forEach(b => {
           const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
@@ -989,19 +956,22 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
     return { xTicks: ticks, xTickFormatter: (t) => labelPerTijd.get(t) ?? '' };
   })();
-  const beursOpenPortfolio = beleggingen.some(b => isBeursOpen(b.munt || 'EUR', b.type));
+  const beursOpenPortfolio = beleggingen.some(b => isBeursOpen(b));
 
   // Voor 1D: bereken winst alleen op basis van beurzen die vandaag al open waren
   const dagWinst1D = beleggingen.reduce((s, b) => {
-    if (!isBeursOpen(b.munt || 'EUR', b.type)) return s; // sla gesloten beurzen over
+    if (!isBeursOpen(b)) return s; // sla gesloten beurzen over
     const koers = koersen[b.symbol];
     if (!koers) return s;
     const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
     return s + (koers.c - koers.pc) * b.aantal * factor;
   }, 0);
 
+  // Noemer: de hele portefeuille bij het slot van gisteren — niet enkel de
+  // posities waarvan de beurs al open is. Anders toonde bv. +2% op je
+  // Europese helft om 11u als "+2% vandaag" voor de hele portefeuille.
+  // (Koersen van vorige handelsdagen hebben pc = c, zie handelsdag.js.)
   const dagWaarde1D = beleggingen.reduce((s, b) => {
-    if (!isBeursOpen(b.munt || 'EUR', b.type)) return s;
     const koers = koersen[b.symbol];
     const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
     return s + (koers ? koers.pc : b.kostprijs) * b.aantal * factor;
@@ -1014,15 +984,13 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
   const periodeWinst = (() => {
     if (tijdperk === '1D') return beursOpenPortfolio ? dagWinst1D : 0;
 
-    const nu = new Date();
-    const periodeMs = { '1W': 7, '1M': 30, '1J': 365, 'YTD': null, 'Laatste': null, 'Totaal': null }[tijdperk];
     const nuJaar = new Date().getFullYear();
 
     let startDatum;
     if (tijdperk === 'YTD') startDatum = new Date(`${nuJaar}-01-01`);
     else if (tijdperk === 'Laatste') return grafiekData.length > 1 ? grafiekData[grafiekData.length-1].waarde - grafiekData[0].waarde : 0;
     else if (tijdperk === 'Totaal') return filterBezit === 'inbezit' ? portfolioWinstVerlies : (portfolioWinstVerliesInclVerkocht || portfolioWinstVerlies);
-    else startDatum = new Date(nu - periodeMs * 86400000);
+    else startDatum = periodeStart(tijdperk);
 
     const pK = tijdperk === 'YTD' ? ytdKoersen : (periodeKoersen[tijdperk] || {});
 
@@ -1048,7 +1016,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     // Inclusief verkochte effecten
     if (filterBezit !== 'inbezit') {
       (verkochteBeleggingen || []).forEach(b => {
-        const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
+        const vd = leesDatum(b.verkoopdatum);
         if (!vd || vd < startDatum) return; // verkoop was voor deze periode
         const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
@@ -1078,21 +1046,27 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
       let noemer = 0;
       beleggingen.forEach(b => {
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
+        const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
         if (aankoopDatum && aankoopDatum <= eersteJan) {
-          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
           const prijsStart = ytdKoersen[b.symbol];
           if (prijsStart && prijsStart > 0) noemer += prijsStart * b.aantal * factor;
+        } else {
+          // Dit jaar gekocht: de winst erop zit in de teller, dus de inleg
+          // hoort in de noemer.
+          noemer += b.kostprijs * b.aantal * factor;
         }
       });
       if (filterBezit !== 'inbezit') {
         (verkochteBeleggingen || []).forEach(b => {
-          const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
+          const vd = leesDatum(b.verkoopdatum);
           if (!vd || vd.getFullYear() !== nuJaar) return;
           const aankoopDatum = b.datum ? new Date(b.datum) : null;
+          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
           if (aankoopDatum && aankoopDatum <= eersteJan) {
-            const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
             const prijsStart = ytdKoersen[b.symbol];
             if (prijsStart && prijsStart > 0) noemer += prijsStart * (b.aantalVerkocht || b.aantal || 1) * factor;
+          } else {
+            noemer += b.kostprijs * (b.aantalVerkocht || b.aantal || 1) * factor;
           }
         });
       }
@@ -1105,19 +1079,23 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     // 1W, 1M, 1J: percentage = periodeWinst / startwaarde actieve posities
     // Noemer verandert NIET bij inclusief/exclusief — alleen de teller (periodeWinst) verandert
     if (['1W', '1M', '1J'].includes(tijdperk)) {
-      const nu = new Date();
-      const periodeMs = { '1W': 7, '1M': 30, '1J': 365 }[tijdperk] * 86400000;
-      const startDatum = new Date(nu - periodeMs);
+      const startDatum = periodeStart(tijdperk);
       const pK = periodeKoersen[tijdperk] || {};
       let startWaarde = 0;
 
-      // Altijd alleen actieve posities voor de startwaarde (noemer)
+      // Noemer = wat er in de periode "aan het werk" stond: de startwaarde
+      // van wat je al had, plus wat je tijdens de periode bijkocht. Vroeger
+      // telde de winst op nieuwe aankopen wél mee in de teller maar hun
+      // inleg niet in de noemer — een grote aankoop deze week gaf dan een
+      // veel te hoog percentage.
       beleggingen.forEach(b => {
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
+        const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
         if (aankoopDatum && aankoopDatum <= startDatum) {
-          const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : ((b.munt || 'EUR') === 'USD' ? 0.865 : 1);
           const prijsStart = pK[b.symbol];
           if (prijsStart && prijsStart > 0) startWaarde += prijsStart * b.aantal * factor;
+        } else {
+          startWaarde += b.kostprijs * b.aantal * factor;
         }
       });
 
@@ -1590,7 +1568,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               const kostprijs = (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * factor;
               const winstTotaal = huidigeWaarde - kostprijs;
               const winstTotaalPct = kostprijs > 0 ? (winstTotaal / kostprijs) * 100 : 0;
-              const beursOpen = isBeursOpen(b.munt || 'EUR', b.type);
+              const beursOpen = isBeursOpen(b);
               const dagVRaw = koers ? (koers.c - koers.pc) * b.aantal * factor : 0;
               const dagVPctRaw = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
               const dagV = beursOpen ? dagVRaw : 0;

@@ -10,9 +10,10 @@ function beursIsOpen() {
   const nu = new Date();
   const dag = nu.getUTCDay(); // 0=zo, 6=za
   if (dag === 0 || dag === 6) return false;
-  // Europese beurzen: 07:00-17:30 UTC / US: 13:30-20:00 UTC
+  // Europese beurzen: 07:00-16:30 UTC (zomer) / 08:00-16:30 UTC (winter);
+  // US: 13:30-20:00 UTC (zomer) / 14:30-21:00 UTC (winter)
   const uur = nu.getUTCHours();
-  return (uur >= 7 && uur < 20); // ruime range: ergens een beurs open
+  return (uur >= 7 && uur < 21); // ruime range: ergens een beurs open
 }
 
 const TTL = {
@@ -745,6 +746,7 @@ module.exports = async function handler(req, res) {
                 h: vandaagCloses.length > 0 ? Math.max(...vandaagCloses) : huidigeKoers,
                 l: vandaagCloses.length > 0 ? Math.min(...vandaagCloses) : huidigeKoers,
                 v: meta.regularMarketVolume || 0,
+                t: Math.floor(Date.now() / 1000),
               };
             }
           }
@@ -773,6 +775,7 @@ module.exports = async function handler(req, res) {
                 h: meta.regularMarketDayHigh || huidigeKoers,
                 l: meta.regularMarketDayLow || huidigeKoers,
                 v: meta.regularMarketVolume || 0,
+                t: meta.regularMarketTime || null,
               };
             }
           }
@@ -802,6 +805,7 @@ module.exports = async function handler(req, res) {
             h: meta.regularMarketDayHigh || meta.regularMarketPrice,
             l: meta.regularMarketDayLow || meta.regularMarketPrice,
             v: meta.regularMarketVolume || 0,
+            t: meta.regularMarketTime || null,
           };
         }
       } catch (e) {}
@@ -1329,12 +1333,30 @@ module.exports = async function handler(req, res) {
 
         if (result?.timestamp?.length > 0) {
           const timestamps = result.timestamp;
-          const closes = result.indicators?.adjclose?.[0]?.adjclose || result.indicators?.quote?.[0]?.close || [];
+          // Gewone slotkoersen, niet de voor dividend 'aangepaste' (adjclose):
+          // die liggen in het verleden lager dan de echte koers, waardoor de
+          // portefeuillegrafiek te laag begon en meer winst toonde dan je
+          // werkelijk maakte (en niet strookte met de cijfers bovenaan).
+          // Splitsingen zitten al in 'close' verwerkt.
+          const closes = result.indicators?.quote?.[0]?.close || result.indicators?.adjclose?.[0]?.adjclose || [];
 
           // Voor 1D: volledige intraday-reeks (per minuut), niet enkel 2 punten
           if (tijdperk === '1D') {
+            // Enkel de handelsdag van VANDAAG (Belgische tijd). Yahoo's
+            // range=1d geeft vóór de opening nog de sessie van gisteren terug;
+            // die werd dan in de 1D-grafiek van vandaag getekend.
+            const vandaagBrussel = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Brussels' });
+            const vanVandaag = (t) => isCrypto1D || new Date(t * 1000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Brussels' }) === vandaagBrussel;
+            const heeftVandaag = timestamps.some((t, i) => closes[i] != null && vanVandaag(t));
+            if (!heeftVandaag) {
+              // Nog geen sessie vandaag: de 'vorige slotkoers' is gewoon de
+              // laatste koers.
+              const geldige = closes.filter(v => v != null);
+              const laatste = result.meta?.regularMarketPrice || geldige[geldige.length - 1] || null;
+              return res.json({ punten: [], vorigeSlot: laatste ? Math.round(laatste * 100) / 100 : null, geenSessieVandaag: true });
+            }
             const allePunten = timestamps.map((t, i) => {
-              if (closes[i] == null) return null;
+              if (closes[i] == null || !vanVandaag(t)) return null;
               const datum = new Date(t * 1000);
               return {
                 label: datum.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' }),
@@ -1351,26 +1373,8 @@ module.exports = async function handler(req, res) {
               .filter((p, i) => p._minuut % 10 === 0 || i === allePunten.length - 1)
               .map(({ _minuut, ...rest }) => rest);
 
-            if (punten.length > 1) {
-              const vorigeSlot = result.meta?.chartPreviousClose || result.meta?.previousClose || null;
-              return res.json({ punten, vorigeSlot: vorigeSlot ? Math.round(vorigeSlot * 100) / 100 : null });
-            }
-
-            // Terugval als er geen minuutdata beschikbaar was (bv. buiten
-            // handelsuren zonder recente sessie): vorige slotkoers + nu.
-            const geldigeCloses = closes.filter(v => v != null);
-            const vorigeSlot = geldigeCloses[geldigeCloses.length - 2] || geldigeCloses[geldigeCloses.length - 1];
-            const huidig = result.meta.regularMarketPrice || geldigeCloses[geldigeCloses.length - 1];
-            const vorigeTs = timestamps[timestamps.length - 2] || timestamps[timestamps.length - 1];
-            const vorigeDatum = new Date(vorigeTs * 1000);
-            const maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-            const vorigeLabel = `${vorigeDatum.getDate()} ${maanden[vorigeDatum.getMonth()]}`;
-            if (vorigeSlot && huidig) {
-              return res.json({ punten: [
-                { label: vorigeLabel, datum: vorigeDatum.toISOString().split('T')[0], prijs: Math.round(vorigeSlot * 100) / 100 },
-                { label: 'Nu', datum: new Date().toISOString().split('T')[0], prijs: Math.round(huidig * 100) / 100 }
-              ], vorigeSlot: Math.round(vorigeSlot * 100) / 100 });
-            }
+            const vorigeSlot = result.meta?.chartPreviousClose || result.meta?.previousClose || null;
+            return res.json({ punten, vorigeSlot: vorigeSlot ? Math.round(vorigeSlot * 100) / 100 : null });
           }
 
           // Andere tijdperken: volledige reeks
@@ -1396,6 +1400,11 @@ module.exports = async function handler(req, res) {
       try {
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
         const d = await r.json();
+        if (tijdperk === '1D' && d.c > 0) {
+          // Geen minuutdata: geen "gisteren → nu"-lijn meer in de 1D-grafiek
+          const vandaag = d.t && new Date(d.t * 1000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Brussels' }) === new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Brussels' });
+          return res.json({ punten: [], vorigeSlot: vandaag ? d.pc : d.c, geenSessieVandaag: !vandaag });
+        }
         if (d.c && d.c > 0 && d.pc && d.pc > 0) {
           return res.json({ punten: [
             { label: 'Gisteren', datum: new Date(Date.now() - 86400000).toISOString().split('T')[0], prijs: d.pc },

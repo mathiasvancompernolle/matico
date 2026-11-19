@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { handeldeVandaag } from '../utils/handelsdag';
 import { X, Loader, ExternalLink, Copy, Check } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
@@ -35,16 +36,8 @@ export default function BeleggingDetail({ belegging, onClose }) {
   const muntSym = (belegging.munt || 'EUR') === 'USD' ? '$' : '€';
 
   // Check of beurs open is voor dit aandeel
-  const isBeursOpenNu = () => {
-    if (belegging.type === 'crypto') return true; // crypto handelt 24/7
-    const nu = new Date();
-    const dag = nu.getDay();
-    if (dag === 0 || dag === 6) return false; // weekend
-    const tijdUTC = nu.getUTCHours() * 60 + nu.getUTCMinutes();
-    const munt = belegging.munt || 'EUR';
-    if (munt === 'EUR') return tijdUTC >= 7 * 60;       // Xetra open vanaf 09:00 CET
-    return tijdUTC >= 13 * 60 + 30;                      // NYSE open vanaf 15:30 CET
-  };
+  // (op basis van het tijdstip van de koers, zie utils/handelsdag.js)
+  const isBeursOpenNu = () => handeldeVandaag(koers, belegging.type, belegging.munt);
   const dagToonbaar = isBeursOpenNu(); // toon % doordeweeks van opening tot middernacht
 
   const dagV = dagToonbaar ? dagVRaw : 0;
@@ -64,7 +57,10 @@ export default function BeleggingDetail({ belegging, onClose }) {
           return;
         }
       } catch (e) { console.error('Grafiek fout:', e); }
-      setGrafiekData([{ label: 'Nu', prijs: huidigePrijs }]);
+      // Geen data (bv. 1D vóór de opening): vlakke lijn op de laatste koers
+      setGrafiekData(tijdperk === '1D'
+        ? [{ label: '09:00', prijs: huidigePrijs }, { label: '21:50', prijs: huidigePrijs }]
+        : [{ label: 'Nu', prijs: huidigePrijs }]);
       setGrafiekLoading(false);
     };
     laadGrafiek();

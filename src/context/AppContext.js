@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { vertaal, detecteerBrowserTaal } from '../translations';
 import { supabase } from '../supabaseClient';
+import { normaliseerKoers, normaliseerKoersen, leesDatum } from '../utils/handelsdag';
 
 const AppContext = createContext();
 
@@ -185,7 +186,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
   // Laatst bekende koersen meteen tonen (uit de vorige sessie) i.p.v. een paar
   // seconden de aankoopprijs als "huidige koers" — die gaf foute winst/verlies.
   const [koersen, setKoersen] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('kapitas_laatste_koersen') || '{}'); } catch { return {}; }
+    try { return normaliseerKoersen(JSON.parse(localStorage.getItem('kapitas_laatste_koersen') || '{}')); } catch { return {}; }
   });
   useEffect(() => {
     try { localStorage.setItem('kapitas_laatste_koersen', JSON.stringify(koersen)); } catch (e) {}
@@ -431,7 +432,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
     try {
       const res = await fetch(`/api/data?endpoint=quote&symbol=${encodeURIComponent(symbol)}`);
       const data = await res.json();
-      if (data.c) { setKoersen(prev => ({ ...prev, [symbol]: data })); return data; }
+      if (data.c) { const k = normaliseerKoers(data); setKoersen(prev => ({ ...prev, [symbol]: k })); return k; }
     } catch (e) {}
     return null;
   };
@@ -448,7 +449,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
       const data = await res.json();
       setKoersen(prev => {
         const bijgewerkt = { ...prev };
-        symbolen.forEach(s => { if (data[s]?.c) bijgewerkt[s] = data[s]; });
+        symbolen.forEach(s => { if (data[s]?.c) bijgewerkt[s] = normaliseerKoers(data[s]); });
         return bijgewerkt;
       });
     } catch (e) {}
@@ -690,8 +691,10 @@ export function AppProvider({ children, supabaseGebruiker }) {
     const nu = new Date();
     const periodes = {
       '1W': Math.floor(new Date(nu - 7 * 86400000).getTime() / 1000),
-      '1M': Math.floor(new Date(nu - 30 * 86400000).getTime() / 1000),
-      '1J': Math.floor(new Date(nu - 365 * 86400000).getTime() / 1000),
+      // Zelfde startdatum als de grafiek (kalendermaand/-jaar terug), anders
+      // verschilt het percentage bovenaan van wat de grafiek toont.
+      '1M': Math.floor(new Date(nu.getFullYear(), nu.getMonth() - 1, nu.getDate()).getTime() / 1000),
+      '1J': Math.floor(new Date(nu.getFullYear() - 1, nu.getMonth(), nu.getDate()).getTime() / 1000),
     };
     const alleBel = [...beleggingen, ...(verkochteBeleggingen || [])];
     alleBel.forEach(b => {
@@ -720,13 +723,17 @@ export function AppProvider({ children, supabaseGebruiker }) {
         teller += (prijsNu - prijsStart) * b.aantal * factor;
         noemer += prijsStart * b.aantal * factor;
       } else {
+        // Dit jaar gekocht: winst in de teller, inleg in de noemer (anders
+        // gaf een nieuwe aankoop een te hoog percentage, of 0% als je pas
+        // dit jaar begon).
         teller += (prijsNu - b.kostprijs) * b.aantal * factor;
+        noemer += b.kostprijs * b.aantal * factor;
       }
     });
 
     if (inclVerkocht) {
       (verkochteBeleggingen || []).forEach(b => {
-        const vd = b.verkoopdatum ? new Date(b.verkoopdatum) : null;
+        const vd = leesDatum(b.verkoopdatum);
         if (!vd || vd.getFullYear() !== nuJaar) return;
         const factor = getMuntFactor(b.munt || 'EUR');
         const aankoopDatum = b.datum ? new Date(b.datum) : null;
@@ -739,6 +746,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
           noemer += prijsStart * aantal * factor;
         } else {
           teller += (prijsVerkoop - b.kostprijs) * aantal * factor;
+          noemer += b.kostprijs * aantal * factor;
         }
       });
     }
