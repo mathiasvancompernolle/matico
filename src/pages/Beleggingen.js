@@ -232,7 +232,8 @@ const standaardTob = (b, info) => {
 
 // ── Verkoop Registreren Modal ────────────────────────────────────
 function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
-  const { t, getMuntFactor, profielInfo } = useApp();
+  const { t, getMuntFactor, fxOp, profielInfo } = useApp();
+  const [kostenMunt, setKostenMunt] = useState('EUR'); // munt waarin de broker de kosten aanrekent
   const [kosten, setKosten] = useState('');          // transactiekosten broker
   const [tobId, setTobId] = useState('0.35');
   const [tobHandmatig, setTobHandmatig] = useState(null); // zelf aangepast bedrag
@@ -258,6 +259,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
         munt
       });
       setKosten('');
+      setKostenMunt('EUR');
       setTobId(standaardTob(gekozen, profielInfo?.[gekozen.symbol]));
       setTobHandmatig(null);
       setStap('invullen');
@@ -302,17 +304,25 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
     setHistorischLoading(false);
   };
 
-  // Bruto verkoopbedrag, beurstaks en netto ontvangen (in de munt van de verkoop)
+  // Verkoopbedrag in de munt van het effect; kosten en beurstaks in euro
+  // (Belgische brokers rekenen in euro, en de TOB is een Belgische belasting
+  // in euro, berekend op het verkoopbedrag in euro). Bij het opslaan worden
+  // ze omgerekend naar de munt van de verkoop, zodat alle berekeningen in de
+  // app blijven kloppen.
   const brutoBedrag = beperkteInfoVerkoop
     ? (parseFloat(form.verkoopbedrag) || 0)
     : (parseFloat(form.aantal) || 0) * (parseFloat(form.koers) || 0);
+  const munt = form.munt || 'EUR';
+  const naarEur = munt === 'EUR' ? 1
+    : ((fxOp ? fxOp(munt, form.datum) : 0) || (getMuntFactor ? getMuntFactor(munt) : 1) || 1);
+  const brutoEur = brutoBedrag * naarEur;
   const tobInfo = TOB_TARIEVEN.find(x => x.id === tobId) || TOB_TARIEVEN[0];
-  const naarEur = getMuntFactor ? getMuntFactor(form.munt || 'EUR') : 1;
-  const tobAuto = Math.round(Math.min(brutoBedrag * tobInfo.tarief, tobInfo.max / (naarEur || 1)) * 100) / 100;
-  const tobBedrag = tobHandmatig != null && tobHandmatig !== '' ? (parseFloat(tobHandmatig) || 0) : tobAuto;
-  const kostenBedrag = parseFloat(kosten) || 0;
-  const nettoBedrag = brutoBedrag - kostenBedrag - tobBedrag;
-  const extraKosten = { verkoopkosten: kostenBedrag, tob: tobBedrag };
+  const tobAuto = Math.round(Math.min(brutoEur * tobInfo.tarief, tobInfo.max || 0) * 100) / 100;
+  const tobEur = tobHandmatig != null && tobHandmatig !== '' ? (parseFloat(tobHandmatig) || 0) : tobAuto;
+  const kostenIngevuld = parseFloat(kosten) || 0;
+  const kostenEur = kostenMunt === 'EUR' ? kostenIngevuld : kostenIngevuld * naarEur;
+  const nettoEur = brutoEur - kostenEur - tobEur;
+  const extraKosten = { verkoopkosten: kostenEur / naarEur, tob: tobEur / naarEur };
 
   const bevestig = async () => {
     if (beperkteInfoVerkoop && aantalOnbekend) {
@@ -550,12 +560,20 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Transactiekosten</label>
-                  <input type="number" min="0" step="0.01" value={kosten} placeholder="0,00"
-                    onChange={e => setKosten(e.target.value)} style={inputStyle} />
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>Wat je broker aanrekent, in {form.munt}.</p>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input type="number" min="0" step="0.01" value={kosten} placeholder="0,00"
+                      onChange={e => setKosten(e.target.value)} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+                    {munt !== 'EUR' && (
+                      <select value={kostenMunt} onChange={e => setKostenMunt(e.target.value)} style={{ ...inputStyle, width: 76 }}>
+                        <option value="EUR">EUR</option>
+                        <option value={munt}>{munt}</option>
+                      </select>
+                    )}
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>Wat je broker aanrekent (meestal in euro).</p>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Beurstaks (TOB)</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Beurstaks (TOB) in €</label>
                   <input type="number" min="0" step="0.01"
                     value={tobHandmatig != null ? tobHandmatig : tobAuto.toFixed(2)}
                     onChange={e => setTobHandmatig(e.target.value)} style={inputStyle} />
@@ -575,17 +593,28 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
 
               {/* Samenvatting */}
               {brutoBedrag > 0 && (() => {
-                const ms = muntSymbool(form.munt);
                 const f2 = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 const rij = { display: 'flex', justifyContent: 'space-between', gap: 16, padding: '4px 0' };
+                const num = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' };
                 return (
                   <div style={{ padding: '8px 14px', background: 'var(--bg)', borderRadius: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
-                    <div style={rij}><span>Verkoopbedrag</span><span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{ms}{f2(brutoBedrag)}</span></div>
-                    <div style={rij}><span>Transactiekosten</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>− {ms}{f2(kostenBedrag)}</span></div>
-                    <div style={rij}><span>Beurstaks (TOB)</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>− {ms}{f2(tobBedrag)}</span></div>
-                    <div style={{ ...rij, borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 8, fontWeight: 600, color: 'var(--text-primary)' }}>
-                      <span>Netto ontvangen</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{ms}{f2(nettoBedrag)}</span>
+                    <div style={rij}>
+                      <span>Verkoopbedrag</span>
+                      <span style={{ ...num, color: 'var(--text-primary)' }}>
+                        {munt !== 'EUR' && <span style={{ color: 'var(--text-muted)', marginRight: 6 }}>{muntSymbool(munt)}{f2(brutoBedrag)} ≈</span>}
+                        €{f2(brutoEur)}
+                      </span>
                     </div>
+                    <div style={rij}><span>Transactiekosten</span><span style={num}>− €{f2(kostenEur)}</span></div>
+                    <div style={rij}><span>Beurstaks (TOB)</span><span style={num}>− €{f2(tobEur)}</span></div>
+                    <div style={{ ...rij, borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 8, fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <span>Netto ontvangen</span><span style={num}>€{f2(nettoEur)}</span>
+                    </div>
+                    {munt !== 'EUR' && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                        Omgerekend aan 1 {munt} = €{naarEur.toLocaleString('nl-BE', { maximumFractionDigits: 4 })} op {new Date(form.datum).toLocaleDateString('nl-BE')}.
+                      </div>
+                    )}
                   </div>
                 );
               })()}

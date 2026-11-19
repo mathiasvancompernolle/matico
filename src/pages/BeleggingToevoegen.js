@@ -169,13 +169,22 @@ export default function BeleggingToevoegen({ onClose }) {
     setMultiForms(prev => ({ ...prev, [symbol]: { ...prev[symbol], [veld]: waarde } }));
   };
 
-  const opslaanMulti = () => {
-    const nieuw = selectie.map(r => {
+  // Transactiekosten vul je in euro in (zo rekenen Belgische brokers ze aan);
+  // we bewaren ze in de munt van het effect, omgerekend aan de wisselkoers
+  // van de aankoopdag — zo blijven alle berekeningen in de app kloppen.
+  const kostenNaarMunt = async (bedragEur, munt, datum) => {
+    if (!bedragEur || !munt || munt === 'EUR') return bedragEur || 0;
+    const fx = await haalHistorischeWisselkoers(munt, datum || new Date().toISOString().slice(0, 10));
+    return fx > 0 ? bedragEur / fx : bedragEur;
+  };
+
+  const opslaanMulti = async () => {
+    const nieuw = (await Promise.all(selectie.map(async r => {
       const f = multiForms[r.symbol] || {};
       if (!f.datum || !f.kostprijs || !f.aantal) return null;
       const kostprijsPerStuk = parseFloat(f.kostprijs);
       const aantalStuks = parseFloat(f.aantal);
-      const transactiekosten = parseFloat(f.transactiekosten) || 0;
+      const transactiekosten = await kostenNaarMunt(parseFloat(f.transactiekosten) || 0, f.munt, f.datum);
       return {
         id: Date.now() + Math.random(),
         symbol: r.symbol,
@@ -188,7 +197,7 @@ export default function BeleggingToevoegen({ onClose }) {
         aantal: aantalStuks,
         munt: f.munt,
       };
-    }).filter(Boolean);
+    }))).filter(Boolean);
     if (nieuw.length === 0) return;
     setBeleggingen(prev => [...prev, ...nieuw]);
     onClose();
@@ -265,14 +274,14 @@ export default function BeleggingToevoegen({ onClose }) {
   // Volledig handmatig opslaan: geen live symbool, dus ook geen live
   // koersopvolging nadien — precies wat je nodig hebt voor iets als een
   // failliet aandeel, waarvan de waarde toch nooit meer verandert.
-  const opslaanHandmatig = () => {
+  const opslaanHandmatig = async () => {
     const f = handmatigForm;
     if (!f.naam || !f.aankoopprijs || !f.aantal || !f.datum) return;
     if (f.verkocht && (!f.verkoopprijs || !f.verkoopdatum)) return;
 
     const kostprijsPerStuk = parseFloat(f.aankoopprijs);
     const aantalStuks = parseFloat(f.aantal);
-    const transactiekosten = parseFloat(f.transactiekosten) || 0;
+    const transactiekosten = await kostenNaarMunt(parseFloat(f.transactiekosten) || 0, f.munt, f.datum);
     // Synthetisch symbool, uniek genoeg om botsingen te vermijden — er is
     // geen echte ticker voor dit soort beleggingen.
     const symbool = (f.symbool || f.naam).trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || `MANUEEL${Date.now()}`;
@@ -310,7 +319,9 @@ export default function BeleggingToevoegen({ onClose }) {
     if (!geselecteerd || !form.datum || !form.kostprijs || !form.aantal) return;
     const kostprijsPerStuk = parseFloat(form.kostprijs);
     const aantalStuks = parseFloat(form.aantal);
-    const transactiekosten = parseFloat(form.transactiekosten) || 0;
+    // Kosten in euro ingevuld → bewaren in de munt van het effect
+    const kostenEur = parseFloat(form.transactiekosten) || 0;
+    const transactiekosten = form.munt === 'EUR' ? kostenEur : kostenEur / (wisselkoersOpDatum || 1);
 
     const nieuw = {
       id: Date.now(),
@@ -461,7 +472,8 @@ export default function BeleggingToevoegen({ onClose }) {
   // Berekening voor preview
   const kostprijsPerStuk = parseFloat(form.kostprijs) || 0;
   const aantalStuks = parseFloat(form.aantal) || 0;
-  const transactiekosten = parseFloat(form.transactiekosten) || 0;
+  const transactiekostenEur = parseFloat(form.transactiekosten) || 0;
+  const transactiekosten = form.munt === 'EUR' ? transactiekostenEur : transactiekostenEur / (wisselkoersOpDatum || 1);
   const totaalKostprijs = kostprijsPerStuk * aantalStuks + transactiekosten;
   const totaalKostprijsEUR = totaalKostprijs * wisselkoersOpDatum;
 
@@ -550,7 +562,7 @@ export default function BeleggingToevoegen({ onClose }) {
 
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                  Transactiekosten
+                  Transactiekosten (€)
                   <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>optioneel, later aan te passen</span>
                 </label>
                 <input type="number" className="form-input" placeholder="€0 (optioneel)" value={handmatigForm.transactiekosten}
@@ -674,7 +686,7 @@ export default function BeleggingToevoegen({ onClose }) {
             <span>Naam</span>
             <span>Koers per stuk</span>
             <span>
-              Transactiekosten
+              Transactiekosten (€)
               <div style={{ fontWeight: 400, fontSize: 10, color: 'var(--text-muted)', textTransform: 'none', letterSpacing: 'normal' }}>optioneel, later aan te passen</div>
             </span>
             <span>Aantal</span>
@@ -761,7 +773,7 @@ export default function BeleggingToevoegen({ onClose }) {
                   style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
                 {/* Transactiekosten */}
                 <input type="number" value={f.transactiekosten || ''} onChange={e => updateMultiForm(r.symbol, 'transactiekosten', e.target.value)}
-                  placeholder="0,00 (optioneel)" step="0.01"
+                  placeholder="€ 0,00 (optioneel)" step="0.01"
                   style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
                 {/* Aantal */}
                 <input type="number" value={f.aantal || ''} onChange={e => updateMultiForm(r.symbol, 'aantal', e.target.value)}
@@ -883,7 +895,7 @@ export default function BeleggingToevoegen({ onClose }) {
               {/* Rij 3: Transactiekosten */}
               <div className="toevoegen-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
                 <div>
-                  <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Transactiekosten</div>
+                  <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Transactiekosten (€)</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Niet gekend? Laat leeg — later aanpasbaar</div>
                 </div>
                 <div />
@@ -897,7 +909,7 @@ export default function BeleggingToevoegen({ onClose }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                       Totale kostprijs
-                      {transactiekosten > 0 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> (incl. {muntSymbool(form.munt)}{getal(transactiekosten, 2)} kosten)</span>}
+                      {transactiekosten > 0 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> (incl. €{getal(transactiekostenEur, 2)} kosten)</span>}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {muntSymbool(form.munt)}{totaalKostprijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
