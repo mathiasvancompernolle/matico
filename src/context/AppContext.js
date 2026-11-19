@@ -676,22 +676,39 @@ export function AppProvider({ children, supabaseGebruiker }) {
     const vandaag = new Date().toISOString().slice(0, 10);
     Object.entries(vroegstePerSymbool).forEach(async ([sym, van]) => {
       const cacheKey = `kapitas_divhist_${sym}`;
+      const normaliseer = (data) => (Array.isArray(data) ? data : [])
+        .map(d => ({ ex: naarIsoDatum(d.exDate || d.date || d.ex), betaal: naarIsoDatum(d.paymentDate || d.betaal || d.exDate || d.date || d.ex), bedrag: parseFloat(d.amount || d.adjDividend || d.bedrag || 0), munt: d.currency || d.munt || null }))
+        .filter(d => d.ex && d.bedrag > 0);
+      // Ook de uitkeringen die de dividendpagina al ophaalde (per jaar
+      // bewaard) meenemen. Zo tonen beide steeds dezelfde dividenden, ook als
+      // één van de twee aanvragen eens een leeg antwoord kreeg (bv. een bron
+      // die tijdelijk aan haar daglimiet zat).
+      const metPaginaCache = (lijst) => {
+        const basis = sym.toUpperCase().split('.')[0];
+        const extra = [];
+        for (let j = Number(van.slice(0, 4)); j <= new Date().getFullYear(); j++) {
+          try {
+            const c = JSON.parse(localStorage.getItem(`matico_div_${basis}_${j}`) || 'null');
+            if (c?.data) extra.push(...normaliseer(c.data));
+          } catch (e) {}
+        }
+        const gezien = new Set(lijst.map(d => d.ex));
+        return [...lijst, ...extra.filter(d => !gezien.has(d.ex) && gezien.add(d.ex))].sort((a, b) => (a.ex < b.ex ? -1 : 1));
+      };
       try {
         const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-        const duur = c && c.data && c.data.length === 0 ? 6 * 3600_000 : 24 * 3600_000;
+        // Een leeg antwoord kan een tijdelijke fout zijn: na 15 min opnieuw
+        const duur = c && c.data && c.data.length === 0 ? 15 * 60_000 : 24 * 3600_000;
         if (c && c.van <= van && Date.now() - c.timestamp < duur) {
-          setDividendHistoriek(prev => prev[sym] === c.data ? prev : { ...prev, [sym]: c.data });
+          setDividendHistoriek(prev => ({ ...prev, [sym]: metPaginaCache(c.data) }));
           return;
         }
       } catch (e) {}
       try {
         const res = await fetch(`/api/data?endpoint=dividend&symbol=${encodeURIComponent(sym)}&van=${van}&tot=${vandaag}`);
-        const data = await res.json();
-        const lijst = Array.isArray(data) ? data
-          .map(d => ({ ex: naarIsoDatum(d.exDate || d.date), betaal: naarIsoDatum(d.paymentDate || d.exDate || d.date), bedrag: parseFloat(d.amount || d.adjDividend || 0), munt: d.currency || null }))
-          .filter(d => d.ex && d.bedrag > 0) : [];
+        const lijst = normaliseer(await res.json());
         try { localStorage.setItem(cacheKey, JSON.stringify({ data: lijst, van, timestamp: Date.now() })); } catch (e) {}
-        setDividendHistoriek(prev => ({ ...prev, [sym]: lijst }));
+        setDividendHistoriek(prev => ({ ...prev, [sym]: metPaginaCache(lijst) }));
       } catch (e) {}
     });
   }, [divSleutel]);
