@@ -5,6 +5,8 @@ import { PanelLeft } from 'lucide-react';
 // paginatitel (<h1>) op elke pagina onder "Portefeuille".
 export default function SidebarToggleKnop({ onToggleSidebar, sidebarCollapsed }) {
   if (!onToggleSidebar) return null;
+  // Op de gsm is er geen zijbalk (navigatie zit in de onderbalk)
+  if (typeof window !== 'undefined' && window.innerWidth < 768) return null;
   return (
     <button
       onClick={onToggleSidebar}

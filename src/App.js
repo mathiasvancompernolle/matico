@@ -23,12 +23,12 @@ import { Voorwaarden, Disclaimer } from './pages/Juridisch';
 import { bewaakEigenaar, wisPersoonlijkeGegevens } from './utils/lokaleGegevens';
 import { supabase } from './supabaseClient';
 import kapitasLogo from './assets/kapitas-logo.png';
-import { LayoutDashboard, TrendingUp, Search, Star, User, X, ChevronRight, PiggyBank, Briefcase, Check } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Search, Star, User, X, ChevronRight, ChevronDown, PiggyBank, Briefcase, Check, List, PieChart, Menu, Plus } from 'lucide-react';
 
-function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSelectEffect }) {
+function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSelectEffect, onMobielZoeken }) {
   const {
     t, favorieten, toggleFavoriet, meldingen, ongelezenMeldingen, markeerMeldingGelezen, markeerAlleMeldingenGelezen,
-    portfolios, actiefPortfolio, actiefPortfolioId, wisselPortfolio,
+    portfolios, actiefPortfolio, actiefPortfolioId, wisselPortfolio, voegPortfolioToe,
   } = useApp();
   const [zoekOpen, setZoekOpen] = React.useState(false);
   const [zoekQuery, setZoekQuery] = React.useState('');
@@ -83,9 +83,50 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
 
   const initialen = `${gebruiker?.voornaam?.[0] || ''}${gebruiker?.achternaam?.[0] || ''}`.toUpperCase() || 'M';
 
+  // Mobiel: nieuwe portefeuille (zelfde naamgeving als in de zijbalk)
+  const nieuwePortefeuille = () => {
+    const aantal = portfolios.filter(p => p.type === 'standaard').length;
+    const vn = gebruiker?.voornaam || '';
+    const naam = vn ? (aantal === 0 ? `Portfolio van ${vn}` : `Portfolio van ${vn} ${aantal + 1}`) : `Portfolio ${portfolios.length + 1}`;
+    voegPortfolioToe(naam, 'standaard');
+    setPortfolioOpen(false);
+    onSectieWissel('portefeuille');
+    navigeerNaar('overzicht');
+  };
+
   return (
     <nav className="top-nav" style={{ display: 'flex', alignItems: 'center', padding: '0 16px', gap: 8 }}>
-      {/* Logo als grote home-knop */}
+      {/* Mobiel: portefeuillekeuze links (de zijbalk bestaat op de gsm niet) */}
+      {isMobiel && (
+        <div ref={portfolioRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <button onClick={() => setPortfolioOpen(v => !v)} aria-label="Portefeuille kiezen"
+            style={{ display: 'flex', alignItems: 'center', gap: 4, maxWidth: '100%', background: 'transparent', border: 'none', padding: '6px 4px', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-primary)' }}>
+            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {actiefPortfolio?.naam || 'Kapitas'}
+            </span>
+            <ChevronDown size={18} style={{ flexShrink: 0, transform: portfolioOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+          </button>
+          {portfolioOpen && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, width: 'min(320px, calc(100vw - 32px))', background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.16)', zIndex: 400, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 14px 6px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Portefeuilles</div>
+              {portfolios.map(p => (
+                <button key={p.id} onClick={() => { wisselPortfolio(p.id); setPortfolioOpen(false); onSectieWissel('portefeuille'); navigeerNaar('overzicht'); }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', background: p.id === actiefPortfolioId ? 'var(--accent-bg)' : 'transparent', border: 'none', borderTop: '1px solid var(--border-light)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: p.id === actiefPortfolioId ? 700 : 500, color: 'var(--text-primary)', textAlign: 'left' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.naam}</span>
+                  {p.id === actiefPortfolioId && <Check size={16} color="var(--accent)" />}
+                </button>
+              ))}
+              <button onClick={nieuwePortefeuille}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border-light)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>
+                <Plus size={16} /> Nieuwe portefeuille
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Logo als grote home-knop (desktop) */}
+      {!isMobiel && (
       <div onClick={() => { onSectieWissel('portefeuille'); navigeerNaar('overzicht'); }}
         style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: isMobiel ? 8 : 16, flexShrink: 0, height: '100%', borderRadius: 8, transition: 'background 0.15s' }}
         onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
@@ -94,6 +135,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
         {/* Tekstlogo i.p.v. PNG: de PNG heeft een witte achtergrond die in dark mode als wit vak opviel */}
         <span style={{ fontSize: isMobiel ? 22 : 26, fontWeight: 800, letterSpacing: '-0.5px', color: 'var(--logo-kleur, #1e3a8a)', fontFamily: "'DM Sans', sans-serif", padding: '0 6px' }}>Kapitas</span>
       </div>
+      )}
 
       {/* Tabs — enkel op desktop: op mobiel zit deze wissel nu in de vaste
           onderbalk (Portefeuille/Markten/...), die altijd bereikbaar is i.p.v.
@@ -106,10 +148,15 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
           </div>
         </div>
       )}
-      {isMobiel && <div style={{ flex: 1 }} />}
-
       {/* Rechter iconen */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        {/* Mobiel: zoeken als icoon (opent de zoekpagina) */}
+        {isMobiel && (
+          <button onClick={onMobielZoeken} aria-label="Zoeken"
+            style={{ width: 40, height: 40, border: 'none', borderRadius: 10, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+            <Search size={20} />
+          </button>
+        )}
 
         {/* Zoekbalk — enkel op desktop: op mobiel is "Zoeken" een eigen,
             volwaardige pagina via de onderbalk i.p.v. een icoon-overlay hier. */}
@@ -253,7 +300,7 @@ function TopNav({ actieveSectie, onSectieWissel, navigeerNaar, gebruiker, onSele
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>{gebruiker?.voornaam} {gebruiker?.achternaam}</div>
-                  <div style={{ fontSize: 11, color: '#1e3a8a', fontWeight: 600 }}>Pro plan</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Gratis account</div>
                 </div>
               </div>
               <div style={{ padding: '6px 0' }}>
@@ -366,15 +413,25 @@ function MobielFavorietenPagina({ onSelectEffect }) {
 // ── Mobiel: "Profiel" als volwaardige pagina — bundelt wat op desktop
 // verspreid zit over de profiel-dropdown + portfolio-wisselaar + Belastingen
 // (dat normaal via de sidebar-navigatie loopt, die op mobiel niet rendert). ──
-function MobielProfielPagina({ gebruiker, onNavigeer }) {
+function MobielProfielPagina({ gebruiker, onNavigeer, onFavorieten }) {
   const { t, portfolios, actiefPortfolioId, wisselPortfolio } = useApp();
   const initialen = `${gebruiker?.voornaam?.[0] || ''}${gebruiker?.achternaam?.[0] || ''}`.toUpperCase() || 'M';
 
-  const menuItems = [
-    { label: t('profiel_mijn_profiel'), sub: t('profiel_mijn_profiel_sub'), route: 'mijn-profiel' },
-    { label: 'Belastingen', sub: null, route: 'belastingen' },
-    { label: 'Gids voor beginners', sub: 'Nog eens de basis doornemen', route: 'gids' },
-    { label: t('profiel_privacybeleid'), sub: t('profiel_privacybeleid_sub'), route: 'privacybeleid' },
+  // Alles wat niet in de onderbalk past, overzichtelijk in groepen
+  const groepen = [
+    { titel: 'Portefeuille', items: [
+      { label: 'Dividend', sub: 'Ontvangen en verwachte uitkeringen', route: 'dividend', icoon: PiggyBank },
+      { label: 'Belastingen', sub: 'Meerwaardebelasting en simulatie', route: 'belastingen', icoon: Briefcase },
+      { label: 'Favorieten', sub: 'Effecten die je volgt', actie: 'favorieten', icoon: Star },
+    ] },
+    { titel: 'Account', items: [
+      { label: t('profiel_mijn_profiel'), sub: t('profiel_mijn_profiel_sub'), route: 'mijn-profiel', icoon: User },
+      { label: 'Instellingen', sub: 'Weergave, taal en gegevens', route: 'instellingen', icoon: LayoutDashboard },
+    ] },
+    { titel: 'Hulp', items: [
+      { label: 'Gids voor beginners', sub: 'Nog eens de basis doornemen', route: 'gids', icoon: List },
+      { label: t('profiel_privacybeleid'), sub: t('profiel_privacybeleid_sub'), route: 'privacybeleid', icoon: Check },
+    ] },
   ];
 
   return (
@@ -385,7 +442,7 @@ function MobielProfielPagina({ gebruiker, onNavigeer }) {
         </div>
         <div>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{gebruiker?.voornaam} {gebruiker?.achternaam}</div>
-          <div style={{ fontSize: 12, color: '#1e3a8a', fontWeight: 600 }}>Pro plan</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Gratis account</div>
         </div>
       </div>
 
@@ -404,18 +461,26 @@ function MobielProfielPagina({ gebruiker, onNavigeer }) {
         </div>
       )}
 
-      <div style={{ background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 20 }}>
-        {menuItems.map(({ label, sub, route }, i) => (
-          <div key={label} onClick={() => onNavigeer(route)}
-            style={{ padding: '13px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderBottom: i < menuItems.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div>
-              {sub && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{sub}</div>}
-            </div>
-            <ChevronRight size={16} color="var(--text-muted)" />
+      {groepen.map(groep => (
+        <div key={groep.titel} style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 4px 8px' }}>{groep.titel}</div>
+          <div style={{ background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+            {groep.items.map(({ label, sub, route, actie, icoon: Icoon }, i) => (
+              <div key={label} onClick={() => (actie === 'favorieten' ? onFavorieten() : onNavigeer(route))}
+                style={{ padding: '13px 14px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', borderBottom: i < groep.items.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--accent-bg)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icoon size={17} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 15 }}>{label}</div>
+                  {sub && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sub}</div>}
+                </div>
+                <ChevronRight size={16} color="var(--text-muted)" />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
 
       <div onClick={async () => { await supabase.auth.signOut(); wisPersoonlijkeGegevens(); window.location.reload(); }}
         style={{ padding: '13px 14px', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10 }}>
@@ -496,6 +561,9 @@ function AppInner() {
     setImportOpen(false);
     setEffectDetail(null);
     setMobielWeergave('normaal');
+    // Alle doelen (dividend, belastingen, instellingen, ...) horen bij de
+    // portefeuille-sectie; anders bleef bv. Markten in beeld staan.
+    setActieveSectie('portefeuille');
     setActiveNav(doel);
     scrollNaarBoven();
   };
@@ -530,7 +598,15 @@ function AppInner() {
     setEffectDetail(null);
     setToevoegenOpen(false);
     setImportOpen(false);
-    if (weergave === 'portefeuille') {
+    if (['overzicht', 'beleggingen', 'analyse'].includes(weergave)) {
+      // Rechtstreeks naar de gekozen portefeuillepagina
+      setMobielWeergave('normaal');
+      setActieveSectie('portefeuille');
+      if (weergave === 'overzicht' && activeNav === 'overzicht') setOverzichtResetKey(k => k + 1);
+      setActiveNav(weergave);
+    } else if (weergave === 'meer') {
+      setMobielWeergave('profiel');
+    } else if (weergave === 'portefeuille') {
       setMobielWeergave('normaal');
       setActieveSectie('portefeuille');
       // Zelfde gedrag als de Kapitas-homeknop in de topbalk: altijd terug
@@ -579,9 +655,14 @@ function AppInner() {
     }
   };
 
-  const mobielActieveTab = mobielWeergave !== 'normaal'
-    ? mobielWeergave
-    : (actieveSectie === 'markten' ? 'markten' : 'portefeuille');
+  // Welke knop in de onderbalk oplicht
+  const mobielActieveTab = (() => {
+    if (mobielWeergave === 'zoeken') return null;
+    if (mobielWeergave !== 'normaal') return 'meer'; // favorieten, profiel/meer
+    if (actieveSectie === 'markten') return 'markten';
+    if (['overzicht', 'beleggingen', 'analyse'].includes(activeNav)) return activeNav;
+    return 'meer'; // dividend, belastingen, instellingen, gids, ...
+  })();
 
   const renderPage = () => {
     // effectDetail (een gekozen zoekresultaat/favoriet) moet vóór de mobiele
@@ -591,7 +672,7 @@ function AppInner() {
     if (effectDetail) return <EffectDetail effect={effectDetail} onTerug={() => setEffectDetail(null)} />;
     if (isMobiel && mobielWeergave === 'zoeken') return <MobielZoekenPagina onSelectEffect={setEffectDetail} />;
     if (isMobiel && mobielWeergave === 'favorieten') return <MobielFavorietenPagina onSelectEffect={setEffectDetail} />;
-    if (isMobiel && mobielWeergave === 'profiel') return <MobielProfielPagina gebruiker={gebruiker} onNavigeer={navigeerNaar} />;
+    if (isMobiel && mobielWeergave === 'profiel') return <MobielProfielPagina gebruiker={gebruiker} onNavigeer={navigeerNaar} onFavorieten={() => setMobielWeergave('favorieten')} />;
     if (actieveSectie === 'markten') return <Markten onSelectEffect={setEffectDetail} />;
     if (importOpen) return <ImportBeleggingen onClose={() => setImportOpen(false)} />;
     if (toevoegenOpen) return <BeleggingToevoegen onClose={() => setToevoegenOpen(false)} />;
@@ -616,7 +697,9 @@ function AppInner() {
   // De subtabs-rij (Overzicht/Beleggingen/Analyse/Dividend) vervangt op mobiel
   // de sidebar binnen de Portefeuille-sectie, zodat die navigatie altijd
   // bereikbaar blijft zonder de desktop-sidebar te hoeven aanpassen.
-  const toonMobielSubtabs = isMobiel && mobielWeergave === 'normaal' && actieveSectie === 'portefeuille' && !effectDetail && !toevoegenOpen && !importOpen;
+  // Vroeger: puntjes + vegen tussen de portefeuillepagina's. Nu staan die
+  // rechtstreeks in de onderbalk, dus niet meer nodig.
+  const toonMobielSubtabs = false;
   const subtabItems = [
     { key: 'overzicht', label: 'Overzicht' },
     { key: 'beleggingen', label: 'Beleggingen' },
@@ -624,17 +707,18 @@ function AppInner() {
     { key: 'dividend', label: 'Dividend' },
   ];
 
+  // Onderbalk: de pagina's die je dagelijks gebruikt; de rest zit onder "Meer"
   const bottomBarItems = [
-    { key: 'portefeuille', label: 'Portefeuille', icon: Briefcase },
+    { key: 'overzicht', label: 'Overzicht', icon: LayoutDashboard },
+    { key: 'beleggingen', label: 'Beleggingen', icon: List },
+    { key: 'analyse', label: 'Analyse', icon: PieChart },
     { key: 'markten', label: 'Markten', icon: TrendingUp },
-    { key: 'zoeken', label: 'Zoeken', icon: Search },
-    { key: 'favorieten', label: 'Favorieten', icon: Star },
-    { key: 'profiel', label: 'Profiel', icon: User },
+    { key: 'meer', label: 'Meer', icon: Menu },
   ];
 
   return (
     <div className="app-wrapper">
-      <TopNav actieveSectie={actieveSectie} onSectieWissel={handleSectieWissel} navigeerNaar={navigeerNaar} gebruiker={gebruiker} onSelectEffect={setEffectDetail} />
+      <TopNav actieveSectie={actieveSectie} onSectieWissel={handleSectieWissel} navigeerNaar={navigeerNaar} gebruiker={gebruiker} onSelectEffect={setEffectDetail} onMobielZoeken={() => kiesMobielWeergave('zoeken')} />
       <div className={`app-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${toonSidebar ? '' : 'zonder-sidebar'}`}>
         {toonSidebar && (
           <Sidebar

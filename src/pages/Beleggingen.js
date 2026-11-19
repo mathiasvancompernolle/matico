@@ -610,7 +610,14 @@ const inputStyle = {
 
 // ── Hoofd component ──────────────────────────────────────────────
 export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSidebar }) {
-  const { gebruiker, beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen, getMuntFactor, fxOp, t } = useApp();
+  const { gebruiker, beleggingen, setBeleggingen, koersen, verkochteBeleggingen, setVerkochteBeleggingen, getMuntFactor, fxOp, kostEur, t } = useApp();
+  // Gsm: compacte kaart per belegging i.p.v. de tabel (die viel uiteen in losse vakjes)
+  const [isMobiel, setIsMobiel] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const opResize = () => setIsMobiel(window.innerWidth < 768);
+    window.addEventListener('resize', opResize);
+    return () => window.removeEventListener('resize', opResize);
+  }, []);
 
   // Haal logo's en type op voor beleggingen zonder logo OF zonder type
   React.useEffect(() => {
@@ -885,6 +892,42 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                 {/* Rijen */}
                 {gesorteerd(beleggingen).map((b) => {
                   const ms = muntSymbool(b.munt || 'EUR');
+                  if (isMobiel) {
+                    // Kaart: wat je wil zien (waarde en winst), details bij aantikken
+                    const k = koersen[b.symbol];
+                    const factor = getMuntFactor ? getMuntFactor(b.munt || 'EUR') : 1;
+                    const waarde = (k ? k.c : b.kostprijs) * b.aantal * factor;
+                    const inleg = kostEur ? kostEur(b) : (b.kostprijs * b.aantal + (b.transactiekosten || 0)) * factor;
+                    const winst = waarde - inleg;
+                    const winstPct = inleg > 0 ? (winst / inleg) * 100 : 0;
+                    const kleur = winst >= 0 ? 'var(--green)' : 'var(--red)';
+                    const datumTekst = b.datum ? new Date(b.datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+                    return (
+                      <div key={b.id} onClick={() => setDetailBelegging(b)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 12px 12px 16px', borderBottom: '1px solid var(--border-light)', cursor: 'pointer' }}>
+                        <Avatar symbol={b.symbol} logo={b.logo} naam={b.naam} type={b.type} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.naam}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {b.aantal} st. · {ms}{koersFmt(b.kostprijs)}{datumTekst ? ` · ${datumTekst}` : ''}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>€{getal(waarde, 2)}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: kleur, fontVariantNumeric: 'tabular-nums' }}>
+                            {winst >= 0 ? '+' : '-'}€{getal(Math.abs(winst), 2)} · {winst >= 0 ? '+' : '-'}{getal(Math.abs(winstPct), 1)}%
+                          </div>
+                        </div>
+                        <div onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }}>
+                          <KebabMenu
+                            onDetail={() => setDetailBelegging(b)}
+                            onVerkopen={() => openVerkoopModal(b)}
+                            onVerwijder={() => verwijder(b.id)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
                   return (
                     <div key={b.id} className="belegging-row-grid" style={{
                       display: 'grid',

@@ -1423,10 +1423,10 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                   🔒 {t('ov_beurs_gesloten')}
                 </div>
               )}
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={isMobielScherm ? 240 : 220}>
               <AreaChart
                 data={displayDataEff}
-                margin={{ top: 5, right: 5, bottom: 5, left: 0 }}
+                margin={{ top: 5, right: isMobielScherm ? 18 : 5, bottom: 5, left: isMobielScherm ? 18 : 0 }}
                 onMouseDown={grafiekSleepStart}
                 onMouseMove={grafiekSleepBeweeg}
                 onMouseUp={grafiekSleepEinde}
@@ -1448,7 +1448,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                   tickFormatter={v => isPct
                     ? `${Number(v).toLocaleString('nl-BE', { maximumFractionDigits: 2 })}%`
                     : (v < 0 ? '-€' : '€') + Math.abs(Math.round(v)).toLocaleString('nl-BE')}
-                  domain={yDomain} ticks={yTicks} width={isPct ? 50 : 45}
+                  domain={yDomain} ticks={yTicks} width={isPct ? 50 : 45} hide={isMobielScherm}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
