@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useEffectLogo } from '../components/EffectLogo';
+import { useEffectLogo, logoStijl } from '../components/EffectLogo';
 import { TobRegel, AfrekeningBedrag } from '../components/Afrekening';
 import { standaardTob, berekenTob } from '../utils/tob';
 import KostenInvoer from '../components/KostenInvoer';
@@ -51,23 +51,16 @@ const CRYPTO_KLEUREN = {
 
 function Avatar({ symbol, logo, naam, type }) {
   // Logo uit meerdere bronnen (zie components/EffectLogo.js)
-  const { src: logoSrc, onError: logoFout } = useEffectLogo({ symbol, logo, naam, type });
+  const { src: logoSrc, onError: logoFout, rond: logoRond } = useEffectLogo({ symbol, logo, naam, type });
   const initials = symbol.split('.')[0].slice(0, 2).toUpperCase();
 
   if (logoSrc) {
     return (
-      <div style={{
-        width: 36, height: 36, borderRadius: 10, overflow: 'hidden',
-        border: '1px solid var(--border)', flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'white'
-      }}>
-        <img
-          src={logoSrc} alt={symbol}
-          style={{ width: 30, height: 30, objectFit: 'contain' }}
-          onError={logoFout}
-        />
-      </div>
+      <img
+        src={logoSrc} alt={symbol}
+        style={logoStijl(36, logoRond ? '50%' : 10)}
+        onError={logoFout}
+      />
     );
   }
 

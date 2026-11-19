@@ -88,19 +88,22 @@ export function useEffectLogo(b) {
 
   useEffect(() => { setIndex(0); }, [kandidaten.join('|')]);
 
+  const src = kandidaten[index] || null;
   return {
-    src: kandidaten[index] || null,
+    src,
     onError: () => setIndex(i => i + 1),
+    // Crypto-logo's zijn rond: dan een cirkel i.p.v. een afgerond vierkant
+    rond: isCrypto && !!src && src === cryptoLogo,
   };
 }
 
 // Klein logo (bv. in lijsten) met letters als terugval
 export function EffectLogoKlein({ b, grootte = 32 }) {
-  const { src, onError } = useEffectLogo(b);
+  const { src, onError, rond } = useEffectLogo(b);
   if (src) {
     return (
       <img src={src} alt={b?.symbol} onError={onError}
-        style={{ width: grootte, height: grootte, borderRadius: 8, objectFit: 'contain', border: '1px solid var(--border)', background: 'white', padding: 2, flexShrink: 0 }} />
+        style={logoStijl(grootte, rond ? '50%' : 8)} />
     );
   }
   return (
@@ -112,3 +115,12 @@ export function EffectLogoKlein({ b, grootte = 32 }) {
     </div>
   );
 }
+
+// Stijl voor een logo: vult het afgeronde vakje volledig (geen witte
+// opvulling of kader rond logo's met een eigen achtergrond). Een zeer lichte
+// omlijning bovenop het beeld houdt lichte logo's zichtbaar op wit.
+export const logoStijl = (grootte = 36, hoek = 10) => ({
+  width: grootte, height: grootte, borderRadius: hoek, objectFit: 'cover', display: 'block',
+  background: 'white', flexShrink: 0,
+  outline: '1px solid rgba(15, 23, 42, 0.08)', outlineOffset: -1,
+});

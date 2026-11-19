@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useEffectLogo } from '../components/EffectLogo';
+import { useEffectLogo, logoStijl } from '../components/EffectLogo';
 import { koers as koersFmt } from '../utils/getal';
 import { muntSymbool } from '../utils/munt';
 import { useApp } from '../context/AppContext';
@@ -119,11 +119,11 @@ const CRYPTO_KLEUREN = {
 
 function BeleggingAvatar({ b }) {
   // Logo uit meerdere bronnen (zie components/EffectLogo.js)
-  const { src, onError } = useEffectLogo(b);
+  const { src, onError, rond } = useEffectLogo(b);
   if (src) {
     return (
       <img src={src} alt={b.symbol}
-        style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', border: '1px solid var(--border)', background: 'white', padding: 2, flexShrink: 0 }}
+        style={logoStijl(36, rond ? '50%' : 10)}
         onError={onError} />
     );
   }
