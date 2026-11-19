@@ -726,10 +726,7 @@ module.exports = async function handler(req, res) {
       if (isCryptoSymbool(toYahooSymbol(symbol))) {
         try {
           const yfSym = toYahooSymbol(symbol);
-          const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=2d&interval=5m`;
-          const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
-          const yfData = await yfRes.json();
-          const result = yfData?.chart?.result?.[0];
+          const result = await haalYahooChart(yfSym, 'range=2d&interval=5m');
           if (result) {
             const meta = result.meta;
             const timestamps = result.timestamp || [];
@@ -856,12 +853,7 @@ module.exports = async function handler(req, res) {
       try {
         const yfSym = toYahooSymbol(symbol);
         const isCryptoQd = isCryptoSymbool(yfSym);
-        const yfUrl = isCryptoQd
-          ? `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=2d&interval=5m`
-          : `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?range=1d&interval=1m`;
-        const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
-        const yfData = await yfRes.json();
-        const result = yfData?.chart?.result?.[0];
+        const result = await haalYahooChart(yfSym, isCryptoQd ? 'range=2d&interval=5m' : 'range=1d&interval=1m');
         const meta = result?.meta;
         if (meta && (meta.regularMarketPrice || meta.previousClose)) {
           const quotes = result.indicators?.quote?.[0];
@@ -1295,6 +1287,46 @@ module.exports = async function handler(req, res) {
     return Math.round(v * 10 ** d) / 10 ** d;
   }
 
+  // Yahoo-grafiekdata ophalen. Veel kleinere crypto's hebben enkel een
+  // dollarnotering (DRV35014-USD) terwijl Yahoo de euro-variant wel in de
+  // zoekresultaten toont maar zonder koers. Dan rekenen we de dollarkoers om
+  // naar euro met de wisselkoers EUR/USD op hetzelfde moment.
+  async function haalYahooChart(yfSym, query) {
+    const haal = async (sym, q) => {
+      try {
+        const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?${q}`, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
+        const d = await r.json();
+        return d?.chart?.result?.[0] || null;
+      } catch (e) { return null; }
+    };
+    const eigen = await haal(yfSym, query);
+    if ((eigen?.timestamp?.length || 0) > 0 || !(/-EUR$/i.test(yfSym) && isCryptoSymbool(yfSym))) return eigen;
+    const usd = await haal(yfSym.replace(/-EUR$/i, '-USD'), query);
+    if (!usd?.meta) return eigen;
+    // Wisselkoers (USD per EUR): fijne intervallen bestaan voor FX niet altijd → per uur
+    const fxQuery = query.replace(/interval=(1m|2m|5m|15m|30m|60m|90m)/, 'interval=1h');
+    const fx = await haal('EURUSD=X', fxQuery);
+    const fxNu = fx?.meta?.regularMarketPrice || 1.1;
+    const fxT = fx?.timestamp || [];
+    const fxC = fx?.indicators?.quote?.[0]?.close || [];
+    const fxOp = (t) => {
+      let k = null;
+      for (let i = 0; i < fxT.length; i++) { if (fxT[i] <= t && fxC[i] != null) k = fxC[i]; else if (fxT[i] > t) break; }
+      return k || fxC.find(v => v != null) || fxNu;
+    };
+    const ts = usd.timestamp || [];
+    const q0 = usd.indicators?.quote?.[0] || {};
+    const omzet = (arr) => (arr || []).map((v, i) => (v == null ? v : v / fxOp(ts[i])));
+    const meta = { ...usd.meta, currency: 'EUR', symbol: yfSym };
+    ['regularMarketPrice', 'chartPreviousClose', 'previousClose', 'regularMarketDayHigh', 'regularMarketDayLow', 'regularMarketOpen', 'fiftyTwoWeekHigh', 'fiftyTwoWeekLow']
+      .forEach(k => { if (typeof meta[k] === 'number') meta[k] = meta[k] / fxNu; });
+    return {
+      ...usd,
+      meta,
+      indicators: { ...usd.indicators, quote: [{ ...q0, close: omzet(q0.close), open: omzet(q0.open), high: omzet(q0.high), low: omzet(q0.low) }], adjclose: undefined },
+    };
+  }
+
   function isCryptoSymbool(symbol) {
     return /^[A-Z0-9]+-(EUR|USD|GBP)$/i.test(symbol || '');
   }
@@ -1322,10 +1354,7 @@ module.exports = async function handler(req, res) {
         } catch (e) {}
         try {
           const yfSym = toYahooSymbol(symbol);
-          const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?period1=${van}&period2=${tot}&interval=1d`;
-          const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-          const yfData = await yfRes.json();
-          const result = yfData?.chart?.result?.[0];
+          const result = await haalYahooChart(yfSym, `period1=${van}&period2=${tot}&interval=1d`);
           if (result?.timestamp?.length > 0) {
             const cf = yahooMunt(result.meta).f;
             return res.json({ s: 'ok', t: result.timestamp, c: result.indicators.quote[0].close.map(v => (v == null ? v : v * cf)) });
@@ -1382,6 +1411,9 @@ module.exports = async function handler(req, res) {
             result = data?.chart?.result?.[0];
             if (result?.timestamp?.length > 1) break;
           } catch(e) {}
+        }
+        if (!(result?.timestamp?.length > 0) && /-EUR$/i.test(yfSym) && isCryptoSymbool(yfSym)) {
+          result = await haalYahooChart(yfSym, `${reeksParam}&interval=${yfInterval}`);
         }
 
         if (result?.timestamp?.length > 0) {
