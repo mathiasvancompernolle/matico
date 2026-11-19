@@ -66,6 +66,13 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
   // aankoopdag, verkoop op de verkoopdag, referentie op 31/12/2025.
   const fxAankoop = (b) => fxOp ? fxOp(b.munt || 'EUR', b.datum) : factor(b);
   const fxRef = (b) => fxOp ? fxOp(b.munt || 'EUR', '2025-12-31') : factor(b);
+  // Kosten: aankoopkosten verhogen de aankoopbasis, transactiekosten en
+  // beurstaks (TOB) bij verkoop verlagen het verkoopbedrag.
+  const aankoopKosten = (b, aantal) => {
+    const totaalAantal = b.aantalVerkocht || b.aantal || 0;
+    const tk = b.transactiekosten || 0; // bij een verkochte positie al het verkochte deel
+    return totaalAantal > 0 ? tk * (aantal / totaalAantal) : tk;
+  };
   const fxVerkoop = (b) => fxOp ? fxOp(b.verkoopMunt || b.munt || 'EUR', b.verkoopdatum) : factor(b);
 
   // Slotkoersen op 31/12/2025 voor alles wat vóór 2026 gekocht werd
@@ -102,7 +109,9 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
 
     const verkoopLijst = verkopenDitJaar.map(b => {
       const f = factor(b);
-      const verkoopBedrag = (b.verkoopkoers || 0) * b.aantalVerkocht * fxVerkoop(b);
+      const verkoopKosten = (b.verkoopkosten || 0) + (b.tob || 0);
+      const verkoopBedrag = ((b.verkoopkoers || 0) * b.aantalVerkocht - verkoopKosten) * fxVerkoop(b);
+      const metKosten = (b.transactiekosten || 0) > 0;
       const verkoopDatum = parseNLDatum(b.verkoopdatum);
       const aankoopDatum = b.datum ? new Date(b.datum) : null;
 
@@ -118,11 +127,11 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
         const refKoers = refKoersen[b.symbol];
         if (refKoers) {
           const refBedrag = refKoers * b.aantalVerkocht * fxRef(b);
-          const origBedrag = b.kostprijs * b.aantalVerkocht * fxAankoop(b);
+          const origBedrag = (b.kostprijs * b.aantalVerkocht + aankoopKosten(b, b.aantalVerkocht)) * fxAankoop(b);
           // Gebruik hoogste van referentie of originele aankoopprijs (beschermt belegger)
           if (origBedrag > refBedrag) {
             aankoopBedrag = origBedrag;
-            aankoopLabel = `€${fmt(origBedrag)} - aankoopprijs`;
+            aankoopLabel = `€${fmt(origBedrag)} - aankoopprijs${metKosten ? ' incl. kosten' : ''}`;
             gebruiktRef = false;
           } else {
             aankoopBedrag = refBedrag;
@@ -131,12 +140,12 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
           }
         } else {
           // Geen referentiekoers beschikbaar — gebruik aankoopprijs
-          aankoopBedrag = b.kostprijs * b.aantalVerkocht * fxAankoop(b);
-          aankoopLabel = `€${fmt(aankoopBedrag)} - aankoopprijs`;
+          aankoopBedrag = (b.kostprijs * b.aantalVerkocht + aankoopKosten(b, b.aantalVerkocht)) * fxAankoop(b);
+          aankoopLabel = `€${fmt(aankoopBedrag)} - aankoopprijs${metKosten ? ' incl. kosten' : ''}`;
         }
       } else {
-        aankoopBedrag = b.kostprijs * b.aantalVerkocht * fxAankoop(b);
-        aankoopLabel = `€${fmt(aankoopBedrag)} - ${aankoopDatum ? aankoopDatum.toLocaleDateString('nl-BE', { day: '2-digit', month: 'short', year: 'numeric' }) : 'aankoopprijs'}`;
+        aankoopBedrag = (b.kostprijs * b.aantalVerkocht + aankoopKosten(b, b.aantalVerkocht)) * fxAankoop(b);
+        aankoopLabel = `€${fmt(aankoopBedrag)}${metKosten ? ' incl. kosten' : ''} - ${aankoopDatum ? aankoopDatum.toLocaleDateString('nl-BE', { day: '2-digit', month: 'short', year: 'numeric' }) : 'aankoopprijs'}`;
       }
 
       const meerwaarde = verkoopBedrag - aankoopBedrag;
@@ -145,7 +154,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
         ...b,
         aankoopBedrag, aankoopLabel, verkoopBedrag, meerwaarde,
         aantalVerkocht: b.aantalVerkocht,
-        verkoopLabel: `€${fmt(verkoopBedrag)} - ${verkoopDatum ? verkoopDatum.toLocaleDateString('nl-BE', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}`,
+        verkoopLabel: `€${fmt(verkoopBedrag)}${verkoopKosten > 0 ? ' na kosten en TOB' : ''} - ${verkoopDatum ? verkoopDatum.toLocaleDateString('nl-BE', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}`,
         gebruiktRef,
       };
     });
@@ -177,7 +186,13 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
     const f = factor(b);
     const k = koersen[b.symbol];
     const huidigePrijs = k ? k.c : b.kostprijs;
-    const verkoopBedrag = huidigePrijs * aantal * f;
+    // Geschatte beurstaks bij verkoop (0,35% aandelen max €1.600,
+    // 0,12% ETF max €1.300, crypto 0), afgetrokken van het verkoopbedrag
+    const brutoVerkoop = huidigePrijs * aantal * f;
+    const tobTarief = b.type === 'crypto' ? 0 : b.type === 'etf' ? 0.0012 : 0.0035;
+    const tobMax = b.type === 'etf' ? 1300 : 1600;
+    const tobGeschat = Math.min(brutoVerkoop * tobTarief, tobMax);
+    const verkoopBedrag = brutoVerkoop - tobGeschat;
 
     const aankoopDatum = b.datum ? new Date(b.datum) : null;
     const aangekochtvoor2026 = aankoopDatum && aankoopDatum.getFullYear() < 2026;
@@ -186,10 +201,10 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
     if (aangekochtvoor2026) {
       const refKoers = refKoersen[b.symbol];
       const refBedrag = refKoers ? refKoers * aantal * fxRef(b) : b.kostprijs * aantal * fxAankoop(b);
-      const origBedrag = b.kostprijs * aantal * fxAankoop(b);
+      const origBedrag = (b.kostprijs * aantal + aankoopKosten(b, aantal)) * fxAankoop(b);
       aankoopBedrag = Math.max(refBedrag, origBedrag);
     } else {
-      aankoopBedrag = b.kostprijs * aantal * fxAankoop(b);
+      aankoopBedrag = (b.kostprijs * aantal + aankoopKosten(b, aantal)) * fxAankoop(b);
     }
 
     const meerwaarde = verkoopBedrag - aankoopBedrag;
@@ -203,7 +218,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
 
     return {
       simResultaat: {
-        meerwaarde, verkoopBedrag, aankoopBedrag,
+        meerwaarde, verkoopBedrag, aankoopBedrag, brutoVerkoop, tobGeschat,
         huidigePrijs, extraBelasting, extraBelastbaar, restVrij, extraVrij
       }
     };
@@ -570,8 +585,9 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
               <div style={{ background: 'var(--bg)', borderRadius: 10, padding: 16, marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, color: 'var(--text-primary)' }}>Simulatieresultaat</div>
                 {[
-                  { label: 'Verkoopbedrag', waarde: `€${fmt(simResultaat.verkoopBedrag)}` },
-                  { label: 'Aankoopbasis', waarde: `€${fmt(simResultaat.aankoopBedrag)}` },
+                  { label: 'Verkoopbedrag', waarde: `€${fmt(simResultaat.brutoVerkoop)}` },
+                  ...(simResultaat.tobGeschat > 0 ? [{ label: 'Geschatte beurstaks (TOB)', waarde: `− €${fmt(simResultaat.tobGeschat)}` }] : []),
+                  { label: 'Aankoopbasis (incl. aankoopkosten)', waarde: `€${fmt(simResultaat.aankoopBedrag)}` },
                   { label: simResultaat.meerwaarde >= 0 ? 'Meerwaarde' : 'Minwaarde', waarde: `${simResultaat.meerwaarde >= 0 ? '+' : '-'}€${fmt(simResultaat.meerwaarde)}`, kleur: simResultaat.meerwaarde >= 0 ? 'var(--green)' : 'var(--red)' },
                   { label: 'Toe te passen vrijstelling', waarde: `€${fmt(simResultaat.extraVrij)}` },
                   { label: 'Belastbaar', waarde: `€${fmt(simResultaat.extraBelastbaar)}` },
