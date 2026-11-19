@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { TobRegel, AfrekeningBedrag } from '../components/Afrekening';
+import { standaardTob, berekenTob } from '../utils/tob';
 import KostenInvoer from '../components/KostenInvoer';
 import { koers as koersFmt, koersInvoer } from '../utils/getal';
 import { muntSymbool, MUNTEN } from '../utils/munt';
@@ -213,23 +215,6 @@ const menuItemStyle = {
 
 // ── Beurstaks (TOB) bij verkoop, België ──────────────────────────
 // Tarief en maximum per transactie (in euro).
-const TOB_TARIEVEN = [
-  { id: '0.35', tarief: 0.0035, max: 1600, label: '0,35% · aandelen, ETF buiten de EER (max. €1.600)' },
-  { id: '0.12', tarief: 0.0012, max: 1300, label: '0,12% · ETF geregistreerd in de EER, obligaties (max. €1.300)' },
-  { id: '1.32', tarief: 0.0132, max: 4000, label: '1,32% · kapitaliserend fonds geregistreerd in België (max. €4.000)' },
-  { id: '0', tarief: 0, max: 0, label: '0% · geen beurstaks (bv. crypto)' },
-];
-// Standaardtarief: crypto 0%; ETF zonder beurscode (Amerikaanse ETF, buiten de
-// EER) 0,35%; in België geregistreerd kapitaliserend fonds (ISIN BE) 1,32%;
-// andere ETF's (Europese UCITS) 0,12%; aandelen 0,35%.
-const standaardTob = (b, info) => {
-  if (!b || b.type === 'crypto') return '0';
-  if (b.type !== 'etf') return '0.35';
-  const isin = info?.isin || b.isin || '';
-  if (/^BE/.test(isin) && /acc|kapitalis/i.test(b.naam || '')) return '1.32';
-  if (/^US/.test(isin) || !String(b.symbol || '').includes('.')) return '0.35';
-  return '0.12';
-};
 
 // ── Verkoop Registreren Modal ────────────────────────────────────
 function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
@@ -319,8 +304,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
   const naarEur = munt === 'EUR' ? 1
     : ((fxOp ? fxOp(munt, form.datum) : 0) || (getMuntFactor ? getMuntFactor(munt) : 1) || 1);
   const brutoEur = brutoBedrag * naarEur;
-  const tobInfo = TOB_TARIEVEN.find(x => x.id === tobId) || TOB_TARIEVEN[0];
-  const tobAuto = Math.round(Math.min(brutoEur * tobInfo.tarief, tobInfo.max || 0) * 100) / 100;
+  const tobAuto = berekenTob(brutoEur, tobId);
   const tobEur = tobHandmatig != null && tobHandmatig !== '' ? (parseFloat(tobHandmatig) || 0) : tobAuto;
   const kostenIngevuld = parseFloat(kosten) || 0;
   const kostenEur = kostenMunt === 'EUR' ? kostenIngevuld : kostenIngevuld * naarEur;
@@ -564,35 +548,16 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                 </div>
               )}
 
-              {/* Transactiekosten + beurstaks */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Transactiekosten</label>
-                  <KostenInvoer value={kosten} onChange={setKosten} verkoop inputStyle={inputStyle}
-                    naast={munt !== 'EUR' && (
-                      <select value={kostenMunt} onChange={e => setKostenMunt(e.target.value)} style={{ ...inputStyle, width: 76 }}>
-                        <option value="EUR">EUR</option>
-                        <option value={munt}>{munt}</option>
-                      </select>
-                    )} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Beurstaks (TOB) in €</label>
-                  <input type="number" min="0" step="0.01"
-                    value={tobHandmatig != null ? tobHandmatig : tobAuto.toFixed(2)}
-                    onChange={e => setTobHandmatig(e.target.value)} style={inputStyle} />
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-                    {tobHandmatig != null
-                      ? <>Zelf aangepast · <button type="button" onClick={() => setTobHandmatig(null)} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>automatisch berekenen</button></>
-                      : 'Automatisch berekend, pas aan indien nodig.'}
-                  </p>
-                </div>
-              </div>
+              {/* Transactiekosten (de beurstaks wordt automatisch berekend, zie samenvatting) */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Tarief beurstaks</label>
-                <select value={tobId} onChange={e => { setTobId(e.target.value); setTobHandmatig(null); }} style={inputStyle}>
-                  {TOB_TARIEVEN.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
-                </select>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Transactiekosten <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)' }}>optioneel</span></label>
+                <KostenInvoer value={kosten} onChange={setKosten} tobApart inputStyle={inputStyle}
+                  naast={munt !== 'EUR' && (
+                    <select value={kostenMunt} onChange={e => setKostenMunt(e.target.value)} style={{ ...inputStyle, width: 76 }}>
+                      <option value="EUR">EUR</option>
+                      <option value={munt}>{munt}</option>
+                    </select>
+                  )} />
               </div>
 
               {/* Samenvatting */}
@@ -610,7 +575,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                       </span>
                     </div>
                     <div style={rij}><span>Transactiekosten</span><span style={num}>− €{f2(kostenEur)}</span></div>
-                    <div style={rij}><span>Beurstaks (TOB)</span><span style={num}>− €{f2(tobEur)}</span></div>
+                    <TobRegel teken="−" tobId={tobId} setTobId={setTobId} tobEur={tobEur} tobHandmatig={tobHandmatig} setTobHandmatig={setTobHandmatig} inputStyle={inputStyle} />
                     <div style={{ ...rij, borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 8, fontWeight: 600, color: 'var(--text-primary)' }}>
                       <span>{ontvangenEur ? 'Berekend netto' : 'Netto ontvangen'}</span><span style={num}>€{f2(nettoEur)}</span>
                     </div>
@@ -619,18 +584,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                         Omgerekend aan 1 {munt} = €{naarEur.toLocaleString('nl-BE', { maximumFractionDigits: 4 })} op {new Date(form.datum).toLocaleDateString('nl-BE')} (ECB-dagkoers).
                       </div>
                     )}
-                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 10, paddingTop: 10 }}>
-                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
-                        Werkelijk ontvangen volgens je afrekening (€) <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>optioneel</span>
-                      </label>
-                      <input type="number" min="0" step="any" value={ontvangen} placeholder={f2(nettoEur)}
-                        onChange={e => setOntvangen(e.target.value)} style={{ ...inputStyle, background: 'var(--bg-white)' }} />
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.45 }}>
-                        {ontvangenEur
-                          ? <>Kapitas gebruikt dit bedrag. Verschil met de berekening: <strong style={{ color: 'var(--text-secondary)' }}>{ontvangenEur - nettoEur >= 0 ? '+' : '−'}€{f2(Math.abs(ontvangenEur - nettoEur))}</strong>{munt !== 'EUR' ? ' — meestal de wisselkoers van je broker (of wisselkoerskosten die al in die koers zaten).' : '.'}</>
-                          : 'Vul het bedrag in dat je broker op je rekening zette: dan klopt je winst tot op de cent.'}
-                      </div>
-                    </div>
+                    <AfrekeningBedrag label="Werkelijk ontvangen volgens je afrekening (€)" value={ontvangen} onChange={setOntvangen} berekend={nettoEur} inputStyle={inputStyle} />
                   </div>
                 );
               })()}

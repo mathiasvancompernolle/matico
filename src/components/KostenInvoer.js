@@ -8,10 +8,10 @@ import React, { useState } from 'react';
 //
 // props:
 //   value, onChange(string)  — totaalbedrag (als tekst, zoals een input)
-//   verkoop                  — true: TOB staat apart; false (aankoop): TOB hoort erbij
+//   tobApart                 — true: de TOB berekent de app zelf; false: TOB hoort erbij
 //   inputStyle / inputClassName — opmaak van de velden
 //   naast                    — optioneel element naast het totaalveld (bv. muntkeuze)
-export default function KostenInvoer({ value, onChange, verkoop = false, inputStyle, inputClassName, naast, placeholder = '0,00' }) {
+export default function KostenInvoer({ value, onChange, tobApart = false, inputStyle, inputClassName, naast, placeholder = '0,00' }) {
   const [open, setOpen] = useState(false);
   const [delen, setDelen] = useState({ commissie: '', beurs: '', wissel: '' });
 
@@ -22,8 +22,8 @@ export default function KostenInvoer({ value, onChange, verkoop = false, inputSt
     onChange(som > 0 ? String(Math.round(som * 100) / 100) : '');
   };
 
-  const uitleg = verkoop
-    ? 'Tel alles op wat je broker aanrekent: commissie, beurskosten en wisselkoerskosten. De beurstaks (TOB) heeft een eigen veld.'
+  const uitleg = tobApart
+    ? 'Tel alles op wat je broker aanrekent: commissie, beurskosten en wisselkoerskosten. De beurstaks (TOB) berekent Kapitas automatisch.'
     : 'Tel alles op wat je broker aanrekent: commissie, beurskosten, wisselkoerskosten én de beurstaks (TOB) bij aankoop.';
 
   const klein = { fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.45 };

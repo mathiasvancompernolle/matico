@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { TobRegel, AfrekeningBedrag } from '../components/Afrekening';
+import { standaardTob, berekenTob } from '../utils/tob';
 import KostenInvoer from '../components/KostenInvoer';
 import { koersInvoer } from '../utils/getal';
 import { muntSymbool, MUNTEN } from '../utils/munt';
@@ -14,7 +16,11 @@ const TYPES = [
 ];
 
 export default function BeleggingToevoegen({ onClose }) {
-  const { setBeleggingen, setVerkochteBeleggingen, fetchKoers } = useApp();
+  const { setBeleggingen, setVerkochteBeleggingen, fetchKoers, profielInfo } = useApp();
+  // Beurstaks bij aankoop: automatisch berekend (tarief en bedrag aanpasbaar)
+  const [tobKeuze, setTobKeuze] = useState(null);
+  const [tobHandmatig, setTobHandmatig] = useState(null);
+  const [betaald, setBetaald] = useState(''); // exact bedrag van de afrekening (€), optioneel
   const [stap, setStap] = useState('type');
   const [type, setType] = useState(null);
   const [zoekterm, setZoekterm] = useState('');
@@ -116,6 +122,7 @@ export default function BeleggingToevoegen({ onClose }) {
       return 'EUR';
     })();
     setForm(f => ({ ...f, kostprijs: koersInvoer(koers.c), munt }));
+    setTobKeuze(null); setTobHandmatig(null); setBetaald('');
     }
   };
 
@@ -321,8 +328,9 @@ export default function BeleggingToevoegen({ onClose }) {
     const kostprijsPerStuk = parseFloat(form.kostprijs);
     const aantalStuks = parseFloat(form.aantal);
     // Kosten in euro ingevuld → bewaren in de munt van het effect
-    const kostenEur = parseFloat(form.transactiekosten) || 0;
-    const transactiekosten = form.munt === 'EUR' ? kostenEur : kostenEur / (wisselkoersOpDatum || 1);
+    // Transactiekosten + beurstaks (of wat er volgens de afrekening meer
+    // betaald werd dan koers × aantal), bewaard in de munt van het effect
+    const transactiekosten = kostenTotaalMunt;
 
     const nieuw = {
       id: Date.now(),
@@ -474,9 +482,13 @@ export default function BeleggingToevoegen({ onClose }) {
   const kostprijsPerStuk = parseFloat(form.kostprijs) || 0;
   const aantalStuks = parseFloat(form.aantal) || 0;
   const transactiekostenEur = parseFloat(form.transactiekosten) || 0;
-  const transactiekosten = form.munt === 'EUR' ? transactiekostenEur : transactiekostenEur / (wisselkoersOpDatum || 1);
-  const totaalKostprijs = kostprijsPerStuk * aantalStuks + transactiekosten;
-  const totaalKostprijsEUR = totaalKostprijs * wisselkoersOpDatum;
+  const fxAankoop = form.munt === 'EUR' ? 1 : (wisselkoersOpDatum || 1);
+  const aankoopEur = kostprijsPerStuk * aantalStuks * fxAankoop;
+  const tobId = tobKeuze || standaardTob({ type, symbol: geselecteerd?.symbol, naam: geselecteerd?.naam }, profielInfo?.[geselecteerd?.symbol]);
+  const tobAankoopEur = tobHandmatig != null && tobHandmatig !== '' ? (parseFloat(tobHandmatig) || 0) : berekenTob(aankoopEur, tobId);
+  const berekendTotaalEur = aankoopEur + transactiekostenEur + tobAankoopEur;
+  const betaaldEur = parseFloat(betaald) > 0 ? parseFloat(betaald) : null;
+  const kostenTotaalMunt = Math.max(0, (betaaldEur ? betaaldEur - aankoopEur : transactiekostenEur + tobAankoopEur) / fxAankoop);
 
   return (
     <div style={{ minHeight: '100vh' }}>
@@ -900,37 +912,40 @@ export default function BeleggingToevoegen({ onClose }) {
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Niet gekend? Laat leeg — later aanpasbaar</div>
                 </div>
                 <div style={{ gridColumn: '2 / 4' }}>
-                  <KostenInvoer value={form.transactiekosten} onChange={v => setForm(f => ({ ...f, transactiekosten: v }))}
+                  <KostenInvoer tobApart value={form.transactiekosten} onChange={v => setForm(f => ({ ...f, transactiekosten: v }))}
                     inputClassName="form-input" placeholder="€0 (optioneel)" />
                 </div>
               </div>
 
-              {/* Preview totale kostprijs */}
-              {(kostprijsPerStuk > 0 && aantalStuks > 0) && (
-                <div style={{ marginTop: 16, padding: '12px 16px', background: 'var(--bg)', borderRadius: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                      Totale kostprijs
-                      {transactiekosten > 0 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> (incl. €{getal(transactiekostenEur, 2)} kosten)</span>}
+              {/* Samenvatting in euro: aankoopbedrag + kosten + beurstaks */}
+              {(kostprijsPerStuk > 0 && aantalStuks > 0) && (() => {
+                const f2 = (v) => (v || 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const rij = { display: 'flex', justifyContent: 'space-between', gap: 16, padding: '4px 0' };
+                const num = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' };
+                const veld = { width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', color: 'var(--text-primary)', background: 'var(--bg-white)' };
+                return (
+                  <div style={{ marginTop: 16, padding: '10px 16px', background: 'var(--bg)', borderRadius: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
+                    <div style={rij}>
+                      <span>Aankoopbedrag</span>
+                      <span style={{ ...num, color: 'var(--text-primary)' }}>
+                        {form.munt !== 'EUR' && <span style={{ color: 'var(--text-muted)', marginRight: 6 }}>{muntSymbool(form.munt)}{f2(kostprijsPerStuk * aantalStuks)} ≈</span>}
+                        €{f2(aankoopEur)}
+                      </span>
                     </div>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>
-                      {muntSymbool(form.munt)}{totaalKostprijs.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <div style={rij}><span>Transactiekosten</span><span style={num}>+ €{f2(transactiekostenEur)}</span></div>
+                    <TobRegel teken="+" tobId={tobId} setTobId={setTobKeuze} tobEur={tobAankoopEur} tobHandmatig={tobHandmatig} setTobHandmatig={setTobHandmatig} inputStyle={veld} />
+                    <div style={{ ...rij, borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 8, fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <span>{betaaldEur ? 'Berekend totaal' : 'Totaal betaald'}</span><span style={num}>€{f2(berekendTotaalEur)}</span>
                     </div>
+                    {form.munt !== 'EUR' && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                        {wisselkoersLoading ? 'Wisselkoers ophalen...' : `Omgerekend aan 1 ${form.munt} = €${getal(wisselkoersOpDatum, 4)} op ${form.datum ? new Date(form.datum).toLocaleDateString('nl-BE') : 'de aankoopdag'} (ECB-dagkoers).`}
+                      </div>
+                    )}
+                    <AfrekeningBedrag label="Werkelijk betaald volgens je afrekening (€)" value={betaald} onChange={setBetaald} berekend={berekendTotaalEur} inputStyle={veld} />
                   </div>
-                  {form.munt !== 'EUR' && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border-light)' }}>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        {wisselkoersLoading
-                          ? 'Wisselkoers ophalen...'
-                          : `≈ wisselkoers op ${form.datum}: 1 ${form.munt} = €${getal(wisselkoersOpDatum, 4)}`}
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: 15 }}>
-                        ≈ €{totaalKostprijsEUR.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                );
+              })()}
                 </>
               ) : (
                 <>
