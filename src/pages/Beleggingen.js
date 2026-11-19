@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import KostenInvoer from '../components/KostenInvoer';
 import { koers as koersFmt, koersInvoer } from '../utils/getal';
 import { muntSymbool, MUNTEN } from '../utils/munt';
 import { createPortal } from 'react-dom';
@@ -560,17 +561,13 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Transactiekosten</label>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <input type="number" min="0" step="0.01" value={kosten} placeholder="0,00"
-                      onChange={e => setKosten(e.target.value)} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
-                    {munt !== 'EUR' && (
+                  <KostenInvoer value={kosten} onChange={setKosten} verkoop inputStyle={inputStyle}
+                    naast={munt !== 'EUR' && (
                       <select value={kostenMunt} onChange={e => setKostenMunt(e.target.value)} style={{ ...inputStyle, width: 76 }}>
                         <option value="EUR">EUR</option>
                         <option value={munt}>{munt}</option>
                       </select>
-                    )}
-                  </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>Wat je broker aanrekent (meestal in euro).</p>
+                    )} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Beurstaks (TOB) in €</label>

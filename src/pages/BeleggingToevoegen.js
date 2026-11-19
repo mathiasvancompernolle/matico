@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import KostenInvoer from '../components/KostenInvoer';
 import { koersInvoer } from '../utils/getal';
 import { muntSymbool, MUNTEN } from '../utils/munt';
 import { useApp } from '../context/AppContext';
@@ -894,13 +895,14 @@ export default function BeleggingToevoegen({ onClose }) {
 
               {/* Rij 3: Transactiekosten */}
               <div className="toevoegen-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border-light)' }}>
-                <div>
+                <div style={{ alignSelf: 'start' }}>
                   <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-secondary)' }}>Transactiekosten (€)</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Niet gekend? Laat leeg — later aanpasbaar</div>
                 </div>
-                <div />
-                <input type="number" className="form-input" placeholder="€0 (optioneel)" value={form.transactiekosten}
-                  onChange={e => setForm(f => ({ ...f, transactiekosten: e.target.value }))} step="0.01" min="0" />
+                <div style={{ gridColumn: '2 / 4' }}>
+                  <KostenInvoer value={form.transactiekosten} onChange={v => setForm(f => ({ ...f, transactiekosten: v }))}
+                    inputClassName="form-input" placeholder="€0 (optioneel)" />
+                </div>
               </div>
 
               {/* Preview totale kostprijs */}
