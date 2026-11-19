@@ -119,11 +119,11 @@ const CRYPTO_KLEUREN = {
 
 function BeleggingAvatar({ b }) {
   // Logo uit meerdere bronnen (zie components/EffectLogo.js)
-  const { src, onError, rond } = useEffectLogo(b);
+  const { src, onError, rond, donker } = useEffectLogo(b);
   if (src) {
     return (
       <img src={src} alt={b.symbol}
-        style={logoStijl(36, rond ? '50%' : 10)}
+        style={logoStijl(36, rond ? '50%' : 10, donker)}
         onError={onError} />
     );
   }
@@ -1773,7 +1773,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     </div>
                   )}
                   <div
-                    className="tabel-rij belegging-grid"
+                    className={isMobielScherm ? 'ov-rij-mobiel' : 'tabel-rij belegging-grid'}
                     onClick={() => onRijKlik(b)}
                     onTouchStart={isMobielScherm ? (e) => onRijTouchStart(b.id, e) : undefined}
                     onTouchMove={isMobielScherm ? (e) => onRijTouchMove(b.id, e) : undefined}
@@ -1782,8 +1782,33 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                       position: 'relative', zIndex: 1, background: 'var(--bg-white)',
                       transform: swipeRowId === b.id ? `translateX(${swipeX}px)` : 'translateX(0)',
                       transition: (swipeRowId === b.id && swipeStartXRef.current != null) ? 'none' : 'transform 0.2s',
+                      ...(isMobielScherm ? { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border-light)', cursor: 'pointer' } : {}),
                     }}
                   >
+                  {isMobielScherm ? (
+                    // Gsm: compacte kaart — links naam, aantal, koers en dagbeweging;
+                    // rechts waarde en totale winst/verlies
+                    <>
+                      <BeleggingAvatar b={b} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.naam}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {b.aantal} st. · {muntSym}{koersFmt(huidigePrijs)}
+                        </div>
+                        {beursOpen && (
+                          <div style={{ fontSize: 12, fontWeight: 600, color: dagVPctRaw >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                            Vandaag {dagVPctRaw >= 0 ? '+' : '-'}{getal(Math.abs(dagVPctRaw), 2)}%
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>€{getal(huidigeWaarde, 2)}</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: winstTotaal >= 0 ? 'var(--green)' : 'var(--red)', fontVariantNumeric: 'tabular-nums' }}>
+                          {winstTotaal >= 0 ? '+' : '-'}€{getal(Math.abs(winstTotaal), 2)} · {winstTotaalPct >= 0 ? '+' : '-'}{getal(Math.abs(winstTotaalPct), 1)}%
+                        </div>
+                      </div>
+                    </>
+                  ) : (<>
                   <div className="belegging-naam">
                     <BeleggingAvatar b={b} />
                     <div>
@@ -1814,6 +1839,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     </span>
                   </div>
                   <div style={{ fontWeight: 600 }}>{getal(gewicht, 1)}%</div>
+                  </>)}
                   </div>
                 </div>
               );

@@ -89,21 +89,59 @@ export function useEffectLogo(b) {
   useEffect(() => { setIndex(0); }, [kandidaten.join('|')]);
 
   const src = kandidaten[index] || null;
+
+  // Wit logo op een doorzichtige achtergrond (bv. het Nike-logo) is
+  // onzichtbaar op wit: dan een donkere achtergrond. We bekijken de pixels via
+  // een aparte kopie van de afbeelding (lukt enkel als de bron dat toelaat);
+  // het resultaat wordt per afbeelding onthouden.
+  const [donker, setDonker] = useState(false);
+  useEffect(() => {
+    setDonker(false);
+    if (!src) return;
+    const sleutel = `kapitas_logotint_${src}`;
+    try { const c = localStorage.getItem(sleutel); if (c != null) { setDonker(c === '1'); return; } } catch (e) {}
+    let actief = true;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const n = 24;
+        const canvas = document.createElement('canvas');
+        canvas.width = n; canvas.height = n;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, n, n);
+        const d = ctx.getImageData(0, 0, n, n).data;
+        let zichtbaar = 0, licht = 0, doorzichtig = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i + 3] < 40) { doorzichtig++; continue; }
+          zichtbaar++;
+          if (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2] > 215) licht++;
+        }
+        const witOpDoorzichtig = doorzichtig > n * n * 0.2 && zichtbaar > 0 && licht / zichtbaar > 0.8;
+        try { localStorage.setItem(sleutel, witOpDoorzichtig ? '1' : '0'); } catch (e) {}
+        if (actief) setDonker(witOpDoorzichtig);
+      } catch (e) { /* bron laat analyse niet toe: gewoon wit laten */ }
+    };
+    img.src = src;
+    return () => { actief = false; };
+  }, [src]);
+
   return {
     src,
     onError: () => setIndex(i => i + 1),
     // Crypto-logo's zijn rond: dan een cirkel i.p.v. een afgerond vierkant
     rond: isCrypto && !!src && src === cryptoLogo,
+    donker,
   };
 }
 
 // Klein logo (bv. in lijsten) met letters als terugval
 export function EffectLogoKlein({ b, grootte = 32 }) {
-  const { src, onError, rond } = useEffectLogo(b);
+  const { src, onError, rond, donker } = useEffectLogo(b);
   if (src) {
     return (
       <img src={src} alt={b?.symbol} onError={onError}
-        style={logoStijl(grootte, rond ? '50%' : 8)} />
+        style={logoStijl(grootte, rond ? '50%' : 8, donker)} />
     );
   }
   return (
@@ -119,8 +157,8 @@ export function EffectLogoKlein({ b, grootte = 32 }) {
 // Stijl voor een logo: vult het afgeronde vakje volledig (geen witte
 // opvulling of kader rond logo's met een eigen achtergrond). Een zeer lichte
 // omlijning bovenop het beeld houdt lichte logo's zichtbaar op wit.
-export const logoStijl = (grootte = 36, hoek = 10) => ({
+export const logoStijl = (grootte = 36, hoek = 10, donker = false) => ({
   width: grootte, height: grootte, borderRadius: hoek, objectFit: 'cover', display: 'block',
-  background: 'white', flexShrink: 0,
+  background: donker ? '#0f172a' : 'white', flexShrink: 0,
   outline: '1px solid rgba(15, 23, 42, 0.08)', outlineOffset: -1,
 });

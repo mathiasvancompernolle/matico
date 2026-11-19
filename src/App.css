@@ -2240,3 +2240,19 @@ body.dark .top-nav {
 /* Knoppen nemen de tekstkleur van hun omgeving over (anders standaard zwart,
    onleesbaar in dark mode). Knoppen met een eigen kleur behouden die. */
 button { color: inherit; }
+
+/* Gsm: tabbladen bij Markten op één regel (anders "Noord-/Amerika" op twee
+   regels); past het niet, dan horizontaal schuiven */
+@media (max-width: 768px) {
+  .markten-regio-tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .markten-regio-tabs::-webkit-scrollbar { display: none; }
+  .markten-regio-tab {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 10px 14px;
+  }
+}

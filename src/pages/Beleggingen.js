@@ -51,14 +51,14 @@ const CRYPTO_KLEUREN = {
 
 function Avatar({ symbol, logo, naam, type }) {
   // Logo uit meerdere bronnen (zie components/EffectLogo.js)
-  const { src: logoSrc, onError: logoFout, rond: logoRond } = useEffectLogo({ symbol, logo, naam, type });
+  const { src: logoSrc, onError: logoFout, rond: logoRond, donker: logoDonker } = useEffectLogo({ symbol, logo, naam, type });
   const initials = symbol.split('.')[0].slice(0, 2).toUpperCase();
 
   if (logoSrc) {
     return (
       <img
         src={logoSrc} alt={symbol}
-        style={logoStijl(36, logoRond ? '50%' : 10)}
+        style={logoStijl(36, logoRond ? '50%' : 10, logoDonker)}
         onError={logoFout}
       />
     );
@@ -1087,6 +1087,34 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                   const wv = b.winstverlies || 0;
                   const isPos = wv >= 0;
                   const ms = muntSymbool(b.verkoopMunt || b.munt || 'EUR');
+                  const verwijderVerkoop = () => {
+                    if (window.confirm(t('bel_verkoop_verwijderen_confirm'))) {
+                      setVerkochteBeleggingen(prev => prev.filter((_, i) => prev[i] !== b));
+                    }
+                  };
+                  if (isMobiel) {
+                    const vd = b.verkoopdatum ? new Date(parseDatum(b.verkoopdatum)) : null;
+                    const vdTekst = vd && !isNaN(vd) ? vd.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' }) : (b.verkoopdatum || '');
+                    return (
+                      <div key={b.id + b.verkoopdatum} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 12px 12px 16px', borderBottom: '1px solid var(--border-light)' }}>
+                        <Avatar symbol={b.symbol} logo={b.logo} naam={b.naam} type={b.type} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.naam}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {b.aantalVerkocht || b.aantal} st. · {muntSymbool(b.munt || 'EUR')}{koersFmt(b.kostprijs)} → {b.verkoopkoers != null ? ms + koersFmt(b.verkoopkoers) : '—'}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Verkocht op {vdTekst}</div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0, fontWeight: 700, fontSize: 15, color: isPos ? 'var(--green)' : 'var(--red)', fontVariantNumeric: 'tabular-nums' }}>
+                          {isPos ? '+' : '-'}{ms}{getal(Math.abs(wv), 2)}
+                        </div>
+                        <button onClick={verwijderVerkoop} aria-label="Verkoop verwijderen"
+                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6, borderRadius: 6, flexShrink: 0 }}>
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    );
+                  }
                   return (
                     <div key={b.id + b.verkoopdatum} className="belegging-row-grid" style={{
                       display: 'grid',
@@ -1113,7 +1141,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                         fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 600,
                         color: isPos ? 'var(--green)' : 'var(--red)'
                       }}>
-                        {isPos ? '+' : ''}{ms}{getal(wv, 2)}
+                        {isPos ? '+' : '-'}{ms}{getal(Math.abs(wv), 2)}
                       </div>
                       <button
                         onClick={() => {
@@ -1173,17 +1201,35 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                 <div style={{ fontWeight: 700, fontSize: 15 }}>{t('bel_transactiegeschiedenis')}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{transacties.length} {t('bel_transacties_suffix')}</div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 100px 1fr 1fr 1fr 1fr', padding: '10px 24px', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-light)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {!isMobiel && <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 100px 1fr 1fr 1fr 1fr', padding: '10px 24px', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-light)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 <span>{t('bel_col_instrument')}</span><span>{t('bel_col_type')}</span><span>{t('bel_col_datum')}</span>
                 <span style={{ textAlign: 'right' }}>{t('bel_col_aantal')}</span>
                 <span style={{ textAlign: 'right' }}>{t('ov_col_koers')}</span>
                 <span style={{ textAlign: 'right' }}>{t('ov_totaal')}</span>
-              </div>
+              </div>}
               {transacties.map((tx, idx) => {
                 const factor = getMuntFactor ? getMuntFactor(tx.munt) : (tx.munt === 'USD' ? 0.865 : 1);
                 const totaal = (tx.koers || 0) * tx.aantal * factor + (tx.kosten || 0);
                 const ms = muntSymbool(tx.munt);
                 const isAankoop = tx.type === 'aankoop';
+                if (isMobiel) {
+                  return (
+                    <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: idx < transacties.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+                      <Avatar symbol={tx.symbol} logo={tx.logo} naam={tx.naam} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tx.naam}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span style={{ fontWeight: 700, color: isAankoop ? 'var(--green)' : 'var(--red)' }}>{isAankoop ? `↑ ${t('ov_tooltip_aankoop')}` : `↓ ${t('ov_tooltip_verkoop')}`}</span>
+                          {' · '}{formatDatum(tx.datum)}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{tx.aantal} × {ms}{koersFmt(tx.koers || 0)}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0, fontWeight: 700, fontSize: 15, color: isAankoop ? 'var(--text-primary)' : 'var(--green)', fontVariantNumeric: 'tabular-nums' }}>
+                        {isAankoop ? '-' : '+'}€{getal(Math.abs(totaal), 2)}
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr 100px 1fr 1fr 1fr 1fr', padding: '14px 24px', borderBottom: idx < transacties.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1200,7 +1246,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{formatDatum(tx.datum)}</div>
                     <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{tx.aantal}</div>
-                    <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{ms}{getal((tx.koers || 0), 2)}</div>
+                    <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right' }}>{ms}{koersFmt(tx.koers || 0)}</div>
                     <div style={{ fontSize: 13, fontFamily: 'monospace', textAlign: 'right', fontWeight: 600, color: isAankoop ? 'var(--text-primary)' : 'var(--green)' }}>
                       {isAankoop ? '-' : '+'}€{getal(Math.abs(totaal), 2)}
                     </div>
