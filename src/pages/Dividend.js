@@ -6,6 +6,7 @@ import SidebarToggleKnop from '../components/SidebarToggleKnop';
 
 import { getal } from '../utils/getal';
 import { naarIsoDatum } from '../utils/handelsdag';
+import { bronheffing, procent } from '../utils/dividendbelasting';
 const ACCENT = '#1e3a8a';
 const fmt2 = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -158,7 +159,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
 
   // ── Bereken dividenddata per belegging ──
   // Gebruikt live Finnhub data als beschikbaar, anders hardcoded database
-  const { perBelegging, ontvangen, geschat, verwacht, dividendRendement, rendementOpAankoop, maandData, zonderData, geenDividend } = useMemo(() => {
+  const { perBelegging, ontvangen, geschat, uitsplitsing, verwacht, dividendRendement, rendementOpAankoop, maandData, zonderData, geenDividend } = useMemo(() => {
     const huidigMaand = new Date().getMonth() + 1;
     const huidigJaar = new Date().getFullYear();
     const isHuidigJaar = jaar === huidigJaar;
@@ -166,7 +167,8 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
     const perBel = [];
     let totaalOntvangen = 0;
     let totaalVerwacht = 0;
-    let totaalGeschat = 0; // 'ontvangen' op basis van de vaste schattingslijst (geen brondata)
+    let totaalGeschat = 0;
+    let totBruto = 0, totBron = 0; // ontvangen, voor de uitsplitsing bruto → netto // 'ontvangen' op basis van de vaste schattingslijst (geen brondata)
     const maandTotalen = Array(12).fill(0);
     const zonderDataLijst = [];
     const geenDividendLijst = []; // bedrijven die bewust geen dividend uitkeren
@@ -194,6 +196,9 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
 
     alleBel.forEach(b => {
       const basis = b.symbol.toUpperCase().split('.')[0];
+      // Netto = bruto − buitenlandse bronheffing − 30% Belgische RV op de rest
+      const bh = bronheffing(b.symbol, b.type);
+      const nf = (1 - bh.tarief) * (1 - BELASTING);
       const f = factor(b);
       const k = koersen[b.symbol];
       const huidigePrijs = k ? k.c : b.kostprijs;
@@ -248,7 +253,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
           }).reduce((s, d) => s + parseFloat(d.amount || d.adjDividend || 0), 0);
 
           const verwachtBruto = toekomstigeUSD * b.aantal * f;
-          const verwachtNetto = verwachtBruto * (1 - BELASTING);
+          const verwachtNetto = verwachtBruto * nf;
 
           // Ontvangen = uitkeringen waarvoor je recht had én al betaald
           // Omgerekend aan de wisselkoers van de betaaldag (zoals de grafiek)
@@ -260,7 +265,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
               return !isHuidigJaar || (!isNaN(betaalDatum.getTime()) && betaalDatum <= new Date());
             })
             .reduce((s, d) => s + parseFloat(d.amount || d.adjDividend || 0) * b.aantal * fxBetaal(d), 0);
-          const ontvangenNetto = ontvangenBruto * (1 - BELASTING);
+          const ontvangenNetto = ontvangenBruto * nf;
 
           // Maanddata — enkel uitkeringen waarvoor je recht had
           uitkeringenDitJaar.forEach(d => {
@@ -268,7 +273,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
             const maandIdx = betaalDatum.getMonth();
             if (!isHuidigJaar || betaalDatum <= new Date()) {
               const bedrag = parseFloat(d.amount || d.adjDividend || 0) * b.aantal * fxBetaal(d);
-              maandTotalen[maandIdx] += modus === 'netto' ? bedrag * (1 - BELASTING) : bedrag;
+              maandTotalen[maandIdx] += modus === 'netto' ? bedrag * nf : bedrag;
             }
           });
 
@@ -277,10 +282,11 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
 
           totaalOntvangen += modus === 'netto' ? ontvangenNetto : ontvangenBruto;
           totaalVerwacht += modus === 'netto' ? verwachtNetto : verwachtBruto;
+          totBruto += ontvangenBruto; totBron += ontvangenBruto * bh.tarief;
 
           perBel.push({
             id: b.id || b.symbol, naam: b.naam, symbol: b.symbol, logo: b.logo,
-            aantal: b.aantal, liveData: true,
+            aantal: b.aantal, liveData: true, bronheffing: bh,
             verkocht: !beleggingen.find(bb => bb.symbol === b.symbol),
             rendement, rendementAankoop,
             verwachtJaarlijks: modus === 'netto' ? verwachtNetto : verwachtBruto,
@@ -345,12 +351,12 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
           ontvangenBruto += uitkeringPerKeer;
           const maandIdx = Math.min(m, 12) - 1;
           if (maandIdx >= 0) maandTotalen[maandIdx] += modus === 'netto'
-            ? uitkeringPerKeer * (1 - BELASTING) : uitkeringPerKeer;
+            ? uitkeringPerKeer * nf : uitkeringPerKeer;
         }
       });
 
-      const ontvangenNetto = ontvangenBruto * (1 - BELASTING);
-      const verwachtNetto = verwachtBruto * (1 - BELASTING);
+      const ontvangenNetto = ontvangenBruto * nf;
+      const verwachtNetto = verwachtBruto * nf;
       const rendement = huidigePrijs > 0 ? (db.jaarlijks / huidigePrijs) * 100 : 0;
       const rendementAankoop = b.kostprijs > 0 ? (db.jaarlijks / b.kostprijs) * 100 : 0;
 
@@ -359,10 +365,11 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
       totaalOntvangen += modus === 'netto' ? ontvangenNetto : ontvangenBruto;
       totaalVerwacht += modus === 'netto' ? verwachtNetto : verwachtBruto;
       totaalGeschat += modus === 'netto' ? ontvangenNetto : ontvangenBruto;
+      totBruto += ontvangenBruto; totBron += ontvangenBruto * bh.tarief;
 
       perBel.push({
         id: b.id || b.symbol, naam: b.naam, symbol: b.symbol, logo: b.logo,
-        aantal: b.aantal, liveData: false, geschat: true,
+        aantal: b.aantal, liveData: false, geschat: true, bronheffing: bh,
         verkocht: !beleggingen.find(bb => bb.symbol === b.symbol),
         rendement, rendementAankoop,
         verwachtJaarlijks: modus === 'netto' ? verwachtNetto : verwachtBruto,
@@ -382,6 +389,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
       perBelegging: perBel.sort((a, b) => b.ontvangen - a.ontvangen),
       ontvangen: totaalOntvangen,
       geschat: totaalGeschat,
+      uitsplitsing: { bruto: totBruto, bron: totBron, rv: (totBruto - totBron) * BELASTING, netto: (totBruto - totBron) * (1 - BELASTING) },
       verwacht: totaalVerwacht,
       dividendRendement: (jaarlijksBrutoTotaal / totaalWaarde) * 100,
       rendementOpAankoop: (jaarlijksBrutoTotaal / totaalKostprijs) * 100,
@@ -514,6 +522,15 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
                   waarvan €{fmt2(geschat)} geschat (geen gegevens van de bron; telt niet mee in de grafieken)
                 </div>
               )}
+              {uitsplitsing && uitsplitsing.bruto > 0.005 && (
+                <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 3, columnGap: 12, maxWidth: 340 }}>
+                  <span>Bruto</span><span style={{ textAlign: 'right' }}>€{fmt2(uitsplitsing.bruto)}</span>
+                  <span>Buitenlandse bronheffing</span><span style={{ textAlign: 'right', color: uitsplitsing.bron > 0.005 ? '#ef4444' : 'inherit' }}>{uitsplitsing.bron > 0.005 ? '-' : ''}€{fmt2(uitsplitsing.bron)}</span>
+                  <span>Belgische roerende voorheffing (30%)</span><span style={{ textAlign: 'right', color: '#ef4444' }}>-€{fmt2(uitsplitsing.rv)}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', borderTop: '1px solid var(--border-light)', paddingTop: 3 }}>Netto</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right', borderTop: '1px solid var(--border-light)', paddingTop: 3 }}>€{fmt2(uitsplitsing.netto)}</span>
+                </div>
+              )}
             </div>
             <div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Totaal verwacht dit jaar</div>
@@ -611,7 +628,14 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
                       <span title="Live data via Finnhub" style={{ fontSize: 9, padding: '1px 5px', background: '#dcfce7', borderRadius: 4, color: '#16a34a', fontWeight: 700 }}>LIVE</span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.symbol}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    {b.symbol}
+                    {b.bronheffing?.land && (
+                      <span title="Buitenlandse bronheffing: wordt ingehouden vóór de Belgische 30% roerende voorheffing">
+                        {' · '}{b.bronheffing.land}{b.bronheffing.tarief > 0 ? ` · ${procent(b.bronheffing.tarief)} bronheffing` : ' · geen bronheffing'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 500 }}>
@@ -674,7 +698,10 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
               <strong>Bruto</strong> is het dividend vóór belastingen — het bedrag dat het bedrijf uitkeert.
             </p>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: 12 }}>
-              <strong>Netto</strong> is wat je effectief ontvangt na de Belgische roerende voorheffing van <strong>30%</strong>. Op €1,00 bruto ontvang je €0,70 netto.
+              <strong>Netto</strong> is wat je effectief ontvangt. Eerst houdt het land van het bedrijf een <strong>buitenlandse bronheffing</strong> in (bv. VS 15%, Nederland 15%, Duitsland 26,375%; Ierse en Luxemburgse ETF's en Belgische aandelen 0%). Daarna houdt België <strong>30% roerende voorheffing</strong> in op wat overblijft. Op $1,00 bruto van een Amerikaans aandeel ontvang je zo $0,595 netto.
+            </p>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: 12 }}>
+              <strong>Tip:</strong> een deel van je dividenden uit aandelen is per jaar vrijgesteld (ruim €800, jaarlijks geïndexeerd). De Belgische 30% op dat deel kan je terugvragen via je belastingaangifte. De buitenlandse bronheffing krijg je zo niet terug. Voor de VS geldt 15% enkel als je broker je W-8BEN-formulier heeft; anders 30%.
             </p>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
               Accumulerende ETFs (zoals VWCE, IWDA) keren geen dividend uit maar herbeleggen het automatisch — die zie je niet terug in dit overzicht.

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { vertaal, detecteerBrowserTaal } from '../translations';
 import { supabase } from '../supabaseClient';
 import { normaliseerKoers, normaliseerKoersen, leesDatum, naarIsoDatum } from '../utils/handelsdag';
+import { nettoFactor } from '../utils/dividendbelasting';
 
 const AppContext = createContext();
 
@@ -717,7 +718,8 @@ export function AppProvider({ children, supabaseGebruiker }) {
     });
   }, [divSleutel]);
 
-  // Netto ontvangen dividenden (na 30% Belgische roerende voorheffing) als
+  // Netto ontvangen dividenden (na buitenlandse bronheffing én 30% Belgische
+  // roerende voorheffing, zie utils/dividendbelasting.js) als
   // lijst { datum: betaaldag, eur } voor de opgegeven posities. Recht op een
   // uitkering = in bezit vóór de ex-datum (en nog niet verkocht).
   const dividendUitkeringen = (actief = [], verkocht = []) => {
@@ -732,7 +734,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
         if (verkoopIso && d.ex > verkoopIso) return;
         if (!d.betaal || d.betaal > vandaag) return;
         const munt = d.munt || b.munt || 'EUR';
-        uit.push({ datum: d.betaal, eur: d.bedrag * aantal * fxOp(munt, d.betaal) * 0.7 });
+        uit.push({ datum: d.betaal, eur: d.bedrag * aantal * fxOp(munt, d.betaal) * nettoFactor(b.symbol, b.type) });
       });
     };
     actief.forEach(b => verwerk(b, b.aantal, null));
