@@ -84,7 +84,7 @@ const BELASTING = 0.30;
 const MAANDEN = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
 
 export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
-  const { beleggingen, koersen, getMuntFactor, fxOp, verkochteBeleggingen } = useApp();
+  const { beleggingen, koersen, getMuntFactor, fxOp, verkochteBeleggingen, profielInfo } = useApp();
   const [jaar, setJaar] = useState(new Date().getFullYear());
   const [modus, setModus] = useState('bruto'); // 'bruto' | 'netto'
   const [jaarDropdown, setJaarDropdown] = useState(false);
@@ -197,7 +197,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
     alleBel.forEach(b => {
       const basis = b.symbol.toUpperCase().split('.')[0];
       // Netto = bruto − buitenlandse bronheffing − 30% Belgische RV op de rest
-      const bh = bronheffing(b.symbol, b.type);
+      const bh = bronheffing(b.symbol, b.type, profielInfo?.[b.symbol]);
       const nf = (1 - bh.tarief) * (1 - BELASTING);
       const f = factor(b);
       const k = koersen[b.symbol];
@@ -397,7 +397,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
       zonderData: [...new Set(zonderDataLijst)],
       geenDividend: [...new Set(geenDividendLijst)],
     };
-  }, [beleggingen, koersen, jaar, modus, verkochteBeleggingen, liveDividend, getMuntFactor, fxOp]);
+  }, [beleggingen, koersen, jaar, modus, verkochteBeleggingen, liveDividend, getMuntFactor, fxOp, profielInfo]);
 
   const beschikbareJaren = useMemo(() => {
     const huidig = new Date().getFullYear();

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { muntSymbool, MUNTEN } from '../utils/munt';
 import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import { Plus, ChevronDown, Calendar, MoreVertical, Search, ArrowLeft, X, Trash2, Download } from 'lucide-react';
@@ -216,11 +217,21 @@ const TOB_TARIEVEN = [
   { id: '1.32', tarief: 0.0132, max: 4000, label: '1,32% · kapitaliserend fonds geregistreerd in België (max. €4.000)' },
   { id: '0', tarief: 0, max: 0, label: '0% · geen beurstaks (bv. crypto)' },
 ];
-const standaardTob = (type) => (type === 'crypto' ? '0' : type === 'etf' ? '0.12' : '0.35');
+// Standaardtarief: crypto 0%; ETF zonder beurscode (Amerikaanse ETF, buiten de
+// EER) 0,35%; in België geregistreerd kapitaliserend fonds (ISIN BE) 1,32%;
+// andere ETF's (Europese UCITS) 0,12%; aandelen 0,35%.
+const standaardTob = (b, info) => {
+  if (!b || b.type === 'crypto') return '0';
+  if (b.type !== 'etf') return '0.35';
+  const isin = info?.isin || b.isin || '';
+  if (/^BE/.test(isin) && /acc|kapitalis/i.test(b.naam || '')) return '1.32';
+  if (/^US/.test(isin) || !String(b.symbol || '').includes('.')) return '0.35';
+  return '0.12';
+};
 
 // ── Verkoop Registreren Modal ────────────────────────────────────
 function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
-  const { t, getMuntFactor } = useApp();
+  const { t, getMuntFactor, profielInfo } = useApp();
   const [kosten, setKosten] = useState('');          // transactiekosten broker
   const [tobId, setTobId] = useState('0.35');
   const [tobHandmatig, setTobHandmatig] = useState(null); // zelf aangepast bedrag
@@ -246,7 +257,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
         munt
       });
       setKosten('');
-      setTobId(standaardTob(gekozen.type));
+      setTobId(standaardTob(gekozen, profielInfo?.[gekozen.symbol]));
       setTobHandmatig(null);
       setStap('invullen');
     }
@@ -490,7 +501,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                     />
                     <select value={form.munt} onChange={e => setForm(f => ({ ...f, munt: e.target.value }))}
                       style={{ ...inputStyle, width: 80 }}>
-                      <option>EUR</option><option>USD</option><option>GBP</option>
+                      {MUNTEN.map(m => <option key={m}>{m}</option>)}
                     </select>
                   </div>
                   {historischLoading ? (
@@ -516,7 +527,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
                     />
                     <select value={form.munt} onChange={e => setForm(f => ({ ...f, munt: e.target.value }))}
                       style={{ ...inputStyle, width: 80 }}>
-                      <option>EUR</option><option>USD</option><option>GBP</option>
+                      {MUNTEN.map(m => <option key={m}>{m}</option>)}
                     </select>
                   </div>
                   {!aantalOnbekend ? (
@@ -563,7 +574,7 @@ function VerkoopModal({ beleggingen, koersen, onClose, onBevestig }) {
 
               {/* Samenvatting */}
               {brutoBedrag > 0 && (() => {
-                const ms = form.munt === 'USD' ? '$' : form.munt === 'GBP' ? '£' : '€';
+                const ms = muntSymbool(form.munt);
                 const f2 = (v) => v.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 const rij = { display: 'flex', justifyContent: 'space-between', gap: 16, padding: '4px 0' };
                 return (
@@ -793,7 +804,6 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
     });
   };
 
-  const muntSymbool = (munt) => munt === 'USD' ? '$' : munt === 'GBP' ? '£' : '€';
 
   const ColHeader = ({ children }) => (
     <span style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'default', userSelect: 'none' }}>
@@ -1128,7 +1138,7 @@ export default function Beleggingen({ onToevoegen, sidebarCollapsed, onToggleSid
               {transacties.map((tx, idx) => {
                 const factor = getMuntFactor ? getMuntFactor(tx.munt) : (tx.munt === 'USD' ? 0.865 : 1);
                 const totaal = (tx.koers || 0) * tx.aantal * factor + (tx.kosten || 0);
-                const ms = tx.munt === 'USD' ? '$' : tx.munt === 'GBP' ? '£' : '€';
+                const ms = muntSymbool(tx.munt);
                 const isAankoop = tx.type === 'aankoop';
                 return (
                   <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr 100px 1fr 1fr 1fr 1fr', padding: '14px 24px', borderBottom: idx < transacties.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>

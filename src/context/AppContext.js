@@ -193,7 +193,11 @@ export function AppProvider({ children, supabaseGebruiker }) {
     try { localStorage.setItem('kapitas_laatste_koersen', JSON.stringify(koersen)); } catch (e) {}
   }, [koersen]);
   const [activeNav, setActiveNav] = useState('overzicht');
-  const [wisselkoers, setWisselkoers] = useState({ usdEur: 0.865 });
+  // Laatst gekende wisselkoersen meteen gebruiken (anders werden andere
+  // munten even als euro gerekend tot de koersen binnen waren)
+  const [wisselkoers, setWisselkoers] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('kapitas_forex') || 'null') || { usdEur: 0.865 }; } catch { return { usdEur: 0.865 }; }
+  });
 
   // ── Supabase-synchronisatie: portefeuille aan het account hangen, niet
   // aan het toestel ──────────────────────────────────────────────────────
@@ -421,7 +425,10 @@ export function AppProvider({ children, supabaseGebruiker }) {
       try {
         const res = await fetch('/api/data?endpoint=forex');
         const data = await res.json();
-        if (data.usdEur) setWisselkoers(data);
+        if (data.usdEur) {
+          setWisselkoers(data);
+          try { localStorage.setItem('kapitas_forex', JSON.stringify(data)); } catch (e) {}
+        }
       } catch (e) {}
     };
     haalWisselkoers();
@@ -592,9 +599,14 @@ export function AppProvider({ children, supabaseGebruiker }) {
     return () => clearInterval(interval);
   }, [actiefPortfolioId, beleggingen.length]);
 
+  // 1 eenheid van de munt = x euro. Elke ECB-munt (CHF, JPY, DKK, ...),
+  // niet enkel USD/GBP: andere munten werden vroeger als euro gerekend.
   const getMuntFactor = (munt) => {
-    if (munt === 'USD') return wisselkoers.usdEur;
-    if (munt === 'GBP') return wisselkoers.usdEur * 1.27;
+    const m = (munt || 'EUR').toUpperCase();
+    if (m === 'EUR') return 1;
+    if (wisselkoers.rates?.[m]) return wisselkoers.rates[m];
+    if (m === 'USD') return wisselkoers.usdEur;
+    if (m === 'GBP') return wisselkoers.usdEur * 1.37; // benadering tot de koersen geladen zijn
     return 1;
   };
 
@@ -663,6 +675,53 @@ export function AppProvider({ children, supabaseGebruiker }) {
     ((b.verkoopkoers || b.kostprijs || 0) * (b.aantalVerkocht || b.aantal || 1) - (b.verkoopkosten || 0) - (b.tob || 0))
     * fxOp(b.verkoopMunt || b.munt || 'EUR', b.verkoopdatum);
 
+  // ── Munt van bestaande posities rechtzetten ──────────────────────────
+  // Vroeger kende de app enkel EUR/USD/GBP: een aandeel in CHF, JPY, DKK,
+  // ... werd als "EUR" bewaard, en Londense koersen in pence als pond.
+  // De koersbron geeft nu de echte munt mee (pence al omgerekend). Wijkt de
+  // bewaarde munt af, dan zetten we ze recht. De kostprijs werd ofwel in de
+  // munt van het effect ingevuld (dan klopt enkel het label niet), ofwel in
+  // de oude munt (dan rekenen we om): we kiezen de lezing die het dichtst
+  // bij de huidige koers ligt.
+  useEffect(() => {
+    if (!beleggingen.length || !wisselkoers.rates) return;
+    let gewijzigd = false;
+    const nieuw = beleggingen.map(b => {
+      const k = koersen[b.symbol];
+      const echte = k?.currency;
+      if (!echte || !(k.c > 0) || !(b.kostprijs > 0)) return b;
+      const munt = (b.munt || 'EUR').toUpperCase();
+      if (munt === echte) {
+        // Oude pence-notering: pond-positie met kostprijs ~100x de koers
+        const r = b.kostprijs / k.c;
+        if (echte === 'GBP' && /\.L$/i.test(b.symbol) && r > 30 && r < 300 && b.muntGecontroleerd !== 'GBP-pence') {
+          gewijzigd = true;
+          return { ...b, kostprijs: b.kostprijs / 100, transactiekosten: b.transactiekosten, muntGecontroleerd: 'GBP-pence' };
+        }
+        return b;
+      }
+      const fxOud = fxOp(munt, b.datum), fxEcht = fxOp(echte, b.datum);
+      if (!(fxOud > 0) || !(fxEcht > 0)) return b;
+      const alsLabel = b.kostprijs;
+      const alsOmgerekend = b.kostprijs * fxOud / fxEcht;
+      const afstand = (x) => Math.abs(Math.log(x / k.c));
+      // Liggen beide munten dicht bij elkaar (bv. CHF en EUR), dan is niet te
+      // zien welke bedoeld was: het oude formulier vulde de koers in de munt
+      // van het effect zelf in, dus dan enkel het label aanpassen.
+      const verhouding = fxOud / fxEcht;
+      const omrekenen = (verhouding < 0.67 || verhouding > 1.5) && afstand(alsOmgerekend) < afstand(alsLabel);
+      gewijzigd = true;
+      return {
+        ...b,
+        munt: echte,
+        kostprijs: omrekenen ? alsOmgerekend : alsLabel,
+        transactiekosten: omrekenen && b.transactiekosten ? b.transactiekosten * fxOud / fxEcht : b.transactiekosten,
+        muntGecontroleerd: echte,
+      };
+    });
+    if (gewijzigd) setBeleggingen(nieuw);
+  }, [koersen, wisselkoers.rates]);
+
   // ── Dividendgeschiedenis per symbool (voor winst/rendement-grafieken) ──
   // Per symbool alle uitkeringen vanaf de vroegste aankoop tot vandaag,
   // 24 uur bewaard (een leeg antwoord 6 uur: kan een tijdelijke fout zijn).
@@ -720,6 +779,35 @@ export function AppProvider({ children, supabaseGebruiker }) {
     });
   }, [divSleutel]);
 
+  // ── Bedrijfsprofiel per effect: land en ISIN ─────────────────────────
+  // Gebruikt voor de buitenlandse bronheffing op dividenden (land van het
+  // bedrijf, of vestigingsland van een ETF) en het TOB-tarief bij verkoop.
+  // 30 dagen bewaard.
+  const [profielInfo, setProfielInfo] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('kapitas_profielinfo') || '{}'); } catch { return {}; }
+  });
+  const profielSleutel = [...new Set([...beleggingen, ...(verkochteBeleggingen || [])].map(b => b.symbol).filter(Boolean))].sort().join(',');
+  useEffect(() => {
+    if (!profielSleutel) return;
+    const MAAND = 30 * 24 * 3600_000;
+    const alle = [...beleggingen, ...(verkochteBeleggingen || [])];
+    profielSleutel.split(',').forEach(async (sym) => {
+      const b = alle.find(x => x.symbol === sym);
+      if (!b || b.type === 'crypto') return;
+      const bestaand = profielInfo[sym];
+      if (bestaand && Date.now() - bestaand.ts < MAAND) return;
+      try {
+        const d = await (await fetch(`/api/data?endpoint=profile&symbol=${encodeURIComponent(sym)}`)).json();
+        const info = { land: d?.country || null, isin: d?.isin || b.isin || null, ts: Date.now() };
+        setProfielInfo(prev => {
+          const nieuw = { ...prev, [sym]: info };
+          try { localStorage.setItem('kapitas_profielinfo', JSON.stringify(nieuw)); } catch (e) {}
+          return nieuw;
+        });
+      } catch (e) {}
+    });
+  }, [profielSleutel]);
+
   // Netto ontvangen dividenden (na buitenlandse bronheffing én 30% Belgische
   // roerende voorheffing, zie utils/dividendbelasting.js) als
   // lijst { datum: betaaldag, eur } voor de opgegeven posities. Recht op een
@@ -736,7 +824,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
         if (verkoopIso && d.ex > verkoopIso) return;
         if (!d.betaal || d.betaal > vandaag) return;
         const munt = d.munt || b.munt || 'EUR';
-        uit.push({ datum: d.betaal, eur: d.bedrag * aantal * fxOp(munt, d.betaal) * nettoFactor(b.symbol, b.type) });
+        uit.push({ datum: d.betaal, eur: d.bedrag * aantal * fxOp(munt, d.betaal) * nettoFactor(b.symbol, b.type, profielInfo[b.symbol]) });
       });
     };
     actief.forEach(b => verwerk(b, b.aantal, null));
@@ -779,7 +867,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
   const haalHistorischeKoers = React.useCallback(async (symbol, datum) => {}, []);
 
   const haalPeriodeKoers = React.useCallback(async (symbol, periodeKey, vanTimestamp) => {
-    const cacheKey = `matico_periode_${periodeKey}_${symbol}`;
+    const cacheKey = `matico_periode2_${periodeKey}_${symbol}`; // v2: koersen in hoofdmunt (geen pence)
     try {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
@@ -813,7 +901,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
       .filter(b => b.datum && new Date(b.datum) < new Date(`${nuJaar}-01-01`));
     alleSymbolen.forEach(async (b) => {
       if (ytdKoersen[b.symbol]) return;
-      const cacheKey = `matico_ytd_${b.symbol}_${nuJaar}`;
+      const cacheKey = `matico_ytd2_${b.symbol}_${nuJaar}`; // v2: koersen in hoofdmunt (geen pence)
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) { setYtdKoersen(prev => ({ ...prev, [b.symbol]: parseFloat(cached) })); return; }
@@ -917,7 +1005,7 @@ export function AppProvider({ children, supabaseGebruiker }) {
       verkochteBeleggingen, setVerkochteBeleggingen,
       koersen, fetchKoers, refreshAlleKoersen,
       activeNav, setActiveNav,
-      wisselkoers, getMuntFactor, fxOp, kostEur, verkoopEur, dividendUitkeringen,
+      wisselkoers, getMuntFactor, fxOp, kostEur, verkoopEur, dividendUitkeringen, profielInfo,
       dividendVersie: Object.keys(dividendHistoriek).map(s => s + ':' + dividendHistoriek[s].length).sort().join(','),
       fxVersie: Object.keys(fxHistoriek).sort().map(m => m + (fxHistoriek[m].opgehaald || '')).join(','),
       portfolioWaarde, portfolioKostprijs,

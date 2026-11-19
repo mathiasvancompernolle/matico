@@ -708,6 +708,14 @@ module.exports = async function handler(req, res) {
     // symbolen tegelijk (binnen dezelfde Vercel-functie-aanroep, dus
     // zonder extra Edge Requests) hergebruikt kan worden.
     async function haalQuoteVoorSymbool(symbol) {
+      const q = await haalQuoteRuw(symbol);
+      const { munt, f } = yahooMunt({ currency: q?.currency });
+      if (f !== 1) ['c', 'pc', 'o', 'h', 'l', 'd'].forEach(k => { if (typeof q[k] === 'number') q[k] = q[k] * f; });
+      if (munt) q.currency = munt;
+      return q;
+    }
+
+    async function haalQuoteRuw(symbol) {
       const isEuropees = symbol.includes('.DE') || symbol.includes('.PA') || symbol.includes('.AS') || symbol.includes('.BR') || symbol.includes('.L') || symbol.includes('.SW') || symbol.includes('.MI');
 
       // Crypto: handelt 24/7, dus geen "handelsdag" die Yahoo zelf bepaalt.
@@ -747,6 +755,7 @@ module.exports = async function handler(req, res) {
                 l: vandaagCloses.length > 0 ? Math.min(...vandaagCloses) : huidigeKoers,
                 v: meta.regularMarketVolume || 0,
                 t: Math.floor(Date.now() / 1000),
+                currency: meta.currency || null,
               };
             }
           }
@@ -776,6 +785,7 @@ module.exports = async function handler(req, res) {
                 l: meta.regularMarketDayLow || huidigeKoers,
                 v: meta.regularMarketVolume || 0,
                 t: meta.regularMarketTime || null,
+                currency: meta.currency || null,
               };
             }
           }
@@ -786,7 +796,7 @@ module.exports = async function handler(req, res) {
       try {
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
         const d = await r.json();
-        if (d.c && d.c > 0) return d;
+        if (d.c && d.c > 0) return { ...d, currency: symbol.includes('.') ? null : 'USD' };
       } catch (e) {}
 
       // Laatste fallback: Yahoo Finance voor alles
@@ -806,6 +816,7 @@ module.exports = async function handler(req, res) {
             l: meta.regularMarketDayLow || meta.regularMarketPrice,
             v: meta.regularMarketVolume || 0,
             t: meta.regularMarketTime || null,
+            currency: meta.currency || null,
           };
         }
       } catch (e) {}
@@ -882,22 +893,24 @@ module.exports = async function handler(req, res) {
             }
           }
 
+          const qm = yahooMunt(meta);
+          const x = (v) => (typeof v === 'number' ? v * qm.f : v);
           return res.json({
-            c: huidigeKoers,
-            pc: vorigeSlotQd,
-            o: meta.regularMarketOpen || huidigeKoers,
-            h: dagHoogQd,
-            l: dagLaagQd,
+            c: x(huidigeKoers),
+            pc: x(vorigeSlotQd),
+            o: x(meta.regularMarketOpen || huidigeKoers),
+            h: x(dagHoogQd),
+            l: x(dagLaagQd),
             v: meta.regularMarketVolume || 0,
-            bid: meta.bid || null,
-            ask: meta.ask || null,
+            bid: x(meta.bid) || null,
+            ask: x(meta.ask) || null,
             bidSize: meta.bidSize || null,
             askSize: meta.askSize || null,
-            hoog52: meta.fiftyTwoWeekHigh || null,
-            laag52: meta.fiftyTwoWeekLow || null,
+            hoog52: x(meta.fiftyTwoWeekHigh) || null,
+            laag52: x(meta.fiftyTwoWeekLow) || null,
             marktKap: meta.marketCap || null,
             beurs: beursQd,
-            valuta: meta.currency || 'EUR',
+            valuta: qm.munt || 'EUR',
             tijdzone: meta.exchangeTimezoneShortName || meta.exchangeTimezoneName || '',
             marktOpen: marktOpenQd,
           });
@@ -1206,13 +1219,21 @@ module.exports = async function handler(req, res) {
     }
 
     if (endpoint === 'forex') {
+      // Koers van elke munt naar euro: { usdEur, rates: { USD: 0.86, GBP: 1.15, JPY: 0.0058, ... } }
+      // (1 eenheid van de munt = x euro). Vroeger enkel USD; andere munten
+      // (CHF, JPY, DKK, ...) werden dan als euro gerekend.
+      const rates = { EUR: 1 };
+      try {
+        const fr = await fetch('https://api.frankfurter.app/latest?from=EUR');
+        const fd = await fr.json();
+        Object.entries(fd?.rates || {}).forEach(([m, v]) => { if (v > 0) rates[m] = 1 / v; });
+      } catch (e) {}
       try {
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=OANDA:EUR_USD&token=${FINNHUB_KEY}`);
         const d = await r.json();
-        return res.json({ usdEur: d.c ? 1 / d.c : 0.865 });
-      } catch (e) {
-        return res.json({ usdEur: 0.865 });
-      }
+        if (d.c) rates.USD = 1 / d.c; // live i.p.v. dagkoers
+      } catch (e) {}
+      return res.json({ usdEur: rates.USD || 0.865, rates });
     }
 
     if (endpoint === 'forex-history') {
@@ -1255,6 +1276,16 @@ module.exports = async function handler(req, res) {
   // intern op UTC-middernacht, wat in de zomer 2u Belgische tijd is. Voor
   // crypto berekenen we daarom zelf een exact venster vanaf Belgische
   // middernacht tot nu, i.p.v. Yahoo's eigen (verkeerd-getimede) dagvenster.
+  // Munten in subeenheden: Londen noteert vaak in pence (GBp/GBX),
+  // Johannesburg in cent (ZAc), Tel Aviv in agorot (ILA). Alles wordt naar
+  // de hoofdmunt omgerekend — anders telde 1.298 pence als £1.298.
+  function yahooMunt(meta) {
+    const c = meta?.currency;
+    const SUB = { GBp: ['GBP', 0.01], GBX: ['GBP', 0.01], ZAc: ['ZAR', 0.01], ZAC: ['ZAR', 0.01], ILA: ['ILS', 0.01] };
+    if (c && SUB[c]) return { munt: SUB[c][0], f: SUB[c][1] };
+    return { munt: c || null, f: 1 };
+  }
+
   function isCryptoSymbool(symbol) {
     return /^[A-Z0-9]+-(EUR|USD|GBP)$/i.test(symbol || '');
   }
@@ -1287,7 +1318,8 @@ module.exports = async function handler(req, res) {
           const yfData = await yfRes.json();
           const result = yfData?.chart?.result?.[0];
           if (result?.timestamp?.length > 0) {
-            return res.json({ s: 'ok', t: result.timestamp, c: result.indicators.quote[0].close });
+            const cf = yahooMunt(result.meta).f;
+            return res.json({ s: 'ok', t: result.timestamp, c: result.indicators.quote[0].close.map(v => (v == null ? v : v * cf)) });
           }
         } catch (e) {}
         return res.json({ s: 'no_data' });
@@ -1350,7 +1382,8 @@ module.exports = async function handler(req, res) {
           // portefeuillegrafiek te laag begon en meer winst toonde dan je
           // werkelijk maakte (en niet strookte met de cijfers bovenaan).
           // Splitsingen zitten al in 'close' verwerkt.
-          const closes = result.indicators?.quote?.[0]?.close || result.indicators?.adjclose?.[0]?.adjclose || [];
+          const subF = yahooMunt(result.meta).f; // pence → pond, enz.
+          const closes = (result.indicators?.quote?.[0]?.close || result.indicators?.adjclose?.[0]?.adjclose || []).map(v => (v == null ? v : v * subF));
 
           // Voor 1D: volledige intraday-reeks (per minuut), niet enkel 2 punten
           if (tijdperk === '1D') {
@@ -1364,7 +1397,7 @@ module.exports = async function handler(req, res) {
               // Nog geen sessie vandaag: de 'vorige slotkoers' is gewoon de
               // laatste koers.
               const geldige = closes.filter(v => v != null);
-              const laatste = result.meta?.regularMarketPrice || geldige[geldige.length - 1] || null;
+              const laatste = (result.meta?.regularMarketPrice ? result.meta.regularMarketPrice * subF : null) || geldige[geldige.length - 1] || null;
               return res.json({ punten: [], vorigeSlot: laatste ? Math.round(laatste * 100) / 100 : null, geenSessieVandaag: true });
             }
             const allePunten = timestamps.map((t, i) => {
@@ -1385,7 +1418,8 @@ module.exports = async function handler(req, res) {
               .filter((p, i) => p._minuut % 10 === 0 || i === allePunten.length - 1)
               .map(({ _minuut, ...rest }) => rest);
 
-            const vorigeSlot = result.meta?.chartPreviousClose || result.meta?.previousClose || null;
+            const vorigeSlotRuw = result.meta?.chartPreviousClose || result.meta?.previousClose || null;
+            const vorigeSlot = vorigeSlotRuw ? vorigeSlotRuw * subF : null;
             return res.json({ punten, vorigeSlot: vorigeSlot ? Math.round(vorigeSlot * 100) / 100 : null });
           }
 
@@ -1819,8 +1853,8 @@ module.exports = async function handler(req, res) {
             return res.json(d.map(item => ({
               exDate: item.date || '',
               paymentDate: item.paymentDate || item.date || '',
-              amount: parseFloat(item.value || item.unadjustedValue || 0),
-              currency: item.currency || 'EUR',
+              amount: parseFloat(item.value || item.unadjustedValue || 0) * yahooMunt({ currency: item.currency }).f,
+              currency: yahooMunt({ currency: item.currency }).munt || 'EUR',
               symbol,
             })));
           }
@@ -1836,11 +1870,12 @@ module.exports = async function handler(req, res) {
         const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSym)}?period1=${p1}&period2=${p2}&interval=1d&events=div`, { headers: YF_HEADERS });
         const d = await r.json();
         const divs = Object.values(d?.chart?.result?.[0]?.events?.dividends || {});
-        const munt = d?.chart?.result?.[0]?.meta?.currency || 'EUR';
+        const ym = yahooMunt(d?.chart?.result?.[0]?.meta);
+        const munt = ym.munt || 'EUR';
         if (divs.length > 0) {
           return res.json(divs.sort((a, b) => a.date - b.date).map(item => {
             const datum = new Date(item.date * 1000).toISOString().slice(0, 10);
-            return { exDate: datum, paymentDate: datum, amount: parseFloat(item.amount || 0), currency: munt, symbol };
+            return { exDate: datum, paymentDate: datum, amount: parseFloat(item.amount || 0) * ym.f, currency: munt, symbol };
           }));
         }
       } catch (e) {}

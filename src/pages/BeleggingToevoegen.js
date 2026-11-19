@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { muntSymbool, MUNTEN } from '../utils/munt';
 import { useApp } from '../context/AppContext';
 import { TrendingUp, Building2, Bitcoin, PiggyBank, ArrowLeft, Search, Loader, X } from 'lucide-react';
 
@@ -103,6 +104,7 @@ export default function BeleggingToevoegen({ onClose }) {
     ]);
     if (koers?.c) {
       const munt = (() => {
+      if (koers?.currency) return koers.currency;
       if (geselecteerd?.symbol?.includes('-USD')) return 'USD';
       if (geselecteerd?.symbol?.includes('-GBP')) return 'GBP';
       if (geselecteerd?.valuta === 'USD' || koers?.currency === 'USD') return 'USD';
@@ -131,6 +133,7 @@ export default function BeleggingToevoegen({ onClose }) {
           kostprijs: koers?.c ? koers.c.toFixed(2) : '',
           aantal: '',
           munt: (() => {
+            if (koers?.currency) return koers.currency;
             // Crypto
             if (r.symbol?.includes('-USD')) return 'USD';
             if (r.symbol?.includes('-GBP')) return 'GBP';
@@ -210,7 +213,7 @@ export default function BeleggingToevoegen({ onClose }) {
       // het bedrag invulde (bv. je betaalde in euro via je bank, maar het
       // aandeel noteert in dollar) — reken daarom eerst om naar de munt
       // waarin de historische koers hierboven staat, vóór we delen.
-      const nativeMunt = bepaalNativeMunt(r);
+      const nativeMunt = bepaalNativeMunt(r, await fetchKoers(r.symbol));
       const bedragInNativeMunt = await zetBedragOmNaarNativeMunt(ingevoerdBedrag, ingevoerdeMunt, nativeMunt, f.datum);
 
       // Ga uit van een realistisch gemiddeld kostenpercentage (i.p.v. 0%
@@ -353,6 +356,7 @@ export default function BeleggingToevoegen({ onClose }) {
   // we de historische koers (die in die munt staat) correct kunnen
   // vergelijken met het ingevulde bedrag.
   const bepaalNativeMunt = (r, koers) => {
+    if (koers?.currency) return koers.currency;
     if (r.symbol?.includes('-USD')) return 'USD';
     if (r.symbol?.includes('-GBP')) return 'GBP';
     if (r.symbol?.includes('-EUR')) return 'EUR';
@@ -409,7 +413,7 @@ export default function BeleggingToevoegen({ onClose }) {
     // Aangenomen dat het bedrag in EUR werd ingevoerd (bv. je bankafschrift) —
     // reken om naar de munt waarin het effect zelf noteert, want de
     // historische koers hierboven staat in díe munt.
-    const nativeMunt = bepaalNativeMunt(geselecteerd);
+    const nativeMunt = bepaalNativeMunt(geselecteerd, await fetchKoers(geselecteerd.symbol));
     const bedragInNativeMunt = await zetBedragOmNaarNativeMunt(aankoopbedrag, 'EUR', nativeMunt, beperkteForm.aankoopdatum);
 
     const kostenPct = GEMIDDELD_KOSTENPERCENTAGE[type] ?? 0.01;
@@ -454,7 +458,6 @@ export default function BeleggingToevoegen({ onClose }) {
   };
 
   // Berekening voor preview
-  const muntSymbool = (munt) => munt === 'USD' ? '$' : munt === 'GBP' ? '£' : '€';
   const kostprijsPerStuk = parseFloat(form.kostprijs) || 0;
   const aantalStuks = parseFloat(form.aantal) || 0;
   const transactiekosten = parseFloat(form.transactiekosten) || 0;
@@ -528,9 +531,7 @@ export default function BeleggingToevoegen({ onClose }) {
                       onChange={e => setHandmatigForm(f => ({ ...f, aankoopprijs: e.target.value }))} step="0.01" min="0" />
                     <select className="form-input" style={{ width: 80 }} value={handmatigForm.munt}
                       onChange={e => setHandmatigForm(f => ({ ...f, munt: e.target.value }))}>
-                      <option value="EUR">EUR</option>
-                      <option value="USD">USD</option>
-                      <option value="GBP">GBP</option>
+                      {MUNTEN.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
                 </div>
@@ -710,7 +711,7 @@ export default function BeleggingToevoegen({ onClose }) {
                       style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
                     <select value={f.munt || 'EUR'} onChange={e => updateMultiForm(r.symbol, 'munt', e.target.value)}
                       style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', fontSize: 12, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-muted)', outline: 'none', cursor: 'pointer', width: '100%' }}>
-                      <option>EUR</option><option>USD</option><option>GBP</option>
+                      {MUNTEN.map(m => <option key={m}>{m}</option>)}
                     </select>
                     <input type="date" value={f.datum || ''} onChange={e => updateMultiForm(r.symbol, 'datum', e.target.value)}
                       style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
@@ -768,7 +769,7 @@ export default function BeleggingToevoegen({ onClose }) {
                 {/* Munt */}
                 <select value={f.munt || 'EUR'} onChange={e => updateMultiForm(r.symbol, 'munt', e.target.value)}
                   style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', fontSize: 12, fontFamily: 'inherit', background: 'var(--bg-white)', color: 'var(--text-muted)', outline: 'none', cursor: 'pointer', width: '100%' }}>
-                  <option>EUR</option><option>USD</option><option>GBP</option>
+                  {MUNTEN.map(m => <option key={m}>{m}</option>)}
                 </select>
                 {/* Datum */}
                 <input type="date" value={f.datum || ''} onChange={e => updateMultiForm(r.symbol, 'datum', e.target.value)}
@@ -865,9 +866,7 @@ export default function BeleggingToevoegen({ onClose }) {
                     onChange={e => setForm(f => ({ ...f, kostprijs: e.target.value }))} step="0.01" min="0" />
                   <select className="form-input" style={{ width: 80 }} value={form.munt}
                     onChange={e => setForm(f => ({ ...f, munt: e.target.value }))}>
-                    <option value="EUR">EUR</option>
-                    <option value="USD">USD</option>
-                    <option value="GBP">GBP</option>
+                    {MUNTEN.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
               </div>

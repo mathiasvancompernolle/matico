@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { muntSymbool } from '../utils/munt';
 import { useApp } from '../context/AppContext';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, ReferenceLine, ReferenceArea } from 'recharts';
 import { SlidersHorizontal, GitCompare, Plus, ChevronDown, X, Check, Upload, Edit3 } from 'lucide-react';
@@ -1521,11 +1522,11 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                         )}
                         {aankopenOpDatum.map((b, i) => (
                           <div key={b.id + i} style={{ fontSize: 12, color: 'var(--green)', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
-                            🟢 {t('ov_tooltip_aankoop')} {b.naam} — {b.aantal} {t('ov_tooltip_st_a')} {b.munt === 'USD' ? '$' : '€'}{getal(b.kostprijs, 2)}
+                            🟢 {t('ov_tooltip_aankoop')} {b.naam} — {b.aantal} {t('ov_tooltip_st_a')} {muntSymbool(b.munt)}{getal(b.kostprijs, 2)}
                           </div>
                         ))}
                         {verkopenOpDatum.map((b, i) => {
-                          const ms = (b.verkoopMunt || b.munt || 'EUR') === 'USD' ? '$' : '€';
+                          const ms = muntSymbool(b.verkoopMunt || b.munt);
                           const wv = b.winstverlies || 0;
                           return (
                             <div key={b.id + i} style={{ fontSize: 12, color: '#ef4444', borderTop: '1px solid var(--border-light)', paddingTop: 6, marginTop: 2 }}>
@@ -1740,7 +1741,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 return s + p * bb.aantal * f;
               }, 0);
               const gewicht = portfolioTotaal > 0 ? (huidigeWaarde / portfolioTotaal) * 100 : 0;
-              const muntSym = (b.munt || 'EUR') === 'USD' ? '$' : '€';
+              const muntSym = muntSymbool(b.munt);
 
               return (
                 <div key={b.id} style={{ position: 'relative', overflow: 'hidden' }}>

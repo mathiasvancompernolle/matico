@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { muntSymbool } from '../utils/munt';
 import { useApp } from '../context/AppContext';
 import { Info, Download, ChevronDown } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
@@ -18,7 +19,7 @@ const REFERENTIEDATUM = '31 dec 2025';
 // Kapitas te veel belasting toonde. Nu halen we de echte slotkoers per
 // belegging op via het bestaande candle-endpoint, en bewaren die lokaal
 // (een slotkoers uit het verleden verandert niet meer).
-const REF_CACHE_PREFIX = 'kapitas_ref_20251231_';
+const REF_CACHE_PREFIX = 'kapitas_ref2_20251231_'; // v2: koersen in hoofdmunt (geen pence)
 async function haalReferentieKoers(symbol) {
   try {
     const bewaard = localStorage.getItem(REF_CACHE_PREFIX + symbol);
@@ -189,8 +190,9 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
     // Geschatte beurstaks bij verkoop (0,35% aandelen max €1.600,
     // 0,12% ETF max €1.300, crypto 0), afgetrokken van het verkoopbedrag
     const brutoVerkoop = huidigePrijs * aantal * f;
-    const tobTarief = b.type === 'crypto' ? 0 : b.type === 'etf' ? 0.0012 : 0.0035;
-    const tobMax = b.type === 'etf' ? 1300 : 1600;
+    const usEtf = b.type === 'etf' && !String(b.symbol || '').includes('.'); // Amerikaanse ETF: buiten de EER
+    const tobTarief = b.type === 'crypto' ? 0 : (b.type === 'etf' && !usEtf) ? 0.0012 : 0.0035;
+    const tobMax = (b.type === 'etf' && !usEtf) ? 1300 : 1600;
     const tobGeschat = Math.min(brutoVerkoop * tobTarief, tobMax);
     const verkoopBedrag = brutoVerkoop - tobGeschat;
 
@@ -552,7 +554,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
                     >
                       <span style={{ fontWeight: 600, fontSize: 13 }}>{b.naam}</span>
                       <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                        {b.munt === 'USD' ? '$' : '€'}{getal(prijs, 2)} · {b.aantal} st.
+                        {muntSymbool(b.munt)}{getal(prijs, 2)} · {b.aantal} st.
                       </span>
                     </div>
                   );

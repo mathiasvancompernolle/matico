@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { muntSymbool } from '../utils/munt';
 import { useApp } from '../context/AppContext';
 import { handeldeVandaag } from '../utils/handelsdag';
 import { X, Loader, ExternalLink, Copy, Check } from 'lucide-react';
@@ -33,7 +34,7 @@ export default function BeleggingDetail({ belegging, onClose }) {
   const dagVRaw = koers ? (koers.c - koers.pc) : 0;
   const dagVPctRaw = koers && koers.pc > 0 ? ((koers.c - koers.pc) / koers.pc) * 100 : 0;
   const gewicht = portfolioWaarde > 0 ? (huidigeWaarde / portfolioWaarde) * 100 : 0;
-  const muntSym = (belegging.munt || 'EUR') === 'USD' ? '$' : '€';
+  const muntSym = muntSymbool(belegging.munt);
 
   // Check of beurs open is voor dit aandeel
   // (op basis van het tijdstip van de koers, zie utils/handelsdag.js)
