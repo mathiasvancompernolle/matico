@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { EffectLogoKlein } from '../components/EffectLogo';
 import { useApp } from '../context/AppContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Info, X } from 'lucide-react';
@@ -620,17 +621,7 @@ export default function Dividend({ sidebarCollapsed, onToggleSidebar }) {
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {b.logo ? (
-                  <img src={b.logo} alt={b.symbol} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain', border: '1px solid var(--border)' }} />
-                ) : (
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)',
-                    color: 'var(--accent)', fontWeight: 700, fontSize: 11, flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>
-                    {b.symbol.split('.')[0].slice(0, 2).toUpperCase()}
-                  </div>
-                )}
+                <EffectLogoKlein b={b} />
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontWeight: 600, fontSize: 14 }}>{b.naam}</span>

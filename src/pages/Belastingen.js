@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { EffectLogoKlein } from '../components/EffectLogo';
 import { koers as koersFmt } from '../utils/getal';
 import { muntSymbool } from '../utils/munt';
 import { useApp } from '../context/AppContext';
@@ -392,18 +393,7 @@ export default function Belastingen({ sidebarCollapsed, onToggleSidebar }) {
 
               {/* Rijen */}
               {verkopen.map((b, i) => {
-                const avatar = b.logo ? (
-                  <img src={b.logo} alt={b.symbol} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain', border: '1px solid var(--border)', background: 'white', padding: 2, flexShrink: 0 }}
-                    onError={e => { e.target.onerror=null; e.target.parentNode.innerHTML=`<div style="width:32px;height:32px;border-radius:8px;background:var(--accent-bg);color:var(--accent);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">${b.symbol.split('.')[0].slice(0,2).toUpperCase()}</div>`; }} />
-                ) : (
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 8, background: 'var(--accent-bg)',
-                    color: 'var(--accent)', fontWeight: 700, fontSize: 11,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                  }}>
-                    {b.symbol.split('.')[0].slice(0, 2).toUpperCase()}
-                  </div>
-                );
+                const avatar = <EffectLogoKlein b={b} />;
 
                 // ── Mobiel: gestapelde kaart met per-veld labels i.p.v. de
                 // 5-koloms grid, zodat het belastingbedrag niet meer los

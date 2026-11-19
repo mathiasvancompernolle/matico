@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useEffectLogo } from '../components/EffectLogo';
 import { koers as koersFmt } from '../utils/getal';
 import { muntSymbool } from '../utils/munt';
 import { useApp } from '../context/AppContext';
@@ -117,12 +118,13 @@ const CRYPTO_KLEUREN = {
 };
 
 function BeleggingAvatar({ b }) {
-  const [imgFout, setImgFout] = React.useState(false);
-  if (b.logo && !imgFout) {
+  // Logo uit meerdere bronnen (zie components/EffectLogo.js)
+  const { src, onError } = useEffectLogo(b);
+  if (src) {
     return (
-      <img src={b.logo} alt={b.symbol}
+      <img src={src} alt={b.symbol}
         style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', border: '1px solid var(--border)', background: 'white', padding: 2, flexShrink: 0 }}
-        onError={() => setImgFout(true)} />
+        onError={onError} />
     );
   }
   const naamLower = (b.naam || b.symbol || '').toLowerCase();

@@ -39,6 +39,7 @@ const TTL = {
   'etf-holdings':   () => 6 * 60 * 60_000,  // 6 uur
   'cijfers-datum':  () => 24 * 60 * 60_000, // 24 uur — wijzigt hooguit 1x per kwartaal
   search:           () => 5 * 60_000,        // 5 min
+  'crypto-logo':    () => 7 * 24 * 60 * 60_000, // 7 dagen
   'ai-analyse':     () => 30 * 60_000,       // 30 min (duur endpoint)
 };
 
@@ -990,6 +991,23 @@ module.exports = async function handler(req, res) {
         console.error('isin-naar-ticker fout:', e);
         return res.json({ symbol: null });
       }
+    }
+
+    // Logo van een crypto via CoinGecko: zoeken op naam (zonder 'USD'/'EUR')
+    // of op symbool, en de munt met het juiste symbool kiezen.
+    if (endpoint === 'crypto-logo') {
+      const { symbol = '', naam = '' } = req.query;
+      const basis = String(symbol).toUpperCase().replace(/-(USD|EUR|GBP|USDT)$/, '').replace(/\d+$/, '');
+      const schoneNaam = String(naam).replace(/\b(USD|EUR|GBP|USDT)\b/gi, '').trim();
+      const zoek = async (term) => {
+        try { const d = await (await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(term)}`, { headers: { 'Accept': 'application/json' } })).json(); return d?.coins || []; }
+        catch (e) { return []; }
+      };
+      let munten = schoneNaam ? await zoek(schoneNaam) : [];
+      let munt = munten.find(c => (c.symbol || '').toUpperCase() === basis);
+      if (!munt) { munten = await zoek(basis); munt = munten.find(c => (c.symbol || '').toUpperCase() === basis) || null; }
+      const logo = munt?.large || munt?.thumb || null;
+      return logo ? res.json({ logo }) : _origJson({ logo: null });
     }
 
     if (endpoint === 'search') {
