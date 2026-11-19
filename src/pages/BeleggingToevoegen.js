@@ -67,7 +67,7 @@ export default function BeleggingToevoegen({ onClose }) {
     const timer = setTimeout(async () => {
       setZoekLoading(true);
       try {
-        const res = await fetch(`/api/data?endpoint=search&q=${encodeURIComponent(zoekterm)}`);
+        const res = await fetch(`/api/data?endpoint=search&q=${encodeURIComponent(zoekterm)}${type ? `&type=${type}` : ''}`);
         const data = await res.json();
         // Nieuwe API geeft { resultaten: [...] }, fallback op oude Finnhub { result: [...] }
         const resultaten = data.resultaten || (data.result || []).map(r => ({

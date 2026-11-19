@@ -1145,35 +1145,64 @@ module.exports = async function handler(req, res) {
           return !gegarandeerdeEersteWoorden.has(eersteWoord);
         });
 
-        // ── Crypto op tickersymbool (bv. "AXIS") ─────────────────────────
-        // Yahoo vindt kleinere crypto enkel op naam ("Axis Robotics"); op het
-        // tickersymbool geeft Yahoo enkel aandelen met die naam. Via CoinGecko
-        // zoeken we de naam bij het symbool en zoeken we daarmee opnieuw.
+        // ── Crypto via CoinGecko (op symbool én op naam) ─────────────────
+        // Yahoo vindt kleinere crypto vaak niet op het tickersymbool ("AXIS"
+        // geeft enkel aandelen) en soms niet op de gangbare naam ("Ondo
+        // Finance", "Fetch.ai"). CoinGecko kent symbool en naam; daarmee
+        // zoeken we bij Yahoo de juiste notering (symbool = CoinGecko-symbool,
+        // eventueel met Yahoo's volgnummer, bv. TAO22974-USD).
+        // Enkel in het crypto-zoekscherm, of bij een tickerachtige zoekterm
+        // als het type onbekend is — zo blijft aandelen zoeken even snel.
         const qTicker = q.trim();
-        if (/^[A-Za-z0-9]{2,12}$/.test(qTicker)) {
+        const zoekType = req.query.type;
+        const doeCrypto = zoekType === 'crypto' || (!zoekType && /^[A-Za-z0-9]{2,12}$/.test(qTicker));
+        if (doeCrypto && qTicker.length >= 2) {
           try {
             const cg = await (await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(qTicker)}`, { headers: { 'Accept': 'application/json' } })).json();
-            const munten = (cg?.coins || [])
-              .filter(c => (c.symbol || '').toUpperCase() === qTicker.toUpperCase())
-              .slice(0, 3);
-            const aanwezig = new Set(resultaten.map(r => r.symbol.toUpperCase()));
-            const gevonden = [];
-            await Promise.all(munten.map(async (c) => {
+            let alle = cg?.coins || [];
+            // Niets gevonden (bv. "Ondo Finance", "Fetch.ai")? Probeer de naam als
+            // CoinGecko-code (ondo-finance, fetch-ai).
+            if (alle.length === 0) {
+              const slug = qTicker.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
               try {
-                const yr = await (await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(c.name)}&quotesCount=10&newsCount=0`, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } })).json();
-                (yr?.quotes || [])
-                  .filter(x => x.quoteType === 'CRYPTOCURRENCY' && /-USD$/i.test(x.symbol || '') && x.symbol.toUpperCase().startsWith(qTicker.toUpperCase()))
-                  .forEach(x => {
-                    if (aanwezig.has(x.symbol.toUpperCase())) return;
-                    aanwezig.add(x.symbol.toUpperCase());
-                    gevonden.push({ naam: x.longname || x.shortname || `${c.name} USD`, symbol: x.symbol, beurs: x.exchange || 'CCC', type: 'crypto', valuta: 'USD' });
-                  });
+                const c = await (await fetch(`https://api.coingecko.com/api/v3/coins/${encodeURIComponent(slug)}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false`, { headers: { 'Accept': 'application/json' } })).json();
+                if (c?.symbol && c?.name) alle = [{ name: c.name, symbol: c.symbol }];
               } catch (e) {}
+            }
+            const exact = alle.filter(c => (c.symbol || '').toUpperCase() === qTicker.toUpperCase());
+            // Bij een zoekterm die geen symbool is (een naam), telt de beste naamtreffer als 'exact'
+            const voorop = exact.length > 0 ? exact : (/^[A-Za-z0-9]{2,12}$/.test(qTicker) ? [] : alle.slice(0, 1));
+            const munten = [...voorop, ...alle.filter(c => !voorop.includes(c))].slice(0, 3);
+            const aanwezig = new Set(resultaten.map(r => r.symbol.toUpperCase()));
+            const perMunt = await Promise.all(munten.map(async (c) => {
+              const sym = (c.symbol || '').toUpperCase();
+              const basisVan = (ys) => ys.toUpperCase().replace(/-(USD|EUR|GBP)$/, '').replace(/\d+$/, '');
+              const lijst = [];
+              for (const term of [c.name, sym]) {
+                try {
+                  const yr = await (await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(term)}&quotesCount=10&newsCount=0`, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } })).json();
+                  (yr?.quotes || [])
+                    .filter(x => x.quoteType === 'CRYPTOCURRENCY' && /-USD$/i.test(x.symbol || '') && basisVan(x.symbol) === sym)
+                    .forEach(x => {
+                      if (aanwezig.has(x.symbol.toUpperCase())) return;
+                      aanwezig.add(x.symbol.toUpperCase());
+                      lijst.push({ naam: x.longname || x.shortname || `${c.name} USD`, symbol: x.symbol, beurs: x.exchange || 'CCC', type: 'crypto', valuta: 'USD' });
+                    });
+                } catch (e) {}
+                if (lijst.length > 0) break;
+              }
+              return lijst;
             }));
-            // Crypto die exact op het symbool past bovenaan
-            resultaten = [...gevonden, ...resultaten];
+            // Exacte treffers vooraan; andere munten achteraan (anders kwam bv.
+            // BGBTC vóór BTC bij de zoekterm "BTC")
+            const vooraan = perMunt.slice(0, voorop.length).flat();
+            const achteraan = perMunt.slice(voorop.length).flat();
+            resultaten = [...vooraan, ...resultaten, ...achteraan];
           } catch (e) {}
         }
+
+        // Crypto enkel in USD, EUR of GBP tonen (geen DOGE-CAD, DOGE-INR, ...)
+        resultaten = resultaten.filter(r => r.type !== 'crypto' || /-(USD|EUR|GBP)$/i.test(r.symbol));
 
         // Volledige crypto EUR lijst
         const CRYPTO_EUR = {
