@@ -174,7 +174,10 @@ export default function BeleggingToevoegen({ onClose }) {
   };
 
   const updateMultiForm = (symbol, veld, waarde) => {
-    setMultiForms(prev => ({ ...prev, [symbol]: { ...prev[symbol], [veld]: waarde } }));
+    setMultiForms(prev => ({ ...prev, [symbol]: { ...prev[symbol], [veld]: waarde, ...(veld === 'kostprijs' ? { koersDatum: null } : {}) } }));
+    if (veld === 'datum' && waarde) {
+      vulKoersOpDatum(symbol, waarde, (velden) => setMultiForms(prev => ({ ...prev, [symbol]: { ...prev[symbol], ...velden } })));
+    }
   };
 
   // Transactiekosten vul je in euro in (zo rekenen Belgische brokers ze aan);
@@ -367,9 +370,20 @@ export default function BeleggingToevoegen({ onClose }) {
     try {
       const res = await fetch(`/api/data?endpoint=candle&symbol=${encodeURIComponent(symbol)}&van=${van}&tot=${tot}&resolutie=D`);
       const data = await res.json();
-      if (data?.s === 'ok' && data?.c?.length > 0) return data.c[data.c.length - 1];
+      const geldig = (data?.c || []).filter(v => v != null && v > 0);
+      if (data?.s === 'ok' && geldig.length > 0) return geldig[geldig.length - 1];
     } catch (e) {}
     return null;
+  };
+
+  // Datum gekozen → slotkoers van die dag invullen (weekend/feestdag: de
+  // laatste handelsdag ervoor). De prijs blijft daarna gewoon aanpasbaar.
+  const vandaagIso = () => new Date().toISOString().slice(0, 10);
+  const vulKoersOpDatum = async (symbol, datum, zet) => {
+    if (!symbol || !datum || datum > vandaagIso()) return;
+    zet({ koersLaden: true });
+    const prijs = await haalHistorischeKoers(symbol, datum);
+    zet(prijs ? { kostprijs: koersInvoer(prijs), koersDatum: datum, koersLaden: false } : { koersLaden: false, koersDatum: null });
   };
 
   // Bepaalt in welke munt een effect zelf noteert (bv. USD voor een
@@ -781,9 +795,16 @@ export default function BeleggingToevoegen({ onClose }) {
                   </div>
                 </div>
                 {/* Aankoopprijs */}
-                <input type="number" value={f.kostprijs || ''} onChange={e => updateMultiForm(r.symbol, 'kostprijs', e.target.value)}
-                  placeholder="0,00" step="any"
-                  style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
+                <div style={{ minWidth: 0 }}>
+                  <input type="number" value={f.kostprijs || ''} onChange={e => updateMultiForm(r.symbol, 'kostprijs', e.target.value)}
+                    placeholder="0,00" step="any"
+                    style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', background: 'var(--bg-white)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
+                  {(f.koersLaden || f.koersDatum) && (
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3, whiteSpace: 'nowrap' }}>
+                      {f.koersLaden ? 'Koers ophalen…' : `Slotkoers ${new Date(f.koersDatum).toLocaleDateString('nl-BE')}`}
+                    </div>
+                  )}
+                </div>
                 {/* Transactiekosten */}
                 <input type="number" value={f.transactiekosten || ''} onChange={e => updateMultiForm(r.symbol, 'transactiekosten', e.target.value)}
                   placeholder="€ 0,00 (optioneel)" step="0.01"
@@ -886,7 +907,11 @@ export default function BeleggingToevoegen({ onClose }) {
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{geselecteerd.symbol}</div>
                 </div>
                 <input type="date" className="form-input" value={form.datum}
-                  onChange={e => setForm(f => ({ ...f, datum: e.target.value }))} />
+                  onChange={e => {
+                    const datum = e.target.value;
+                    setForm(f => ({ ...f, datum }));
+                    vulKoersOpDatum(geselecteerd?.symbol, datum, (velden) => setForm(f => ({ ...f, ...(velden.kostprijs ? { kostprijs: velden.kostprijs } : {}) })));
+                  }} />
                 <div style={{ display: 'flex', gap: 6 }}>
                   <input type="number" className="form-input" placeholder="0.00" value={form.kostprijs}
                     onChange={e => setForm(f => ({ ...f, kostprijs: e.target.value }))} step="any" min="0" />
