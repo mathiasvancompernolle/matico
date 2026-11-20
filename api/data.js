@@ -1924,32 +1924,52 @@ module.exports = async function handler(req, res) {
         for (const [k, v] of m) if (fx.has(k)) o.set(k, v / fx.get(k));
         return o;
       };
-      const reken = (a, b) => {
-        const k = [...a.keys()].filter(x => b.has(x)).sort();
-        const ra = [], rb = [];
-        for (let i = 1; i < k.length; i++) { ra.push(a.get(k[i]) / a.get(k[i - 1]) - 1); rb.push(b.get(k[i]) / b.get(k[i - 1]) - 1); }
-        const n = ra.length;
-        if (n < 2) return { beta: null, n };
-        const ma = ra.reduce((x, v) => x + v, 0) / n, mb = rb.reduce((x, v) => x + v, 0) / n;
+      // Rendementen per periode (sleutel = einde van de periode)
+      const rendementen = (m) => {
+        const k = [...m.keys()].sort();
+        const o = new Map();
+        for (let i = 1; i < k.length; i++) o.set(k[i], m.get(k[i]) / m.get(k[i - 1]) - 1);
+        return o;
+      };
+      const stdev = (arr) => {
+        if (arr.length < 2) return null;
+        const g = arr.reduce((x, v) => x + v, 0) / arr.length;
+        return Math.sqrt(arr.reduce((x, v) => x + (v - g) ** 2, 0) / (arr.length - 1));
+      };
+      // bèta = cov(effect, markt) / var(markt) over de gemeenschappelijke periodes
+      const reken = (eff, bench, perJaar) => {
+        const re = rendementen(eff), rb = rendementen(bench);
+        const k = [...re.keys()].filter(x => rb.has(x));
+        const n = k.length;
+        const sd = stdev([...re.values()]);
+        const vol = sd == null ? null : Math.round(sd * Math.sqrt(perJaar) * 10000) / 10000;
+        if (n < 2) return { beta: null, n, vol, re };
+        const a = k.map(x => re.get(x)), b = k.map(x => rb.get(x));
+        const ma = a.reduce((x, v) => x + v, 0) / n, mb = b.reduce((x, v) => x + v, 0) / n;
         let cov = 0, vr = 0;
-        for (let i = 0; i < n; i++) { cov += (ra[i] - ma) * (rb[i] - mb); vr += (rb[i] - mb) ** 2; }
+        for (let i = 0; i < n; i++) { cov += (a[i] - ma) * (b[i] - mb); vr += (b[i] - mb) ** 2; }
         const beta = vr > 0 ? cov / vr : null;
-        return { beta: Number.isFinite(beta) ? Math.round(beta * 100) / 100 : null, n };
+        return { beta: Number.isFinite(beta) ? Math.round(beta * 100) / 100 : null, n, vol, re };
       };
       try {
         const yfSym = toYahooSymbol(symbol);
         const qm = 'range=5y&interval=1mo';
         const [eff, bench] = await Promise.all([inEur(yfSym, qm, maand), inEur('IWDA.AS', qm, maand)]);
-        let r = reken(eff, bench), methode = '5 jaar, maandelijks';
+        const rm = reken(eff, bench, 12);
+        let r = rm, methode = '5 jaar, maandelijks';
         if (r.beta == null || r.n < 24) {
           const qw = 'range=2y&interval=1wk';
           const [e2, b2] = await Promise.all([inEur(yfSym, qw, week), inEur('IWDA.AS', qw, week)]);
-          const r2 = reken(e2, b2);
+          const r2 = reken(e2, b2, 52);
           if (r2.beta != null && r2.n >= 26) { r = r2; methode = '2 jaar, wekelijks'; }
-          else r = { beta: null, n: Math.max(r.n, r2.n) };
+          else r = { beta: null, n: Math.max(r.n, r2.n), vol: r.vol ?? r2.vol };
         }
+        // Maandrendementen (in euro) meegeven: daarmee berekent de app de
+        // beweeglijkheid van de hele portefeuille, mét het effect van spreiding.
+        const maandRend = {};
+        for (const [k, v] of rm.re || []) maandRend[k] = Math.round(v * 100000) / 100000;
         res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
-        return res.json({ beta: r.beta, n: r.n, methode, benchmark: 'MSCI World (EUR)' });
+        return res.json({ beta: r.beta, n: r.n, methode, benchmark: 'MSCI World (EUR)', volatiliteit: r.vol ?? null, maandRendementen: maandRend });
       } catch (e) {
         return res.json({ beta: null });
       }

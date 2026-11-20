@@ -551,6 +551,8 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
   const [wisselkoersDropdown, setWisselkoersDropdown] = useState(false);
   const [liveEtfData, setLiveEtfData] = useState({});
   const [liveBetas, setLiveBetas] = useState({});
+  // Per effect: beweeglijkheid (per jaar) en maandrendementen in euro
+  const [liveRisico, setLiveRisico] = useState({});
   // Gsm-weergave (smalle lijsten i.p.v. tabellen)
   const [isGsm, setIsGsm] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   useEffect(() => {
@@ -589,7 +591,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
   // Instellingen.js zodat beide pagina's dezelfde bèta tonen per ticker.
   const BETA_MAP = BETA_MAP_FALLBACK;
   const [risicoInfoOpen, setRisicoInfoOpen] = useState(false);
-  const { beta, risicoLabel, risicoKleur, aantalBolletjes, betaPerBelegging } = useMemo(() => {
+  const { beta, risicoLabel, risicoKleur, aantalBolletjes, betaPerBelegging, volatiliteit } = useMemo(() => {
     const totaal = beleggingen.reduce((s, b) => {
       const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
     }, 0) || 1;
@@ -620,22 +622,50 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b) / totaal;
       const bt = betaVan(b);
       if (bt == null) onbekend.push(b.symbol);
-      perBelegging.push({ symbol: b.symbol, naam: b.naam, beta: bt, geschat: geschat.has(b.symbol), gewicht: w });
+      perBelegging.push({ symbol: b.symbol, naam: b.naam, beta: bt, geschat: geschat.has(b.symbol), gewicht: w, vol: liveRisico[b.symbol]?.vol ?? null });
       return s + (bt == null ? 1.0 : bt) * w;
     }, 0);
     // Grenzen conform info-modal: Defensief <1.0, Neutraal 1.0-1.5, Offensief 1.5-2.5, Speculatief >2.5
     // Afronden op 2 decimalen, net zoals op het scherm: anders kreeg een bèta
     // van 0,997 (getoond als "1,00") het label "Defensief".
     const afgerond = Math.round(gewogenBeta * 100) / 100;
-    const label = afgerond < 1.0 ? 'Defensief' : afgerond < 1.5 ? 'Neutraal' : afgerond < 2.5 ? 'Offensief' : 'Speculatief';
-    const kleur = afgerond < 1.0 ? 'var(--green)' : afgerond < 1.5 ? 'var(--accent)' : afgerond < 2.5 ? '#f97316' : 'var(--red)';
-    const bolletjes = afgerond < 1.0 ? 1 : afgerond < 1.5 ? 2 : afgerond < 2.5 ? 3 : 4;
     // Zelfde effect meermaals (bv. aparte aankopen) samenvoegen
     const samen = {};
     perBelegging.forEach(r => { if (samen[r.symbol]) samen[r.symbol].gewicht += r.gewicht; else samen[r.symbol] = { ...r }; });
     const lijst = Object.values(samen).sort((a, b) => b.gewicht - a.gewicht);
-    return { beta: afgerond, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: bolletjes, betaPerBelegging: lijst };
-  }, [beleggingen, koersen, getMuntFactor, liveBetas]);
+
+    // ── Beweeglijkheid (volatiliteit) van de hele portefeuille ──
+    // Per maand het gewogen rendement van je huidige beleggingen (in euro);
+    // daarvan de spreiding, omgerekend naar een jaar. Zo telt mee dat
+    // beleggingen elkaar deels uitmiddelen. Effecten zonder koershistoriek
+    // in een bepaalde maand tellen die maand niet mee (gewichten herschaald).
+    let vol = null;
+    const metReeks = lijst.filter(r => liveRisico[r.symbol]?.rend);
+    const gedekt = metReeks.reduce((s, r) => s + r.gewicht, 0);
+    if (gedekt >= 0.8) {
+      const maanden = [...new Set(metReeks.flatMap(r => Object.keys(liveRisico[r.symbol].rend)))].sort();
+      const reeks = [];
+      maanden.forEach(m => {
+        let som = 0, gew = 0;
+        metReeks.forEach(r => { const v = liveRisico[r.symbol].rend[m]; if (typeof v === 'number') { som += v * r.gewicht; gew += r.gewicht; } });
+        if (gew >= gedekt * 0.5) reeks.push(som / gew);
+      });
+      if (reeks.length >= 12) {
+        const g = reeks.reduce((s, v) => s + v, 0) / reeks.length;
+        const sd = Math.sqrt(reeks.reduce((s, v) => s + (v - g) ** 2, 0) / (reeks.length - 1));
+        vol = sd * Math.sqrt(12);
+      }
+    }
+
+    // Risiconiveau op basis van de beweeglijkheid; zolang die (nog) niet
+    // gekend is op basis van de bèta.
+    const niveau = vol != null
+      ? (vol < 0.10 ? 0 : vol < 0.18 ? 1 : vol < 0.30 ? 2 : 3)
+      : (afgerond < 1.0 ? 0 : afgerond < 1.5 ? 1 : afgerond < 2.5 ? 2 : 3);
+    const label = ['Defensief', 'Neutraal', 'Offensief', 'Speculatief'][niveau];
+    const kleur = ['var(--green)', 'var(--accent)', '#f97316', 'var(--red)'][niveau];
+    return { beta: afgerond, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: niveau + 1, betaPerBelegging: lijst, volatiliteit: vol };
+  }, [beleggingen, koersen, getMuntFactor, liveBetas, liveRisico]);
 
 
 
@@ -719,13 +749,13 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
 
     const laadBeta = async (b) => {
       const sym = b.symbol;
-      const cacheKey = `kapitas_beta_eur_${sym}`;
+      const cacheKey = `kapitas_risico_v2_${sym}`;
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          const { beta, timestamp } = JSON.parse(cached);
+          const { beta, vol, rend, timestamp } = JSON.parse(cached);
           if (Date.now() - timestamp < CACHE_DUUR_BETA) {
-            return { sym, beta };
+            return { sym, beta, vol, rend };
           }
         }
       } catch (e) {}
@@ -734,10 +764,12 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       try {
         const res = await fetch(`/api/data?endpoint=beta&symbol=${encodeURIComponent(b.symbol)}`);
         const data = await res.json();
-        const beta = data?.beta;
-        if (typeof beta === 'number' && Number.isFinite(beta)) {
-          localStorage.setItem(cacheKey, JSON.stringify({ beta, timestamp: Date.now() }));
-          return { sym, beta };
+        const beta = typeof data?.beta === 'number' && Number.isFinite(data.beta) ? data.beta : null;
+        const vol = typeof data?.volatiliteit === 'number' ? data.volatiliteit : null;
+        const rend = data?.maandRendementen && Object.keys(data.maandRendementen).length >= 2 ? data.maandRendementen : null;
+        if (beta != null || vol != null) {
+          try { localStorage.setItem(cacheKey, JSON.stringify({ beta, vol, rend, timestamp: Date.now() })); } catch (e) {}
+          return { sym, beta, vol, rend };
         }
       } catch (e) {}
       return null;
@@ -745,8 +777,14 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
 
     Promise.all(aandelen.map(laadBeta)).then(results => {
       const nieuw = {};
-      results.forEach(r => { if (r) nieuw[r.sym] = r.beta; });
+      const risico = {};
+      results.forEach(r => {
+        if (!r) return;
+        if (r.beta != null) nieuw[r.sym] = r.beta;
+        risico[r.sym] = { vol: r.vol ?? null, rend: r.rend || null };
+      });
       if (Object.keys(nieuw).length > 0) setLiveBetas(prev => ({ ...prev, ...nieuw }));
+      if (Object.keys(risico).length > 0) setLiveRisico(prev => ({ ...prev, ...risico }));
     });
   }, [beleggingen.map(b => b.symbol).join(',')]);
 
@@ -1543,10 +1581,17 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               <div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('an_beweeglijkheid')}</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }}>
+                  {volatiliteit != null ? `${getal(volatiliteit * 100, 0)}%` : '—'}
+                  {volatiliteit != null && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 4 }}>{t('an_per_jaar')}</span>}
+                </div>
+              </div>
+              <div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('an_marktinvloed_beta')}</div>
                 <div style={{ fontSize: 28, fontWeight: 700 }}>{getal(beta, 2)}</div>
               </div>
-              <div>
+              <div style={{ gridColumn: '1 / -1' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('an_risiconiveau')}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ display: 'flex', gap: 4 }}>
@@ -1608,9 +1653,9 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                 ))}
                 {betaPerBelegging.length > 0 && (
                   <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border-light)' }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Bèta per belegging</div>
+                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Per belegging</div>
                     <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: 12 }}>
-                      Berekend uit de koersen van de laatste 5 jaar, in euro, vergeleken met de wereldwijde aandelenmarkt (MSCI World). 1,0 = beweegt even sterk als de markt; 0 = beweegt er los van. De bèta van je portefeuille is het gewogen gemiddelde.
+                      Beweeglijkheid: hoeveel de koers gemiddeld per jaar schommelt (een wereldwijde ETF ± 13%). Bèta: hoe sterk ze meebeweegt met de wereldwijde aandelenmarkt (MSCI World); 1,0 = even sterk, 0 = los van de markt. Berekend uit de koersen van de laatste 5 jaar, in euro.
                     </p>
                     {betaPerBelegging.map(r => (
                       <div key={r.symbol} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 13 }}>
@@ -1619,8 +1664,10 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{r.symbol} · {getal(r.gewicht * 100, 1)}% van je portefeuille</div>
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{getal(r.beta == null ? 1 : r.beta, 2)}</div>
-                          {(r.geschat || r.beta == null) && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.beta == null ? 'onbekend, als 1,0 geteld' : 'schatting'}</div>}
+                          <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{r.vol != null ? `${getal(r.vol * 100, 0)}% / jaar` : '—'}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                            bèta {getal(r.beta == null ? 1 : r.beta, 2)}{r.beta == null ? ' (onbekend)' : r.geschat ? ' (schatting)' : ''}
+                          </div>
                         </div>
                       </div>
                     ))}
