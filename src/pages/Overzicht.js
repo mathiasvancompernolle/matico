@@ -1268,6 +1268,10 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     }
     return { yDomain: [axisMin, axisMax], yTicks: ticks };
   })();
+  const yLabel = v => isPct
+    ? `${Number(v).toLocaleString('nl-BE', { maximumFractionDigits: 2 })}%`
+    : (v < 0 ? '-€' : '€') + Math.abs(Math.round(v)).toLocaleString('nl-BE');
+  const yBreedteGsm = Math.max(28, ...(yTicks || []).map(v => yLabel(v).length * 6 + 6));
 
   return (
     <div
@@ -1439,7 +1443,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
             <ResponsiveContainer width="100%" height={isMobielScherm ? 240 : 220}>
               <AreaChart
                 data={displayDataEff}
-                margin={{ top: isMobielScherm ? 16 : 5, right: isMobielScherm ? 18 : 5, bottom: 5, left: isMobielScherm ? 18 : 0 }}
+                margin={{ top: isMobielScherm ? 16 : 5, right: isMobielScherm ? 18 : 5, bottom: 5, left: 0 }}
                 onMouseDown={grafiekSleepStart}
                 onMouseMove={grafiekSleepBeweeg}
                 onMouseUp={grafiekSleepEinde}
@@ -1457,14 +1461,10 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
                 <XAxis dataKey="tijd" type="number" domain={['dataMin', 'dataMax']} scale="time" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} ticks={xTicks} tickFormatter={xTickFormatter} interval={0} allowDuplicatedCategory={false} />
                 <YAxis
-                  // Gsm: bedragen binnenin de grafiek, net boven de rasterlijn,
-                  // zodat ze geen breedte kosten maar je toch de schaal ziet
-                  mirror={isMobielScherm}
-                  tick={isMobielScherm ? { fontSize: 10, fill: 'var(--text-muted)', dy: -7 } : { fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
-                  tickFormatter={v => isPct
-                    ? `${Number(v).toLocaleString('nl-BE', { maximumFractionDigits: 2 })}%`
-                    : (v < 0 ? '-€' : '€') + Math.abs(Math.round(v)).toLocaleString('nl-BE')}
-                  domain={yDomain} ticks={yTicks} width={isMobielScherm ? 1 : (isPct ? 50 : 45)}
+                  tick={{ fontSize: isMobielScherm ? 10 : 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
+                  tickFormatter={yLabel}
+                  // Gsm: een smalle kolom, net zo breed als het langste bedrag
+                  domain={yDomain} ticks={yTicks} width={isMobielScherm ? yBreedteGsm : (isPct ? 50 : 45)}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
