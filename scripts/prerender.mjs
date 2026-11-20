@@ -80,6 +80,10 @@ for (const [pad, { titel, beschrijving }] of Object.entries(META)) {
   html = vervang(html, /<meta property="og:url" content="[^"]*"\s*\/?>/, `<meta property="og:url" content="${url}"/>`);
   html = vervang(html, /<link rel="canonical" href="[^"]*"\s*\/?>/, `<link rel="canonical" href="${url}"/>`);
   if (pad === '/') html = html.replace('</head>', `<script type="application/ld+json">${JSON.stringify(JSON_LD)}</script></head>`);
+  // De inhoud staat er nu echt: de <noscript>-melding (met een tweede <h1>) is overbodig.
+  // Zonder JavaScript blijven de inschuif-animaties weg, dus de tekst meteen tonen.
+  html = vervang(html, /<noscript>[\s\S]*?<\/noscript>/, '');
+  html = html.replace('</head>', '<noscript><style>.l-animate{opacity:1!important;transform:none!important}</style></noscript></head>');
   html = vervang(html, /<div id="root"><\/div>/, `<div id="root"><div data-prerender="">${render(pad)}</div></div>`);
   const bestand = pad === '/' ? 'index.html' : pad.slice(1) + '.html';
   fs.writeFileSync(path.join(build, bestand), html);
