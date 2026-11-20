@@ -2284,19 +2284,3 @@ button { color: inherit; }
     height: calc(100dvh - 56px - env(safe-area-inset-top, 0px)) !important;
   }
 }
-
-@media (max-width: 768px) {
-  /* iPhone/Safari: zonder vaste balk bovenaan vervaagt Safari de inhoud
-     onder de statusbalk (wazige overgang). Met een vaste, witte bovenbalk
-     kleurt Safari de statusbalk gewoon wit mee. */
-  .app-wrapper { height: 100dvh; }
-  .app-wrapper .top-nav {
-    position: fixed !important;
-    top: 0; left: 0; right: 0;
-    z-index: 90;
-    background: var(--bg-white);
-  }
-  .app-wrapper .app-layout {
-    margin-top: calc(56px + env(safe-area-inset-top, 0px));
-  }
-}
