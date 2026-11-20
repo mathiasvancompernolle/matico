@@ -151,11 +151,30 @@ const FMP_SECTOR_MAP = {
 
 // Alle mogelijke sector-/regiobuckets die de app gebruikt (voor het opsporen
 // van de minst vertegenwoordigde categorie bij diversificatiesuggesties)
+// Lopende kosten (TER, %) van veelgebruikte ETF's waarvoor de databron
+// geen kostenratio geeft
+const KOSTENRATIO_EXTRA = {
+  VFEM: 0.22, VFEA: 0.22, VWRL: 0.19, VWRA: 0.19, VUSA: 0.07, VUAA: 0.07, VEUR: 0.10, VEVE: 0.12,
+  IBGS: 0.20, IBCI: 0.09, AGGH: 0.10, EUNA: 0.10, IEMA: 0.18, EIMI: 0.18, IUSN: 0.35, IWMO: 0.30,
+  MEUD: 0.07, LCUW: 0.12, XDWD: 0.19, XDEW: 0.20, XMME: 0.18, ZPRV: 0.30, ZPRX: 0.30,
+};
 const ALLE_SECTOREN = [
   'Technologie', 'Financiële dienstverlening', 'Cyclische consumptiegoederen',
   'Defensieve consumptiegoederen', 'Gezondheidszorg', 'Communicatiediensten',
   'Industrie', 'Energie', 'Basismaterialen', 'Nutsbedrijven', 'Vastgoed',
 ];
+// Gewicht in de wereldwijde aandelenmarkt (MSCI ACWI, bij benadering, in %)
+const WERELD_SECTOR = {
+  'Technologie': 26, 'Financiële dienstverlening': 17, 'Industrie': 11,
+  'Cyclische consumptiegoederen': 10.5, 'Gezondheidszorg': 9.5, 'Communicatiediensten': 8.5,
+  'Defensieve consumptiegoederen': 5.5, 'Energie': 3.7, 'Basismaterialen': 3.5,
+  'Nutsbedrijven': 2.6, 'Vastgoed': 2,
+};
+const WERELD_REGIO = {
+  'Noord-Amerika': 65, 'Europa - Ontwikkeld': 12, 'Azië - Opkomend': 8, 'Japan': 5,
+  'Azië - Ontwikkeld': 3.5, 'Verenigd Koninkrijk': 3.3, 'Australazië': 1.7,
+  'Afrika/Midden-Oosten': 1.3, 'Latijns-Amerika': 0.8, 'Europa - Opkomend': 0.3,
+};
 const ALLE_REGIOS = [
   'Noord-Amerika', 'Europa - Ontwikkeld', 'Europa - Opkomend',
   'Azië - Ontwikkeld', 'Azië - Opkomend', 'Japan', 'Verenigd Koninkrijk',
@@ -532,6 +551,13 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
   const [wisselkoersDropdown, setWisselkoersDropdown] = useState(false);
   const [liveEtfData, setLiveEtfData] = useState({});
   const [liveBetas, setLiveBetas] = useState({});
+  // Gsm-weergave (smalle lijsten i.p.v. tabellen)
+  const [isGsm, setIsGsm] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const opResize = () => setIsGsm(window.innerWidth < 768);
+    window.addEventListener('resize', opResize);
+    return () => window.removeEventListener('resize', opResize);
+  }, []);
   const [liveSectoren, setLiveSectoren] = useState({}); // { PRX: 'Cyclische consumptiegoederen', ... }
   const [liveLanden, setLiveLanden] = useState({}); // { PRX: 'Netherlands', ... } (land van het bedrijf)
   const [etfDataLoading, setEtfDataLoading] = useState(false);
@@ -561,9 +587,9 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
   // Live bèta state — wordt gevuld via Finnhub metrics API
   // BETA_MAP_FALLBACK komt uit ../data/marktclassificatie — gedeeld met
   // Instellingen.js zodat beide pagina's dezelfde bèta tonen per ticker.
-  const BETA_MAP = { ...BETA_MAP_FALLBACK, ...liveBetas };
+  const BETA_MAP = BETA_MAP_FALLBACK;
   const [risicoInfoOpen, setRisicoInfoOpen] = useState(false);
-  const { beta, risicoLabel, risicoKleur, aantalBolletjes, onbekendeBetas } = useMemo(() => {
+  const { beta, risicoLabel, risicoKleur, aantalBolletjes, betaPerBelegging } = useMemo(() => {
     const totaal = beleggingen.reduce((s, b) => {
       const k = koersen[b.symbol]; return s + (k ? k.c : b.kostprijs) * b.aantal * factor(b);
     }, 0) || 1;
@@ -571,7 +597,12 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     // Bèta per belegging. Vroeger kreeg alles zonder gekende bèta 1,0 —
     // ook een staatsobligatie-ETF (in werkelijkheid ~0) en crypto (veel
     // beweeglijker dan de aandelenmarkt).
+    // 1) berekend uit de koershistoriek (elk effect, zie api 'beta')
+    // 2) anders een vaste waarde of schatting
+    const geschat = new Set();
     const betaVan = (b) => {
+      if (typeof liveBetas[b.symbol] === 'number') return liveBetas[b.symbol];
+      geschat.add(b.symbol);
       const sym = b.symbol.split('.')[0].toUpperCase();
       if (BETA_MAP[sym]) return BETA_MAP[sym];
       if (b.type === 'crypto') return 2.0;            // schatting
@@ -583,11 +614,13 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       }
       return null;
     };
+    const perBelegging = [];
     const gewogenBeta = beleggingen.reduce((s, b) => {
       const k = koersen[b.symbol];
       const w = (k ? k.c : b.kostprijs) * b.aantal * factor(b) / totaal;
       const bt = betaVan(b);
       if (bt == null) onbekend.push(b.symbol);
+      perBelegging.push({ symbol: b.symbol, naam: b.naam, beta: bt, geschat: geschat.has(b.symbol), gewicht: w });
       return s + (bt == null ? 1.0 : bt) * w;
     }, 0);
     // Grenzen conform info-modal: Defensief <1.0, Neutraal 1.0-1.5, Offensief 1.5-2.5, Speculatief >2.5
@@ -597,7 +630,11 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     const label = afgerond < 1.0 ? 'Defensief' : afgerond < 1.5 ? 'Neutraal' : afgerond < 2.5 ? 'Offensief' : 'Speculatief';
     const kleur = afgerond < 1.0 ? 'var(--green)' : afgerond < 1.5 ? 'var(--accent)' : afgerond < 2.5 ? '#f97316' : 'var(--red)';
     const bolletjes = afgerond < 1.0 ? 1 : afgerond < 1.5 ? 2 : afgerond < 2.5 ? 3 : 4;
-    return { beta: afgerond, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: bolletjes, onbekendeBetas: [...new Set(onbekend)] };
+    // Zelfde effect meermaals (bv. aparte aankopen) samenvoegen
+    const samen = {};
+    perBelegging.forEach(r => { if (samen[r.symbol]) samen[r.symbol].gewicht += r.gewicht; else samen[r.symbol] = { ...r }; });
+    const lijst = Object.values(samen).sort((a, b) => b.gewicht - a.gewicht);
+    return { beta: afgerond, risicoLabel: label, risicoKleur: kleur, aantalBolletjes: bolletjes, betaPerBelegging: lijst };
   }, [beleggingen, koersen, getMuntFactor, liveBetas]);
 
 
@@ -674,14 +711,15 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
   // ── Concentratierisico ──
   // ── Live bèta ophalen via Finnhub metrics API ──
   useEffect(() => {
-    const aandelen = beleggingen.filter(b => b.type !== 'etf' && b.type !== 'crypto');
+    // Alle effecten: aandelen, ETF's en crypto (uniek per symbool)
+    const aandelen = [...new Map(beleggingen.map(b => [b.symbol, b])).values()];
     if (aandelen.length === 0) return;
 
     const CACHE_DUUR_BETA = 7 * 24 * 60 * 60 * 1000; // 7 dagen
 
     const laadBeta = async (b) => {
-      const sym = b.symbol.toUpperCase().split('.')[0];
-      const cacheKey = `matico_beta_${sym}`;
+      const sym = b.symbol;
+      const cacheKey = `kapitas_beta_eur_${sym}`;
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
@@ -692,22 +730,12 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
         }
       } catch (e) {}
 
+      // Berekend uit 5 jaar koershistoriek in euro t.o.v. de wereldmarkt
       try {
-        const res = await fetch(`/api/data?endpoint=metrics&symbol=${b.symbol}`);
-        const data = await res.json();
-        const beta = data?.metric?.beta;
-        if (beta && beta > 0) {
-          localStorage.setItem(cacheKey, JSON.stringify({ beta, timestamp: Date.now() }));
-          return { sym, beta };
-        }
-      } catch (e) {}
-
-      // Fallback: bèta via profile-endpoint (FMP), heeft betere dekking voor Europese/Aziatische aandelen
-      try {
-        const res = await fetch(`/api/data?endpoint=profile&symbol=${b.symbol}`);
+        const res = await fetch(`/api/data?endpoint=beta&symbol=${encodeURIComponent(b.symbol)}`);
         const data = await res.json();
         const beta = data?.beta;
-        if (beta && beta > 0) {
+        if (typeof beta === 'number' && Number.isFinite(beta)) {
           localStorage.setItem(cacheKey, JSON.stringify({ beta, timestamp: Date.now() }));
           return { sym, beta };
         }
@@ -812,6 +840,8 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
           localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
           return { basis, data };
         }
+        // Enkel de kostenratio gekend: wel gebruiken, niet lang bewaren
+        if (data?.expenseRatio > 0) return { basis, data };
       } catch (e) { console.error('ETF data fout:', e); }
       return null;
     };
@@ -934,18 +964,21 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       ? `Vooral individuele aandelen (${getal(aandelenPct, 0)}%) — een brede ETF zou hier het meest aan bijdragen.`
       : null;
 
-    const sectorZwakste = ALLE_SECTOREN
-      .map(s => [s, sectorMap[s] || 0])
-      .sort((a, b) => a[1] - b[1])[0];
-    const sectorSuggestie = (topS[1] > 30 && echteTopSector && sectorZwakste && sectorZwakste[0] !== topS[0])
-      ? `${sectorZwakste[0]} (${getal(sectorZwakste[1], 0)}%) is nu het minst vertegenwoordigd in je portfolio.`
+    // Vroeger: de kleinste categorie (vaak iets onbelangrijks met 0%, zoals
+    // "Europa - Opkomend"). Nu: de categorie die het verst onder haar gewicht
+    // in de wereldwijde aandelenmarkt (MSCI ACWI, bij benadering) zit —
+    // enkel als dat verschil echt iets betekent (minstens 5 procentpunt).
+    const ondergewicht = (map, wereld) => Object.entries(wereld)
+      .map(([k, w]) => [k, map[k] || 0, w])
+      .sort((a, b) => (b[2] - b[1]) - (a[2] - a[1]))[0];
+    const sOnder = ondergewicht(sectorMap, WERELD_SECTOR);
+    const sectorSuggestie = (sOnder && sOnder[2] - sOnder[1] >= 5)
+      ? `${sOnder[0]} is ondervertegenwoordigd: ${getal(sOnder[1], 0)}% in je portfolio, tegenover ongeveer ${getal(sOnder[2], 0)}% in de wereldwijde aandelenmarkt.`
       : null;
 
-    const regioZwakste = ALLE_REGIOS
-      .map(r => [r, regioMap[r] || 0])
-      .sort((a, b) => a[1] - b[1])[0];
-    const regioSuggestie = (topR[1] > 50 && regioZwakste && regioZwakste[0] !== topR[0])
-      ? `${regioZwakste[0]} (${getal(regioZwakste[1], 0)}%) is nu het minst vertegenwoordigd in je portfolio.`
+    const rOnder = ondergewicht(regioMap, WERELD_REGIO);
+    const regioSuggestie = (rOnder && rOnder[2] - rOnder[1] >= 5)
+      ? `${rOnder[0]} is ondervertegenwoordigd: ${getal(rOnder[1], 0)}% in je portfolio, tegenover ongeveer ${getal(rOnder[2], 0)}% in de wereldwijde aandelenmarkt.`
       : null;
 
     return {
@@ -1037,7 +1070,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     const valutaData = Object.entries(valutaMap)
       .map(([munt, w]) => ({ munt, waarde: w, pct: (w / totaal) * 100 }))
       .filter(v => v.pct >= 0.1)
-      .sort((a, b) => b.waarde - a.waarde);
+      .sort((a, b) => (a.munt === 'Overige') - (b.munt === 'Overige') || b.waarde - a.waarde);
     return valutaData;
   }, [beleggingen, koersen, getMuntFactor]);
 
@@ -1292,7 +1325,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
       // Converteer FMP formaat naar intern formaat
       return {
         // Onbekende kostenratio = null (niet 0%: dat trok het gemiddelde omlaag)
-        kostenratio: live.expenseRatio || ETF_DB_XRAY[basis]?.kostenratio || null,
+        kostenratio: live.expenseRatio || ETF_DB_XRAY[basis]?.kostenratio || KOSTENRATIO_EXTRA[basis] || null,
         totaalHoldings: ETF_DB_XRAY[basis]?.totaalHoldings,
         holdings: live.holdings.slice(0, 10).map(h => ({
           // Obligaties e.d. hebben vaak geen ticker: dan lege sym (niet '?'),
@@ -1305,6 +1338,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
     }
     if (ETF_DB_XRAY[basis]) return { ...ETF_DB_XRAY[basis], kostenratio: live?.expenseRatio || ETF_DB_XRAY[basis].kostenratio };
     if (live?.expenseRatio) return { kostenratio: live.expenseRatio, holdings: [] };
+    if (KOSTENRATIO_EXTRA[basis]) return { kostenratio: KOSTENRATIO_EXTRA[basis], holdings: [] };
     return null;
   };
 
@@ -1572,15 +1606,24 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                     <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>{beschrijving}</p>
                   </div>
                 ))}
-                {onbekendeBetas.length > 0 && (
+                {betaPerBelegging.length > 0 && (
                   <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border-light)' }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{t('an_niet_meegenomen')}</div>
-                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
-                      {t('an_geen_marktinvloed')}
+                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Bèta per belegging</div>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: 12 }}>
+                      Berekend uit de koersen van de laatste 5 jaar, in euro, vergeleken met de wereldwijde aandelenmarkt (MSCI World). 1,0 = beweegt even sterk als de markt; 0 = beweegt er los van. De bèta van je portefeuille is het gewogen gemiddelde.
                     </p>
-                    <ul style={{ margin: 0, paddingLeft: 20 }}>
-                      {onbekendeBetas.map(sym => <li key={sym} style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{sym}</li>)}
-                    </ul>
+                    {betaPerBelegging.map(r => (
+                      <div key={r.symbol} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border-light)', fontSize: 13 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.naam || r.symbol}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{r.symbol} · {getal(r.gewicht * 100, 1)}% van je portefeuille</div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{getal(r.beta == null ? 1 : r.beta, 2)}</div>
+                          {(r.geschat || r.beta == null) && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.beta == null ? 'onbekend, als 1,0 geteld' : 'schatting'}</div>}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1737,6 +1780,8 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
 
             {valutaTab === 'verdeling' ? (() => {
               const valutaData = valutaVerdeling;
+              // 'Overige' grijs (anders dezelfde kleur als de eerste munt)
+              const valutaKleur = (v, i) => v.munt === 'Overige' ? '#94a3b8' : PIE_KLEUREN[i % PIE_KLEUREN.length];
 
               return (
                 <div className="analyse-currency-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'center' }}>
@@ -1744,7 +1789,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie data={valutaData} dataKey="pct" nameKey="munt" cx="50%" cy="50%" innerRadius={50} outerRadius={88} paddingAngle={2}>
-                          {valutaData.map((_, i) => <Cell key={i} fill={PIE_KLEUREN[i % PIE_KLEUREN.length]} />)}
+                          {valutaData.map((v, i) => <Cell key={i} fill={valutaKleur(v, i)} />)}
                         </Pie>
                         <Tooltip content={({ active, payload }) => {
                           if (!active || !payload?.length) return null;
@@ -1765,7 +1810,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                       <div key={v.munt} style={{ marginBottom: 8 }}>
                         <div className="analyse-currency-legend-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: PIE_KLEUREN[i % PIE_KLEUREN.length], display: 'inline-block' }} />
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: valutaKleur(v, i), display: 'inline-block' }} />
                             <span style={{ fontSize: 13, fontWeight: 600 }}>{v.munt}</span>
                           </div>
                           <div className="analyse-currency-amount">
@@ -1774,7 +1819,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                           </div>
                         </div>
                         <div style={{ height: 4, background: 'var(--border-light)', borderRadius: 2, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${v.pct}%`, background: PIE_KLEUREN[i % PIE_KLEUREN.length], borderRadius: 2 }} />
+                          <div style={{ height: '100%', width: `${v.pct}%`, background: valutaKleur(v, i), borderRadius: 2 }} />
                         </div>
                       </div>
                     ))}
@@ -1917,7 +1962,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{t('an_gemiddelde_kostenratio')}</div>
                 <div style={{ fontSize: 28, fontWeight: 700 }}>{gemiddeldeKostenratio > 0 ? `${getal(gemiddeldeKostenratio, 2)}%` : '—'}</div>
                 {etfsZonderKosten.length > 0 && (
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>zonder {etfsZonderKosten.join(', ')} (kostenratio onbekend)</div>
+                  <div className="analyse-etf-noot" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>zonder {etfsZonderKosten.join(', ')} (kostenratio onbekend)</div>
                 )}
               </div>
             </div>
@@ -2037,18 +2082,36 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>{t('an_per_belegging')}</div>
                   <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 100px 100px 90px', padding: '10px 16px', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {!isGsm && <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 100px 100px 90px', padding: '10px 16px', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       <span>{t('bel_col_instrument')}</span>
                       <span style={{ textAlign: 'right' }}>{t('an_col_investering')}</span>
                       <span style={{ textAlign: 'right' }}>{t('an_col_kosten')}</span>
                       <span style={{ textAlign: 'right' }}>{t('an_col_pct_inv')}</span>
                       <span style={{ textAlign: 'right' }}>{t('an_col_broker')}</span>
-                    </div>
+                    </div>}
                     {kostenLijst.map((b, idx) => {
                       const pct = b.investering > 0 ? (b.kosten / b.investering) * 100 : 0;
                       const BROKER_DOMEIN = { Saxo: 'home.saxo', DEGIRO: 'degiro.nl', Bitvavo: 'bitvavo.com' };
                       const brokerDomein = BROKER_DOMEIN[b.broker];
                       const brokerLabel = b.broker || t('an_manueel_broker');
+                      const kostKleur = b.kosten > 0 ? 'var(--red)' : 'var(--text-muted)';
+                      if (isGsm) {
+                        return (
+                          <div key={b.symbol + idx} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: idx < kostenLijst.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.naam}</div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {b.symbol}{b.status === 'verkocht' && <span style={{ color: 'var(--red)', fontWeight: 600 }}> · {t('an_verkocht_label')}</span>} · {brokerLabel}
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Geïnvesteerd €{getal(b.investering, 2)}</div>
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: 14, color: kostKleur, fontVariantNumeric: 'tabular-nums' }}>€{getal(b.kosten, 2)}</div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{getal(pct, 2)}%</div>
+                            </div>
+                          </div>
+                        );
+                      }
                       return (
                         <div key={b.symbol + idx} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 100px 100px 90px', padding: '12px 16px', borderBottom: idx < kostenLijst.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -2064,7 +2127,7 @@ export function Analyse({ sidebarCollapsed, onToggleSidebar }) {
                             </div>
                           </div>
                           <div style={{ textAlign: 'right', fontSize: 13, fontFamily: 'monospace' }}>€{getal(b.investering, 2)}</div>
-                          <div style={{ textAlign: 'right', fontSize: 13, fontFamily: 'monospace', fontWeight: 600, color: 'var(--red)' }}>€{getal(b.kosten, 2)}</div>
+                          <div style={{ textAlign: 'right', fontSize: 13, fontFamily: 'monospace', fontWeight: 600, color: kostKleur }}>€{getal(b.kosten, 2)}</div>
                           <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>{getal(pct, 3)}%</div>
                           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6 }}>
                             {brokerDomein ? (

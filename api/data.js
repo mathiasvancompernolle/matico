@@ -1894,6 +1894,67 @@ module.exports = async function handler(req, res) {
       return res.json(resultaat);
     }
 
+    // ── Bèta voor elk effect (aandeel, ETF, crypto) ──
+    // Zelf berekend uit de koershistoriek, alles omgerekend naar euro en
+    // vergeleken met de wereldmarkt in euro (iShares MSCI World, IWDA.AS):
+    // zo meet de bèta hoe sterk een belegging voor een Belgische belegger
+    // meebeweegt met de aandelenmarkt (wereld-ETF ≈ 1, obligaties ≈ 0).
+    // Standaard 5 jaar maandrendementen (zoals "Beta 5Y Monthly"); voor
+    // jonge effecten 2 jaar weekrendementen.
+    if (endpoint === 'beta') {
+      const { symbol } = req.query;
+      if (!symbol) return res.json({ beta: null });
+      // +12u: Europese koersen staan op middernacht lokale tijd = vorige dag in UTC
+      const maand = ts => new Date((ts + 43200) * 1000).toISOString().slice(0, 7);
+      const week = ts => { const d = new Date((ts + 43200) * 1000); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7); return d.toISOString().slice(0, 10); };
+      const BASIS = { GBp: 'GBP', GBX: 'GBP', ZAc: 'ZAR', ILA: 'ILS' };
+      const ruw = async (sym, q, sl) => {
+        const r = await haalYahooChart(sym, q);
+        const t = r?.timestamp || [], c = r?.indicators?.quote?.[0]?.close || [];
+        const m = new Map();
+        t.forEach((x, i) => { if (c[i] > 0) m.set(sl(x), c[i]); });
+        return { m, munt: r?.meta?.currency || 'EUR' };
+      };
+      const inEur = async (sym, q, sl) => {
+        const { m, munt } = await ruw(sym, q, sl);
+        const cur = BASIS[munt] || String(munt).toUpperCase();
+        if (cur === 'EUR' || m.size === 0) return m;
+        const fx = (await ruw(`EUR${cur}=X`, q, sl)).m;
+        const o = new Map();
+        for (const [k, v] of m) if (fx.has(k)) o.set(k, v / fx.get(k));
+        return o;
+      };
+      const reken = (a, b) => {
+        const k = [...a.keys()].filter(x => b.has(x)).sort();
+        const ra = [], rb = [];
+        for (let i = 1; i < k.length; i++) { ra.push(a.get(k[i]) / a.get(k[i - 1]) - 1); rb.push(b.get(k[i]) / b.get(k[i - 1]) - 1); }
+        const n = ra.length;
+        if (n < 2) return { beta: null, n };
+        const ma = ra.reduce((x, v) => x + v, 0) / n, mb = rb.reduce((x, v) => x + v, 0) / n;
+        let cov = 0, vr = 0;
+        for (let i = 0; i < n; i++) { cov += (ra[i] - ma) * (rb[i] - mb); vr += (rb[i] - mb) ** 2; }
+        const beta = vr > 0 ? cov / vr : null;
+        return { beta: Number.isFinite(beta) ? Math.round(beta * 100) / 100 : null, n };
+      };
+      try {
+        const yfSym = toYahooSymbol(symbol);
+        const qm = 'range=5y&interval=1mo';
+        const [eff, bench] = await Promise.all([inEur(yfSym, qm, maand), inEur('IWDA.AS', qm, maand)]);
+        let r = reken(eff, bench), methode = '5 jaar, maandelijks';
+        if (r.beta == null || r.n < 24) {
+          const qw = 'range=2y&interval=1wk';
+          const [e2, b2] = await Promise.all([inEur(yfSym, qw, week), inEur('IWDA.AS', qw, week)]);
+          const r2 = reken(e2, b2);
+          if (r2.beta != null && r2.n >= 26) { r = r2; methode = '2 jaar, wekelijks'; }
+          else r = { beta: null, n: Math.max(r.n, r2.n) };
+        }
+        res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
+        return res.json({ beta: r.beta, n: r.n, methode, benchmark: 'MSCI World (EUR)' });
+      } catch (e) {
+        return res.json({ beta: null });
+      }
+    }
+
     if (endpoint === 'metrics') {
       const { symbol } = req.query;
       try {

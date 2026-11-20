@@ -1092,7 +1092,7 @@ body {
   .analyse-etf-stats-grid {
     gap: 10px !important;
   }
-  .analyse-etf-stats-grid > div > div:last-child {
+  .analyse-etf-stats-grid > div > div:nth-child(2) {
     font-size: 18px !important;
   }
 
@@ -1176,12 +1176,9 @@ body {
   }
 
   /* ── Analyse: valutaverdeling-legenda — bedrag + percentage op eigen regel, rechts uitgelijnd ── */
-  .analyse-currency-legend-row {
-    flex-wrap: wrap;
-  }
+  /* Valutacodes zijn kort: alles op één regel */
   .analyse-currency-amount {
-    flex: 1 0 100%;
-    text-align: right;
+    white-space: nowrap;
   }
 }
 
