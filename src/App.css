@@ -2278,3 +2278,19 @@ button { color: inherit; }
     overscroll-behavior: none;
   }
 }
+
+@media (max-width: 768px) {
+  /* iPhone-app (beginscherm): net als op de landingspagina staat de bovenbalk
+     vast bovenaan. iOS neemt dan de witte kleur van die balk over onder de
+     statusbalk i.p.v. er zelf een wazige overgang te tekenen. De hoogte van
+     de app blijft ongewijzigd (zodat de inhoud onderaan blijft doorlopen). */
+  .app-wrapper .top-nav {
+    position: fixed !important;
+    top: 0; left: 0; right: 0;
+    z-index: 90;
+    background: var(--bg-white);
+  }
+  .app-wrapper .app-layout {
+    margin-top: calc(56px + env(safe-area-inset-top, 0px));
+  }
+}
