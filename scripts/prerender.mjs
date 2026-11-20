@@ -34,6 +34,26 @@ const META = {
     titel: 'Disclaimer – Kapitas',
     beschrijving: 'Kapitas geeft geen beleggingsadvies. Lees hier hoe je de informatie en berekeningen in Kapitas moet interpreteren.',
   },
+  '/meerwaardebelasting-berekenen': {
+    titel: 'Meerwaardebelasting berekenen 2026 – gratis rekenhulp – Kapitas',
+    beschrijving: 'Bereken gratis hoeveel meerwaardebelasting (10%) je betaalt op aandelen, ETF\'s en crypto. Met de vrijstelling van €10.000, verliezen en de waarde op 31/12/2025.',
+    taal: 'nl-BE', alternatief: { 'fr-BE': '/fr/calcul-taxe-plus-values' },
+  },
+  '/beurstaks-berekenen': {
+    titel: 'Beurstaks (TOB) berekenen – gratis rekenhulp – Kapitas',
+    beschrijving: 'Bereken gratis hoeveel beurstaks je betaalt op aandelen, ETF\'s en obligaties: 0,12%, 0,35% of 1,32%, met de maximumbedragen per transactie.',
+    taal: 'nl-BE', alternatief: { 'fr-BE': '/fr/calcul-taxe-boursiere' },
+  },
+  '/fr/calcul-taxe-plus-values': {
+    titel: 'Calculer la taxe sur les plus-values 2026 (Belgique) – Kapitas',
+    beschrijving: 'Calculez gratuitement la taxe de 10 % sur les plus-values de vos actions, ETF et cryptos. Avec l\'exonération de 10 000 €, les pertes et la valeur au 31/12/2025.',
+    taal: 'fr-BE', alternatief: { 'nl-BE': '/meerwaardebelasting-berekenen' },
+  },
+  '/fr/calcul-taxe-boursiere': {
+    titel: 'Calculer la taxe boursière (TOB) en Belgique – Kapitas',
+    beschrijving: 'Calculez gratuitement la taxe sur les opérations de bourse pour vos actions, ETF et obligations : 0,12 %, 0,35 % ou 1,32 %, avec les maximums par transaction.',
+    taal: 'fr-BE', alternatief: { 'nl-BE': '/beurstaks-berekenen' },
+  },
 };
 
 const JSON_LD = {
@@ -68,9 +88,17 @@ const vervang = (html, re, nieuw) => {
   return html.replace(re, nieuw);
 };
 
-for (const [pad, { titel, beschrijving }] of Object.entries(META)) {
+for (const [pad, { titel, beschrijving, taal, alternatief }] of Object.entries(META)) {
   const url = SITE + (pad === '/' ? '/' : pad);
   let html = sjabloon;
+  if (taal) {
+    html = vervang(html, /<html lang="[^"]*"/, `<html lang="${taal}"`);
+    if (taal.startsWith('fr')) html = html.replace(/<meta property="og:locale" content="[^"]*"\s*\/?>/, '<meta property="og:locale" content="fr_BE"/>');
+  }
+  if (alternatief) {
+    const links = { [taal]: pad, ...alternatief };
+    html = html.replace('</head>', Object.entries(links).map(([hl, p]) => `<link rel="alternate" hreflang="${hl}" href="${SITE}${p}"/>`).join('') + '</head>');
+  }
   html = vervang(html, /<title>[^<]*<\/title>/, `<title>${esc(titel)}</title>`);
   html = vervang(html, /<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${esc(beschrijving)}"/>`);
   html = vervang(html, /<meta property="og:title" content="[^"]*"\s*\/?>/, `<meta property="og:title" content="${esc(titel)}"/>`);
@@ -86,6 +114,7 @@ for (const [pad, { titel, beschrijving }] of Object.entries(META)) {
   html = html.replace('</head>', '<noscript><style>.l-animate{opacity:1!important;transform:none!important}</style></noscript></head>');
   html = vervang(html, /<div id="root"><\/div>/, `<div id="root"><div data-prerender="">${render(pad)}</div></div>`);
   const bestand = pad === '/' ? 'index.html' : pad.slice(1) + '.html';
+  fs.mkdirSync(path.dirname(path.join(build, bestand)), { recursive: true });
   fs.writeFileSync(path.join(build, bestand), html);
   console.log(`prerender: ${pad} → build/${bestand} (${Math.round(html.length / 1024)} KB)`);
 }

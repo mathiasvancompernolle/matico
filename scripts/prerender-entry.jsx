@@ -6,6 +6,7 @@ import Landing from '../src/pages/Landing';
 import Gids from '../src/pages/Gids';
 import Privacybeleid from '../src/pages/Privacybeleid';
 import { Voorwaarden, Disclaimer } from '../src/pages/Juridisch';
+import Rekenhulp, { REKENHULP_PADEN } from '../src/pages/Rekenhulp';
 
 const niets = () => {};
 
@@ -15,6 +16,7 @@ export const paginas = {
   '/privacybeleid': () => <Privacybeleid onTerug={niets} />,
   '/voorwaarden': () => <Voorwaarden onTerug={niets} />,
   '/disclaimer': () => <Disclaimer onTerug={niets} />,
+  ...Object.fromEntries(Object.entries(REKENHULP_PADEN).map(([pad, { soort, taal }]) => [pad, () => <Rekenhulp soort={soort} taal={taal} onNaarApp={niets} />])),
 };
 
 export const render = (pad) => renderToStaticMarkup(paginas[pad]());
