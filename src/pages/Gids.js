@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import kapitasLogo from '../assets/kapitas-logo.png';
 
 const ACCENT = '#1e3a8a';
 const INKT = '#16181D';
@@ -74,16 +73,16 @@ export default function Gids({ onTerug, onNaarApp }) {
   return (
     <div style={{ background: CREME, color: INKT, fontFamily: "'DM Sans', system-ui, sans-serif", minHeight: '100vh' }}>
       {/* NAV */}
-      <header className="gids-header" style={{ height: 72, boxSizing: 'border-box', padding: '0 80px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${RAND}`, background: CREME, position: 'sticky', top: 0, zIndex: 50 }}>
+      {(onTerug || onNaarApp) && <header className="gids-header" style={{ height: 72, boxSizing: 'border-box', padding: '0 80px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${RAND}`, background: CREME, position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: onTerug ? 'pointer' : 'default' }} onClick={onTerug}>
-          <img src={kapitasLogo} alt="Kapitas" style={{ height: 28, width: 'auto' }} />
+          <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.5px', color: '#1e3a8a', fontFamily: "'DM Sans', sans-serif" }}>Kapitas</span>
         </div>
         {onTerug ? (
           <span onClick={onTerug} style={{ fontSize: 14, fontWeight: 600, color: GRIJS, cursor: 'pointer' }}>← Terug naar Kapitas</span>
         ) : (
           <span style={{ fontSize: 14, fontWeight: 600, color: GRIJS }}>Gids voor beginners</span>
         )}
-      </header>
+      </header>}
 
       {/* HERO */}
       <section className="gids-sectie" style={{ padding: '88px 80px 72px', display: 'flex', flexDirection: 'column', gap: 28 }}>

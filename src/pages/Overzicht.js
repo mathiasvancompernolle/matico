@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useEffectLogo, logoStijl } from '../components/EffectLogo';
 import { koers as koersFmt } from '../utils/getal';
 import { muntSymbool } from '../utils/munt';
@@ -1249,7 +1250,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
     const bereik = max - bodem;
     if (bereik === 0) return { yDomain: isPct ? [-1, 1] : [0, max * 1.2 || 1], yTicks: undefined };
     // Kies een nette stapgrootte: 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, ...
-    const doelTicks = 5;
+    const doelTicks = isMobielScherm ? 3 : 5; // gsm: minder, rustiger labels
     const ruwStap = bereik / doelTicks;
     const magnitude = Math.pow(10, Math.floor(Math.log10(ruwStap)));
     const genormaliseerd = ruwStap / magnitude;
@@ -1438,7 +1439,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
             <ResponsiveContainer width="100%" height={isMobielScherm ? 240 : 220}>
               <AreaChart
                 data={displayDataEff}
-                margin={{ top: 5, right: isMobielScherm ? 18 : 5, bottom: 5, left: isMobielScherm ? 18 : 0 }}
+                margin={{ top: isMobielScherm ? 16 : 5, right: isMobielScherm ? 18 : 5, bottom: 5, left: isMobielScherm ? 18 : 0 }}
                 onMouseDown={grafiekSleepStart}
                 onMouseMove={grafiekSleepBeweeg}
                 onMouseUp={grafiekSleepEinde}
@@ -1456,11 +1457,14 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
                 <XAxis dataKey="tijd" type="number" domain={['dataMin', 'dataMax']} scale="time" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} ticks={xTicks} tickFormatter={xTickFormatter} interval={0} allowDuplicatedCategory={false} />
                 <YAxis
-                  tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
+                  // Gsm: bedragen binnenin de grafiek, net boven de rasterlijn,
+                  // zodat ze geen breedte kosten maar je toch de schaal ziet
+                  mirror={isMobielScherm}
+                  tick={isMobielScherm ? { fontSize: 10, fill: 'var(--text-muted)', dy: -7 } : { fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
                   tickFormatter={v => isPct
                     ? `${Number(v).toLocaleString('nl-BE', { maximumFractionDigits: 2 })}%`
                     : (v < 0 ? '-€' : '€') + Math.abs(Math.round(v)).toLocaleString('nl-BE')}
-                  domain={yDomain} ticks={yTicks} width={isPct ? 50 : 45} hide={isMobielScherm}
+                  domain={yDomain} ticks={yTicks} width={isMobielScherm ? 1 : (isPct ? 50 : 45)}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
@@ -1563,7 +1567,7 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
                     stroke="var(--text-muted)"
                     strokeDasharray="4 4"
                     strokeWidth={1.5}
-                    label={{ value: `Slot vorige dag: €${portfolioVorigeSlot.toLocaleString('nl-BE')}`, position: 'insideTopLeft', fontSize: 11, fill: 'var(--text-muted)' }}
+                    label={{ value: `Slot vorige dag: €${portfolioVorigeSlot.toLocaleString('nl-BE')}`, position: isMobielScherm ? 'insideTopRight' : 'insideTopLeft', fontSize: 11, fill: 'var(--text-muted)' }}
                   />
                 )}
                 <Area type="monotone" dataKey="waarde" stroke={grafiekKleur} strokeWidth={2} fill="url(#portfolioGrad)" dot={(props) => {
@@ -1849,9 +1853,12 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
 
       </div>
 
-      {filterOpen && (
-        <>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 49 }} onClick={() => setFilterOpen(false)} />
+      {/* In de bovenste laag van de pagina (portal): anders lag het paneel
+          binnen de scrollende pagina, onder de onderbalk, en schoof het op de
+          iPhone mee. Aanrakingen niet doorgeven (geen 'trek om te verversen'). */}
+      {filterOpen && createPortal(
+        <div onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 1000 }} onClick={() => setFilterOpen(false)} />
           <div className="filter-panel">
             <div className="modal-header">
               <h2>{t('ov_filter_titel')}</h2>
@@ -1922,16 +1929,20 @@ export default function Overzicht({ onToevoegen, onImporteren, sidebarCollapsed,
               </div>
             </div>
           </div>
-        </>
+        </div>,
+        document.body
       )}
 
-      {vergelijkOpen && (
-        <VergelijkModal
-          onClose={() => setVergelijkOpen(false)}
-          vergelijk1={vergelijk1} setVergelijk1={setVergelijk1}
-          vergelijk2={vergelijk2} setVergelijk2={setVergelijk2}
-          portfolioData={winstData} tijdperk={tijdperk} setTijdperk={setTijdperk}
-        />
+      {vergelijkOpen && createPortal(
+        <div onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()}>
+          <VergelijkModal
+            onClose={() => setVergelijkOpen(false)}
+            vergelijk1={vergelijk1} setVergelijk1={setVergelijk1}
+            vergelijk2={vergelijk2} setVergelijk2={setVergelijk2}
+            portfolioData={winstData} tijdperk={tijdperk} setTijdperk={setTijdperk}
+          />
+        </div>,
+        document.body
       )}
 
       {detailBelegging && (

@@ -2256,3 +2256,31 @@ button { color: inherit; }
     padding: 10px 14px;
   }
 }
+
+/* Filterpaneel en vergelijkvenster boven de mobiele onderbalk (z-index 100) */
+.filter-panel { z-index: 1001; }
+.vergelijk-modal { z-index: 1000; }
+
+@media (max-width: 768px) {
+  /* Filter: schermvullend op de gsm, met ruimte voor de iPhone-randen */
+  .filter-panel {
+    width: 100%;
+    left: 0;
+    height: 100vh;
+    height: 100dvh;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Geen wazige/grijze band bovenaan: de pagina achter de statusbalk is wit
+     en het scherm schuift als geheel niet (enkel de inhoud scrolt) */
+  html:has(.app-wrapper), body:has(.app-wrapper) {
+    background: var(--bg-white);
+    overflow: hidden;
+    height: 100%;
+    overscroll-behavior: none;
+  }
+  .app-wrapper .app-layout {
+    height: calc(100dvh - 56px - env(safe-area-inset-top, 0px)) !important;
+  }
+}
