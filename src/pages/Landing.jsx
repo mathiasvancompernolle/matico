@@ -11,7 +11,8 @@ function TelOp({ waarde }) {
   const match = /^(\d+)(.*)$/.exec(waarde);
   const doel = match ? parseInt(match[1], 10) : null;
   const achtervoegsel = match ? match[2] : '';
-  const [getal, setGetal] = useState(doel === null || minderBeweging() ? doel : 0);
+  // Op de server (vooraf gegenereerde HTML) meteen het echte getal tonen
+  const [getal, setGetal] = useState(doel === null || typeof window === 'undefined' || minderBeweging() ? doel : 0);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -35,6 +36,14 @@ function TelOp({ waarde }) {
 
   return <span ref={ref}>{doel === null ? waarde : `${getal}${achtervoegsel}`}</span>;
 }
+
+// Echte links (met href) zodat Google de pagina's kan vinden, maar binnen de
+// app gewoon zonder herladen wisselen. Ctrl/Cmd-klik opent een nieuw tabblad.
+const klik = (actie) => (e) => {
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+  e.preventDefault();
+  if (actie) actie();
+};
 
 export default function Landing({ onNaarApp, onPrivacybeleid, onGids, onVoorwaarden, onDisclaimer }) {
   const [faqOpen, setFaqOpen] = useState(null);
@@ -150,6 +159,11 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids, onVoorwaar
           html { scroll-behavior:auto; }
           .l-animate, .l-intro, .l-mockup-zweef, .l-mockup-bar, .l-gradient-tekst { animation:none!important;opacity:1!important;transform:none!important;transition:none!important; }
         }
+        /* De vooraf gegenereerde HTML speelde de intro al af: niet opnieuw
+           starten wanneer React de pagina overneemt */
+        .kp-voorgerenderd .l-intro { animation:none!important; }
+        .kp-voorgerenderd .l-mockup-zweef { animation:l-zweef 6s ease-in-out 1.4s infinite!important; }
+        .kp-voorgerenderd .l-mockup-bar { animation:none!important; }
         .l-show-mobile{display:none;}
         .l-nav-cta-btn{white-space:nowrap;}
         @media(max-width:480px){
@@ -192,7 +206,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids, onVoorwaar
           {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
             <li key={i}><a href={h} className="l-nav-link">{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a></li>
           ))}
-          <li><button type="button" onClick={onGids} className="l-nav-link">Leren beleggen</button></li>
+          <li><a href="/gids" onClick={klik(onGids)} className="l-nav-link">Leren beleggen</a></li>
         </ul>
         <div style={{ display:'flex',gap:10,alignItems:'center' }}>
           <button onClick={() => onNaarApp('login')} className="l-btn" style={{ background:'none',color:'#64748b',fontSize:14,padding:'8px 6px' }}>Inloggen</button>
@@ -212,7 +226,7 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids, onVoorwaar
           {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
             <a key={i} href={h} onClick={() => setMenuOpen(false)} style={{ textDecoration:'none',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px',borderBottom:'1px solid #f1f5f9' }}>{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a>
           ))}
-          <span onClick={() => { setMenuOpen(false); onGids(); }} style={{ cursor:'pointer',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px' }}>Leren beleggen</span>
+          <a href="/gids" onClick={klik(() => { setMenuOpen(false); onGids(); })} style={{ cursor:'pointer',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px',textDecoration:'none' }}>Leren beleggen</a>
         </div>
       )}
 
@@ -477,14 +491,20 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids, onVoorwaar
           {[['Product',['Features','Prijzen','Hoe werkt het']],['Belgisch',['Belastingmodule','TOB calculator','Meerwaardebelasting','Reynders-taks']],['Info',['Gids voor beginners','Privacybeleid','Algemene voorwaarden','Disclaimer','Contact']]].map(([titel,links]) => (
             <div key={titel}>
               <h4 style={{ fontSize:13,fontWeight:700,color:'white',marginBottom:14 }}>{titel}</h4>
-              {links.map(l => <div key={l} style={{ fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer' }} onClick={l==='Contact'?()=>window.location.href='mailto:hello@kapitas.be':l==='Privacybeleid'?onPrivacybeleid:l==='Algemene voorwaarden'?onVoorwaarden:l==='Disclaimer'?onDisclaimer:l==='Gids voor beginners'?onGids:() => onNaarApp('registreren')}>{l}</div>)}
+              {links.map(l => {
+                const stijl = { display:'block',fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer',textDecoration:'none' };
+                if (l === 'Contact') return <a key={l} href="mailto:hello@kapitas.be" style={stijl}>{l}</a>;
+                const pad = { 'Privacybeleid':'/privacybeleid','Algemene voorwaarden':'/voorwaarden','Disclaimer':'/disclaimer','Gids voor beginners':'/gids' }[l];
+                if (pad) return <a key={l} href={pad} onClick={klik({ '/privacybeleid':onPrivacybeleid,'/voorwaarden':onVoorwaarden,'/disclaimer':onDisclaimer,'/gids':onGids }[pad])} style={stijl}>{l}</a>;
+                return <div key={l} style={stijl} onClick={() => onNaarApp('registreren')}>{l}</div>;
+              })}
             </div>
           ))}
         </div>
         <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)',paddingTop:24,display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:12,flexWrap:'wrap',gap:12 }}>
           <span>© 2026 Kapitas. Alle rechten voorbehouden.</span>
           <div style={{ display:'flex',gap:20 }}>
-            {['Privacybeleid','Voorwaarden','Disclaimer'].map(l => <span key={l} style={{ color:'rgba(255,255,255,0.35)',cursor:'pointer' }} onClick={l==='Privacybeleid'?onPrivacybeleid:l==='Voorwaarden'?onVoorwaarden:onDisclaimer}>{l}</span>)}
+            {[['Privacybeleid','/privacybeleid',onPrivacybeleid],['Voorwaarden','/voorwaarden',onVoorwaarden],['Disclaimer','/disclaimer',onDisclaimer]].map(([l,pad,actie]) => <a key={l} href={pad} style={{ color:'rgba(255,255,255,0.35)',cursor:'pointer',textDecoration:'none' }} onClick={klik(actie)}>{l}</a>)}
           </div>
         </div>
       </footer>
