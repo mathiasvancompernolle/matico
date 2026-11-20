@@ -1,7 +1,5 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
+  "cleanUrls": true,
   "functions": {
     "api/data.js": {
       "maxDuration": 60
@@ -11,6 +9,9 @@
     }
   },
   "crons": [
-    { "path": "/api/cron-markten", "schedule": "0 6 * * 1-5" }
+    {
+      "path": "/api/cron-markten",
+      "schedule": "0 6 * * 1-5"
+    }
   ]
 }

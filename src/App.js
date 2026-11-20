@@ -801,7 +801,16 @@ export default function App() {
   });
   const [authStartModus, setAuthStartModus] = React.useState('login');
   const [gebruiker, setGebruiker] = React.useState(null);
-  const [authLaden, setAuthLaden] = React.useState(true);
+  // Enkel wachten op Supabase als er mogelijk een sessie is (opgeslagen token
+  // of een login-/herstellink in de URL). Gewone bezoekers zien zo meteen de
+  // website, zonder tussenscherm "Kapitas laden...".
+  const [authLaden, setAuthLaden] = React.useState(() => {
+    try {
+      const opgeslagen = Object.keys(window.localStorage).some(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+      const inUrl = /access_token|refresh_token|code=|type=|error/.test(window.location.hash + window.location.search);
+      return opgeslagen || inUrl;
+    } catch (e) { return true; }
+  });
 
   React.useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

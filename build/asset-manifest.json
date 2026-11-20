@@ -1,0 +1,14 @@
+{
+  "files": {
+    "main.css": "/static/css/main.2172529e.css",
+    "main.js": "/static/js/main.25a43156.js",
+    "static/media/kapitas-logo.png": "/static/media/kapitas-logo.428922007bf9883d362b.png",
+    "index.html": "/index.html",
+    "main.2172529e.css.map": "/static/css/main.2172529e.css.map",
+    "main.25a43156.js.map": "/static/js/main.25a43156.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.2172529e.css",
+    "static/js/main.25a43156.js"
+  ]
+}
