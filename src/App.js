@@ -20,6 +20,7 @@ import './App.css';
 import Landing from './pages/Landing';
 import AuthPage from './pages/AuthPage';
 import { Voorwaarden, Disclaimer } from './pages/Juridisch';
+import Rekenhulp, { REKENHULP_PADEN } from './pages/Rekenhulp';
 import { bewaakEigenaar, wisPersoonlijkeGegevens } from './utils/lokaleGegevens';
 import { supabase } from './supabaseClient';
 import kapitasLogo from './assets/kapitas-logo.png';
@@ -799,6 +800,9 @@ export default function App() {
     const pad = window.location.pathname.toLowerCase().replace(/\/$/, '');
     return ['/voorwaarden', '/disclaimer'].includes(pad) ? pad : null;
   });
+  // Publieke rekenhulpen (meerwaardebelasting / beurstaks, NL en FR)
+  const huidigeRekenhulp = () => REKENHULP_PADEN[window.location.pathname.toLowerCase().replace(/\/$/, '')] || null;
+  const [rekenhulp, setRekenhulp] = React.useState(huidigeRekenhulp);
   const [authStartModus, setAuthStartModus] = React.useState('login');
   const [gebruiker, setGebruiker] = React.useState(null);
   // Enkel wachten op Supabase als er mogelijk een sessie is (opgeslagen token
@@ -843,6 +847,7 @@ export default function App() {
       setToonPubliekPrivacybeleid(pad === '/privacybeleid');
       setToonPubliekGids(pad === '/gids');
       setJuridischePagina(['/voorwaarden', '/disclaimer'].includes(pad) ? pad : null);
+      setRekenhulp(huidigeRekenhulp());
     };
     window.addEventListener('popstate', opPopstate);
     return () => window.removeEventListener('popstate', opPopstate);
@@ -873,6 +878,17 @@ export default function App() {
 
   // Voorwaarden en disclaimer zijn altijd bereikbaar via hun adres, ook ingelogd
   if (juridischeWeergave) return juridischeWeergave;
+
+  // Rekenhulpen ook: "Start gratis" brengt je naar registreren, of naar je
+  // portefeuille als je al ingelogd bent
+  if (rekenhulp) {
+    return <Rekenhulp soort={rekenhulp.soort} taal={rekenhulp.taal} onNaarApp={(modus) => {
+      window.history.pushState(null, '', '/');
+      setRekenhulp(null); setToonLanding(false); setAuthStartModus(modus || 'registreren');
+      document.documentElement.lang = 'nl';
+      window.scrollTo(0, 0);
+    }} />;
+  }
 
   if (toonLanding && !gebruiker) {
     if (toonPubliekPrivacybeleid) {

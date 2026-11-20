@@ -176,6 +176,9 @@ export default function Gids({ onTerug, onNaarApp }) {
             </div>
           ))}
         </div>
+        <p style={{ margin: 0, fontSize: 16, color: GRIJS }}>
+          Reken het zelf uit: <a href="/beurstaks-berekenen" style={{ color: ACCENT, fontWeight: 600 }}>beurstaks berekenen</a> · <a href="/meerwaardebelasting-berekenen" style={{ color: ACCENT, fontWeight: 600 }}>meerwaardebelasting berekenen</a>
+        </p>
       </section>
 
       {/* 4. BROKER */}

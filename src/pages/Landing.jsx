@@ -495,6 +495,8 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids, onVoorwaar
                 const stijl = { display:'block',fontSize:13,color:'rgba(255,255,255,0.45)',marginBottom:8,cursor:'pointer',textDecoration:'none' };
                 if (l === 'Contact') return <a key={l} href="mailto:hello@kapitas.be" style={stijl}>{l}</a>;
                 const pad = { 'Privacybeleid':'/privacybeleid','Algemene voorwaarden':'/voorwaarden','Disclaimer':'/disclaimer','Gids voor beginners':'/gids' }[l];
+                const rekenhulp = { 'TOB calculator':'/beurstaks-berekenen','Meerwaardebelasting':'/meerwaardebelasting-berekenen' }[l];
+                if (rekenhulp) return <a key={l} href={rekenhulp} style={stijl}>{l}</a>;
                 if (pad) return <a key={l} href={pad} onClick={klik({ '/privacybeleid':onPrivacybeleid,'/voorwaarden':onVoorwaarden,'/disclaimer':onDisclaimer,'/gids':onGids }[pad])} style={stijl}>{l}</a>;
                 return <div key={l} style={stijl} onClick={() => onNaarApp('registreren')}>{l}</div>;
               })}
