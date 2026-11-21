@@ -59,6 +59,15 @@ export default function Privacybeleid({ onTerug }) {
           niet over verschillende websites of dagen heen gevolgd. We zien geen
           namen, e-mailadressen of portefeuillegegevens in deze statistieken.
         </p>
+        <SubTitel>Maandrapport per e-mail</SubTitel>
+        <p>
+          Eén keer per maand sturen we je een overzicht van je portefeuille (waarde,
+          resultaat van de voorbije maand, grootste stijgers en dalers) naar het
+          e-mailadres van je account. Daarvoor gebruiken we je e-mailadres, je voornaam,
+          je taalvoorkeur en je portefeuillegegevens. De mails worden verstuurd via
+          Resend. Je kan je met één klik uitschrijven via de link onderaan elke mail,
+          of het maandrapport uitzetten in Kapitas onder Instellingen.
+        </p>
       </Sectie>
 
       <Sectie titel="3. Externe partijen waarmee we gegevens delen">
@@ -69,11 +78,12 @@ export default function Privacybeleid({ onTerug }) {
             ['Google', 'Inloggen via je Google-account', 'VS'],
             ['Crisp', 'Klantenondersteuning via chat', 'EU (Frankrijk/Nederland)'],
             ['Vercel', 'Hosting van de website en anonieme bezoekersstatistieken (zonder cookies)', 'EU/VS'],
+            ['Resend', 'Versturen van het maandrapport per e-mail', 'VS'],
             ['Yahoo Finance, Finnhub, EODHD, Financial Modeling Prep, NewsAPI, CoinGecko, OpenRouter', 'Live koersen, marktdata, nieuws en AI-analyse — deze partijen ontvangen enkel de tickersymbolen waarnaar je zoekt, geen persoonsgegevens', 'Diverse'],
           ]}
         />
         <p>
-          Met verwerkers die persoonsgegevens verwerken (Crisp, Supabase) hebben we,
+          Met verwerkers die persoonsgegevens verwerken (Crisp, Supabase, Resend) hebben we,
           waar vereist, een verwerkersovereenkomst (Data Processing Agreement) afgesloten.
         </p>
       </Sectie>

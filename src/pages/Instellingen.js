@@ -3,6 +3,65 @@ import { useApp } from '../context/AppContext';
 import { Info } from 'lucide-react';
 import SidebarToggleKnop from '../components/SidebarToggleKnop';
 import { SECTOR_MAP_FALLBACK, BETA_MAP_FALLBACK } from '../data/marktclassificatie';
+import { supabase } from '../supabaseClient';
+
+// Maandrapport per e-mail: standaard aan; de keuze staat in het account
+// (user_metadata.maandrapport), zodat de server ze kent bij het versturen.
+function MaandrapportKaart() {
+  const [aan, setAan] = useState(null);
+  const [melding, setMelding] = useState(null); // { tekst, soort }
+  const [bezig, setBezig] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setAan(data?.user?.user_metadata?.maandrapport !== false));
+  }, []);
+
+  const wissel = async () => {
+    const nieuw = !aan;
+    setAan(nieuw); setMelding(null);
+    const { error } = await supabase.auth.updateUser({ data: { maandrapport: nieuw } });
+    if (error) { setAan(!nieuw); setMelding({ tekst: 'Opslaan is niet gelukt. Probeer het later opnieuw.', soort: 'fout' }); }
+  };
+
+  const stuurVoorbeeld = async () => {
+    setBezig(true); setMelding(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const r = await fetch('/api/maandrapport?actie=voorbeeld', { method: 'POST', headers: { Authorization: `Bearer ${data?.session?.access_token || ''}` } });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) setMelding({ tekst: `Verstuurd naar ${j.naar}. Kijk ook even in je spam.`, soort: 'ok' });
+      else if (j.reden === 'geen-beleggingen') setMelding({ tekst: 'Voeg eerst beleggingen toe: het rapport toont de stand op het einde van vorige maand.', soort: 'info' });
+      else if (r.status === 429) setMelding({ tekst: j.error || 'Wacht even voor je opnieuw een voorbeeld vraagt.', soort: 'info' });
+      else setMelding({ tekst: 'Versturen is niet gelukt. Probeer het later opnieuw.', soort: 'fout' });
+    } catch (e) {
+      setMelding({ tekst: 'Versturen is niet gelukt. Probeer het later opnieuw.', soort: 'fout' });
+    }
+    setBezig(false);
+  };
+
+  const kleur = { ok: 'var(--green, #15803d)', fout: 'var(--red, #b91c1c)', info: 'var(--text-secondary)' };
+  return (
+    <div className="card" style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div>
+          <h3 style={{ marginBottom: 6, fontSize: 16, fontWeight: 700 }}>Maandrapport per e-mail</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+            Op de 1e van elke maand: de waarde van je portefeuille, hoe ze de voorbije maand deed en je grootste stijgers en dalers.
+          </p>
+        </div>
+        <button type="button" role="switch" aria-checked={!!aan} aria-label="Maandrapport per e-mail" disabled={aan === null} onClick={wissel}
+          style={{ flexShrink: 0, width: 46, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer', position: 'relative', background: aan ? ACCENT : 'var(--border)', transition: 'background .2s' }}>
+          <span style={{ position: 'absolute', top: 3, left: aan ? 23 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+        </button>
+      </div>
+      <button type="button" onClick={stuurVoorbeeld} disabled={bezig}
+        style={{ marginTop: 16, padding: '9px 16px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg-white)', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: bezig ? 'wait' : 'pointer' }}>
+        {bezig ? 'Bezig met versturen…' : 'Stuur mij nu een voorbeeld'}
+      </button>
+      {melding && <div style={{ marginTop: 10, fontSize: 13, color: kleur[melding.soort] }}>{melding.tekst}</div>}
+    </div>
+  );
+}
 
 const ACCENT = '#1e3a8a';
 const inputStyle = {
@@ -68,6 +127,7 @@ export default function Instellingen({ sidebarCollapsed, onToggleSidebar }) {
         {/* ── Portfolio tab ── */}
         {actieveTab === 'portfolio' && (
           <div style={{ maxWidth: 500 }}>
+            <MaandrapportKaart />
             <div className="card">
               <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>Over Kapitas</h3>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>

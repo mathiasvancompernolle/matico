@@ -6,12 +6,19 @@
     },
     "api/cron-markten.js": {
       "maxDuration": 60
+    },
+    "api/maandrapport.js": {
+      "maxDuration": 60
     }
   },
   "crons": [
     {
       "path": "/api/cron-markten",
       "schedule": "0 6 * * 1-5"
+    },
+    {
+      "path": "/api/maandrapport",
+      "schedule": "0 7 1 * *"
     }
   ]
 }
