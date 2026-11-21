@@ -399,6 +399,14 @@ export function AppProvider({ children, supabaseGebruiker }) {
       .then(({ error }) => { if (error) console.error('Naam opslaan in account mislukt:', error); });
   }, [gebruiker.voornaam, gebruiker.achternaam, supabaseGebruiker?.id]);
 
+  // Taalvoorkeur ook in het account, zodat het maandrapport in de juiste taal komt
+  useEffect(() => {
+    if (!supabaseGebruiker || !gebruiker.taal) return;
+    if ((supabaseGebruiker.user_metadata || {}).taal === gebruiker.taal) return;
+    supabase.auth.updateUser({ data: { taal: gebruiker.taal } })
+      .then(({ error }) => { if (error) console.error('Taal opslaan in account mislukt:', error); });
+  }, [gebruiker.taal, supabaseGebruiker?.id]);
+
   useEffect(() => {
     localStorage.setItem(`matico_beleggingen_${actiefPortfolioId}`, JSON.stringify(beleggingen));
     const userId = supabaseGebruiker?.id;
