@@ -16,7 +16,7 @@
 export const BELGISCHE_RV = 0.30;
 
 // Per land (ISO-code)
-const PER_LAND = {
+export const PER_LAND = {
   US: { land: 'Verenigde Staten', tarief: 0.15 },   // met W-8BEN; zonder 30%
   BE: { land: 'België', tarief: 0 },
   NL: { land: 'Nederland', tarief: 0.15 },
