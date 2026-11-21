@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { GIDS_ARTIKELS } from '../data/gidsArtikels';
 
 const ACCENT = '#1e3a8a';
 const INKT = '#16181D';
@@ -213,6 +214,20 @@ export default function Gids({ onTerug, onNaarApp }) {
               <div style={{ fontSize: 18, fontWeight: 700 }}>{titel}</div>
               <div style={{ fontSize: 15, lineHeight: 1.55, color: GRIJS }}>{tekst}</div>
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* VERDER LEZEN */}
+      <section id="verder" className="gids-sectie" style={{ padding: '64px 80px', display: 'flex', flexDirection: 'column', gap: 28, borderTop: `1px solid ${RAND}` }}>
+        <h2 className="gids-h2" style={{ margin: 0, fontSize: 40, letterSpacing: '-0.025em', fontWeight: 700 }}>Verder lezen</h2>
+        <div className="gids-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 20 }}>
+          {GIDS_ARTIKELS.map(a => (
+            <a key={a.slug} href={`/gids/${a.slug}`} style={{ background: '#FFFFFF', border: `1px solid ${RAND}`, borderRadius: 16, padding: '24px 28px', textDecoration: 'none', color: INKT, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.3 }}>{a.titel}</span>
+              <span style={{ fontSize: 15, lineHeight: 1.55, color: GRIJS }}>{a.beschrijving}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: ACCENT, marginTop: 4 }}>Lees meer · {a.leestijd} min →</span>
+            </a>
           ))}
         </div>
       </section>
