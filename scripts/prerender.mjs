@@ -89,7 +89,8 @@ await esbuild.build({
   loader: { '.js': 'jsx', '.png': 'dataurl', '.jpg': 'dataurl', '.svg': 'dataurl', '.css': 'empty' },
   define: { 'process.env.NODE_ENV': '"production"' },
 });
-const { render } = createRequire(import.meta.url)(uit);
+const { render, extraMeta } = createRequire(import.meta.url)(uit);
+Object.assign(META, extraMeta || {});
 
 // 2. HTML per pagina schrijven
 const sjabloon = fs.readFileSync(path.join(build, 'index.html'), 'utf8');
@@ -98,7 +99,7 @@ const vervang = (html, re, nieuw) => {
   return html.replace(re, nieuw);
 };
 
-for (const [pad, { titel, beschrijving, taal, alternatief }] of Object.entries(META)) {
+for (const [pad, { titel, beschrijving, taal, alternatief, jsonld }] of Object.entries(META)) {
   const url = SITE + (pad === '/' ? '/' : pad);
   let html = sjabloon;
   if (taal) {
@@ -118,6 +119,8 @@ for (const [pad, { titel, beschrijving, taal, alternatief }] of Object.entries(M
   html = vervang(html, /<meta property="og:url" content="[^"]*"\s*\/?>/, `<meta property="og:url" content="${url}"/>`);
   html = vervang(html, /<link rel="canonical" href="[^"]*"\s*\/?>/, `<link rel="canonical" href="${url}"/>`);
   if (pad === '/') html = html.replace('</head>', `<script type="application/ld+json">${JSON.stringify(JSON_LD)}</script></head>`);
+  if (jsonld) html = html.replace('</head>', `<script type="application/ld+json">${JSON.stringify(jsonld)}</script></head>`);
+  html = html.replace(/<meta property="og:type" content="[^"]*"\s*\/?>/,`<meta property="og:type" content="${jsonld ? 'article' : 'website'}"/>`);
   // De inhoud staat er nu echt: de <noscript>-melding (met een tweede <h1>) is overbodig.
   // Zonder JavaScript blijven de inschuif-animaties weg, dus de tekst meteen tonen.
   html = vervang(html, /<noscript>[\s\S]*?<\/noscript>/, '');
@@ -126,6 +129,12 @@ for (const [pad, { titel, beschrijving, taal, alternatief }] of Object.entries(M
   const bestand = pad === '/' ? 'index.html' : pad.slice(1) + '.html';
   fs.mkdirSync(path.dirname(path.join(build, bestand)), { recursive: true });
   fs.writeFileSync(path.join(build, bestand), html);
+  // Bestaat er ook een map met dezelfde naam (bv. /gids en /gids/<artikel>),
+  // dan ook als index.html in die map, zodat het adres zeker werkt
+  if (pad !== '/' && Object.keys(META).some(p => p.startsWith(pad + '/'))) {
+    fs.mkdirSync(path.join(build, pad.slice(1)), { recursive: true });
+    fs.writeFileSync(path.join(build, pad.slice(1), 'index.html'), html);
+  }
   console.log(`prerender: ${pad} → build/${bestand} (${Math.round(html.length / 1024)} KB)`);
 }
 

@@ -22,6 +22,8 @@ import Landing from './pages/Landing';
 import AuthPage from './pages/AuthPage';
 import { Voorwaarden, Disclaimer } from './pages/Juridisch';
 import Rekenhulp, { REKENHULP_PADEN } from './pages/Rekenhulp';
+import GidsArtikel from './pages/GidsArtikel';
+import { artikelVoorPad } from './data/gidsArtikels';
 import { bewaakEigenaar, wisPersoonlijkeGegevens } from './utils/lokaleGegevens';
 import { supabase } from './supabaseClient';
 import kapitasLogo from './assets/kapitas-logo.png';
@@ -805,6 +807,9 @@ export default function App() {
   // Publieke rekenhulpen (meerwaardebelasting / beurstaks, NL en FR)
   const huidigeRekenhulp = () => REKENHULP_PADEN[window.location.pathname.toLowerCase().replace(/\/$/, '')] || null;
   const [rekenhulp, setRekenhulp] = React.useState(huidigeRekenhulp);
+  // Artikels van de Gids (/gids/<slug>)
+  const huidigArtikel = () => artikelVoorPad(window.location.pathname.toLowerCase().replace(/\/$/, ''));
+  const [artikel, setArtikel] = React.useState(huidigArtikel);
   const [authStartModus, setAuthStartModus] = React.useState('login');
   const [gebruiker, setGebruiker] = React.useState(null);
   // Enkel wachten op Supabase als er mogelijk een sessie is (opgeslagen token
@@ -850,6 +855,7 @@ export default function App() {
       setToonPubliekGids(pad === '/gids');
       setJuridischePagina(['/voorwaarden', '/disclaimer'].includes(pad) ? pad : null);
       setRekenhulp(huidigeRekenhulp());
+      setArtikel(huidigArtikel());
     };
     window.addEventListener('popstate', opPopstate);
     return () => window.removeEventListener('popstate', opPopstate);
@@ -883,6 +889,14 @@ export default function App() {
 
   // Rekenhulpen ook: "Start gratis" brengt je naar registreren, of naar je
   // portefeuille als je al ingelogd bent
+  if (artikel) {
+    return <GidsArtikel artikel={artikel} onNaarApp={(modus) => {
+      window.history.pushState(null, '', '/');
+      setArtikel(null); setToonLanding(false); setAuthStartModus(modus || 'registreren');
+      window.scrollTo(0, 0);
+    }} />;
+  }
+
   if (rekenhulp) {
     return <Rekenhulp soort={rekenhulp.soort} taal={rekenhulp.taal} onNaarApp={(modus) => {
       window.history.pushState(null, '', '/');
