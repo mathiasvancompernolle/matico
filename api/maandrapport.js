@@ -293,6 +293,13 @@ async function portefeuilleData(filterId) {
 }
 const namenVoor = (naamVan, id, rijen) => Object.fromEntries(rijen.map(r => [r.portfolio_id, naamVan[id + '|' + r.portfolio_id]]));
 const taalVan = (u) => ['nl', 'fr', 'en'].includes(u.user_metadata?.taal) ? u.user_metadata.taal : 'nl';
+// Enkel de portefeuilles die de gebruiker koos (Instellingen); geen keuze = allemaal
+const gekozenRijen = (u, rijen) => {
+  const keuze = u.user_metadata?.maandrapportPortfolios;
+  if (!Array.isArray(keuze) || keuze.length === 0) return rijen;
+  const gefilterd = rijen.filter(r => keuze.includes(r.portfolio_id));
+  return gefilterd.length ? gefilterd : rijen;
+};
 
 // ───────────────────────── Handler ─────────────────────────
 const pagina = (titel, tekst) => `<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(titel)} – Kapitas</title></head>
@@ -330,7 +337,7 @@ module.exports = async function handler(req, res) {
       if (Date.now() - vorige < 2 * 60 * 1000) return res.status(429).json({ error: 'Wacht even voor je opnieuw een voorbeeld vraagt.' });
       const p = periode();
       const { perGebruiker, naamVan } = await portefeuilleData(gebruiker.id);
-      const rijen = perGebruiker[gebruiker.id] || [];
+      const rijen = gekozenRijen(gebruiker, perGebruiker[gebruiker.id] || []);
       const markt = await haalMarktdata(rijen, p);
       const r = rapportVoor(rijen, namenVoor(naamVan, gebruiker.id, rijen), markt, p);
       if (r.waarde <= 0) return res.status(200).json({ ok: false, reden: 'geen-beleggingen' });
@@ -350,11 +357,11 @@ module.exports = async function handler(req, res) {
     const p = periode();
     const [gebruikers, data] = await Promise.all([alleGebruikers(), portefeuilleData()]);
     const ontvangers = gebruikers.filter(u => u.email && u.email_confirmed_at && u.user_metadata?.maandrapport !== false && data.perGebruiker[u.id]);
-    const markt = await haalMarktdata(ontvangers.flatMap(u => data.perGebruiker[u.id]), p);
+    const markt = await haalMarktdata(ontvangers.flatMap(u => gekozenRijen(u, data.perGebruiker[u.id])), p);
     const mails = [];
     let overgeslagen = 0;
     for (const u of ontvangers) {
-      const rijen = data.perGebruiker[u.id];
+      const rijen = gekozenRijen(u, data.perGebruiker[u.id]);
       const r = rapportVoor(rijen, namenVoor(data.naamVan, u.id, rijen), markt, p);
       if (r.waarde <= 0) { overgeslagen++; continue; }
       const uitschrijf = uitschrijfUrl(u.id);
