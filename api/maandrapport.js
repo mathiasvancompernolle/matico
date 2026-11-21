@@ -187,7 +187,7 @@ const TEKST = {
     oordeel: (verschil, m) => Math.abs(verschil) < 0.003
       ? `Je portefeuille deed het in ${m} ongeveer even goed als de wereldwijde aandelenmarkt.`
       : `Je portefeuille deed het in ${m} ${pp(Math.abs(verschil), 'nl-BE')} ${verschil > 0 ? 'beter' : 'minder goed'} dan de wereldwijde aandelenmarkt.`,
-    portefeuilles: 'Per portefeuille', stijgers: 'Grootste stijgers', dalers: 'Grootste dalers', knop: 'Open Kapitas',
+    portefeuilles: 'Per portefeuille', stijgers: 'Grootste stijgers', dalers: 'Grootste dalers', knop: 'Bekijk je volledige portefeuille op kapitas.be',
     noot: (d) => `Op basis van de slotkoersen van ${d}, omgerekend naar euro. Het resultaat telt de koersbeweging van wat je op het einde van de maand bezat; aankopen tijdens de periode tellen vanaf je aankoopprijs. De wereldmarkt is de iShares Core MSCI World-ETF. Kapitas geeft geen beleggingsadvies.`,
     waarom: 'Je krijgt deze mail één keer per maand omdat je een account hebt bij Kapitas.', uit: 'Uitschrijven', inst: 'of pas het aan in Instellingen',
     voorbeeld: '[Voorbeeld] ',
@@ -201,7 +201,7 @@ const TEKST = {
     oordeel: (verschil, m) => Math.abs(verschil) < 0.003
       ? `En ${m}, votre portefeuille a fait à peu près aussi bien que le marché mondial des actions.`
       : `En ${m}, votre portefeuille a fait ${pp(Math.abs(verschil), 'fr-BE')} ${verschil > 0 ? 'de mieux' : 'de moins'} que le marché mondial des actions.`,
-    portefeuilles: 'Par portefeuille', stijgers: 'Plus fortes hausses', dalers: 'Plus fortes baisses', knop: 'Ouvrir Kapitas',
+    portefeuilles: 'Par portefeuille', stijgers: 'Plus fortes hausses', dalers: 'Plus fortes baisses', knop: 'Voir votre portefeuille complet sur kapitas.be',
     noot: (d) => `Sur la base des cours de clôture du ${d}, convertis en euros. Le résultat reflète l'évolution des cours de ce que vous déteniez en fin de mois ; les achats de la période comptent à partir de votre prix d'achat. Le marché mondial est l'ETF iShares Core MSCI World. Kapitas ne fournit pas de conseil en investissement.`,
     waarom: 'Vous recevez cet e-mail une fois par mois parce que vous avez un compte Kapitas.', uit: 'Se désabonner', inst: 'ou modifiez-le dans les Paramètres',
     voorbeeld: '[Exemple] ',
@@ -215,7 +215,7 @@ const TEKST = {
     oordeel: (verschil, m) => Math.abs(verschil) < 0.003
       ? `In ${m}, your portfolio did about as well as the global stock market.`
       : `In ${m}, your portfolio did ${pp(Math.abs(verschil), 'en-GB')} ${verschil > 0 ? 'better' : 'worse'} than the global stock market.`,
-    portefeuilles: 'Per portfolio', stijgers: 'Top risers', dalers: 'Top fallers', knop: 'Open Kapitas',
+    portefeuilles: 'Per portfolio', stijgers: 'Top risers', dalers: 'Top fallers', knop: 'See your full portfolio on kapitas.be',
     noot: (d) => `Based on closing prices of ${d}, converted to euro. The result reflects price changes of what you held at month end; purchases during the period count from your purchase price. The world market is the iShares Core MSCI World ETF. Kapitas does not provide investment advice.`,
     waarom: 'You get this e-mail once a month because you have a Kapitas account.', uit: 'Unsubscribe', inst: 'or change it in Settings',
     voorbeeld: '[Preview] ',
@@ -241,7 +241,7 @@ function maakMail({ r, p, taal = 'nl', voornaam = '', uitschrijf, voorbeeld = fa
   const metTeken = (x) => (x > 0 ? '+' : x < 0 ? '−' : '') + eur(Math.abs(x));
   const kleurVan = (x) => x == null || Math.abs(x) < 0.0005 ? GRIJS : x > 0 ? GROEN : ROOD;
   const datum = new Intl.DateTimeFormat(t.locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(p.eind + 'T12:00:00Z'));
-  const link = `${SITE}/?utm_source=maandrapport&utm_medium=email`;
+  const link = `${SITE}/`;
   const naam = (s) => { const n = s.naam || s.symbol; return n.length > 32 ? n.slice(0, 30) + '…' : n; };
   const label = (x) => `<span style="display:inline-block;padding:3px 8px;border-radius:6px;font-size:13px;font-weight:700;white-space:nowrap;background:${x >= 0 ? GROEN_BG : ROOD_BG};color:${x >= 0 ? GROEN : ROOD};">${pct(x)}</span>`;
 
@@ -265,13 +265,12 @@ function maakMail({ r, p, taal = 'nl', voornaam = '', uitschrijf, voorbeeld = fa
 
   let blokken = '';
   if (r.perPortfolio.length > 1) blokken += lijst(esc(t.portefeuilles), r.perPortfolio.map(x => ({ links: x.naam, sub: eur(x.waarde), pct: x.pct })));
-  if (r.aantal >= 2 && r.stijgers.length) blokken += lijst('▲ ' + esc(t.stijgers), r.stijgers.map(s => ({ links: naam(s), sub: metTeken(s.winst), pct: s.pct })));
-  if (r.aantal >= 2 && r.dalers.length) blokken += lijst('▼ ' + esc(t.dalers), r.dalers.map(s => ({ links: naam(s), sub: metTeken(s.winst), pct: s.pct })));
+  if (r.aantal >= 2 && r.stijgers.length) blokken += lijst(esc(t.stijgers), r.stijgers.map(s => ({ links: naam(s), sub: metTeken(s.winst), pct: s.pct })));
+  if (r.aantal >= 2 && r.dalers.length) blokken += lijst(esc(t.dalers), r.dalers.map(s => ({ links: naam(s), sub: metTeken(s.winst), pct: s.pct })));
 
   const onderwerp = (voorbeeld ? t.voorbeeld : '') + t.onderwerp(maand, pct(r.pct));
   const html = `<!doctype html><html lang="${taal}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${esc(onderwerp)}</title></head>
 <body style="margin:0;padding:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${INKT};">
-<div style="display:none;max-height:0;overflow:hidden;">${esc(t.dezeMaand)}: ${pct(r.pct)} · ${esc(t.ditJaar)}: ${pct(r.jaar?.pct)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;"><tr><td align="center" style="padding:24px 10px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border-top:4px solid ${BLAUW};">
   <tr><td style="padding:20px 28px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
@@ -286,7 +285,7 @@ function maakMail({ r, p, taal = 'nl', voornaam = '', uitschrijf, voorbeeld = fa
     ${oordeel ? `<div style="margin-top:14px;font-size:14px;line-height:1.5;color:#334155;">${esc(oordeel)}</div>` : ''}
   </td></tr>
   ${blokken}
-  <tr><td align="center" style="padding:28px 28px 6px;"><a href="${link}" style="display:inline-block;background:${BLAUW};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 28px;border-radius:10px;">${esc(t.knop)} →</a></td></tr>
+  <tr><td style="padding:24px 28px 4px;font-size:15px;"><a href="${link}" style="color:${BLAUW};font-weight:700;">${esc(t.knop)}</a></td></tr>
   <tr><td style="padding:16px 28px 24px;font-size:11.5px;line-height:1.6;color:#94a3b8;">${esc(t.noot(datum))}</td></tr>
 </table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;"><tr><td style="padding:16px 28px;font-size:12px;line-height:1.6;color:#94a3b8;text-align:center;">
