@@ -2,12 +2,21 @@
 // vooraf gegenereerde HTML en een plaats in de sitemap (zie scripts/prerender.mjs).
 // Belastingregels veranderen: pas "nagekeken" aan telkens je een artikel controleert.
 //
-// Opbouw van een sectie: { kop, tekst: [alinea's], lijst?: [punten], tabel?: { kop: [...], rijen: [[...]] }, tip? }
+// Opbouw van een sectie: { kop, tekst: [alinea's], lijst?: [punten], tabel?: { kop: [...], rijen: [[...]] },
+//   tip?, letOp?, link?, voorbeeld?: { titel, regels: [[omschrijving, bedrag, soort?]], totaal: [omschrijving, bedrag], noot? } }
+// soort: 'min' (rood), 'plus' (groen) of leeg
 
 export const GIDS_ARTIKELS = [
   {
     slug: 'reynderstaks',
     titel: 'De Reynderstaks uitgelegd: 30% op obligatiefondsen',
+    korteTitel: 'De Reynderstaks uitgelegd',
+    categorie: 'Belastingen', icoon: '📜', kleur: '#fef3c7',
+    kort: [
+      '30% belasting op het rentedeel van je winst bij fondsen en ETF\'s die voor meer dan 10% in obligaties beleggen.',
+      'Zuivere aandelen-ETF\'s vallen er normaal niet onder.',
+      'Sinds 2026 wordt dat deel van je winst afgetrokken van de meerwaardebelasting, zodat je niet dubbel betaalt.',
+    ],
     seoTitel: 'Reynderstaks uitgelegd (2026): wanneer betaal je 30%? – Kapitas',
     beschrijving: 'Wat is de Reynderstaks, op welke fondsen en ETF\'s betaal je ze, hoeveel bedraagt ze en hoe werkt ze samen met de nieuwe meerwaardebelasting? Helder uitgelegd met voorbeelden.',
     intro: 'Verkoop je een fonds of ETF dat (deels) in obligaties belegt, dan kan je bank 30% inhouden op een deel van je winst: de Reynderstaks. Hier lees je wanneer dat gebeurt, hoeveel het kost en hoe je ermee rekening houdt.',
@@ -45,9 +54,20 @@ export const GIDS_ARTIKELS = [
         kop: 'Reynderstaks en de nieuwe meerwaardebelasting',
         tekst: [
           'Sinds 1 januari 2026 betaal je 10% meerwaardebelasting op winst bij de verkoop van financiële activa. De Reynderstaks blijft daarnaast bestaan. Om dubbele belasting te vermijden, wordt het deel van je winst waarop al Reynderstaks betaald is, afgetrokken van wat onder de meerwaardebelasting valt.',
-          'Een voorbeeld (bedragen in euro): je kocht een gemengd fonds in 2020 voor 100. Op 31 december 2025 was het 150 waard en je verkoopt in 2026 voor 250. Het renterendement in het fonds bedraagt 10. Daarop betaal je 30% Reynderstaks: 3. De meerwaardebelasting geldt voor de winst sinds 2026 (250 − 150 = 100), min de 10 die al onder de Reynderstaks viel: 90 aan 10% = 9 (als je je vrijstelling van €10.000 al gebruikt hebt). Totaal: 12.',
-          'Let op: de vrijstelling van €10.000 geldt alleen voor de meerwaardebelasting. De Reynderstaks kent geen vrijstelling en is verschuldigd vanaf de eerste euro.',
         ],
+        voorbeeld: {
+          titel: 'Voorbeeld: gemengd fonds, gekocht in 2020, verkocht in 2026',
+          regels: [
+            ['Waarde op 31 december 2025', '€ 150'],
+            ['Verkoopprijs in 2026', '€ 250'],
+            ['Winst sinds 2026', '€ 100'],
+            ['Renterendement € 10 × 30% (Reynderstaks)', '− € 3', 'min'],
+            ['Rest: € 90 × 10% (meerwaardebelasting)', '− € 9', 'min'],
+          ],
+          totaal: ['Totaal aan belasting', '€ 12'],
+          noot: 'In dit voorbeeld is de vrijstelling van € 10.000 voor de meerwaardebelasting dat jaar al opgebruikt.',
+        },
+        letOp: 'De vrijstelling van €10.000 geldt alleen voor de meerwaardebelasting. De Reynderstaks kent geen vrijstelling en is verschuldigd vanaf de eerste euro.',
       },
       {
         kop: 'Wie houdt ze in?',
@@ -73,6 +93,13 @@ export const GIDS_ARTIKELS = [
   {
     slug: 'accumulerend-of-distribuerend',
     titel: 'Accumulerend of distribuerend: welke ETF kies je in België?',
+    korteTitel: 'Accumulerend of distribuerend?',
+    categorie: 'ETF\'s', icoon: '🔄', kleur: '#f0fdf4',
+    kort: [
+      'Een distribuerende ETF keert dividend uit, waarop je in België 30% roerende voorheffing betaalt.',
+      'Een accumulerende ETF herbelegt het dividend: zolang je niet verkoopt, betaal je geen dividendbelasting.',
+      'Voor wie vermogen opbouwt, is accumulerend in België meestal fiscaal voordeliger.',
+    ],
     seoTitel: 'Accumulerend of distribuerend ETF in België (2026)? – Kapitas',
     beschrijving: 'Kapitaliserende (accumulerende) of distribuerende ETF: wat is het verschil, wat betekent het voor de beurstaks, de dividendbelasting en de meerwaardebelasting in België, en wat past bij jou?',
     intro: 'Bij bijna elke ETF kan je kiezen tussen een accumulerende (kapitaliserende) en een distribuerende versie. In België maakt die keuze een groot verschil voor je belastingen. We zetten het op een rij.',
@@ -93,6 +120,16 @@ export const GIDS_ARTIKELS = [
           'Op elke uitkering van een distribuerende ETF houdt je bank in België 30% roerende voorheffing in. De vrijstelling van €833 voor dividenden geldt hier niet: die is alleen voor dividenden van individuele aandelen.',
           'Bij een accumulerende ETF krijg je geen uitkering, dus betaal je die 30% niet. Het geld blijft in het fonds werken. Over vele jaren maakt dat een groot verschil, door het rente-op-rente-effect.',
         ],
+        voorbeeld: {
+          titel: 'Voorbeeld: € 20.000 in een wereld-ETF met 1,5% dividend per jaar',
+          regels: [
+            ['Dividend per jaar', '€ 300'],
+            ['Distribuerend: 30% roerende voorheffing', '− € 90', 'min'],
+            ['Accumulerend: dividendbelasting', '€ 0', 'plus'],
+          ],
+          totaal: ['Verschil per jaar dat blijft doorgroeien', '€ 90'],
+          noot: 'Vereenvoudigd voorbeeld. Bij verkoop betaal je op beide sinds 2026 de meerwaardebelasting op je winst (na de vrijstelling van € 10.000 per jaar).',
+        },
         tip: 'In beide gevallen houdt het fonds zelf soms al buitenlandse bronheffing in op de dividenden die het ontvangt (bv. op Amerikaanse aandelen). Dat staat los van je keuze tussen accumulerend en distribuerend.',
       },
       {
@@ -129,6 +166,13 @@ export const GIDS_ARTIKELS = [
   {
     slug: 'buitenlandse-broker-aangeven',
     titel: 'Beleggen via een buitenlandse broker: wat moet je aangeven?',
+    korteTitel: 'Buitenlandse broker aangeven',
+    categorie: 'Aangifte', icoon: '🌍', kleur: '#f0f9ff',
+    kort: [
+      'Meld je buitenlandse effectenrekening één keer bij het Centraal Aanspreekpunt van de Nationale Bank.',
+      'Vermeld de rekening elk jaar in vak XIII van je belastingaangifte.',
+      'Wat je broker niet inhoudt (beurstaks, dividendbelasting, meerwaardebelasting), geef je zelf aan.',
+    ],
     seoTitel: 'Buitenlandse broker aangeven in België: CAP, beurstaks en aangifte – Kapitas',
     beschrijving: 'Beleg je via DEGIRO, Trade Republic, Interactive Brokers of een andere buitenlandse broker? Dit moet je doen: je rekening melden bij de Nationale Bank, de beurstaks, je dividenden en je meerwaarden.',
     intro: 'Een buitenlandse broker is vaak goedkoper, maar je moet zelf meer regelen. Vergeet je iets, dan riskeer je boetes. Dit zijn de vier dingen waar je aan moet denken.',
@@ -162,7 +206,16 @@ export const GIDS_ARTIKELS = [
           'Houdt je broker de beurstaks niet in, dan moet je ze zelf aangeven en betalen, ten laatste op de laatste werkdag van de tweede maand na de maand van je transactie. Een aankoop in maart geef je dus aan en betaal je uiterlijk eind mei. Dat kan via MyMinfin of met het aangifteformulier van de FOD Financiën.',
           'Het tarief hangt af van wat je koopt: 0,12% voor de meeste Europese ETF\'s, 0,35% voor aandelen, tot 1,32% voor kapitaliserende fondsen die bij de FSMA ingeschreven zijn, telkens met een maximum per transactie.',
         ],
-        tip: 'Te laat betalen kost boetes en nalatigheidsinteresten. Zet een herinnering, of kies een broker die de beurstaks voor je inhoudt.',
+        voorbeeld: {
+          titel: 'Voorbeeld: je koopt op 14 maart voor € 5.000 aan een Ierse ETF',
+          regels: [
+            ['Beurstaks: € 5.000 × 0,12%', '€ 6,00'],
+            ['Uiterlijk aangeven en betalen', 'eind mei'],
+          ],
+          totaal: ['Te betalen', '€ 6,00'],
+          noot: 'Precies: de laatste werkdag van de tweede maand na de maand van je aankoop.',
+        },
+        letOp: 'Te laat betalen kost boetes en nalatigheidsinteresten. Zet een herinnering, of kies een broker die de beurstaks voor je inhoudt.',
       },
       {
         kop: '4. Dividenden, rente en meerwaarden in je aangifte',
@@ -196,6 +249,13 @@ export const GIDS_ARTIKELS = [
   {
     slug: 'eerste-etf-kiezen',
     titel: 'Je eerste ETF kiezen: waar let je op?',
+    korteTitel: 'Je eerste ETF kiezen',
+    categorie: 'Beginnen', icoon: '🧺', kleur: '#fdf4ff',
+    kort: [
+      'Kijk eerst naar de index: die bepaalt waarin je echt belegt.',
+      'Lage kosten (TER), een accumulerende versie en 0,12% beurstaks zijn in België vaak de slimste combinatie.',
+      'Let op het vestigingsland, de fondsgrootte en de beurs waarop je koopt.',
+    ],
     seoTitel: 'Je eerste ETF kiezen in België: 7 dingen om op te letten – Kapitas',
     beschrijving: 'Hoe kies je een ETF als Belgische belegger? Kosten (TER), index en spreiding, accumulerend of distribuerend, vestigingsland, beurstaks, fondsgrootte en de beurs waarop je koopt.',
     intro: 'Er bestaan duizenden ETF\'s, maar met een paar vragen kom je snel tot een korte lijst. Dit zijn de zeven punten waar je als Belgische belegger op let. We geven geen koopadvies: het doel is dat je zelf goed kan vergelijken.',
@@ -215,6 +275,15 @@ export const GIDS_ARTIKELS = [
         tekst: [
           'De lopende kosten (TER, total expense ratio) worden jaarlijks uit het fonds gehaald. Voor brede index-ETF\'s liggen ze vaak tussen 0,05% en 0,25% per jaar. Dat lijkt weinig, maar over 20 of 30 jaar maakt elk tiende procent een merkbaar verschil.',
         ],
+        voorbeeld: {
+          titel: 'Voorbeeld: € 10.000, 20 jaar, 7% rendement per jaar vóór kosten',
+          regels: [
+            ['ETF met 0,07% kosten', '€ 38.194'],
+            ['ETF met 0,25% kosten', '€ 36.928'],
+          ],
+          totaal: ['Verschil door de kosten', '€ 1.266'],
+          noot: 'Rekenvoorbeeld, geen voorspelling: echte rendementen schommelen van jaar tot jaar.',
+        },
       },
       {
         kop: '3. Accumulerend of distribuerend',

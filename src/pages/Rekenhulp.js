@@ -4,12 +4,12 @@
 import React, { useState } from 'react';
 import { TOB_TARIEVEN, berekenTob } from '../utils/tob';
 import { PER_LAND } from '../utils/dividendbelasting';
+import { PubliekeKop, PubliekeVoet, PUBLIEK_CSS, KLEUR } from '../components/Publiek';
 
 const ACCENT = '#1e3a8a';
-const INKT = '#16181D';
-const GRIJS = '#4A4D55';
-const RAND = '#E2DED4';
-const CREME = '#F5F3EE';
+const INKT = KLEUR.inkt;
+const GRIJS = KLEUR.grijs;
+const RAND = KLEUR.rand;
 const GROEN = '#15803d';
 const ROOD = '#b91c1c';
 
@@ -105,7 +105,7 @@ const T = {
   nl: {
     locale: 'nl-BE', start: 'Start gratis', inloggen: 'Inloggen', andereTaal: 'FR', andereTaalLabel: 'Version française',
     navMeerwaarde: 'Meerwaardebelasting', navTob: 'Beurstaks', navDividend: 'Dividendbelasting', gids: 'Gids voor beginners',
-    eyebrow: 'Gratis rekenhulp · geen account nodig',
+    eyebrow: 'Gratis rekenhulp',
     disclaimer: 'Deze rekenhulp geeft een schatting op basis van de regels die gelden sinds 1 januari 2026 en is geen fiscaal advies. Controleer je situatie bij de FOD Financiën of een fiscalist. Bijzondere regels (speculatieve verrichtingen, aanmerkelijke belangen vanaf 20%, beroepsbeleggers) zijn niet meegerekend.',
     ctaTitel: 'Laat Kapitas dit automatisch berekenen',
     ctaTekst: 'Voeg je beleggingen van elke broker toe en Kapitas houdt je meerwaarden, je resterende vrijstelling, de beurstaks en je dividendbelasting het hele jaar voor je bij. Gratis.',
@@ -219,7 +219,7 @@ const T = {
   fr: {
     locale: 'fr-BE', start: 'Commencer', inloggen: 'Se connecter', andereTaal: 'NL', andereTaalLabel: 'Nederlandse versie',
     navMeerwaarde: 'Taxe sur les plus-values', navTob: 'Taxe boursière', navDividend: 'Précompte dividendes', gids: null,
-    eyebrow: 'Calculateur gratuit · sans compte',
+    eyebrow: 'Calculateur gratuit',
     disclaimer: 'Ce calculateur donne une estimation selon les règles en vigueur depuis le 1er janvier 2026 et ne constitue pas un conseil fiscal. Vérifiez votre situation auprès du SPF Finances ou d\'un fiscaliste. Les règles particulières (opérations spéculatives, participations importantes à partir de 20 %, investisseurs professionnels) ne sont pas prises en compte.',
     ctaTitel: 'Laissez Kapitas calculer tout cela automatiquement',
     ctaTekst: 'Ajoutez vos placements de chaque courtier : Kapitas suit toute l\'année vos plus-values, votre exonération restante, la taxe boursière et le précompte sur vos dividendes. Gratuitement.',
@@ -336,31 +336,29 @@ const T = {
 const CSS = `
   .rh * { box-sizing: border-box; }
   .rh input { font-family: inherit; }
-  .rh-veld { width: 100%; height: 48px; border: 1px solid #CFCAC0; border-radius: 10px; padding: 0 14px; font-size: 16px; background: #fff; color: ${INKT}; }
+  .rh-veld { width: 100%; height: 48px; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 0 14px; font-size: 16px; background: #fff; color: ${INKT}; }
   .rh-veld:focus { outline: 2px solid ${ACCENT}; outline-offset: -1px; border-color: ${ACCENT}; }
   .rh-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
-  .rh-hulp { font-size: 13px; color: #6b6e75; margin-top: 6px; line-height: 1.45; }
+  .rh-hulp { font-size: 13px; color: ${GRIJS}; margin-top: 6px; line-height: 1.45; }
   .rh-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
   .rh-grid-2 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
   .rh select.rh-veld { appearance: auto; padding-right: 8px; }
   .rh-hoofd { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; align-items: start; }
-  .rh-sectie { padding: 0 80px; }
-  .rh-nav-links { display: flex; gap: 24px; align-items: center; }
-  .rh-nav-links a { color: ${GRIJS}; text-decoration: none; font-size: 14px; font-weight: 600; }
-  .rh-nav-links a[aria-current] { color: ${ACCENT}; }
+  .rh-sectie { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+  .rh-uitleg h2 { font-size: 24px; font-weight: 800; letter-spacing: -.5px; margin: 0 0 12px; }
+  .rh-uitleg p { margin: 0 0 12px; font-size: 17px; line-height: 1.75; color: #334155; }
   .rh-knop { height: 44px; padding: 0 18px; border-radius: 10px; border: none; background: ${ACCENT}; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
-  .rh-knop-licht { background: #fff; color: ${INKT}; border: 1px solid #CFCAC0; font-weight: 600; }
-  .rh-soort { display: flex; gap: 14px; align-items: flex-start; text-align: left; width: 100%; padding: 16px; border-radius: 12px; border: 1px solid #CFCAC0; background: #fff; cursor: pointer; font-family: inherit; color: ${INKT}; }
-  .rh-soort[aria-pressed="true"] { border: 2px solid ${ACCENT}; padding: 15px; background: #f5f7fd; }
+  .rh-knop-licht { background: #fff; color: ${ACCENT}; border: 1.5px solid ${ACCENT}; font-weight: 600; }
+  .rh-knop-licht:hover { background: ${ACCENT}; color: #fff; }
+  .rh-soort { display: flex; gap: 14px; align-items: flex-start; text-align: left; width: 100%; padding: 16px; border-radius: 12px; border: 1.5px solid ${RAND}; background: #fff; cursor: pointer; font-family: inherit; color: ${INKT}; }
+  .rh-soort[aria-pressed="true"] { border: 2px solid ${ACCENT}; padding: 15.5px; background: ${KLEUR.blauwZacht}; }
   .rh-sticky { position: sticky; top: 96px; scroll-margin-top: 88px; }
   .rh-gsm-balk { display: none; }
   @media (max-width: 900px) {
     .rh-hoofd { grid-template-columns: 1fr; }
     .rh-sticky { position: static; }
     .rh-sectie { padding: 0 16px; }
-    .rh-nav-links { display: none; }
-    .rh-h1 { font-size: 36px !important; }
-    .rh-header { padding: 0 16px !important; }
+    .rh-h1 { font-size: 32px !important; }
     .rh { padding-bottom: 84px; }
     .rh-gsm-balk { display: flex; position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 60; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-radius: 14px; background: ${INKT}; color: #fff; text-decoration: none; box-shadow: 0 12px 32px rgba(0,0,0,.25); font-weight: 700; }
   }
@@ -369,69 +367,55 @@ const CSS = `
   }
 `;
 
-const kaart = { background: '#fff', border: `1px solid ${RAND}`, borderRadius: 16, padding: 24 };
+const kaart = { background: '#fff', border: `1px solid ${RAND}`, borderRadius: 12, padding: 24, boxShadow: '0 1px 2px rgba(15,23,42,.04)' };
+const ICOON = { meerwaarde: ['📈', '#f0fdf4'], tob: ['🧾', '#fef3c7'], dividend: ['💶', '#eef1f8'] };
 
 function Kader({ soort, taal, onNaarApp, children }) {
   const t = T[taal];
   const ander = taal === 'nl' ? 'fr' : 'nl';
   const klikApp = (modus) => (e) => { e.preventDefault(); onNaarApp && onNaarApp(modus); };
   return (
-    <div className="rh" lang={taal === 'fr' ? 'fr-BE' : 'nl-BE'} style={{ background: CREME, color: INKT, fontFamily: "'DM Sans', system-ui, sans-serif", minHeight: '100vh' }}>
-      <style>{CSS}</style>
-      <header className="rh-header" style={{ height: 72, padding: '0 80px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, borderBottom: `1px solid ${RAND}`, background: CREME, position: 'sticky', top: 0, zIndex: 50 }}>
-        <a href="/" style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.5px', color: ACCENT, textDecoration: 'none' }}>Kapitas</a>
-        <nav className="rh-nav-links">
-          <a href={PAD[taal].meerwaarde} aria-current={soort === 'meerwaarde' ? 'page' : undefined}>{t.navMeerwaarde}</a>
-          <a href={PAD[taal].tob} aria-current={soort === 'tob' ? 'page' : undefined}>{t.navTob}</a>
-          <a href={PAD[taal].dividend} aria-current={soort === 'dividend' ? 'page' : undefined}>{t.navDividend}</a>
-          {t.gids && <a href="/gids">{t.gids}</a>}
-        </nav>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <a href={PAD[ander][soort]} hrefLang={ander === 'fr' ? 'fr-BE' : 'nl-BE'} title={t.andereTaalLabel} style={{ fontSize: 14, fontWeight: 700, color: GRIJS, textDecoration: 'none', padding: '8px 6px' }}>{t.andereTaal}</a>
-          <a href="/" onClick={klikApp('registreren')} className="rh-knop" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>{t.start}</a>
-        </div>
-      </header>
+    <div className="p-pagina rh" lang={taal === 'fr' ? 'fr-BE' : 'nl-BE'}>
+      <style>{PUBLIEK_CSS + CSS}</style>
+      <PubliekeKop actief="rekenhulp" taal={taal} onNaarApp={onNaarApp}
+        taalLink={{ pad: PAD[ander][soort], hreflang: ander === 'fr' ? 'fr-BE' : 'nl-BE', titel: t.andereTaalLabel, label: t.andereTaal }} />
       {children}
-      <section className="rh-sectie" style={{ marginTop: 64, paddingTop: 56, paddingBottom: 56, background: ACCENT, color: '#fff' }}>
-        <div style={{ maxWidth: 760 }}>
-          <h2 style={{ margin: 0, fontSize: 34, lineHeight: 1.1, letterSpacing: '-0.02em' }}>{t.ctaTitel}</h2>
-          <p style={{ fontSize: 17, lineHeight: 1.55, color: '#dbe4ff', margin: '16px 0 24px' }}>{t.ctaTekst}</p>
-          <a href="/" onClick={klikApp('registreren')} className="rh-knop" style={{ background: '#fff', color: INKT, display: 'inline-flex', alignItems: 'center', textDecoration: 'none', height: 50 }}>{t.ctaKnop}</a>
-        </div>
+      <section style={{ background: `linear-gradient(135deg, ${KLEUR.accent} 0%, ${KLEUR.accentDonker} 100%)`, padding: '72px 24px', textAlign: 'center' }}>
+        <h2 style={{ fontSize: 'clamp(26px, 4vw, 38px)', fontWeight: 800, color: '#fff', letterSpacing: '-1px', margin: '0 0 14px' }}>{t.ctaTitel}</h2>
+        <p style={{ fontSize: 17, color: 'rgba(255,255,255,.8)', maxWidth: 600, margin: '0 auto 28px', lineHeight: 1.6 }}>{t.ctaTekst}</p>
+        <a href="/" onClick={klikApp('registreren')} className="p-btn p-btn-wit" style={{ fontSize: 16, padding: '14px 28px' }}>{t.ctaKnop} →</a>
       </section>
-      <footer className="rh-sectie" style={{ padding: '28px 80px 40px', fontSize: 13, lineHeight: 1.6, color: '#6b6e75' }}>
-        <p style={{ margin: '0 0 12px', maxWidth: 900 }}>{t.disclaimer}</p>
-        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-          <a href={PAD[taal].meerwaarde} style={{ color: GRIJS }}>{t.navMeerwaarde}</a>
-          <a href={PAD[taal].tob} style={{ color: GRIJS }}>{t.navTob}</a>
-          <a href={PAD[taal].dividend} style={{ color: GRIJS }}>{t.navDividend}</a>
-          <a href="/gids" style={{ color: GRIJS }}>{T.nl.gids}</a>
-          <a href="/privacybeleid" style={{ color: GRIJS }}>Privacy</a>
-          <a href="/disclaimer" style={{ color: GRIJS }}>Disclaimer</a>
-        </div>
-      </footer>
+      <div className="rh-sectie" style={{ padding: '24px 24px 28px', fontSize: 13, lineHeight: 1.6, color: '#94a3b8' }}>{t.disclaimer}</div>
+      <PubliekeVoet taal={taal} />
     </div>
   );
 }
 
-function Hero({ t }) {
+function Hero({ t, soort }) {
+  const [icoon, kleur] = ICOON[soort] || ICOON.meerwaarde;
   return (
-    <section className="rh-sectie" style={{ paddingTop: 56, paddingBottom: 32 }}>
-      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT, marginBottom: 16 }}>{t.eyebrow}</div>
-      <h1 className="rh-h1" style={{ margin: 0, fontSize: 56, lineHeight: 1.05, letterSpacing: '-0.03em', fontWeight: 700, maxWidth: 900 }}>{t.titel}</h1>
-      <p style={{ margin: '18px 0 0', fontSize: 19, lineHeight: 1.5, color: GRIJS, maxWidth: 720 }}>{t.intro}</p>
+    <section className="p-hero" style={{ padding: '48px 0 36px' }}>
+      <div className="rh-sectie">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+          <span className="p-icoon" style={{ background: kleur }} aria-hidden="true">{icoon}</span>
+          <span className="p-label">{t.eyebrow}</span>
+        </div>
+        <h1 className="rh-h1" style={{ margin: 0, fontSize: 48, lineHeight: 1.1, letterSpacing: '-1.2px', fontWeight: 800, maxWidth: 900 }}>{t.titel}</h1>
+        <p style={{ margin: '16px 0 0', fontSize: 18, lineHeight: 1.65, color: GRIJS, maxWidth: 720 }}>{t.intro}</p>
+      </div>
     </section>
   );
 }
 
 function Uitleg({ blokken }) {
   return (
-    <section className="rh-sectie" style={{ marginTop: 56 }}>
+    <section className="rh-sectie rh-uitleg" style={{ paddingTop: 64, paddingBottom: 40 }}>
       <div style={{ maxWidth: 760 }}>
+        <div className="p-label" style={{ marginBottom: 18 }}>Uitleg</div>
         {blokken.map(([kop, alineas]) => (
-          <div key={kop} style={{ marginBottom: 36 }}>
-            <h2 style={{ margin: '0 0 12px', fontSize: 26, letterSpacing: '-0.015em' }}>{kop}</h2>
-            {alineas.map((a, i) => <p key={i} style={{ margin: '0 0 12px', fontSize: 17, lineHeight: 1.65, color: GRIJS }}>{a}</p>)}
+          <div key={kop} style={{ marginBottom: 34 }}>
+            <h2>{kop}</h2>
+            {alineas.map((a, i) => <p key={i}>{a}</p>)}
           </div>
         ))}
       </div>
@@ -464,8 +448,8 @@ function Meerwaarde({ taal }) {
 
   return (
     <>
-      <Hero t={{ ...t, eyebrow: T[taal].eyebrow }} />
-      <section className="rh-sectie">
+      <Hero t={{ ...t, eyebrow: T[taal].eyebrow }} soort="meerwaarde" />
+      <section className="rh-sectie" style={{ paddingTop: 8 }}>
         <div className="rh-hoofd">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -475,7 +459,7 @@ function Meerwaarde({ taal }) {
             {rijen.map((rij, i) => {
               const res = r.resultaten[i];
               const resTekst = res === null ? t.rijLeeg : res > 0 ? `${t.rijMeer}: ${eur(res)}` : res < 0 ? `${t.rijMin}: ${eur(-res)}` : t.rijNul;
-              const resKleur = res === null ? '#6b6e75' : res > 0 ? INKT : res < 0 ? ROOD : GROEN;
+              const resKleur = res === null ? GRIJS : res > 0 ? INKT : res < 0 ? ROOD : GROEN;
               return (
                 <div key={rij.id} style={kaart}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 }}>
@@ -486,7 +470,7 @@ function Meerwaarde({ taal }) {
                   <input id={`naam-${rij.id}`} className="rh-veld" value={rij.naam} placeholder={t.naamPh} onChange={e => zet(rij.id, 'naam', e.target.value)} />
                   <div role="group" style={{ display: 'flex', gap: 8, margin: '14px 0' }}>
                     {[[true, t.voor2026], [false, t.na2026]].map(([w, l]) => (
-                      <button key={l} type="button" aria-pressed={rij.voor2026 === w} onClick={() => zet(rij.id, 'voor2026', w)} style={{ flex: 1, height: 42, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: rij.voor2026 === w ? INKT : '#fff', color: rij.voor2026 === w ? '#fff' : INKT, border: `1px solid ${rij.voor2026 === w ? INKT : '#CFCAC0'}` }}>{l}</button>
+                      <button key={l} type="button" aria-pressed={rij.voor2026 === w} onClick={() => zet(rij.id, 'voor2026', w)} style={{ flex: 1, height: 42, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: rij.voor2026 === w ? ACCENT : '#fff', color: rij.voor2026 === w ? '#fff' : INKT, border: `1px solid ${rij.voor2026 === w ? ACCENT : '#cbd5e1'}` }}>{l}</button>
                     ))}
                   </div>
                   <div className="rh-grid-3">
@@ -572,8 +556,8 @@ function Dividend({ taal }) {
 
   return (
     <>
-      <Hero t={{ ...t, eyebrow: T[taal].eyebrow }} />
-      <section className="rh-sectie">
+      <Hero t={{ ...t, eyebrow: T[taal].eyebrow }} soort="dividend" />
+      <section className="rh-sectie" style={{ paddingTop: 8 }}>
         <div className="rh-hoofd">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -609,7 +593,7 @@ function Dividend({ taal }) {
                     </div>
                   </div>
                   <div className="rh-hulp">{t.brutoHulp}</div>
-                  <div style={{ marginTop: 12, fontSize: 15, fontWeight: 700, color: res ? INKT : '#6b6e75' }}>
+                  <div style={{ marginTop: 12, fontSize: 15, fontWeight: 700, color: res ? INKT : GRIJS }}>
                     {res ? t.rijNetto(eur(res.netto), eur(res.buitenland + res.rv)) : t.rijLeeg}
                   </div>
                 </div>
@@ -620,7 +604,7 @@ function Dividend({ taal }) {
               <div className="rh-label">{t.personen}</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {[[1, t.persoon1], [2, t.persoon2]].map(([n, l]) => (
-                  <button key={n} type="button" aria-pressed={personen === n} onClick={() => setPersonen(n)} style={{ flex: 1, minHeight: 42, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: personen === n ? INKT : '#fff', color: personen === n ? '#fff' : INKT, border: `1px solid ${personen === n ? INKT : '#CFCAC0'}` }}>{l}</button>
+                  <button key={n} type="button" aria-pressed={personen === n} onClick={() => setPersonen(n)} style={{ flex: 1, minHeight: 42, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: personen === n ? ACCENT : '#fff', color: personen === n ? '#fff' : INKT, border: `1px solid ${personen === n ? ACCENT : '#cbd5e1'}` }}>{l}</button>
                 ))}
               </div>
               <div className="rh-hulp">{t.personenHulp}</div>
@@ -673,8 +657,8 @@ function Tob({ taal }) {
 
   return (
     <>
-      <Hero t={{ ...t, eyebrow: T[taal].eyebrow }} />
-      <section className="rh-sectie">
+      <Hero t={{ ...t, eyebrow: T[taal].eyebrow }} soort="tob" />
+      <section className="rh-sectie" style={{ paddingTop: 8 }}>
         <div className="rh-hoofd">
           <div style={{ ...kaart, display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>

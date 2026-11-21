@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 const CTA_TEKST = 'Start gratis →';
+const REKENHULP_LINKS = [['📈', 'Meerwaardebelasting', '/meerwaardebelasting-berekenen'], ['🧾', 'Beurstaks (TOB)', '/beurstaks-berekenen'], ['💶', 'Dividendbelasting', '/dividendbelasting-berekenen']];
 
 const minderBeweging = () =>
   typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -164,6 +165,12 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids, onVoorwaar
         .kp-voorgerenderd .l-intro { animation:none!important; }
         .kp-voorgerenderd .l-mockup-zweef { animation:l-zweef 6s ease-in-out 1.4s infinite!important; }
         .kp-voorgerenderd .l-mockup-bar { animation:none!important; }
+        .l-dropdown { position:relative; }
+        .l-dropdown-menu { position:absolute;top:100%;left:50%;transform:translateX(-50%);padding-top:14px;opacity:0;visibility:hidden;transition:opacity .15s,visibility .15s;z-index:120; }
+        .l-dropdown:hover .l-dropdown-menu, .l-dropdown:focus-within .l-dropdown-menu { opacity:1;visibility:visible; }
+        .l-dropdown-binnen { background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 20px 50px rgba(15,23,42,.12);padding:8px;min-width:250px; }
+        .l-dropdown-item { display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;text-decoration:none;color:#0f172a;font-size:14px;font-weight:600; }
+        .l-dropdown-item:hover { background:#f8fafc; }
         .l-show-mobile{display:none;}
         .l-nav-cta-btn{white-space:nowrap;}
         @media(max-width:480px){
@@ -202,10 +209,18 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids, onVoorwaar
             aria-label="Menu"
           >{menuOpen ? '✕' : '☰'}</button>
         </div>
-        <ul className="l-hide-mobile" style={{ display:'flex',gap:32,listStyle:'none',alignItems:'center' }}>
+        <ul className="l-hide-mobile" style={{ display:'flex',gap:28,listStyle:'none',alignItems:'center' }}>
           {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
             <li key={i}><a href={h} className="l-nav-link">{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a></li>
           ))}
+          <li className="l-dropdown">
+            <a href="/meerwaardebelasting-berekenen" className="l-nav-link">Rekenhulpen ▾</a>
+            <div className="l-dropdown-menu"><div className="l-dropdown-binnen">
+              {REKENHULP_LINKS.map(([icoon, naam, pad]) => (
+                <a key={pad} href={pad} className="l-dropdown-item"><span style={{ width:34,height:34,borderRadius:9,background:'#eef1f8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17 }}>{icoon}</span>{naam}</a>
+              ))}
+            </div></div>
+          </li>
           <li><a href="/gids" onClick={klik(onGids)} className="l-nav-link">Leren beleggen</a></li>
         </ul>
         <div style={{ display:'flex',gap:10,alignItems:'center' }}>
@@ -225,6 +240,10 @@ export default function Landing({ onNaarApp, onPrivacybeleid, onGids, onVoorwaar
         <div style={{ position:'fixed',top:'calc(64px + env(safe-area-inset-top, 0px))',left:0,right:0,zIndex:99,background:'white',borderBottom:'1px solid #e2e8f0',padding:'8px 24px 16px',display:'flex',flexDirection:'column',boxShadow:'0 12px 32px rgba(0,0,0,0.1)' }}>
           {['#features','#hoe-werkt-het','#belgisch','#prijzen','#faq'].map((h,i) => (
             <a key={i} href={h} onClick={() => setMenuOpen(false)} style={{ textDecoration:'none',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px',borderBottom:'1px solid #f1f5f9' }}>{['Features','Hoe werkt het','Belgisch','Prijzen','FAQ'][i]}</a>
+          ))}
+          <div style={{ fontSize:12,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'.5px',padding:'14px 4px 4px' }}>Rekenhulpen</div>
+          {REKENHULP_LINKS.map(([icoon, naam, pad]) => (
+            <a key={pad} href={pad} style={{ textDecoration:'none',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px',borderBottom:'1px solid #f1f5f9' }}>{icoon}&nbsp; {naam}</a>
           ))}
           <a href="/gids" onClick={klik(() => { setMenuOpen(false); onGids(); })} style={{ cursor:'pointer',color:'#1e293b',fontSize:15,fontWeight:500,padding:'12px 4px',textDecoration:'none' }}>Leren beleggen</a>
         </div>

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { GIDS_ARTIKELS } from '../data/gidsArtikels';
+import { PubliekeKop, PubliekeVoet, PUBLIEK_CSS, KLEUR } from '../components/Publiek';
 
 const ACCENT = '#1e3a8a';
-const INKT = '#16181D';
-const GRIJS = '#4A4D55';
-const GRIJS_LICHT = '#5C5F66';
-const RAND = '#E2DED4';
-const CREME = '#F5F3EE';
+const INKT = KLEUR.inkt;
+const GRIJS = KLEUR.grijs;
+const GRIJS_LICHT = KLEUR.grijs;
+const RAND = KLEUR.rand;
+const CREME = KLEUR.zacht;
 
 const IconAandeel = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -56,10 +57,19 @@ function RekenKnop({ actief, children, onClick }) {
   return (
     <button type="button" onClick={onClick} style={{
       height: 48, padding: '0 18px', borderRadius: 10, fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-      background: actief ? INKT : '#FFFFFF', color: actief ? '#FFFFFF' : INKT, border: `1px solid ${actief ? INKT : '#CFCAC0'}`,
+      background: actief ? ACCENT : '#FFFFFF', color: actief ? '#FFFFFF' : INKT, border: `1.5px solid ${actief ? ACCENT : '#cbd5e1'}`,
     }}>{children}</button>
   );
 }
+
+const GIDS_CSS = `
+  .gids-chip { padding: 9px 16px; border-radius: 100px; border: 1px solid ${KLEUR.rand}; font-size: 14px; font-weight: 600; color: ${KLEUR.accent}; text-decoration: none; background: #fff; transition: all .2s; }
+  .gids-chip:hover { background: ${KLEUR.accent}; color: #fff; border-color: ${KLEUR.accent}; }
+  .gids-nummer { width: 36px; height: 36px; border-radius: 50%; background: ${KLEUR.blauwZacht}; color: ${KLEUR.accent}; font-weight: 800; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .gids-sectie + .gids-sectie { border-top-color: ${KLEUR.rand} !important; }
+  .gids-h2, .gids-h2-cta { line-height: 1.2; }
+  @media (min-width: 769px) { .gids-sectie { padding-left: max(80px, calc((100% - 1100px) / 2)) !important; padding-right: max(80px, calc((100% - 1100px) / 2)) !important; } }
+`;
 
 export default function Gids({ onTerug, onNaarApp }) {
   const [bedrag, setBedrag] = useState(100);
@@ -72,40 +82,32 @@ export default function Gids({ onTerug, onNaarApp }) {
   const pctIngelegd = Math.max(4, Math.round((ingelegd / eindwaarde) * 100));
 
   return (
-    <div style={{ background: CREME, color: INKT, fontFamily: "'DM Sans', system-ui, sans-serif", minHeight: '100vh' }}>
+    <div className="p-pagina" style={{ minHeight: '100vh' }}>
+      <style>{PUBLIEK_CSS + GIDS_CSS}</style>
+      <PubliekeKop actief="gids" onNaarApp={onNaarApp} />
       {/* NAV */}
-      {(onTerug || onNaarApp) && <header className="gids-header" style={{ height: 72, boxSizing: 'border-box', padding: '0 80px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${RAND}`, background: CREME, position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: onTerug ? 'pointer' : 'default' }} onClick={onTerug}>
-          <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.5px', color: '#1e3a8a', fontFamily: "'DM Sans', sans-serif" }}>Kapitas</span>
-        </div>
-        {onTerug ? (
-          <span onClick={onTerug} style={{ fontSize: 14, fontWeight: 600, color: GRIJS, cursor: 'pointer' }}>← Terug naar Kapitas</span>
-        ) : (
-          <span style={{ fontSize: 14, fontWeight: 600, color: GRIJS }}>Gids voor beginners</span>
-        )}
-      </header>}
 
       {/* HERO */}
-      <section className="gids-sectie" style={{ padding: '88px 80px 72px', display: 'flex', flexDirection: 'column', gap: 28 }}>
-        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT }}>Gids voor beginners · ± 10 minuten</div>
-        <h1 className="gids-h1" style={{ margin: 0, fontSize: 76, lineHeight: 1.02, letterSpacing: '-0.035em', fontWeight: 700, maxWidth: 900 }}>Beginnen met beleggen, zonder het jargon.</h1>
+      <section className="gids-sectie p-hero" style={{ padding: '72px 80px 64px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div><span className="p-label">Gids voor beginners · ± 10 minuten</span></div>
+        <h1 className="gids-h1" style={{ margin: 0, fontSize: 64, lineHeight: 1.08, letterSpacing: '-2px', fontWeight: 800, maxWidth: 900 }}>Beginnen met beleggen, zonder het jargon.</h1>
         <p style={{ margin: 0, fontSize: 21, lineHeight: 1.5, color: GRIJS, maxWidth: 680 }}>Wat aandelen en ETF's zijn, wat het je in België echt kost, en hoe je in vijf stappen je eerste aankoop doet.</p>
         <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
           {[['#basis', '1 · De basis'], ['#tijd', '2 · De kracht van tijd'], ['#kosten', '3 · Kosten & taksen'], ['#broker', '4 · Een broker kiezen'], ['#stappen', '5 · Stappenplan']].map(([href, label]) => (
-            <a key={href} href={href} style={{ padding: '10px 16px', borderRadius: 999, border: '1px solid #CFCAC0', fontSize: 14, fontWeight: 500, color: INKT, textDecoration: 'none', background: '#FFFFFF' }}>{label}</a>
+            <a key={href} href={href} className="gids-chip">{label}</a>
           ))}
         </div>
       </section>
 
       {/* 1. BASIS */}
       <section id="basis" className="gids-sectie" style={{ padding: '64px 80px', display: 'flex', flexDirection: 'column', gap: 36, borderTop: `1px solid ${RAND}` }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 20 }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 15, color: ACCENT }}>01</span>
-          <h2 className="gids-h2" style={{ margin: 0, fontSize: 40, letterSpacing: '-0.025em', fontWeight: 700 }}>De basis in drie begrippen</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span className="gids-nummer">1</span>
+          <h2 className="gids-h2" style={{ margin: 0, fontSize: 36, letterSpacing: '-1px', fontWeight: 800 }}>De basis in drie begrippen</h2>
         </div>
         <div className="gids-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 20 }}>
           {BASISBEGRIPPEN.map(({ icon: Icon, titel, tekst }) => (
-            <div key={titel} style={{ background: '#FFFFFF', border: `1px solid ${RAND}`, borderRadius: 16, padding: 32, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div key={titel} style={{ background: '#FFFFFF', border: `1px solid ${RAND}`, borderRadius: 12, padding: 28, display: 'flex', flexDirection: 'column', gap: 14 }}>
               <Icon />
               <h3 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{titel}</h3>
               <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: GRIJS }}>{tekst}</p>
@@ -116,9 +118,9 @@ export default function Gids({ onTerug, onNaarApp }) {
 
       {/* 2. TIJD / REKENMACHINE */}
       <section id="tijd" className="gids-sectie" style={{ padding: '64px 80px', display: 'flex', flexDirection: 'column', gap: 36, borderTop: `1px solid ${RAND}` }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 20 }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 15, color: ACCENT }}>02</span>
-          <h2 className="gids-h2" style={{ margin: 0, fontSize: 40, letterSpacing: '-0.025em', fontWeight: 700 }}>Wat tijd met je geld doet</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span className="gids-nummer">2</span>
+          <h2 className="gids-h2" style={{ margin: 0, fontSize: 36, letterSpacing: '-1px', fontWeight: 800 }}>Wat tijd met je geld doet</h2>
         </div>
         <div className="gids-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 20 }}>
           <div style={{ background: '#FFFFFF', border: `1px solid ${RAND}`, borderRadius: 16, padding: 36, display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -136,20 +138,20 @@ export default function Gids({ onTerug, onNaarApp }) {
             </div>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: GRIJS_LICHT }}>Voorbeeld bij een verondersteld gemiddeld rendement van 7% per jaar. Dat is geen garantie: sommige jaren daalt je belegging, andere jaren stijgt ze sterk.</p>
           </div>
-          <div style={{ background: INKT, color: '#FFFFFF', borderRadius: 16, padding: 36, display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B9BCC4' }}>Na {jaar} jaar heb je ongeveer</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 56, fontWeight: 500, letterSpacing: '-0.03em' }}>{eur(eindwaarde)}</div>
-            <div style={{ height: 14, borderRadius: 7, background: '#7FD1A8', overflow: 'hidden', display: 'flex' }}>
-              <div style={{ width: `${pctIngelegd}%`, height: '100%', background: CREME }} />
+          <div style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, ${KLEUR.accentDonker} 100%)`, color: '#FFFFFF', borderRadius: 12, padding: 36, display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)' }}>Na {jaar} jaar heb je ongeveer</div>
+            <div style={{ fontSize: 52, fontWeight: 800, letterSpacing: '-1.5px' }}>{eur(eindwaarde)}</div>
+            <div style={{ height: 14, borderRadius: 7, background: '#86efac', overflow: 'hidden', display: 'flex' }}>
+              <div style={{ width: `${pctIngelegd}%`, height: '100%', background: 'rgba(255,255,255,0.9)' }} />
             </div>
             <div style={{ display: 'flex', gap: 40, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#B9BCC4' }}><span style={{ width: 10, height: 10, borderRadius: 3, background: CREME }} />Zelf ingelegd</div>
-                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 22 }}>{eur(ingelegd)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'rgba(255,255,255,0.75)' }}><span style={{ width: 10, height: 10, borderRadius: 3, background: 'rgba(255,255,255,0.9)' }} />Zelf ingelegd</div>
+                <div style={{ fontSize: 22, fontWeight: 700 }}>{eur(ingelegd)}</div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#B9BCC4' }}><span style={{ width: 10, height: 10, borderRadius: 3, background: '#7FD1A8' }} />Rendement op rendement</div>
-                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 22, color: '#7FD1A8' }}>{eur(groei)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'rgba(255,255,255,0.75)' }}><span style={{ width: 10, height: 10, borderRadius: 3, background: '#86efac' }} />Rendement op rendement</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#86efac' }}>{eur(groei)}</div>
               </div>
             </div>
           </div>
@@ -159,20 +161,20 @@ export default function Gids({ onTerug, onNaarApp }) {
       {/* 3. KOSTEN */}
       <section id="kosten" className="gids-sectie" style={{ padding: '64px 80px', display: 'flex', flexDirection: 'column', gap: 36, borderTop: `1px solid ${RAND}` }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 20 }}>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 15, color: ACCENT }}>03</span>
-            <h2 className="gids-h2" style={{ margin: 0, fontSize: 40, letterSpacing: '-0.025em', fontWeight: 700 }}>Wat het je in België kost</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <span className="gids-nummer">3</span>
+            <h2 className="gids-h2" style={{ margin: 0, fontSize: 36, letterSpacing: '-1px', fontWeight: 800 }}>Wat het je in België kost</h2>
           </div>
           <span style={{ fontSize: 14, color: GRIJS_LICHT }}>Laatst nagekeken: september 2026</span>
         </div>
         <div style={{ background: '#FFFFFF', border: `1px solid ${RAND}`, borderRadius: 16, overflow: 'hidden' }}>
-          <div className="gids-kosten-rij" style={{ display: 'grid', gridTemplateColumns: '260px 220px minmax(0, 1fr)', gap: 24, padding: '18px 32px', background: '#EEEBE3', fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: GRIJS }}>
+          <div className="gids-kosten-rij" style={{ display: 'grid', gridTemplateColumns: '260px 220px minmax(0, 1fr)', gap: 24, padding: '18px 32px', background: KLEUR.zacht, fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: GRIJS }}>
             <div>Wat</div><div>Hoeveel</div><div>Wanneer</div>
           </div>
           {KOSTEN.map((k, i) => (
             <div key={k.wat} className="gids-kosten-rij" style={{ display: 'grid', gridTemplateColumns: '260px 220px minmax(0, 1fr)', gap: 24, padding: '24px 32px', borderTop: `1px solid ${RAND}`, fontSize: 16, alignItems: 'start' }}>
               <div style={{ fontWeight: 700 }}>{k.wat}</div>
-              <div style={{ fontFamily: "'DM Mono', monospace" }}>{k.hoeveel}</div>
+              <div style={{ fontWeight: 700, color: ACCENT }}>{k.hoeveel}</div>
               <div style={{ color: GRIJS, lineHeight: 1.55 }}>{k.wanneer}</div>
             </div>
           ))}
@@ -184,9 +186,9 @@ export default function Gids({ onTerug, onNaarApp }) {
 
       {/* 4. BROKER */}
       <section id="broker" className="gids-sectie" style={{ padding: '64px 80px', display: 'flex', flexDirection: 'column', gap: 36, borderTop: `1px solid ${RAND}` }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 20 }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 15, color: ACCENT }}>04</span>
-          <h2 className="gids-h2" style={{ margin: 0, fontSize: 40, letterSpacing: '-0.025em', fontWeight: 700 }}>Waarop let je bij een broker?</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span className="gids-nummer">4</span>
+          <h2 className="gids-h2" style={{ margin: 0, fontSize: 36, letterSpacing: '-1px', fontWeight: 800 }}>Waarop let je bij een broker?</h2>
         </div>
         <div className="gids-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 20 }}>
           {BROKER_PUNTEN.map(({ titel, tekst }) => (
@@ -203,14 +205,14 @@ export default function Gids({ onTerug, onNaarApp }) {
 
       {/* 5. STAPPEN */}
       <section id="stappen" className="gids-sectie" style={{ padding: '64px 80px 80px', display: 'flex', flexDirection: 'column', gap: 36, borderTop: `1px solid ${RAND}` }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 20 }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 15, color: ACCENT }}>05</span>
-          <h2 className="gids-h2" style={{ margin: 0, fontSize: 40, letterSpacing: '-0.025em', fontWeight: 700 }}>Je eerste aankoop in vijf stappen</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span className="gids-nummer">5</span>
+          <h2 className="gids-h2" style={{ margin: 0, fontSize: 36, letterSpacing: '-1px', fontWeight: 800 }}>Je eerste aankoop in vijf stappen</h2>
         </div>
         <div className="gids-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 16 }}>
           {STAPPEN.map(({ titel, tekst }, i) => (
-            <div key={titel} style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 20, borderTop: `3px solid ${INKT}` }}>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 28, color: ACCENT }}>{i + 1}</div>
+            <div key={titel} style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 20, borderTop: `3px solid ${ACCENT}` }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: ACCENT }}>{i + 1}</div>
               <div style={{ fontSize: 18, fontWeight: 700 }}>{titel}</div>
               <div style={{ fontSize: 15, lineHeight: 1.55, color: GRIJS }}>{tekst}</div>
             </div>
@@ -220,10 +222,12 @@ export default function Gids({ onTerug, onNaarApp }) {
 
       {/* VERDER LEZEN */}
       <section id="verder" className="gids-sectie" style={{ padding: '64px 80px', display: 'flex', flexDirection: 'column', gap: 28, borderTop: `1px solid ${RAND}` }}>
-        <h2 className="gids-h2" style={{ margin: 0, fontSize: 40, letterSpacing: '-0.025em', fontWeight: 700 }}>Verder lezen</h2>
+        <h2 className="gids-h2" style={{ margin: 0, fontSize: 36, letterSpacing: '-1px', fontWeight: 800 }}>Verder lezen</h2>
         <div className="gids-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 20 }}>
           {GIDS_ARTIKELS.map(a => (
-            <a key={a.slug} href={`/gids/${a.slug}`} style={{ background: '#FFFFFF', border: `1px solid ${RAND}`, borderRadius: 16, padding: '24px 28px', textDecoration: 'none', color: INKT, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <a key={a.slug} href={`/gids/${a.slug}`} className="p-kaart" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span className="p-icoon" style={{ background: a.kleur, marginBottom: 6 }} aria-hidden="true">{a.icoon}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: GRIJS }}>{a.categorie}</span>
               <span style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.3 }}>{a.titel}</span>
               <span style={{ fontSize: 15, lineHeight: 1.55, color: GRIJS }}>{a.beschrijving}</span>
               <span style={{ fontSize: 14, fontWeight: 600, color: ACCENT, marginTop: 4 }}>Lees meer · {a.leestijd} min →</span>
@@ -233,23 +237,24 @@ export default function Gids({ onTerug, onNaarApp }) {
       </section>
 
       {/* CTA + DISCLAIMER */}
-      <section className="gids-sectie" style={{ background: ACCENT, color: '#FFFFFF', padding: 80, display: 'flex', flexDirection: 'column', gap: 28 }}>
+      <section className="gids-sectie" style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, ${KLEUR.accentDonker} 100%)`, color: '#FFFFFF', padding: 80, display: 'flex', flexDirection: 'column', gap: 24 }}>
         <h2 className="gids-h2-cta" style={{ margin: 0, fontSize: 52, lineHeight: 1.05, letterSpacing: '-0.03em', fontWeight: 700, maxWidth: 760 }}>
           {onNaarApp ? <>Eerste aankoop gedaan? Volg ze op in Kapitas.</> : <>Klaar voor je volgende aankoop?</>}
         </h2>
-        <p style={{ margin: 0, fontSize: 19, lineHeight: 1.5, color: '#D6E7DF', maxWidth: 620 }}>Zie in één oogopslag je rendement, dividenden en wat je aan taksen betaalt, helemaal afgestemd op België.</p>
+        <p style={{ margin: 0, fontSize: 19, lineHeight: 1.5, color: 'rgba(255,255,255,0.8)', maxWidth: 620 }}>Zie in één oogopslag je rendement, dividenden en wat je aan taksen betaalt, helemaal afgestemd op België.</p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {onNaarApp ? (
-            <button onClick={() => onNaarApp('registreren')} style={{ height: 52, padding: '0 26px', display: 'flex', alignItems: 'center', borderRadius: 12, background: '#FFFFFF', color: INKT, fontSize: 16, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Gratis account maken</button>
+            <button onClick={() => onNaarApp('registreren')} className="p-btn p-btn-wit" style={{ fontSize: 16, padding: '14px 28px' }}>Gratis account maken →</button>
           ) : (
-            <button onClick={onTerug} style={{ height: 52, padding: '0 26px', display: 'flex', alignItems: 'center', borderRadius: 12, background: '#FFFFFF', color: INKT, fontSize: 16, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Naar je portefeuille</button>
+            <button onClick={onTerug} className="p-btn p-btn-wit" style={{ fontSize: 16, padding: '14px 28px' }}>Naar je portefeuille →</button>
           )}
-          <a href="https://www.wikifin.be" target="_blank" rel="noopener noreferrer" style={{ height: 52, padding: '0 26px', display: 'flex', alignItems: 'center', borderRadius: 12, border: '1px solid #7FB8A0', color: '#FFFFFF', fontSize: 16, fontWeight: 600, textDecoration: 'none' }}>Meer lezen op Wikifin.be</a>
+          <a href="https://www.wikifin.be" target="_blank" rel="noopener noreferrer" className="p-btn" style={{ fontSize: 16, padding: '12px 26px', background: 'rgba(255,255,255,0.15)', color: '#FFFFFF', border: '1.5px solid rgba(255,255,255,0.4)' }}>Meer lezen op Wikifin.be</a>
         </div>
-        <p style={{ margin: '40px 0 0', paddingTop: 24, borderTop: '1px solid #3F7A65', fontSize: 13, lineHeight: 1.6, color: '#C5DDD2', maxWidth: 900 }}>
+        <p style={{ margin: '40px 0 0', paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.15)', fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,0.6)', maxWidth: 900 }}>
           Deze gids is algemene informatie en geen persoonlijk financieel advies. Beleggen houdt risico's in: je kan (een deel van) je inleg verliezen. Rendementen uit het verleden bieden geen garantie voor de toekomst.
         </p>
       </section>
+      <PubliekeVoet />
     </div>
   );
 }
