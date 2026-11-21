@@ -19,7 +19,7 @@ function MaandrapportKaart() {
   const wissel = async () => {
     const nieuw = !aan;
     setAan(nieuw); setMelding(null);
-    const { error } = await supabase.auth.updateUser({ data: { maandrapport: nieuw } });
+    const { error } = await supabase.auth.updateUser({ data: { maandrapport: nieuw, maandrapportGezien: new Date().toISOString() } });
     if (error) { setAan(!nieuw); setMelding({ tekst: 'Opslaan is niet gelukt. Probeer het later opnieuw.', soort: 'fout' }); }
   };
 

@@ -13,6 +13,7 @@ import Markten from './pages/Markten';
 import EffectDetail from './pages/EffectDetail';
 import CookieConsent from './components/CookieConsent';
 import CrispChat from './components/CrispChat';
+import MaandrapportMelding from './components/MaandrapportMelding';
 import Privacybeleid from './pages/Privacybeleid';
 import Gids from './pages/Gids';
 import MijnProfiel from './pages/MijnProfiel';
@@ -752,6 +753,7 @@ function AppInner() {
       )}
       <CookieConsent onWijziging={setCookieToestemming} />
       <CrispChat toestemming={cookieToestemming} />
+      <MaandrapportMelding taal={gebruiker?.taal} />
     </div>
   );
 }
