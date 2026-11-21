@@ -177,6 +177,7 @@ const TEKST = {
     noot: (d) => `Op basis van de slotkoersen van ${d}, omgerekend naar euro. Het resultaat telt de koersbeweging van wat je op het einde van de maand bezat; aankopen tijdens de maand tellen vanaf je aankoopprijs. Kapitas geeft geen beleggingsadvies.`,
     waarom: 'Je krijgt deze mail één keer per maand omdat je een account hebt bij Kapitas.', uit: 'Uitschrijven', inst: 'of pas het aan in Instellingen',
     voorbeeld: '[Voorbeeld] ',
+    nieuw: (u) => `<strong>Nieuw bij Kapitas:</strong> elke maand een kort overzicht van je portefeuille in je mailbox. Liever niet? <a href="${u}" style="color:#1e3a8a;">Schrijf je met één klik uit</a>.`,
   },
   fr: {
     locale: 'fr-BE', onderwerp: (m, pct) => `Votre portefeuille en ${m} : ${pct}`, kop: (m, j) => `Rapport mensuel ${m} ${j}`,
@@ -186,6 +187,7 @@ const TEKST = {
     noot: (d) => `Sur la base des cours de clôture du ${d}, convertis en euros. Le résultat reflète l'évolution des cours de ce que vous déteniez en fin de mois ; les achats du mois comptent à partir de votre prix d'achat. Kapitas ne fournit pas de conseil en investissement.`,
     waarom: 'Vous recevez cet e-mail une fois par mois parce que vous avez un compte Kapitas.', uit: 'Se désabonner', inst: 'ou modifiez-le dans les Paramètres',
     voorbeeld: '[Exemple] ',
+    nieuw: (u) => `<strong>Nouveau chez Kapitas :</strong> chaque mois, un bref aperçu de votre portefeuille dans votre boîte mail. Vous préférez ne pas le recevoir ? <a href="${u}" style="color:#1e3a8a;">Désabonnez-vous en un clic</a>.`,
   },
   en: {
     locale: 'en-GB', onderwerp: (m, pct) => `Your portfolio in ${m}: ${pct}`, kop: (m, j) => `Monthly report ${m} ${j}`,
@@ -195,11 +197,14 @@ const TEKST = {
     noot: (d) => `Based on closing prices of ${d}, converted to euro. The result reflects price changes of what you held at month end; purchases during the month count from your purchase price. Kapitas does not provide investment advice.`,
     waarom: 'You get this e-mail once a month because you have a Kapitas account.', uit: 'Unsubscribe', inst: 'or change it in Settings',
     voorbeeld: '[Preview] ',
+    nieuw: (u) => `<strong>New at Kapitas:</strong> a short overview of your portfolio in your inbox every month. Rather not? <a href="${u}" style="color:#1e3a8a;">Unsubscribe in one click</a>.`,
   },
 };
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function maakMail({ r, p, taal = 'nl', voornaam = '', uitschrijf, voorbeeld = false }) {
+// nieuw = de gebruiker zag de melding in de app nog niet: dan bovenaan uitleggen
+// waarom deze mail komt en hoe je je uitschrijft
+function maakMail({ r, p, taal = 'nl', voornaam = '', uitschrijf, voorbeeld = false, nieuw = false }) {
   const t = TEKST[taal] || TEKST.nl;
   const maand = (MAANDEN[taal] || MAANDEN.nl)[p.maand];
   const eur = (x, d = 0) => new Intl.NumberFormat(t.locale, { style: 'currency', currency: 'EUR', minimumFractionDigits: d, maximumFractionDigits: d }).format(x);
@@ -227,6 +232,7 @@ function maakMail({ r, p, taal = 'nl', voornaam = '', uitschrijf, voorbeeld = fa
   <tr><td style="background:#1e3a8a;padding:22px 28px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
     <td style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-.5px;">Kapitas</td>
     <td align="right" style="font-size:13px;color:#c7d2fe;">${esc(t.kop(maand, p.jaar))}</td></tr></table></td></tr>
+  ${nieuw ? `<tr><td style="padding:20px 28px 0;"><div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.55;color:#1e293b;">${t.nieuw(uitschrijf)}</div></td></tr>` : ''}
   <tr><td style="padding:26px 28px 6px;">
     <div style="font-size:15px;color:#334155;margin-bottom:18px;">${esc(t.hallo(voornaam))} ${esc(t.intro(maand))}</div>
     <div style="font-size:13px;color:#64748b;">${esc(t.waarde(datum))}</div>
@@ -244,6 +250,7 @@ function maakMail({ r, p, taal = 'nl', voornaam = '', uitschrijf, voorbeeld = fa
 </td></tr></table></body></html>`;
 
   const tekst = [
+    ...(nieuw ? [t.nieuw(uitschrijf).replace(/<[^>]+>/g, '') + ' ' + uitschrijf, ''] : []),
     `${t.hallo(voornaam)} ${t.intro(maand)}`, '',
     `${t.waarde(datum)}: ${eur(r.waarde)}`, `${t.resultaat(maand)}: ${metTeken(r.winst)} (${pct(r.pct)})`, '',
     ...(r.perPortfolio.length > 1 ? [t.portefeuilles + ':', ...r.perPortfolio.map(x => `- ${x.naam}: ${eur(x.waarde)} (${pct(x.pct)})`), ''] : []),
@@ -328,7 +335,7 @@ module.exports = async function handler(req, res) {
       const r = rapportVoor(rijen, namenVoor(naamVan, gebruiker.id, rijen), markt, p);
       if (r.waarde <= 0) return res.status(200).json({ ok: false, reden: 'geen-beleggingen' });
       const uitschrijf = uitschrijfUrl(gebruiker.id);
-      const m = maakMail({ r, p, taal: taalVan(gebruiker), voornaam: gebruiker.user_metadata?.voornaam, uitschrijf, voorbeeld: true });
+      const m = maakMail({ r, p, taal: taalVan(gebruiker), voornaam: gebruiker.user_metadata?.voornaam, uitschrijf, voorbeeld: true, nieuw: !gebruiker.user_metadata?.maandrapportGezien });
       const resultaat = await verstuur([mailObject(gebruiker.email, m, uitschrijf)]);
       await zetMetadata(gebruiker.id, { laatsteVoorbeeldMail: new Date().toISOString() });
       const ok = resultaat.every(x => x.status < 300);
@@ -351,7 +358,7 @@ module.exports = async function handler(req, res) {
       const r = rapportVoor(rijen, namenVoor(data.naamVan, u.id, rijen), markt, p);
       if (r.waarde <= 0) { overgeslagen++; continue; }
       const uitschrijf = uitschrijfUrl(u.id);
-      mails.push(mailObject(u.email, maakMail({ r, p, taal: taalVan(u), voornaam: u.user_metadata?.voornaam, uitschrijf }), uitschrijf));
+      mails.push(mailObject(u.email, maakMail({ r, p, taal: taalVan(u), voornaam: u.user_metadata?.voornaam, uitschrijf, nieuw: !u.user_metadata?.maandrapportGezien }), uitschrijf));
     }
     const resultaat = mails.length ? await verstuur(mails, `maandrapport-${p.sleutel}`) : [];
     return res.status(200).json({ maand: p.sleutel, verstuurd: mails.length, overgeslagen, resultaat: resultaat.map(x => x.status) });
