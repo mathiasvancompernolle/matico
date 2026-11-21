@@ -75,7 +75,7 @@ const dag = (ts) => new Date((ts + 43200) * 1000).toISOString().slice(0, 10);
 
 async function reeks(sym) {
   try {
-    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=4mo&interval=1d`, { headers: UA });
+    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=2y&interval=1d`, { headers: UA });
     const x = (await r.json())?.chart?.result?.[0];
     if (!x) return null;
     const { munt, deler } = normaliseer(x.meta?.currency);
@@ -102,13 +102,15 @@ function periode(nu = new Date()) {
   const j = nu.getUTCFullYear(), m = nu.getUTCMonth();
   const eind = new Date(Date.UTC(j, m, 0));          // laatste dag vorige maand
   const start = new Date(Date.UTC(j, m - 1, 0));     // laatste dag van de maand daarvoor
-  return { start: start.toISOString().slice(0, 10), eind: eind.toISOString().slice(0, 10), maand: eind.getUTCMonth(), jaar: eind.getUTCFullYear(), sleutel: eind.toISOString().slice(0, 7) };
+  const jaarStart = new Date(Date.UTC(eind.getUTCFullYear() - 1, 11, 31)); // 31/12 van vorig jaar
+  return { start: start.toISOString().slice(0, 10), eind: eind.toISOString().slice(0, 10), jaarStart: jaarStart.toISOString().slice(0, 10), maand: eind.getUTCMonth(), jaar: eind.getUTCFullYear(), sleutel: eind.toISOString().slice(0, 7) };
 }
 
 async function haalMarktdata(rijen, p) {
   const symbolen = [...new Set(rijen.flatMap(r => (r.beleggingen || []).map(b => b.symbol)).filter(Boolean))];
   const koersen = {};
-  await inGroepjes(symbolen, 8, async (s) => { koersen[s] = await reeks(yahooSymbool(s)); });
+  // Maatstaf: MSCI World in euro (zelfde als de bèta op de Analyse-pagina)
+  const [bench] = await Promise.all([reeks('IWDA.AS'), inGroepjes(symbolen, 8, async (s) => { koersen[s] = await reeks(yahooSymbool(s)); })]);
   const munten = new Set();
   Object.values(koersen).forEach(k => k && munten.add(k.munt));
   rijen.forEach(r => (r.beleggingen || []).forEach(b => munten.add(normaliseer(b.munt).munt)));
@@ -121,7 +123,15 @@ async function haalMarktdata(rijen, p) {
     const k = opDatum(fx[m], d) || fx[m]?.punten?.[0]?.[1];
     return k ? bedrag / k : null;
   };
-  return { koersen, naarEur };
+  const benchRend = (van, tot) => { const a = opDatum(bench, van), b = opDatum(bench, tot); return a && b ? b / a - 1 : null; };
+  return { koersen, naarEur, benchRend };
+}
+
+// Maand + sinds 1 januari + de wereldmarkt over dezelfde periodes
+function volledigRapport(rijen, namen, markt, p) {
+  const maand = rapportVoor(rijen, namen, markt, p);
+  const jaar = rapportVoor(rijen, namen, markt, { ...p, start: p.jaarStart });
+  return { ...maand, jaar: { winst: jaar.winst, pct: jaar.pct }, markt: { maand: markt.benchRend(p.start, p.eind), jaar: markt.benchRend(p.jaarStart, p.eind) } };
 }
 
 // Rapport van één gebruiker: waarde op het einde van de maand en het resultaat
@@ -171,88 +181,127 @@ const MAANDEN = {
 const TEKST = {
   nl: {
     locale: 'nl-BE', onderwerp: (m, pct) => `Je portefeuille in ${m}: ${pct}`, kop: (m, j) => `Maandrapport ${m} ${j}`,
-    hallo: (n) => n ? `Hallo ${n},` : 'Hallo,', intro: (m) => `zo deed je portefeuille het in ${m}.`,
-    waarde: (d) => `Waarde op ${d}`, resultaat: (m) => `Resultaat in ${m}`, portefeuilles: 'Per portefeuille',
-    stijgers: 'Grootste stijgers', dalers: 'Grootste dalers', knop: 'Bekijk je portefeuille',
-    noot: (d) => `Op basis van de slotkoersen van ${d}, omgerekend naar euro. Het resultaat telt de koersbeweging van wat je op het einde van de maand bezat; aankopen tijdens de maand tellen vanaf je aankoopprijs. Kapitas geeft geen beleggingsadvies.`,
+    hallo: (n) => n ? `Hallo ${n},` : 'Hallo,', intro: (m) => `hier is je overzicht van ${m}.`,
+    waarde: (d) => `Waarde op ${d}`, dezeMaand: 'Deze maand', ditJaar: 'Sinds 1 januari', wereld: 'Wereldmarkt',
+    wereldUitleg: 'MSCI World, in euro',
+    oordeel: (verschil, m) => Math.abs(verschil) < 0.003
+      ? `Je portefeuille deed het in ${m} ongeveer even goed als de wereldwijde aandelenmarkt.`
+      : `Je portefeuille deed het in ${m} ${pp(Math.abs(verschil), 'nl-BE')} ${verschil > 0 ? 'beter' : 'minder goed'} dan de wereldwijde aandelenmarkt.`,
+    portefeuilles: 'Per portefeuille', stijgers: 'Grootste stijgers', dalers: 'Grootste dalers', knop: 'Open Kapitas',
+    noot: (d) => `Op basis van de slotkoersen van ${d}, omgerekend naar euro. Het resultaat telt de koersbeweging van wat je op het einde van de maand bezat; aankopen tijdens de periode tellen vanaf je aankoopprijs. De wereldmarkt is de iShares Core MSCI World-ETF. Kapitas geeft geen beleggingsadvies.`,
     waarom: 'Je krijgt deze mail één keer per maand omdat je een account hebt bij Kapitas.', uit: 'Uitschrijven', inst: 'of pas het aan in Instellingen',
     voorbeeld: '[Voorbeeld] ',
     nieuw: (u) => `<strong>Nieuw bij Kapitas:</strong> elke maand een kort overzicht van je portefeuille in je mailbox. Liever niet? <a href="${u}" style="color:#1e3a8a;">Schrijf je met één klik uit</a>.`,
   },
   fr: {
     locale: 'fr-BE', onderwerp: (m, pct) => `Votre portefeuille en ${m} : ${pct}`, kop: (m, j) => `Rapport mensuel ${m} ${j}`,
-    hallo: (n) => n ? `Bonjour ${n},` : 'Bonjour,', intro: (m) => `voici comment votre portefeuille s'est comporté en ${m}.`,
-    waarde: (d) => `Valeur au ${d}`, resultaat: (m) => `Résultat en ${m}`, portefeuilles: 'Par portefeuille',
-    stijgers: 'Plus fortes hausses', dalers: 'Plus fortes baisses', knop: 'Voir votre portefeuille',
-    noot: (d) => `Sur la base des cours de clôture du ${d}, convertis en euros. Le résultat reflète l'évolution des cours de ce que vous déteniez en fin de mois ; les achats du mois comptent à partir de votre prix d'achat. Kapitas ne fournit pas de conseil en investissement.`,
+    hallo: (n) => n ? `Bonjour ${n},` : 'Bonjour,', intro: (m) => `voici votre aperçu ${/^[aeiou]/.test(m) ? "d'" : 'de '}${m}.`,
+    waarde: (d) => `Valeur au ${d}`, dezeMaand: 'Ce mois-ci', ditJaar: 'Depuis le 1er janvier', wereld: 'Marché mondial',
+    wereldUitleg: 'MSCI World, en euros',
+    oordeel: (verschil, m) => Math.abs(verschil) < 0.003
+      ? `En ${m}, votre portefeuille a fait à peu près aussi bien que le marché mondial des actions.`
+      : `En ${m}, votre portefeuille a fait ${pp(Math.abs(verschil), 'fr-BE')} ${verschil > 0 ? 'de mieux' : 'de moins'} que le marché mondial des actions.`,
+    portefeuilles: 'Par portefeuille', stijgers: 'Plus fortes hausses', dalers: 'Plus fortes baisses', knop: 'Ouvrir Kapitas',
+    noot: (d) => `Sur la base des cours de clôture du ${d}, convertis en euros. Le résultat reflète l'évolution des cours de ce que vous déteniez en fin de mois ; les achats de la période comptent à partir de votre prix d'achat. Le marché mondial est l'ETF iShares Core MSCI World. Kapitas ne fournit pas de conseil en investissement.`,
     waarom: 'Vous recevez cet e-mail une fois par mois parce que vous avez un compte Kapitas.', uit: 'Se désabonner', inst: 'ou modifiez-le dans les Paramètres',
     voorbeeld: '[Exemple] ',
     nieuw: (u) => `<strong>Nouveau chez Kapitas :</strong> chaque mois, un bref aperçu de votre portefeuille dans votre boîte mail. Vous préférez ne pas le recevoir ? <a href="${u}" style="color:#1e3a8a;">Désabonnez-vous en un clic</a>.`,
   },
   en: {
     locale: 'en-GB', onderwerp: (m, pct) => `Your portfolio in ${m}: ${pct}`, kop: (m, j) => `Monthly report ${m} ${j}`,
-    hallo: (n) => n ? `Hi ${n},` : 'Hi,', intro: (m) => `here's how your portfolio did in ${m}.`,
-    waarde: (d) => `Value on ${d}`, resultaat: (m) => `Result in ${m}`, portefeuilles: 'Per portfolio',
-    stijgers: 'Top risers', dalers: 'Top fallers', knop: 'View your portfolio',
-    noot: (d) => `Based on closing prices of ${d}, converted to euro. The result reflects price changes of what you held at month end; purchases during the month count from your purchase price. Kapitas does not provide investment advice.`,
+    hallo: (n) => n ? `Hi ${n},` : 'Hi,', intro: (m) => `here's your overview of ${m}.`,
+    waarde: (d) => `Value on ${d}`, dezeMaand: 'This month', ditJaar: 'Year to date', wereld: 'World market',
+    wereldUitleg: 'MSCI World, in euro',
+    oordeel: (verschil, m) => Math.abs(verschil) < 0.003
+      ? `In ${m}, your portfolio did about as well as the global stock market.`
+      : `In ${m}, your portfolio did ${pp(Math.abs(verschil), 'en-GB')} ${verschil > 0 ? 'better' : 'worse'} than the global stock market.`,
+    portefeuilles: 'Per portfolio', stijgers: 'Top risers', dalers: 'Top fallers', knop: 'Open Kapitas',
+    noot: (d) => `Based on closing prices of ${d}, converted to euro. The result reflects price changes of what you held at month end; purchases during the period count from your purchase price. The world market is the iShares Core MSCI World ETF. Kapitas does not provide investment advice.`,
     waarom: 'You get this e-mail once a month because you have a Kapitas account.', uit: 'Unsubscribe', inst: 'or change it in Settings',
     voorbeeld: '[Preview] ',
     nieuw: (u) => `<strong>New at Kapitas:</strong> a short overview of your portfolio in your inbox every month. Rather not? <a href="${u}" style="color:#1e3a8a;">Unsubscribe in one click</a>.`,
   },
 };
+// Verschil in procentpunt, bv. "1,2 procentpunt"
+function pp(x, locale) {
+  const n = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(x * 100);
+  return locale.startsWith('fr') ? `${n} point${x * 100 >= 2 ? 's' : ''} de pourcentage` : locale.startsWith('en') ? `${n} percentage point${n === '1.0' ? '' : 's'}` : `${n} procentpunt`;
+}
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const GROEN = '#15803d', ROOD = '#b91c1c', GROEN_BG = '#dcfce7', ROOD_BG = '#fee2e2', INKT = '#0f172a', GRIJS = '#64748b', LIJN = '#e5e7eb', BLAUW = '#1e3a8a';
 
 // nieuw = de gebruiker zag de melding in de app nog niet: dan bovenaan uitleggen
 // waarom deze mail komt en hoe je je uitschrijft
 function maakMail({ r, p, taal = 'nl', voornaam = '', uitschrijf, voorbeeld = false, nieuw = false }) {
   const t = TEKST[taal] || TEKST.nl;
   const maand = (MAANDEN[taal] || MAANDEN.nl)[p.maand];
-  const eur = (x, d = 0) => new Intl.NumberFormat(t.locale, { style: 'currency', currency: 'EUR', minimumFractionDigits: d, maximumFractionDigits: d }).format(x);
-  const pct = (x) => (x > 0 ? '+' : '') + new Intl.NumberFormat(t.locale, { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(x);
+  const eur = (x) => new Intl.NumberFormat(t.locale, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(x);
+  const pct = (x) => x == null ? '–' : (x > 0 ? '+' : x < 0 ? '−' : '') + new Intl.NumberFormat(t.locale, { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Math.abs(x));
   const metTeken = (x) => (x > 0 ? '+' : x < 0 ? '−' : '') + eur(Math.abs(x));
+  const kleurVan = (x) => x == null || Math.abs(x) < 0.0005 ? GRIJS : x > 0 ? GROEN : ROOD;
   const datum = new Intl.DateTimeFormat(t.locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(p.eind + 'T12:00:00Z'));
-  const pos = r.winst >= 0, kleur = pos ? '#15803d' : '#b91c1c', bg = pos ? '#dcfce7' : '#fee2e2';
   const link = `${SITE}/?utm_source=maandrapport&utm_medium=email`;
+  const naam = (s) => { const n = s.naam || s.symbol; return n.length > 32 ? n.slice(0, 30) + '…' : n; };
+  const label = (x) => `<span style="display:inline-block;padding:3px 8px;border-radius:6px;font-size:13px;font-weight:700;white-space:nowrap;background:${x >= 0 ? GROEN_BG : ROOD_BG};color:${x >= 0 ? GROEN : ROOD};">${pct(x)}</span>`;
 
-  const rijHtml = (links, sub, rechts, rechtsKleur) => `<tr><td style="padding:10px 0;border-bottom:1px solid #eef0f3;"><div style="font-size:14px;font-weight:600;color:#0f172a;">${esc(links)}</div>${sub ? `<div style="font-size:12px;color:#64748b;">${esc(sub)}</div>` : ''}</td><td align="right" style="padding:10px 0;border-bottom:1px solid #eef0f3;font-size:14px;font-weight:600;color:${rechtsKleur || '#0f172a'};white-space:nowrap;">${rechts}</td></tr>`;
-  const sectie = (titel, inhoud) => `<tr><td style="padding:8px 28px 4px;"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin:12px 0 4px;">${titel}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${inhoud}</table></td></tr>`;
-  const naam = (s) => (s.naam || s.symbol).length > 34 ? (s.naam || s.symbol).slice(0, 32) + '…' : (s.naam || s.symbol);
+  // Drie kerncijfers naast elkaar
+  const vakje = (titel, groot, klein, kleur, pad) => `<td width="33%" valign="top" style="padding:${pad};"><div style="border:1px solid ${LIJN};border-radius:12px;padding:12px 12px 11px;">
+    <div style="font-size:12px;color:${GRIJS};margin-bottom:4px;white-space:nowrap;">${titel}</div>
+    <div style="font-size:19px;font-weight:800;color:${kleur};letter-spacing:-.3px;white-space:nowrap;">${groot}</div>
+    <div style="font-size:12px;color:${GRIJS};margin-top:2px;white-space:nowrap;">${klein}</div></div></td>`;
+  const vakjes = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;"><tr>
+    ${vakje(esc(t.dezeMaand), pct(r.pct), metTeken(r.winst), kleurVan(r.pct), '0 4px 0 0')}
+    ${vakje(esc(t.ditJaar), pct(r.jaar?.pct), r.jaar ? metTeken(r.jaar.winst) : '', kleurVan(r.jaar?.pct), '0 2px')}
+    ${vakje(esc(t.wereld), pct(r.markt?.maand), esc(t.wereldUitleg), kleurVan(r.markt?.maand), '0 0 0 4px')}
+  </tr></table>`;
+  const oordeel = r.markt?.maand != null ? t.oordeel(r.pct - r.markt.maand, maand) : null;
+
+  const lijst = (titel, items) => `<tr><td style="padding:22px 28px 0;">
+    <div style="font-size:13px;font-weight:700;color:${INKT};margin-bottom:6px;">${titel}</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${items.map((x, i) => `<tr>
+      <td style="padding:10px 0;${i ? `border-top:1px solid ${LIJN};` : ''}"><div style="font-size:14px;font-weight:600;color:${INKT};">${esc(x.links)}</div><div style="font-size:12px;color:${GRIJS};margin-top:1px;">${x.sub}</div></td>
+      <td align="right" style="padding:10px 0;${i ? `border-top:1px solid ${LIJN};` : ''}">${label(x.pct)}</td></tr>`).join('')}</table></td></tr>`;
 
   let blokken = '';
-  if (r.perPortfolio.length > 1) blokken += sectie(t.portefeuilles, r.perPortfolio.map(x => rijHtml(x.naam, eur(x.waarde), pct(x.pct), x.pct >= 0 ? '#15803d' : '#b91c1c')).join(''));
-  if (r.aantal >= 2 && r.stijgers.length) blokken += sectie(t.stijgers, r.stijgers.map(s => rijHtml(naam(s), metTeken(s.winst), pct(s.pct), '#15803d')).join(''));
-  if (r.aantal >= 2 && r.dalers.length) blokken += sectie(t.dalers, r.dalers.map(s => rijHtml(naam(s), metTeken(s.winst), pct(s.pct), '#b91c1c')).join(''));
+  if (r.perPortfolio.length > 1) blokken += lijst(esc(t.portefeuilles), r.perPortfolio.map(x => ({ links: x.naam, sub: eur(x.waarde), pct: x.pct })));
+  if (r.aantal >= 2 && r.stijgers.length) blokken += lijst('▲ ' + esc(t.stijgers), r.stijgers.map(s => ({ links: naam(s), sub: metTeken(s.winst), pct: s.pct })));
+  if (r.aantal >= 2 && r.dalers.length) blokken += lijst('▼ ' + esc(t.dalers), r.dalers.map(s => ({ links: naam(s), sub: metTeken(s.winst), pct: s.pct })));
 
   const onderwerp = (voorbeeld ? t.voorbeeld : '') + t.onderwerp(maand, pct(r.pct));
   const html = `<!doctype html><html lang="${taal}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${esc(onderwerp)}</title></head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
-<div style="display:none;max-height:0;overflow:hidden;">${esc(t.resultaat(maand))}: ${metTeken(r.winst)} (${pct(r.pct)})</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;"><tr><td align="center" style="padding:24px 12px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;">
-  <tr><td style="background:#1e3a8a;padding:22px 28px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-    <td style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-.5px;">Kapitas</td>
-    <td align="right" style="font-size:13px;color:#c7d2fe;">${esc(t.kop(maand, p.jaar))}</td></tr></table></td></tr>
-  ${nieuw ? `<tr><td style="padding:20px 28px 0;"><div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.55;color:#1e293b;">${t.nieuw(uitschrijf)}</div></td></tr>` : ''}
-  <tr><td style="padding:26px 28px 6px;">
-    <div style="font-size:15px;color:#334155;margin-bottom:18px;">${esc(t.hallo(voornaam))} ${esc(t.intro(maand))}</div>
-    <div style="font-size:13px;color:#64748b;">${esc(t.waarde(datum))}</div>
-    <div style="font-size:34px;font-weight:800;letter-spacing:-1px;margin:2px 0 10px;">${eur(r.waarde)}</div>
-    <div style="font-size:13px;color:#64748b;margin-bottom:4px;">${esc(t.resultaat(maand))}</div>
-    <span style="display:inline-block;background:${bg};color:${kleur};font-weight:700;font-size:15px;padding:6px 12px;border-radius:8px;">${metTeken(r.winst)} (${pct(r.pct)})</span>
+<body style="margin:0;padding:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${INKT};">
+<div style="display:none;max-height:0;overflow:hidden;">${esc(t.dezeMaand)}: ${pct(r.pct)} · ${esc(t.ditJaar)}: ${pct(r.jaar?.pct)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;"><tr><td align="center" style="padding:24px 10px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border-top:4px solid ${BLAUW};">
+  <tr><td style="padding:20px 28px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td style="font-size:20px;font-weight:800;color:${BLAUW};letter-spacing:-.4px;">Kapitas</td>
+    <td align="right" style="font-size:13px;color:${GRIJS};">${esc(t.kop(maand, p.jaar))}</td></tr></table></td></tr>
+  ${nieuw ? `<tr><td style="padding:16px 28px 0;"><div style="background:#eef2ff;border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.55;color:#1e293b;">${t.nieuw(uitschrijf)}</div></td></tr>` : ''}
+  <tr><td style="padding:22px 28px 0;">
+    <div style="font-size:15px;color:#334155;margin-bottom:16px;">${esc(t.hallo(voornaam))} ${esc(t.intro(maand))}</div>
+    <div style="font-size:13px;color:${GRIJS};">${esc(t.waarde(datum))}</div>
+    <div style="font-size:36px;font-weight:800;letter-spacing:-1px;margin-top:2px;">${eur(r.waarde)}</div>
+    ${vakjes}
+    ${oordeel ? `<div style="margin-top:14px;font-size:14px;line-height:1.5;color:#334155;">${esc(oordeel)}</div>` : ''}
   </td></tr>
   ${blokken}
-  <tr><td align="center" style="padding:26px 28px 8px;"><a href="${link}" style="display:inline-block;background:#1e3a8a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 26px;border-radius:10px;">${esc(t.knop)}</a></td></tr>
-  <tr><td style="padding:14px 28px 26px;font-size:12px;line-height:1.6;color:#94a3b8;">${esc(t.noot(datum))}</td></tr>
+  <tr><td align="center" style="padding:28px 28px 6px;"><a href="${link}" style="display:inline-block;background:${BLAUW};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 28px;border-radius:10px;">${esc(t.knop)} →</a></td></tr>
+  <tr><td style="padding:16px 28px 24px;font-size:11.5px;line-height:1.6;color:#94a3b8;">${esc(t.noot(datum))}</td></tr>
 </table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;"><tr><td style="padding:16px 28px;font-size:12px;line-height:1.6;color:#94a3b8;text-align:center;">
-  ${esc(t.waarom)}<br><a href="${uitschrijf}" style="color:#64748b;">${esc(t.uit)}</a> ${esc(t.inst)}.
+  ${esc(t.waarom)}<br><a href="${uitschrijf}" style="color:${GRIJS};">${esc(t.uit)}</a> ${esc(t.inst)}.
 </td></tr></table>
 </td></tr></table></body></html>`;
 
   const tekst = [
     ...(nieuw ? [t.nieuw(uitschrijf).replace(/<[^>]+>/g, '') + ' ' + uitschrijf, ''] : []),
     `${t.hallo(voornaam)} ${t.intro(maand)}`, '',
-    `${t.waarde(datum)}: ${eur(r.waarde)}`, `${t.resultaat(maand)}: ${metTeken(r.winst)} (${pct(r.pct)})`, '',
+    `${t.waarde(datum)}: ${eur(r.waarde)}`,
+    `${t.dezeMaand}: ${pct(r.pct)} (${metTeken(r.winst)})`,
+    ...(r.jaar ? [`${t.ditJaar}: ${pct(r.jaar.pct)} (${metTeken(r.jaar.winst)})`] : []),
+    ...(r.markt?.maand != null ? [`${t.wereld} (${t.wereldUitleg}): ${pct(r.markt.maand)}`] : []),
+    ...(oordeel ? ['', oordeel] : []), '',
     ...(r.perPortfolio.length > 1 ? [t.portefeuilles + ':', ...r.perPortfolio.map(x => `- ${x.naam}: ${eur(x.waarde)} (${pct(x.pct)})`), ''] : []),
     ...(r.aantal >= 2 && r.stijgers.length ? [t.stijgers + ':', ...r.stijgers.map(s => `- ${naam(s)}: ${pct(s.pct)}`), ''] : []),
     ...(r.aantal >= 2 && r.dalers.length ? [t.dalers + ':', ...r.dalers.map(s => `- ${naam(s)}: ${pct(s.pct)}`), ''] : []),
@@ -339,7 +388,7 @@ module.exports = async function handler(req, res) {
       const { perGebruiker, naamVan } = await portefeuilleData(gebruiker.id);
       const rijen = gekozenRijen(gebruiker, perGebruiker[gebruiker.id] || []);
       const markt = await haalMarktdata(rijen, p);
-      const r = rapportVoor(rijen, namenVoor(naamVan, gebruiker.id, rijen), markt, p);
+      const r = volledigRapport(rijen, namenVoor(naamVan, gebruiker.id, rijen), markt, p);
       if (r.waarde <= 0) return res.status(200).json({ ok: false, reden: 'geen-beleggingen' });
       const uitschrijf = uitschrijfUrl(gebruiker.id);
       const m = maakMail({ r, p, taal: taalVan(gebruiker), voornaam: gebruiker.user_metadata?.voornaam, uitschrijf, voorbeeld: true, nieuw: !gebruiker.user_metadata?.maandrapportGezien });
@@ -362,7 +411,7 @@ module.exports = async function handler(req, res) {
     let overgeslagen = 0;
     for (const u of ontvangers) {
       const rijen = gekozenRijen(u, data.perGebruiker[u.id]);
-      const r = rapportVoor(rijen, namenVoor(data.naamVan, u.id, rijen), markt, p);
+      const r = volledigRapport(rijen, namenVoor(data.naamVan, u.id, rijen), markt, p);
       if (r.waarde <= 0) { overgeslagen++; continue; }
       const uitschrijf = uitschrijfUrl(u.id);
       mails.push(mailObject(u.email, maakMail({ r, p, taal: taalVan(u), voornaam: u.user_metadata?.voornaam, uitschrijf, nieuw: !u.user_metadata?.maandrapportGezien }), uitschrijf));
@@ -378,5 +427,6 @@ module.exports = async function handler(req, res) {
 // Voor lokale tests
 module.exports.maakMail = maakMail;
 module.exports.rapportVoor = rapportVoor;
+module.exports.volledigRapport = volledigRapport;
 module.exports.periode = periode;
 module.exports.haalMarktdata = haalMarktdata;
