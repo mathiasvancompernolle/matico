@@ -20,7 +20,7 @@ export default function Privacybeleid({ onTerug }) {
       )}
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Privacybeleid</h1>
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 32 }}>
-        Laatst bijgewerkt: 18 november 2026
+        Laatst bijgewerkt: 21 november 2026
       </p>
 
       <Sectie titel="1. Wie zijn wij">
@@ -53,8 +53,11 @@ export default function Privacybeleid({ onTerug }) {
         </p>
         <SubTitel>Gebruiksgegevens</SubTitel>
         <p>
-          We houden geen aparte analytics/trackingtools bij buiten wat hieronder bij
-          "Cookies" vermeld staat.
+          We meten anoniem hoe de website gebruikt wordt (bezochte pagina's, het
+          land en het soort toestel, en via welke website je binnenkwam) met
+          Vercel Web Analytics. Daarvoor worden geen cookies gebruikt en word je
+          niet over verschillende websites of dagen heen gevolgd. We zien geen
+          namen, e-mailadressen of portefeuillegegevens in deze statistieken.
         </p>
       </Sectie>
 
@@ -65,7 +68,7 @@ export default function Privacybeleid({ onTerug }) {
             ['Supabase', 'Authenticatie (inloggen) en opslag van je portefeuillegegevens', 'EU/VS'],
             ['Google', 'Inloggen via je Google-account', 'VS'],
             ['Crisp', 'Klantenondersteuning via chat', 'EU (Frankrijk/Nederland)'],
-            ['Vercel', 'Hosting van de website', 'EU/VS'],
+            ['Vercel', 'Hosting van de website en anonieme bezoekersstatistieken (zonder cookies)', 'EU/VS'],
             ['Yahoo Finance, Finnhub, EODHD, Financial Modeling Prep, NewsAPI, CoinGecko, OpenRouter', 'Live koersen, marktdata, nieuws en AI-analyse — deze partijen ontvangen enkel de tickersymbolen waarnaar je zoekt, geen persoonsgegevens', 'Diverse'],
           ]}
         />
