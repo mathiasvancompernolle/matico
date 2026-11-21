@@ -8,13 +8,32 @@ import { supabase } from '../supabaseClient';
 // Maandrapport per e-mail: standaard aan; de keuze staat in het account
 // (user_metadata.maandrapport), zodat de server ze kent bij het versturen.
 function MaandrapportKaart() {
+  const { portfolios } = useApp();
   const [aan, setAan] = useState(null);
   const [melding, setMelding] = useState(null); // { tekst, soort }
   const [bezig, setBezig] = useState(false);
+  // Welke portefeuilles in het rapport: null = allemaal (standaard)
+  const [gekozen, setGekozen] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setAan(data?.user?.user_metadata?.maandrapport !== false));
+    supabase.auth.getUser().then(({ data }) => {
+      const meta = data?.user?.user_metadata || {};
+      setAan(meta.maandrapport !== false);
+      setGekozen(Array.isArray(meta.maandrapportPortfolios) && meta.maandrapportPortfolios.length ? meta.maandrapportPortfolios : null);
+    });
   }, []);
+
+  const isGekozen = (id) => !gekozen || gekozen.includes(id);
+  const wisselPortfolio = async (id) => {
+    const huidig = gekozen || portfolios.map(p => p.id);
+    let nieuw = huidig.includes(id) ? huidig.filter(x => x !== id) : [...huidig, id];
+    if (nieuw.length === 0) return; // minstens één portefeuille
+    if (portfolios.every(p => nieuw.includes(p.id))) nieuw = null; // alles = standaard
+    const vorig = gekozen;
+    setGekozen(nieuw); setMelding(null);
+    const { error } = await supabase.auth.updateUser({ data: { maandrapportPortfolios: nieuw } });
+    if (error) { setGekozen(vorig); setMelding({ tekst: 'Opslaan is niet gelukt. Probeer het later opnieuw.', soort: 'fout' }); }
+  };
 
   const wissel = async () => {
     const nieuw = !aan;
@@ -54,6 +73,22 @@ function MaandrapportKaart() {
           <span style={{ position: 'absolute', top: 3, left: aan ? 23 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
         </button>
       </div>
+      {aan && portfolios.length > 1 && (
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Welke portefeuilles in je maandrapport?</div>
+          {portfolios.map(p => (
+            <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 14, cursor: 'pointer' }}>
+              <input type="checkbox" checked={isGekozen(p.id)} onChange={() => wisselPortfolio(p.id)}
+                disabled={isGekozen(p.id) && (gekozen ? gekozen.length : portfolios.length) === 1}
+                style={{ width: 16, height: 16, accentColor: ACCENT }} />
+              {p.naam}
+            </label>
+          ))}
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+            Bv. een portefeuille die je voor iemand anders bijhoudt. Het totaal, het resultaat en de stijgers en dalers gaan dan enkel over de aangevinkte portefeuilles.
+          </div>
+        </div>
+      )}
       <button type="button" onClick={stuurVoorbeeld} disabled={bezig}
         style={{ marginTop: 16, padding: '9px 16px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg-white)', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: bezig ? 'wait' : 'pointer' }}>
         {bezig ? 'Bezig met versturen…' : 'Stuur mij nu een voorbeeld'}
