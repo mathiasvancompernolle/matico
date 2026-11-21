@@ -3,6 +3,7 @@
 // zoekmachines ze apart kunnen tonen (zie scripts/prerender.mjs).
 import React, { useState } from 'react';
 import { TOB_TARIEVEN, berekenTob } from '../utils/tob';
+import { PER_LAND } from '../utils/dividendbelasting';
 
 const ACCENT = '#1e3a8a';
 const INKT = '#16181D';
@@ -17,10 +18,44 @@ export const REKENHULP_PADEN = {
   '/beurstaks-berekenen': { soort: 'tob', taal: 'nl' },
   '/fr/calcul-taxe-plus-values': { soort: 'meerwaarde', taal: 'fr' },
   '/fr/calcul-taxe-boursiere': { soort: 'tob', taal: 'fr' },
+  '/dividendbelasting-berekenen': { soort: 'dividend', taal: 'nl' },
+  '/fr/calcul-precompte-dividendes': { soort: 'dividend', taal: 'fr' },
 };
 const PAD = {
-  nl: { meerwaarde: '/meerwaardebelasting-berekenen', tob: '/beurstaks-berekenen' },
-  fr: { meerwaarde: '/fr/calcul-taxe-plus-values', tob: '/fr/calcul-taxe-boursiere' },
+  nl: { meerwaarde: '/meerwaardebelasting-berekenen', tob: '/beurstaks-berekenen', dividend: '/dividendbelasting-berekenen' },
+  fr: { meerwaarde: '/fr/calcul-taxe-plus-values', tob: '/fr/calcul-taxe-boursiere', dividend: '/fr/calcul-precompte-dividendes' },
+};
+
+// Dividendvrijstelling (dividenden uit aandelen, niet uit fondsen/ETF's):
+// €833 per persoon voor inkomstenjaar 2026 → max. €249,90 terug via de aangifte
+const DIV_VRIJSTELLING = 833;
+
+// Keuzes voor "waar komt het dividend vandaan": aandelen per land + ETF's
+const DIV_HERKOMST = ['BE', 'NL', 'FR', 'DE', 'US', 'GB', 'CH', 'ES', 'IT', 'IE', 'LU', 'DK', 'SE', 'NO', 'FI', 'AT', 'PT', 'CA', 'JP', 'ETF_EU', 'ETF_US'];
+const LAND_FR = { BE: 'Belgique', NL: 'Pays-Bas', FR: 'France', DE: 'Allemagne', US: 'États-Unis', GB: 'Royaume-Uni', CH: 'Suisse', ES: 'Espagne', IT: 'Italie', IE: 'Irlande', LU: 'Luxembourg', DK: 'Danemark', SE: 'Suède', NO: 'Norvège', FI: 'Finlande', AT: 'Autriche', PT: 'Portugal', CA: 'Canada', JP: 'Japon' };
+const herkomstInfo = (code) => {
+  if (code === 'ETF_EU') return { tarief: 0, etf: true };
+  if (code === 'ETF_US') return { tarief: 0.15, etf: true };
+  return { tarief: PER_LAND[code]?.tarief || 0, etf: false };
+};
+
+export const berekenDividend = (rijen, personen) => {
+  const per = rijen.map(r => {
+    const bruto = leesGetal(r.bruto);
+    if (!Number.isFinite(bruto) || bruto <= 0) return null;
+    const { tarief, etf } = herkomstInfo(r.herkomst);
+    const buitenland = bruto * tarief;
+    const basis = bruto - buitenland;          // waarop de Belgische 30% geheven wordt
+    const rv = basis * 0.30;
+    return { bruto, buitenland, basis, rv, netto: basis - rv, etf };
+  });
+  const som = (k, f = () => true) => per.reduce((s, x) => s + (x && f(x) ? x[k] : 0), 0);
+  const bruto = som('bruto'), buitenland = som('buitenland'), rv = som('rv'), netto = som('netto');
+  const vrijBasis = som('basis', x => !x.etf);
+  const maxVrij = DIV_VRIJSTELLING * (personen === 2 ? 2 : 1);
+  const terug = Math.min(vrijBasis, maxVrij) * 0.30;
+  const nettoNa = netto + terug;
+  return { per, bruto, buitenland, rv, netto, terug, nettoNa, vrijBasis, maxVrij, druk: bruto > 0 ? 1 - nettoNa / bruto : 0, ingevuld: per.some(Boolean), enkelEtf: per.some(Boolean) && vrijBasis === 0 };
 };
 
 const VRIJSTELLING = 10000;     // per persoon, inkomstenjaar 2026 (wordt geïndexeerd)
@@ -69,7 +104,7 @@ export const berekenMeerwaarde = (rijen, overgedragen) => {
 const T = {
   nl: {
     locale: 'nl-BE', start: 'Start gratis', inloggen: 'Inloggen', andereTaal: 'FR', andereTaalLabel: 'Version française',
-    navMeerwaarde: 'Meerwaardebelasting', navTob: 'Beurstaks', gids: 'Gids voor beginners',
+    navMeerwaarde: 'Meerwaardebelasting', navTob: 'Beurstaks', navDividend: 'Dividendbelasting', gids: 'Gids voor beginners',
     eyebrow: 'Gratis rekenhulp · geen account nodig',
     disclaimer: 'Deze rekenhulp geeft een schatting op basis van de regels die gelden sinds 1 januari 2026 en is geen fiscaal advies. Controleer je situatie bij de FOD Financiën of een fiscalist. Bijzondere regels (speculatieve verrichtingen, aanmerkelijke belangen vanaf 20%, beroepsbeleggers) zijn niet meegerekend.',
     ctaTitel: 'Laat Kapitas dit automatisch berekenen',
@@ -119,6 +154,42 @@ const T = {
         ]],
       ],
     },
+    dividend: {
+      titel: 'Dividendbelasting berekenen',
+      intro: 'Bereken hoeveel belasting je betaalt op je dividenden: de buitenlandse bronheffing én de Belgische roerende voorheffing van 30%. En hoeveel je via de vrijstelling van €833 terugkrijgt in je belastingaangifte.',
+      kop: 'Je dividenden in 2026', rij: 'Dividend', naam: 'Van welk aandeel of welke ETF? (optioneel)', naamPh: 'bv. ASML, Microsoft, VHYL',
+      herkomst: 'Waar komt het vandaan?', bruto: 'Bruto dividend', brutoHulp: 'Het bedrag vóór alle belastingen, zoals op je dividendafrekening.',
+      etfEu: 'ETF of fonds uit Ierland of Luxemburg', etfUs: 'Amerikaanse ETF', aandeel: (land) => `Aandeel uit ${land}`,
+      groepAandelen: 'Aandelen', groepEtf: "ETF's en fondsen",
+      personen: 'Op naam van', persoon1: '1 persoon', persoon2: '2 personen (bv. koppel)',
+      personenHulp: 'De vrijstelling geldt per persoon. Staan je beleggingen op twee namen, dan heeft elk recht op de vrijstelling.',
+      voegToe: '+ Nog een dividend', verwijder: 'Verwijderen', voorbeeld: 'Voorbeeld invullen',
+      rijNetto: (n, b) => `Netto ontvangen: ${n} (${b} belasting)`, rijLeeg: 'Vul het bruto bedrag in',
+      res: {
+        kop: 'Je resultaat', bruto: 'Bruto dividend', buitenland: 'Buitenlandse bronheffing', rv: 'Belgische roerende voorheffing (30%)',
+        netto: 'Netto ontvangen', terug: 'Terug via je aangifte', nettoNa: 'Netto na terugbetaling', druk: (p) => `Totale belasting: ${p} van je bruto dividend`,
+        aangifte: (rv) => `Vul in je belastingaangifte in vak VII, code 1437 (partner: 2437), ${rv} in: de roerende voorheffing op je dividenden uit aandelen, tot het maximum.`,
+        enkelEtf: 'Dividenden van ETF\'s en fondsen komen niet in aanmerking voor de vrijstelling: alleen dividenden van aandelen.',
+        leeg: 'Vul hierboven minstens één dividend in.',
+      },
+      uitleg: [
+        ['Hoe worden dividenden belast in België?', [
+          'Op elk dividend houdt je bank of broker 30% roerende voorheffing in. Komt het dividend uit het buitenland, dan heeft het land van het bedrijf eerst al een deel ingehouden: de buitenlandse bronheffing. De Belgische 30% wordt berekend op wat daarna overblijft.',
+          'Een voorbeeld: op een Amerikaans dividend van €100 houden de VS eerst 15% in (€15). Op de resterende €85 betaal je in België 30% (€25,50). Je houdt dus €59,50 over: een totale belasting van 40,5%.',
+        ]],
+        ['De vrijstelling van €833: geld dat je terugkrijgt', [
+          'De eerste €833 aan dividenden uit aandelen per persoon is vrijgesteld (inkomstenjaar 2026). Omdat je bank toch 30% inhoudt, vraag je dat terug via je belastingaangifte: maximaal €249,90 per persoon.',
+          'Je vult in vak VII onder code 1437 het bedrag van de ingehouden roerende voorheffing in (dus niet het bruto dividend). Veel beleggers vergeten dit en laten zo elk jaar geld liggen.',
+        ]],
+        ['Geldt de vrijstelling ook voor ETF\'s?', [
+          'Nee. Uitkeringen van ETF\'s en beleggingsfondsen komen niet in aanmerking, ook niet als het om een distribuerende ETF gaat. Alleen dividenden van individuele aandelen tellen mee.',
+        ]],
+        ['Kan je de buitenlandse bronheffing terugkrijgen?', [
+          'Niet via je Belgische aangifte: als particulier kan je de buitenlandse bronheffing niet verrekenen met je Belgische belasting. Bij sommige landen (zoals Zwitserland, Duitsland of Frankrijk) kan je wel een deel terugvragen bij de buitenlandse fiscus, met een verdragsprocedure. Dat is vaak omslachtig en loont vooral bij grotere bedragen.',
+          'Voor Amerikaanse aandelen zorgt het W-8BEN-formulier bij je broker ervoor dat er 15% wordt ingehouden in plaats van 30%.',
+        ]],
+      ],
+    },
     tob: {
       titel: 'Beurstaks (TOB) berekenen',
       intro: 'Bereken hoeveel beurstaks je betaalt bij de aankoop of verkoop van aandelen, ETF\'s of obligaties. Met de juiste tarieven en maximumbedragen per transactie.',
@@ -147,7 +218,7 @@ const T = {
   },
   fr: {
     locale: 'fr-BE', start: 'Commencer', inloggen: 'Se connecter', andereTaal: 'NL', andereTaalLabel: 'Nederlandse versie',
-    navMeerwaarde: 'Taxe sur les plus-values', navTob: 'Taxe boursière', gids: null,
+    navMeerwaarde: 'Taxe sur les plus-values', navTob: 'Taxe boursière', navDividend: 'Précompte dividendes', gids: null,
     eyebrow: 'Calculateur gratuit · sans compte',
     disclaimer: 'Ce calculateur donne une estimation selon les règles en vigueur depuis le 1er janvier 2026 et ne constitue pas un conseil fiscal. Vérifiez votre situation auprès du SPF Finances ou d\'un fiscaliste. Les règles particulières (opérations spéculatives, participations importantes à partir de 20 %, investisseurs professionnels) ne sont pas prises en compte.',
     ctaTitel: 'Laissez Kapitas calculer tout cela automatiquement',
@@ -197,6 +268,42 @@ const T = {
         ]],
       ],
     },
+    dividend: {
+      titel: 'Calculer le précompte mobilier sur vos dividendes',
+      intro: 'Calculez combien d\'impôt vous payez sur vos dividendes : la retenue à la source étrangère et le précompte mobilier belge de 30 %. Et combien vous récupérez grâce à l\'exonération de 833 € dans votre déclaration d\'impôt.',
+      kop: 'Vos dividendes en 2026', rij: 'Dividende', naam: 'De quelle action ou quel ETF ? (facultatif)', naamPh: 'p. ex. ASML, Microsoft, VHYL',
+      herkomst: 'D\'où vient-il ?', bruto: 'Dividende brut', brutoHulp: 'Le montant avant tout impôt, comme sur votre avis de dividende.',
+      etfEu: 'ETF ou fonds irlandais ou luxembourgeois', etfUs: 'ETF américain', aandeel: (land) => `Action – ${land}`,
+      groepAandelen: 'Actions', groepEtf: 'ETF et fonds',
+      personen: 'Au nom de', persoon1: '1 personne', persoon2: '2 personnes (p. ex. couple)',
+      personenHulp: 'L\'exonération s\'applique par personne. Si vos placements sont à deux noms, chacun y a droit.',
+      voegToe: '+ Ajouter un dividende', verwijder: 'Supprimer', voorbeeld: 'Remplir un exemple',
+      rijNetto: (n, b) => `Net reçu : ${n} (${b} d'impôt)`, rijLeeg: 'Saisissez le montant brut',
+      res: {
+        kop: 'Votre résultat', bruto: 'Dividende brut', buitenland: 'Retenue à la source étrangère', rv: 'Précompte mobilier belge (30 %)',
+        netto: 'Net reçu', terug: 'Récupéré via votre déclaration', nettoNa: 'Net après remboursement', druk: (p) => `Impôt total : ${p} de votre dividende brut`,
+        aangifte: (rv) => `Dans votre déclaration d'impôt, cadre VII, code 1437 (partenaire : 2437), indiquez ${rv} : le précompte mobilier retenu sur vos dividendes d'actions, jusqu'au maximum.`,
+        enkelEtf: 'Les dividendes d\'ETF et de fonds ne donnent pas droit à l\'exonération : seuls les dividendes d\'actions comptent.',
+        leeg: 'Remplissez au moins un dividende ci-dessus.',
+      },
+      uitleg: [
+        ['Comment les dividendes sont-ils imposés en Belgique ?', [
+          'Sur chaque dividende, votre banque ou courtier retient 30 % de précompte mobilier. Si le dividende vient de l\'étranger, le pays de l\'entreprise a d\'abord retenu une partie : la retenue à la source étrangère. Les 30 % belges sont calculés sur ce qui reste.',
+          'Un exemple : sur un dividende américain de 100 €, les États-Unis retiennent d\'abord 15 % (15 €). Sur les 85 € restants, vous payez 30 % en Belgique (25,50 €). Il vous reste 59,50 € : un impôt total de 40,5 %.',
+        ]],
+        ['L\'exonération de 833 € : de l\'argent à récupérer', [
+          'Les premiers 833 € de dividendes d\'actions par personne sont exonérés (revenus 2026). Comme votre banque retient quand même 30 %, vous les récupérez via votre déclaration d\'impôt : au maximum 249,90 € par personne.',
+          'Dans le cadre VII, code 1437, vous indiquez le montant du précompte mobilier retenu (et non le dividende brut). Beaucoup d\'investisseurs l\'oublient et laissent ainsi de l\'argent chaque année.',
+        ]],
+        ['L\'exonération vaut-elle pour les ETF ?', [
+          'Non. Les distributions d\'ETF et de fonds d\'investissement n\'y donnent pas droit, même pour un ETF de distribution. Seuls les dividendes d\'actions individuelles comptent.',
+        ]],
+        ['Peut-on récupérer la retenue à la source étrangère ?', [
+          'Pas via votre déclaration belge : en tant que particulier, vous ne pouvez pas imputer la retenue étrangère sur votre impôt belge. Pour certains pays (comme la Suisse, l\'Allemagne ou la France), vous pouvez récupérer une partie auprès du fisc étranger via une procédure conventionnelle. C\'est souvent laborieux et surtout intéressant pour de gros montants.',
+          'Pour les actions américaines, le formulaire W-8BEN chez votre courtier limite la retenue à 15 % au lieu de 30 %.',
+        ]],
+      ],
+    },
     tob: {
       titel: 'Calculer la taxe boursière (TOB)',
       intro: 'Calculez combien de taxe boursière vous payez à l\'achat ou à la vente d\'actions, d\'ETF ou d\'obligations. Avec les bons taux et les montants maximums par transaction.',
@@ -234,6 +341,8 @@ const CSS = `
   .rh-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
   .rh-hulp { font-size: 13px; color: #6b6e75; margin-top: 6px; line-height: 1.45; }
   .rh-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .rh-grid-2 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
+  .rh select.rh-veld { appearance: auto; padding-right: 8px; }
   .rh-hoofd { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; align-items: start; }
   .rh-sectie { padding: 0 80px; }
   .rh-nav-links { display: flex; gap: 24px; align-items: center; }
@@ -256,7 +365,7 @@ const CSS = `
     .rh-gsm-balk { display: flex; position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 60; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-radius: 14px; background: ${INKT}; color: #fff; text-decoration: none; box-shadow: 0 12px 32px rgba(0,0,0,.25); font-weight: 700; }
   }
   @media (max-width: 560px) {
-    .rh-grid-3 { grid-template-columns: 1fr; }
+    .rh-grid-3, .rh-grid-2 { grid-template-columns: 1fr; }
   }
 `;
 
@@ -274,6 +383,7 @@ function Kader({ soort, taal, onNaarApp, children }) {
         <nav className="rh-nav-links">
           <a href={PAD[taal].meerwaarde} aria-current={soort === 'meerwaarde' ? 'page' : undefined}>{t.navMeerwaarde}</a>
           <a href={PAD[taal].tob} aria-current={soort === 'tob' ? 'page' : undefined}>{t.navTob}</a>
+          <a href={PAD[taal].dividend} aria-current={soort === 'dividend' ? 'page' : undefined}>{t.navDividend}</a>
           {t.gids && <a href="/gids">{t.gids}</a>}
         </nav>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -294,6 +404,7 @@ function Kader({ soort, taal, onNaarApp, children }) {
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
           <a href={PAD[taal].meerwaarde} style={{ color: GRIJS }}>{t.navMeerwaarde}</a>
           <a href={PAD[taal].tob} style={{ color: GRIJS }}>{t.navTob}</a>
+          <a href={PAD[taal].dividend} style={{ color: GRIJS }}>{t.navDividend}</a>
           <a href="/gids" style={{ color: GRIJS }}>{T.nl.gids}</a>
           <a href="/privacybeleid" style={{ color: GRIJS }}>Privacy</a>
           <a href="/disclaimer" style={{ color: GRIJS }}>Disclaimer</a>
@@ -440,6 +551,114 @@ function Meerwaarde({ taal }) {
   );
 }
 
+let divNummer = 1;
+const legeDiv = (herkomst = 'US') => ({ id: divNummer++, naam: '', herkomst, bruto: '' });
+
+function Dividend({ taal }) {
+  const t = T[taal].dividend;
+  const eur = (x) => new Intl.NumberFormat(T[taal].locale, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(x);
+  const pct = (x) => new Intl.NumberFormat(T[taal].locale, { style: 'percent', maximumFractionDigits: 1 }).format(x);
+  const [rijen, setRijen] = useState(() => [legeDiv()]);
+  const [personen, setPersonen] = useState(1);
+  const r = berekenDividend(rijen, personen);
+  const zet = (id, veld, waarde) => setRijen(rs => rs.map(x => x.id === id ? { ...x, [veld]: waarde } : x));
+  const landNaam = (code) => taal === 'fr' ? LAND_FR[code] : PER_LAND[code]?.land;
+  const voorbeeld = () => setRijen([
+    { id: divNummer++, naam: 'Microsoft', herkomst: 'US', bruto: '180' },
+    { id: divNummer++, naam: 'KBC', herkomst: 'BE', bruto: '420' },
+    { id: divNummer++, naam: 'ASML', herkomst: 'NL', bruto: '150' },
+    { id: divNummer++, naam: 'VHYL', herkomst: 'ETF_EU', bruto: '300' },
+  ]);
+
+  return (
+    <>
+      <Hero t={{ ...t, eyebrow: T[taal].eyebrow }} />
+      <section className="rh-sectie">
+        <div className="rh-hoofd">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0, fontSize: 22 }}>{t.kop}</h2>
+              <button type="button" className="rh-knop rh-knop-licht" onClick={voorbeeld}>{t.voorbeeld}</button>
+            </div>
+            {rijen.map((rij, i) => {
+              const res = r.per[i];
+              return (
+                <div key={rij.id} style={kaart}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 }}>
+                    <strong style={{ fontSize: 16 }}>{t.rij} {i + 1}</strong>
+                    {rijen.length > 1 && <button type="button" onClick={() => setRijen(rs => rs.filter(x => x.id !== rij.id))} style={{ background: 'none', border: 'none', color: ROOD, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit' }}>{t.verwijder}</button>}
+                  </div>
+                  <label className="rh-label" htmlFor={`dn-${rij.id}`}>{t.naam}</label>
+                  <input id={`dn-${rij.id}`} className="rh-veld" value={rij.naam} placeholder={t.naamPh} onChange={e => zet(rij.id, 'naam', e.target.value)} />
+                  <div className="rh-grid-2" style={{ marginTop: 14 }}>
+                    <div>
+                      <label className="rh-label" htmlFor={`dh-${rij.id}`}>{t.herkomst}</label>
+                      <select id={`dh-${rij.id}`} className="rh-veld" value={rij.herkomst} onChange={e => zet(rij.id, 'herkomst', e.target.value)}>
+                        <optgroup label={t.groepAandelen}>
+                          {DIV_HERKOMST.filter(c => !c.startsWith('ETF')).map(c => <option key={c} value={c}>{t.aandeel(landNaam(c))} · {pct(PER_LAND[c].tarief)}</option>)}
+                        </optgroup>
+                        <optgroup label={t.groepEtf}>
+                          <option value="ETF_EU">{t.etfEu} · 0%</option>
+                          <option value="ETF_US">{t.etfUs} · 15%</option>
+                        </optgroup>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="rh-label" htmlFor={`db-${rij.id}`}>{t.bruto}</label>
+                      <input id={`db-${rij.id}`} className="rh-veld" inputMode="decimal" placeholder="€" value={rij.bruto} onChange={e => zet(rij.id, 'bruto', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="rh-hulp">{t.brutoHulp}</div>
+                  <div style={{ marginTop: 12, fontSize: 15, fontWeight: 700, color: res ? INKT : '#6b6e75' }}>
+                    {res ? t.rijNetto(eur(res.netto), eur(res.buitenland + res.rv)) : t.rijLeeg}
+                  </div>
+                </div>
+              );
+            })}
+            <button type="button" className="rh-knop rh-knop-licht" style={{ alignSelf: 'flex-start' }} onClick={() => setRijen(rs => [...rs, legeDiv(rs[rs.length - 1]?.herkomst)])}>{t.voegToe}</button>
+            <div style={kaart}>
+              <div className="rh-label">{t.personen}</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[[1, t.persoon1], [2, t.persoon2]].map(([n, l]) => (
+                  <button key={n} type="button" aria-pressed={personen === n} onClick={() => setPersonen(n)} style={{ flex: 1, minHeight: 42, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: personen === n ? INKT : '#fff', color: personen === n ? '#fff' : INKT, border: `1px solid ${personen === n ? INKT : '#CFCAC0'}` }}>{l}</button>
+                ))}
+              </div>
+              <div className="rh-hulp">{t.personenHulp}</div>
+            </div>
+          </div>
+
+          {r.ingevuld && <a href="#resultaat" className="rh-gsm-balk"><span>{t.res.terug}: {eur(r.terug)}</span><span aria-hidden="true">↓</span></a>}
+          <div id="resultaat" className="rh-sticky" style={{ ...kaart, padding: 28 }} aria-live="polite">
+            <h2 style={{ margin: '0 0 12px', fontSize: 22 }}>{t.res.kop}</h2>
+            {!r.ingevuld ? <p style={{ color: GRIJS, margin: 0 }}>{t.res.leeg}</p> : (
+              <>
+                <Regel label={t.res.bruto} waarde={eur(r.bruto)} />
+                <Regel label={t.res.buitenland} waarde={'− ' + eur(r.buitenland)} kleur={r.buitenland > 0 ? ROOD : undefined} />
+                <Regel label={t.res.rv} waarde={'− ' + eur(r.rv)} kleur={ROOD} />
+                <Regel label={t.res.netto} waarde={eur(r.netto)} vet />
+                <Regel label={t.res.terug} waarde={'+ ' + eur(r.terug)} kleur={GROEN} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginTop: 18 }}>
+                  <span style={{ fontSize: 17, fontWeight: 700 }}>{t.res.nettoNa}</span>
+                  <span style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{eur(r.nettoNa)}</span>
+                </div>
+                <p style={{ margin: '8px 0 0', fontSize: 14, color: GRIJS }}>{t.res.druk(pct(r.druk))}</p>
+                {r.terug > 0 ? (
+                  <div style={{ marginTop: 18, padding: 16, borderRadius: 12, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                    <div style={{ fontSize: 14, lineHeight: 1.55, color: '#14532d' }}>{t.res.aangifte(eur(r.terug))}</div>
+                  </div>
+                ) : r.enkelEtf ? (
+                  <p style={{ margin: '14px 0 0', fontSize: 14, color: GRIJS }}>{t.res.enkelEtf}</p>
+                ) : null}
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+      <Uitleg blokken={t.uitleg} />
+    </>
+  );
+}
+
 function Tob({ taal }) {
   const t = T[taal].tob;
   const eur = (x) => new Intl.NumberFormat(T[taal].locale, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(x);
@@ -504,7 +723,7 @@ function Tob({ taal }) {
 export default function Rekenhulp({ soort, taal = 'nl', onNaarApp }) {
   return (
     <Kader soort={soort} taal={taal} onNaarApp={onNaarApp}>
-      {soort === 'tob' ? <Tob taal={taal} /> : <Meerwaarde taal={taal} />}
+      {soort === 'tob' ? <Tob taal={taal} /> : soort === 'dividend' ? <Dividend taal={taal} /> : <Meerwaarde taal={taal} />}
     </Kader>
   );
 }

@@ -49,6 +49,16 @@ const META = {
     beschrijving: 'Calculez gratuitement la taxe de 10 % sur les plus-values de vos actions, ETF et cryptos. Avec l\'exonération de 10 000 €, les pertes et la valeur au 31/12/2025.',
     taal: 'fr-BE', alternatief: { 'nl-BE': '/meerwaardebelasting-berekenen' },
   },
+  '/dividendbelasting-berekenen': {
+    titel: 'Dividendbelasting berekenen: roerende voorheffing en vrijstelling – Kapitas',
+    beschrijving: 'Bereken gratis hoeveel belasting je betaalt op dividenden: buitenlandse bronheffing en 30% roerende voorheffing. En hoeveel je terugkrijgt via de vrijstelling van €833.',
+    taal: 'nl-BE', alternatief: { 'fr-BE': '/fr/calcul-precompte-dividendes' },
+  },
+  '/fr/calcul-precompte-dividendes': {
+    titel: 'Calculer le précompte mobilier sur dividendes (Belgique) – Kapitas',
+    beschrijving: 'Calculez gratuitement l\'impôt sur vos dividendes : retenue à la source étrangère et précompte mobilier de 30 %. Et combien vous récupérez grâce à l\'exonération de 833 €.',
+    taal: 'fr-BE', alternatief: { 'nl-BE': '/dividendbelasting-berekenen' },
+  },
   '/fr/calcul-taxe-boursiere': {
     titel: 'Calculer la taxe boursière (TOB) en Belgique – Kapitas',
     beschrijving: 'Calculez gratuitement la taxe sur les opérations de bourse pour vos actions, ETF et obligations : 0,12 %, 0,35 % ou 1,32 %, avec les maximums par transaction.',
